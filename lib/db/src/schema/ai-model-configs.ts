@@ -7,6 +7,7 @@ import {
   boolean,
   jsonb,
   index,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -26,8 +27,11 @@ export const aiModelConfigsTable = pgTable(
 
     priority: integer("priority").notNull().default(1),
 
+    // Self-referential FK: references the id column of this same table.
+    // Uses AnyPgColumn to satisfy the Drizzle type constraint in the lazy callback,
+    // which is the documented pattern for self-referential foreign keys in Drizzle ORM.
     fallbackModelId: integer("fallback_model_id").references(
-      (): any => aiModelConfigsTable.id,
+      (): AnyPgColumn => aiModelConfigsTable.id,
       { onDelete: "set null" },
     ),
 
