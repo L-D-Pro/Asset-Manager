@@ -27,9 +27,6 @@ export const aiModelConfigsTable = pgTable(
 
     priority: integer("priority").notNull().default(1),
 
-    // Self-referential FK: references the id column of this same table.
-    // Uses AnyPgColumn to satisfy the Drizzle type constraint in the lazy callback,
-    // which is the documented pattern for self-referential foreign keys in Drizzle ORM.
     fallbackModelId: integer("fallback_model_id").references(
       (): AnyPgColumn => aiModelConfigsTable.id,
       { onDelete: "set null" },
