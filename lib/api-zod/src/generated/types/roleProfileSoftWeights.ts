@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface HealthStatus {
-  status: string;
-}
+/**
+ * JSON object with soft scoring weights
+ */
+export type RoleProfileSoftWeights = { [key: string]: unknown };

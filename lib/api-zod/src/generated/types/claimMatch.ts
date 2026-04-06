@@ -5,7 +5,11 @@
  * Job Application Operations Platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { Claim } from "./claim";
 
-export interface HealthStatus {
-  status: string;
+export interface ClaimMatch {
+  claim: Claim;
+  score: number;
+  matchedKeywords: string[];
+  matchType: string;
 }

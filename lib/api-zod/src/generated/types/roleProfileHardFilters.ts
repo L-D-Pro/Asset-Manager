@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface HealthStatus {
-  status: string;
-}
+/**
+ * JSON object with hard filter criteria
+ */
+export type RoleProfileHardFilters = { [key: string]: unknown };

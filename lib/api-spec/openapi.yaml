@@ -3,13 +3,32 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Job Application Operations Platform API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: role-profiles
+    description: Role profile management
+  - name: jobs
+    description: Job ingestion and management
+  - name: claims
+    description: Claims ledger (truth lock system)
+  - name: resume-versions
+    description: Tailored resume version management
+  - name: cover-letter-versions
+    description: Cover letter version management
+  - name: applications
+    description: Application tracking
+  - name: event-logs
+    description: Audit event log
+  - name: feedback-signals
+    description: Outcome feedback signals
+  - name: ai-model-configs
+    description: AI model configuration
+
 paths:
   /healthz:
     get:
@@ -24,7 +43,947 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ── Role Profiles ──────────────────────────────────────────────────────────
+  /role-profiles:
+    get:
+      operationId: listRoleProfiles
+      tags: [role-profiles]
+      summary: List all role profiles
+      responses:
+        "200":
+          description: List of role profiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RoleProfile"
+    post:
+      operationId: createRoleProfile
+      tags: [role-profiles]
+      summary: Create a role profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRoleProfileBody"
+      responses:
+        "201":
+          description: Created role profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleProfile"
+
+  /role-profiles/{id}:
+    get:
+      operationId: getRoleProfile
+      tags: [role-profiles]
+      summary: Get a role profile by ID
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Role profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleProfile"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateRoleProfile
+      tags: [role-profiles]
+      summary: Update a role profile
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRoleProfileBody"
+      responses:
+        "200":
+          description: Updated role profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleProfile"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteRoleProfile
+      tags: [role-profiles]
+      summary: Delete a role profile
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── Jobs ───────────────────────────────────────────────────────────────────
+  /jobs:
+    get:
+      operationId: listJobs
+      tags: [jobs]
+      summary: List jobs
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: roleProfileId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Job"
+    post:
+      operationId: createJob
+      tags: [jobs]
+      summary: Create / ingest a job
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateJobBody"
+      responses:
+        "201":
+          description: Created job
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+
+  /jobs/{id}:
+    get:
+      operationId: getJob
+      tags: [jobs]
+      summary: Get a job by ID
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Job
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateJob
+      tags: [jobs]
+      summary: Update a job
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateJobBody"
+      responses:
+        "200":
+          description: Updated job
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteJob
+      tags: [jobs]
+      summary: Delete a job
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /jobs/{id}/score:
+    get:
+      operationId: scoreJob
+      tags: [jobs]
+      summary: Score a job against a role profile
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - name: roleProfileId
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Job score result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobScoreResult"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /jobs/{id}/parse:
+    post:
+      operationId: parseJobDescription
+      tags: [jobs]
+      summary: Parse job description with AI
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ParseJobBody"
+      responses:
+        "200":
+          description: Updated job with parsed fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /jobs/{id}/claim-matches:
+    get:
+      operationId: getJobClaimMatches
+      tags: [jobs]
+      summary: Get claims ranked by relevance to a job
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Ranked claim matches
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ClaimMatch"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /jobs/{id}/tailor:
+    post:
+      operationId: tailorJobResume
+      tags: [jobs]
+      summary: AI-tailor resume for a job (creates a ResumeVersion)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TailorResumeBody"
+      responses:
+        "201":
+          description: Newly created resume version with diff
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResumeVersion"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /jobs/{id}/cover-letter:
+    post:
+      operationId: draftCoverLetter
+      tags: [jobs]
+      summary: AI-draft cover letter for a job (creates a CoverLetterVersion)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DraftCoverLetterBody"
+      responses:
+        "201":
+          description: Newly created cover letter version
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoverLetterVersion"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── Claims ─────────────────────────────────────────────────────────────────
+  /claims:
+    get:
+      operationId: listClaims
+      tags: [claims]
+      summary: List claims
+      parameters:
+        - name: domain
+          in: query
+          schema:
+            type: string
+        - name: isActive
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: List of claims
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Claim"
+    post:
+      operationId: createClaim
+      tags: [claims]
+      summary: Create a claim
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateClaimBody"
+      responses:
+        "201":
+          description: Created claim
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Claim"
+
+  /claims/{id}:
+    get:
+      operationId: getClaim
+      tags: [claims]
+      summary: Get a claim by ID
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Claim
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Claim"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateClaim
+      tags: [claims]
+      summary: Update a claim
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateClaimBody"
+      responses:
+        "200":
+          description: Updated claim
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Claim"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteClaim
+      tags: [claims]
+      summary: Delete a claim
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── Resume Versions ────────────────────────────────────────────────────────
+  /resume-versions:
+    get:
+      operationId: listResumeVersions
+      tags: [resume-versions]
+      summary: List resume versions
+      parameters:
+        - name: jobId
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of resume versions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ResumeVersion"
+
+  /resume-versions/{id}:
+    get:
+      operationId: getResumeVersion
+      tags: [resume-versions]
+      summary: Get a resume version by ID
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Resume version
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResumeVersion"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateResumeVersion
+      tags: [resume-versions]
+      summary: Update a resume version
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateResumeVersionBody"
+      responses:
+        "200":
+          description: Updated resume version
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResumeVersion"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteResumeVersion
+      tags: [resume-versions]
+      summary: Delete a resume version
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /resume-versions/{id}/approve:
+    post:
+      operationId: approveResumeVersion
+      tags: [resume-versions]
+      summary: Approve a resume version
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Approved resume version
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResumeVersion"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /resume-versions/{id}/reject:
+    post:
+      operationId: rejectResumeVersion
+      tags: [resume-versions]
+      summary: Reject a resume version
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Rejected resume version
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResumeVersion"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── Cover Letter Versions ─────────────────────────────────────────────────
+  /cover-letter-versions:
+    get:
+      operationId: listCoverLetterVersions
+      tags: [cover-letter-versions]
+      summary: List cover letter versions
+      parameters:
+        - name: jobId
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of cover letter versions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CoverLetterVersion"
+
+  /cover-letter-versions/{id}:
+    get:
+      operationId: getCoverLetterVersion
+      tags: [cover-letter-versions]
+      summary: Get a cover letter version by ID
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Cover letter version
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoverLetterVersion"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateCoverLetterVersion
+      tags: [cover-letter-versions]
+      summary: Update a cover letter version
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCoverLetterVersionBody"
+      responses:
+        "200":
+          description: Updated cover letter version
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoverLetterVersion"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteCoverLetterVersion
+      tags: [cover-letter-versions]
+      summary: Delete a cover letter version
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /cover-letter-versions/{id}/approve:
+    post:
+      operationId: approveCoverLetterVersion
+      tags: [cover-letter-versions]
+      summary: Approve a cover letter version
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Approved cover letter version
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoverLetterVersion"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /cover-letter-versions/{id}/reject:
+    post:
+      operationId: rejectCoverLetterVersion
+      tags: [cover-letter-versions]
+      summary: Reject a cover letter version
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Rejected cover letter version
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoverLetterVersion"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── Applications ──────────────────────────────────────────────────────────
+  /applications:
+    get:
+      operationId: listApplications
+      tags: [applications]
+      summary: List applications
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: jobId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of applications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Application"
+    post:
+      operationId: createApplication
+      tags: [applications]
+      summary: Create an application record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateApplicationBody"
+      responses:
+        "201":
+          description: Created application
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Application"
+
+  /applications/{id}:
+    get:
+      operationId: getApplication
+      tags: [applications]
+      summary: Get an application by ID
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Application
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Application"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateApplication
+      tags: [applications]
+      summary: Update an application (including status transitions)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateApplicationBody"
+      responses:
+        "200":
+          description: Updated application
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Application"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteApplication
+      tags: [applications]
+      summary: Delete an application
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /applications/stats:
+    get:
+      operationId: getApplicationStats
+      tags: [applications]
+      summary: Get application outcome statistics
+      responses:
+        "200":
+          description: Application stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationStats"
+
+  # ── Event Logs ────────────────────────────────────────────────────────────
+  /event-logs:
+    get:
+      operationId: listEventLogs
+      tags: [event-logs]
+      summary: List event logs
+      parameters:
+        - name: entityType
+          in: query
+          schema:
+            type: string
+        - name: entityId
+          in: query
+          schema:
+            type: integer
+        - name: applicationId
+          in: query
+          schema:
+            type: integer
+        - name: jobId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of event logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EventLog"
+
+  /event-logs/{id}:
+    get:
+      operationId: getEventLog
+      tags: [event-logs]
+      summary: Get an event log entry by ID
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Event log
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventLog"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── Feedback Signals ──────────────────────────────────────────────────────
+  /feedback-signals:
+    get:
+      operationId: listFeedbackSignals
+      tags: [feedback-signals]
+      summary: List feedback signals
+      parameters:
+        - name: applicationId
+          in: query
+          schema:
+            type: integer
+        - name: outcome
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of feedback signals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FeedbackSignal"
+    post:
+      operationId: createFeedbackSignal
+      tags: [feedback-signals]
+      summary: Create a feedback signal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFeedbackSignalBody"
+      responses:
+        "201":
+          description: Created feedback signal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedbackSignal"
+
+  /feedback-signals/{id}:
+    get:
+      operationId: getFeedbackSignal
+      tags: [feedback-signals]
+      summary: Get a feedback signal by ID
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Feedback signal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedbackSignal"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateFeedbackSignal
+      tags: [feedback-signals]
+      summary: Update a feedback signal
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateFeedbackSignalBody"
+      responses:
+        "200":
+          description: Updated feedback signal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedbackSignal"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteFeedbackSignal
+      tags: [feedback-signals]
+      summary: Delete a feedback signal
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── AI Model Configs ──────────────────────────────────────────────────────
+  /ai-model-configs:
+    get:
+      operationId: listAiModelConfigs
+      tags: [ai-model-configs]
+      summary: List AI model configurations
+      parameters:
+        - name: taskScope
+          in: query
+          schema:
+            type: string
+        - name: isActive
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: List of AI model configs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AiModelConfig"
+    post:
+      operationId: createAiModelConfig
+      tags: [ai-model-configs]
+      summary: Create an AI model configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAiModelConfigBody"
+      responses:
+        "201":
+          description: Created AI model config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiModelConfig"
+
+  /ai-model-configs/{id}:
+    get:
+      operationId: getAiModelConfig
+      tags: [ai-model-configs]
+      summary: Get an AI model config by ID
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: AI model config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiModelConfig"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateAiModelConfig
+      tags: [ai-model-configs]
+      summary: Update an AI model config
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAiModelConfigBody"
+      responses:
+        "200":
+          description: Updated AI model config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiModelConfig"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteAiModelConfig
+      tags: [ai-model-configs]
+      summary: Delete an AI model config
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+
+  responses:
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
   schemas:
     HealthStatus:
       type: object
@@ -34,3 +993,815 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    # ── Role Profile ────────────────────────────────────────────────────────
+    RoleProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        hardFilters:
+          type: object
+          description: JSON object with hard filter criteria
+        softWeights:
+          type: object
+          description: JSON object with soft scoring weights
+        companyAllowList:
+          type: array
+          items:
+            type: string
+        companyDenyList:
+          type: array
+          items:
+            type: string
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - hardFilters
+        - softWeights
+        - companyAllowList
+        - companyDenyList
+        - isActive
+        - createdAt
+        - updatedAt
+
+    CreateRoleProfileBody:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        hardFilters:
+          type: object
+        softWeights:
+          type: object
+        companyAllowList:
+          type: array
+          items:
+            type: string
+        companyDenyList:
+          type: array
+          items:
+            type: string
+        isActive:
+          type: boolean
+      required:
+        - name
+
+    UpdateRoleProfileBody:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        hardFilters:
+          type: object
+        softWeights:
+          type: object
+        companyAllowList:
+          type: array
+          items:
+            type: string
+        companyDenyList:
+          type: array
+          items:
+            type: string
+        isActive:
+          type: boolean
+
+    # ── Job ──────────────────────────────────────────────────────────────────
+    Job:
+      type: object
+      properties:
+        id:
+          type: integer
+        roleProfileId:
+          type: ["integer", "null"]
+        title:
+          type: string
+        company:
+          type: string
+        location:
+          type: ["string", "null"]
+        remoteType:
+          type: ["string", "null"]
+        salaryMin:
+          type: ["integer", "null"]
+        salaryMax:
+          type: ["integer", "null"]
+        salaryCurrency:
+          type: ["string", "null"]
+        visaSponsorship:
+          type: ["string", "null"]
+        sourceUrl:
+          type: ["string", "null"]
+        sourcePlatform:
+          type: ["string", "null"]
+        rawJdText:
+          type: ["string", "null"]
+        parsedResponsibilities:
+          type: ["array", "null"]
+          items:
+            type: string
+        parsedRequiredSkills:
+          type: ["array", "null"]
+          items:
+            type: string
+        parsedNiceToHaveSkills:
+          type: ["array", "null"]
+          items:
+            type: string
+        parsedKeywords:
+          type: ["array", "null"]
+          items:
+            type: string
+        parsedSenioritySignal:
+          type: ["string", "null"]
+        parsedStructuredData:
+          nullable: true
+        status:
+          type: string
+        deduplicationHash:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - company
+        - status
+        - createdAt
+        - updatedAt
+
+    CreateJobBody:
+      type: object
+      properties:
+        roleProfileId:
+          type: ["integer", "null"]
+        title:
+          type: string
+        company:
+          type: string
+        location:
+          type: ["string", "null"]
+        remoteType:
+          type: ["string", "null"]
+        salaryMin:
+          type: ["integer", "null"]
+        salaryMax:
+          type: ["integer", "null"]
+        salaryCurrency:
+          type: ["string", "null"]
+        visaSponsorship:
+          type: ["string", "null"]
+        sourceUrl:
+          type: ["string", "null"]
+        sourcePlatform:
+          type: ["string", "null"]
+        rawJdText:
+          type: ["string", "null"]
+        status:
+          type: string
+      required:
+        - title
+        - company
+
+    UpdateJobBody:
+      type: object
+      properties:
+        roleProfileId:
+          type: ["integer", "null"]
+        title:
+          type: string
+        company:
+          type: string
+        location:
+          type: ["string", "null"]
+        remoteType:
+          type: ["string", "null"]
+        salaryMin:
+          type: ["integer", "null"]
+        salaryMax:
+          type: ["integer", "null"]
+        salaryCurrency:
+          type: ["string", "null"]
+        visaSponsorship:
+          type: ["string", "null"]
+        sourceUrl:
+          type: ["string", "null"]
+        sourcePlatform:
+          type: ["string", "null"]
+        rawJdText:
+          type: ["string", "null"]
+        status:
+          type: string
+
+    ParseJobBody:
+      type: object
+      properties:
+        rawJdText:
+          type: ["string", "null"]
+
+    JobScoreResult:
+      type: object
+      properties:
+        jobId:
+          type: integer
+        roleProfileId:
+          type: integer
+        score:
+          type: number
+        passesHardFilters:
+          type: boolean
+        hardFilterFailures:
+          type: array
+          items:
+            type: string
+        matchedSkills:
+          type: array
+          items:
+            type: string
+        unmatchedRequiredSkills:
+          type: array
+          items:
+            type: string
+        matchedNiceToHaveSkills:
+          type: array
+          items:
+            type: string
+      required:
+        - jobId
+        - roleProfileId
+        - score
+        - passesHardFilters
+        - hardFilterFailures
+        - matchedSkills
+        - unmatchedRequiredSkills
+        - matchedNiceToHaveSkills
+
+    ClaimMatch:
+      type: object
+      properties:
+        claim:
+          $ref: "#/components/schemas/Claim"
+        score:
+          type: number
+        matchedKeywords:
+          type: array
+          items:
+            type: string
+        matchType:
+          type: string
+      required:
+        - claim
+        - score
+        - matchedKeywords
+        - matchType
+
+    TailorResumeBody:
+      type: object
+      properties:
+        claimIds:
+          type: array
+          items:
+            type: integer
+
+    DraftCoverLetterBody:
+      type: object
+      properties:
+        claimIds:
+          type: array
+          items:
+            type: integer
+
+    # ── Claim ────────────────────────────────────────────────────────────────
+    Claim:
+      type: object
+      properties:
+        id:
+          type: integer
+        summary:
+          type: string
+        evidence:
+          type: ["string", "null"]
+        evidenceType:
+          type: string
+        phrasingVariants:
+          type: array
+          items:
+            type: string
+        disallowedImplications:
+          type: array
+          items:
+            type: string
+        domain:
+          type: ["string", "null"]
+        applicableTags:
+          type: array
+          items:
+            type: string
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - summary
+        - evidenceType
+        - phrasingVariants
+        - disallowedImplications
+        - applicableTags
+        - isActive
+        - createdAt
+        - updatedAt
+
+    CreateClaimBody:
+      type: object
+      properties:
+        summary:
+          type: string
+        evidence:
+          type: ["string", "null"]
+        evidenceType:
+          type: string
+        phrasingVariants:
+          type: array
+          items:
+            type: string
+        disallowedImplications:
+          type: array
+          items:
+            type: string
+        domain:
+          type: ["string", "null"]
+        applicableTags:
+          type: array
+          items:
+            type: string
+        isActive:
+          type: boolean
+      required:
+        - summary
+
+    UpdateClaimBody:
+      type: object
+      properties:
+        summary:
+          type: string
+        evidence:
+          type: ["string", "null"]
+        evidenceType:
+          type: string
+        phrasingVariants:
+          type: array
+          items:
+            type: string
+        disallowedImplications:
+          type: array
+          items:
+            type: string
+        domain:
+          type: ["string", "null"]
+        applicableTags:
+          type: array
+          items:
+            type: string
+        isActive:
+          type: boolean
+
+    # ── Resume Version ───────────────────────────────────────────────────────
+    ResumeVersion:
+      type: object
+      properties:
+        id:
+          type: integer
+        jobId:
+          type: ["integer", "null"]
+        label:
+          type: ["string", "null"]
+        status:
+          type: string
+        tailoredBullets:
+          description: Array of bullet objects with claim attribution
+        diffData:
+          nullable: true
+          description: Structured diff showing added/removed/reordered bullets
+        claimIds:
+          type: array
+          items:
+            type: integer
+        fileUrl:
+          type: ["string", "null"]
+        rawContent:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - status
+        - claimIds
+        - createdAt
+        - updatedAt
+
+    UpdateResumeVersionBody:
+      type: object
+      properties:
+        label:
+          type: ["string", "null"]
+        status:
+          type: string
+        notes:
+          type: ["string", "null"]
+        fileUrl:
+          type: ["string", "null"]
+        rawContent:
+          type: ["string", "null"]
+
+    # ── Cover Letter Version ─────────────────────────────────────────────────
+    CoverLetterVersion:
+      type: object
+      properties:
+        id:
+          type: integer
+        jobId:
+          type: ["integer", "null"]
+        label:
+          type: ["string", "null"]
+        status:
+          type: string
+        draftContent:
+          type: ["string", "null"]
+        annotatedParagraphs:
+          description: Array of paragraph objects with claim attribution
+        claimIds:
+          type: array
+          items:
+            type: integer
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - status
+        - claimIds
+        - createdAt
+        - updatedAt
+
+    UpdateCoverLetterVersionBody:
+      type: object
+      properties:
+        label:
+          type: ["string", "null"]
+        status:
+          type: string
+        draftContent:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+
+    # ── Application ──────────────────────────────────────────────────────────
+    Application:
+      type: object
+      properties:
+        id:
+          type: integer
+        jobId:
+          type: integer
+        resumeVersionId:
+          type: ["integer", "null"]
+        coverLetterVersionId:
+          type: ["integer", "null"]
+        status:
+          type: string
+        applyMode:
+          type: string
+        platform:
+          type: ["string", "null"]
+        appliedAt:
+          type: ["string", "null"]
+          format: date-time
+        confirmationRef:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        actionLog:
+          description: Array of logged actions during application submission
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - jobId
+        - status
+        - applyMode
+        - createdAt
+        - updatedAt
+
+    CreateApplicationBody:
+      type: object
+      properties:
+        jobId:
+          type: integer
+        resumeVersionId:
+          type: ["integer", "null"]
+        coverLetterVersionId:
+          type: ["integer", "null"]
+        status:
+          type: string
+        applyMode:
+          type: string
+        platform:
+          type: ["string", "null"]
+        appliedAt:
+          type: ["string", "null"]
+          format: date-time
+        confirmationRef:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+      required:
+        - jobId
+
+    UpdateApplicationBody:
+      type: object
+      properties:
+        resumeVersionId:
+          type: ["integer", "null"]
+        coverLetterVersionId:
+          type: ["integer", "null"]
+        status:
+          type: string
+        applyMode:
+          type: string
+        platform:
+          type: ["string", "null"]
+        appliedAt:
+          type: ["string", "null"]
+          format: date-time
+        confirmationRef:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+
+    ApplicationStats:
+      type: object
+      properties:
+        total:
+          type: integer
+        byStatus:
+          type: object
+          additionalProperties:
+            type: integer
+        responseRate:
+          type: number
+        interviewRate:
+          type: number
+        offerRate:
+          type: number
+      required:
+        - total
+        - byStatus
+        - responseRate
+        - interviewRate
+        - offerRate
+
+    # ── Event Log ────────────────────────────────────────────────────────────
+    EventLog:
+      type: object
+      properties:
+        id:
+          type: integer
+        entityType:
+          type: string
+        entityId:
+          type: integer
+        applicationId:
+          type: ["integer", "null"]
+        jobId:
+          type: ["integer", "null"]
+        eventType:
+          type: string
+        previousState:
+          type: ["string", "null"]
+        nextState:
+          type: ["string", "null"]
+        metadata:
+          type: object
+        actorType:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - entityType
+        - entityId
+        - eventType
+        - metadata
+        - actorType
+        - createdAt
+
+    # ── Feedback Signal ──────────────────────────────────────────────────────
+    FeedbackSignal:
+      type: object
+      properties:
+        id:
+          type: integer
+        applicationId:
+          type: integer
+        resumeVersionId:
+          type: ["integer", "null"]
+        outcome:
+          type: string
+        signalType:
+          type: string
+        notes:
+          type: ["string", "null"]
+        attributionData:
+          type: object
+        processedAt:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - applicationId
+        - outcome
+        - signalType
+        - attributionData
+        - createdAt
+        - updatedAt
+
+    CreateFeedbackSignalBody:
+      type: object
+      properties:
+        applicationId:
+          type: integer
+        resumeVersionId:
+          type: ["integer", "null"]
+        outcome:
+          type: string
+        signalType:
+          type: string
+        notes:
+          type: ["string", "null"]
+        attributionData:
+          type: object
+      required:
+        - applicationId
+        - outcome
+        - signalType
+
+    UpdateFeedbackSignalBody:
+      type: object
+      properties:
+        outcome:
+          type: string
+        signalType:
+          type: string
+        notes:
+          type: ["string", "null"]
+        attributionData:
+          type: object
+
+    # ── AI Model Config ──────────────────────────────────────────────────────
+    AiModelConfig:
+      type: object
+      properties:
+        id:
+          type: integer
+        taskScope:
+          type: string
+        provider:
+          type: string
+        modelName:
+          type: string
+        isActive:
+          type: boolean
+        priority:
+          type: integer
+        fallbackModelId:
+          type: ["integer", "null"]
+        costPerInputToken:
+          type: ["string", "null"]
+        costPerOutputToken:
+          type: ["string", "null"]
+        maxTokens:
+          type: ["integer", "null"]
+        extraConfig:
+          type: object
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - taskScope
+        - provider
+        - modelName
+        - isActive
+        - priority
+        - extraConfig
+        - createdAt
+        - updatedAt
+
+    CreateAiModelConfigBody:
+      type: object
+      properties:
+        taskScope:
+          type: string
+        provider:
+          type: string
+        modelName:
+          type: string
+        isActive:
+          type: boolean
+        priority:
+          type: integer
+        fallbackModelId:
+          type: ["integer", "null"]
+        costPerInputToken:
+          type: ["string", "null"]
+        costPerOutputToken:
+          type: ["string", "null"]
+        maxTokens:
+          type: ["integer", "null"]
+        extraConfig:
+          type: object
+      required:
+        - taskScope
+        - modelName
+
+    UpdateAiModelConfigBody:
+      type: object
+      properties:
+        taskScope:
+          type: string
+        provider:
+          type: string
+        modelName:
+          type: string
+        isActive:
+          type: boolean
+        priority:
+          type: integer
+        fallbackModelId:
+          type: ["integer", "null"]
+        costPerInputToken:
+          type: ["string", "null"]
+        costPerOutputToken:
+          type: ["string", "null"]
+        maxTokens:
+          type: ["integer", "null"]
+        extraConfig:
+          type: object
