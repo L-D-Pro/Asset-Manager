@@ -1,30 +1,31 @@
 import { db, resumeVersionsTable } from "@workspace/db";
 import { callAI, parseJsonResponse } from "../ai-client";
 import { matchClaimsToJob } from "../scoring";
+import { validateBullet, assertMinimumContent, TruthLockViolation } from "./validation";
 import { logger } from "../logger";
 import type { Job, Claim } from "@workspace/db";
 
-interface TailoredBullet {
-  text: string;
-  claimIds: number[];
-  section: string;
-  isAggregated: boolean;
-  originalText: string | null;
+interface RawBullet {
+  text?: unknown;
+  claimIds?: unknown;
+  section?: unknown;
+  isAggregated?: unknown;
+  originalText?: unknown;
 }
 
 interface TailoringResult {
-  bullets: TailoredBullet[];
-  addedBullets: string[];
-  removedBullets: string[];
-  reorderedSections: string[];
-  summary: string;
+  bullets?: RawBullet[];
+  addedBullets?: string[];
+  removedBullets?: string[];
+  reorderedSections?: string[];
+  summary?: string;
 }
 
 const SYSTEM_PROMPT = `You are an expert resume writer and career coach specializing in ATS-optimized resumes.
 Your task is to tailor resume bullet points to a specific job, using ONLY the provided claims as source material.
 CRITICAL RULES — NEVER VIOLATE:
 1. Every bullet MUST trace back to a provided claim. Do NOT invent new achievements.
-2. Do NOT aggregate or combine claims in ways that imply more than what's stated.
+2. Use ONLY claim IDs from the provided list. Do NOT use any other IDs.
 3. Bullets that combine multiple claims must explicitly flag isAggregated: true.
 4. Use strong action verbs and quantifiable language where supported by claims.
 5. Match the job's required skills and keywords where truthfully supported by claims.
@@ -50,7 +51,10 @@ Return ONLY valid JSON with this exact structure:
  * Runs the resume tailoring pipeline:
  * 1. Matches claims to the job (or uses provided claimIds)
  * 2. Calls the AI to generate tailored bullets with claim attribution
- * 3. Stores the result as a new ResumeVersion in pending_approval state
+ * 3. Validates all returned claim IDs against the selected claims (truth lock)
+ * 4. Discards bullets with no valid claim attribution
+ * 5. Fails hard if zero valid bullets remain (stores raw output for debugging)
+ * 6. Stores the result as a new ResumeVersion in pending_approval state
  * Returns the new ResumeVersion.
  */
 export async function runResumeTailorPipeline(
@@ -109,17 +113,66 @@ Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed
 
   const parsed = parseJsonResponse<TailoringResult>(result.content);
 
-  const tailoredBullets = parsed?.bullets ?? [];
-  const usedClaimIds = [
-    ...new Set(tailoredBullets.flatMap((b) => b.claimIds)),
-  ];
+  if (!parsed || !Array.isArray(parsed.bullets)) {
+    logger.error(
+      { jobId: job.id, raw: result.content.slice(0, 500) },
+      "AI returned unparseable JSON for resume tailoring — storing failed version",
+    );
+    const [row] = await db
+      .insert(resumeVersionsTable)
+      .values({
+        jobId: job.id,
+        label: "AI tailored — generation failed",
+        status: "pending_approval",
+        claimIds: [],
+        tailoredBullets: [],
+        rawContent: result.content,
+        notes: "AI output could not be parsed as structured JSON. Review raw content and regenerate.",
+      })
+      .returning();
+    return row!;
+  }
+
+  const validatedBullets = parsed.bullets
+    .map((b) => validateBullet(b, selectedClaims))
+    .filter((b): b is NonNullable<typeof b> => b !== null);
+
+  try {
+    assertMinimumContent(validatedBullets, result.content, "resume bullets");
+  } catch (err) {
+    if (err instanceof TruthLockViolation) {
+      logger.error(
+        { jobId: job.id, ...err.details },
+        "Truth lock violation: zero valid bullets after validation — storing failed version",
+      );
+      const [row] = await db
+        .insert(resumeVersionsTable)
+        .values({
+          jobId: job.id,
+          label: "AI tailored — truth lock failure",
+          status: "pending_approval",
+          claimIds: [],
+          tailoredBullets: [],
+          rawContent: result.content,
+          notes: `Truth lock failure: ${err.message}. All AI-generated bullets cited claim IDs not in the selected set. Review claims and regenerate.`,
+        })
+        .returning();
+      return row!;
+    }
+    throw err;
+  }
+
+  const usedClaimIds = [...new Set(validatedBullets.flatMap((b) => b.claimIds))];
   const diffData = {
-    addedBullets: parsed?.addedBullets ?? [],
-    removedBullets: parsed?.removedBullets ?? [],
-    reorderedSections: parsed?.reorderedSections ?? [],
-    summary: parsed?.summary ?? "",
+    addedBullets: parsed.addedBullets ?? [],
+    removedBullets: parsed.removedBullets ?? [],
+    reorderedSections: parsed.reorderedSections ?? [],
+    summary: parsed.summary ?? "",
     generatedAt: new Date().toISOString(),
     modelName: result.modelName,
+    bulletsTotal: parsed.bullets.length,
+    bulletsPassedValidation: validatedBullets.length,
+    bulletsDiscarded: parsed.bullets.length - validatedBullets.length,
   };
 
   const [row] = await db
@@ -129,14 +182,20 @@ Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed
       label: `AI tailored — ${new Date().toLocaleDateString()}`,
       status: "pending_approval",
       claimIds: usedClaimIds,
-      tailoredBullets: tailoredBullets as unknown as Record<string, unknown>[],
+      tailoredBullets: validatedBullets as unknown as Record<string, unknown>[],
       diffData: diffData as unknown as Record<string, unknown>,
-      notes: parsed?.summary ?? "AI-generated resume tailoring",
+      notes: parsed.summary ?? "AI-generated resume tailoring",
     })
     .returning();
 
   logger.info(
-    { jobId: job.id, resumeVersionId: row!.id, bulletsGenerated: tailoredBullets.length },
+    {
+      jobId: job.id,
+      resumeVersionId: row!.id,
+      bulletsGenerated: parsed.bullets.length,
+      bulletsValid: validatedBullets.length,
+      discarded: parsed.bullets.length - validatedBullets.length,
+    },
     "Resume tailor pipeline completed",
   );
 

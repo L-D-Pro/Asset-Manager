@@ -1,28 +1,29 @@
 import { db, coverLetterVersionsTable } from "@workspace/db";
 import { callAI, parseJsonResponse } from "../ai-client";
 import { matchClaimsToJob } from "../scoring";
+import { validateParagraph, assertMinimumContent, TruthLockViolation } from "./validation";
 import { logger } from "../logger";
 import type { Job, RoleProfile, Claim } from "@workspace/db";
 
-interface AnnotatedParagraph {
-  text: string;
-  claimIds: number[];
-  role: "opening" | "body" | "closing" | "hook";
+interface RawParagraph {
+  text?: unknown;
+  claimIds?: unknown;
+  role?: unknown;
 }
 
 interface CoverLetterResult {
-  subject: string;
-  paragraphs: AnnotatedParagraph[];
-  fullText: string;
+  subject?: string;
+  paragraphs?: RawParagraph[];
+  fullText?: string;
 }
 
 const SYSTEM_PROMPT = `You are an expert career coach specializing in cover letters.
 Your task is to draft a professional cover letter using ONLY the provided claims as source material.
 CRITICAL RULES — NEVER VIOLATE:
-1. Every substantive claim in the letter MUST trace back to a provided claim by ID.
-2. Do NOT invent achievements, metrics, or experiences not in the claims.
-3. The letter should be authentic, concise (3-4 paragraphs), and tailored to the specific role.
-4. Each paragraph must cite which claim IDs it draws from.
+1. Every body/hook paragraph MUST cite at least one claim ID from the provided list.
+2. Use ONLY claim IDs from the provided list. Do NOT use any other IDs.
+3. Do NOT invent achievements, metrics, or experiences not in the claims.
+4. The letter should be authentic, concise (3-4 paragraphs), and tailored to the specific role.
 
 Return ONLY valid JSON with this exact structure:
 {
@@ -41,7 +42,10 @@ Return ONLY valid JSON with this exact structure:
  * Runs the cover letter drafting pipeline:
  * 1. Matches claims to the job (or uses provided claimIds)
  * 2. Calls the AI to draft a cover letter with per-paragraph claim attribution
- * 3. Stores the result as a new CoverLetterVersion in pending_approval state
+ * 3. Validates all returned claim IDs against the selected claims (truth lock)
+ * 4. Discards body/hook paragraphs with no valid claim attribution
+ * 5. Fails hard if zero valid paragraphs remain (stores raw output for debugging)
+ * 6. Stores the result as a new CoverLetterVersion in pending_approval state
  * Returns the new CoverLetterVersion.
  */
 export async function runCoverLetterPipeline(
@@ -100,15 +104,64 @@ Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed
   const result = await callAI({
     taskType: "cover_letter",
     systemPrompt: SYSTEM_PROMPT,
-    userPrompt: `Draft a cover letter for this job:\n\n${jobContext}\n\nAvailable claims (use ONLY these):\n${claimsContext}`,
+    userPrompt: `Draft a cover letter for this job:\n\n${jobContext}\n\nAvailable claims (use ONLY these IDs):\n${claimsContext}`,
     jobId: job.id,
   });
 
   const parsed = parseJsonResponse<CoverLetterResult>(result.content);
 
-  const paragraphs = parsed?.paragraphs ?? [];
-  const usedClaimIds = [...new Set(paragraphs.flatMap((p) => p.claimIds))];
-  const fullText = parsed?.fullText ?? result.content;
+  if (!parsed || !Array.isArray(parsed.paragraphs)) {
+    logger.error(
+      { jobId: job.id, raw: result.content.slice(0, 500) },
+      "AI returned unparseable JSON for cover letter — storing failed version",
+    );
+    const [row] = await db
+      .insert(coverLetterVersionsTable)
+      .values({
+        jobId: job.id,
+        label: "AI drafted — generation failed",
+        status: "pending_approval",
+        claimIds: [],
+        annotatedParagraphs: [],
+        draftContent: result.content,
+        notes: "AI output could not be parsed as structured JSON. Review raw content and regenerate.",
+      })
+      .returning();
+    return row!;
+  }
+
+  const validatedParagraphs = parsed.paragraphs
+    .map((p) => validateParagraph(p, selectedClaims))
+    .filter((p): p is NonNullable<typeof p> => p !== null);
+
+  try {
+    assertMinimumContent(validatedParagraphs, result.content, "cover letter paragraphs");
+  } catch (err) {
+    if (err instanceof TruthLockViolation) {
+      logger.error(
+        { jobId: job.id, ...err.details },
+        "Truth lock violation: zero valid paragraphs after validation — storing failed version",
+      );
+      const [row] = await db
+        .insert(coverLetterVersionsTable)
+        .values({
+          jobId: job.id,
+          label: "AI drafted — truth lock failure",
+          status: "pending_approval",
+          claimIds: [],
+          annotatedParagraphs: [],
+          draftContent: result.content,
+          notes: `Truth lock failure: ${err.message}. All AI-generated paragraphs cited claim IDs not in the selected set. Review claims and regenerate.`,
+        })
+        .returning();
+      return row!;
+    }
+    throw err;
+  }
+
+  const usedClaimIds = [...new Set(validatedParagraphs.flatMap((p) => p.claimIds))];
+  const fullText = parsed.fullText?.trim() ||
+    validatedParagraphs.map((p) => p.text).join("\n\n");
 
   const [row] = await db
     .insert(coverLetterVersionsTable)
@@ -118,13 +171,19 @@ Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed
       status: "pending_approval",
       claimIds: usedClaimIds,
       draftContent: fullText,
-      annotatedParagraphs: paragraphs as unknown as Record<string, unknown>[],
-      notes: `Subject: ${parsed?.subject ?? `Application for ${job.title} at ${job.company}`}`,
+      annotatedParagraphs: validatedParagraphs as unknown as Record<string, unknown>[],
+      notes: `Subject: ${parsed.subject ?? `Application for ${job.title} at ${job.company}`}`,
     })
     .returning();
 
   logger.info(
-    { jobId: job.id, coverLetterVersionId: row!.id, paragraphs: paragraphs.length },
+    {
+      jobId: job.id,
+      coverLetterVersionId: row!.id,
+      paragraphsGenerated: parsed.paragraphs.length,
+      paragraphsValid: validatedParagraphs.length,
+      discarded: parsed.paragraphs.length - validatedParagraphs.length,
+    },
     "Cover letter draft pipeline completed",
   );
 
