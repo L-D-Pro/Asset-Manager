@@ -8,13 +8,22 @@ export interface SelectedModel {
   modelName: string;
   taskScope: string;
   maxTokens: number | null;
+  costPerInputToken: string | null;
+  costPerOutputToken: string | null;
   extraConfig: Record<string, unknown>;
 }
 
 /**
- * Selects the best active AI model config for a given task scope.
- * Respects priority ordering and falls back to the configured fallback model
- * if the primary is unavailable. Task 3 will call this to route AI requests.
+ * Resolves the active model config for a given task scope, following the
+ * fallbackModelId chain until an active model is found.
+ *
+ * Resolution order:
+ *  1. Best active config matching taskScope (lowest priority value wins).
+ *  2. If inactive/absent, walk the fallbackModelId chain from that config.
+ *  3. If chain exhausted, fall back to any active config with taskScope="default".
+ *  4. If nothing found, return null.
+ *
+ * Task 3 will call this to route AI requests to the correct provider/model.
  */
 export async function selectModelForTask(
   taskScope: string,
@@ -32,20 +41,40 @@ export async function selectModelForTask(
     .limit(1);
 
   if (primary) {
-    logger.debug({ taskScope, modelId: primary.id, modelName: primary.modelName }, "Model selected");
-    return {
-      id: primary.id,
-      provider: primary.provider,
-      modelName: primary.modelName,
-      taskScope: primary.taskScope,
-      maxTokens: primary.maxTokens,
-      extraConfig: (primary.extraConfig as Record<string, unknown>) ?? {},
-    };
+    logger.debug(
+      { taskScope, modelId: primary.id, modelName: primary.modelName },
+      "Model selected for task",
+    );
+    return toSelectedModel(primary);
   }
 
-  logger.warn({ taskScope }, "No active model config found for task scope, trying wildcard");
+  logger.warn(
+    { taskScope },
+    "No active primary model for task scope, checking fallback chain",
+  );
 
-  const [wildcard] = await db
+  const [inactive] = await db
+    .select()
+    .from(aiModelConfigsTable)
+    .where(eq(aiModelConfigsTable.taskScope, taskScope))
+    .orderBy(aiModelConfigsTable.priority)
+    .limit(1);
+
+  if (inactive?.fallbackModelId != null) {
+    const resolved = await resolveFallbackChain(
+      inactive.fallbackModelId,
+      new Set([inactive.id]),
+    );
+    if (resolved) {
+      logger.info(
+        { taskScope, resolvedModelId: resolved.id, modelName: resolved.modelName },
+        "Resolved model via fallbackModelId chain",
+      );
+      return toSelectedModel(resolved);
+    }
+  }
+
+  const [defaultModel] = await db
     .select()
     .from(aiModelConfigsTable)
     .where(
@@ -57,18 +86,53 @@ export async function selectModelForTask(
     .orderBy(aiModelConfigsTable.priority)
     .limit(1);
 
-  if (wildcard) {
-    logger.info({ taskScope, fallbackModelId: wildcard.id }, "Using default-scope model as fallback");
-    return {
-      id: wildcard.id,
-      provider: wildcard.provider,
-      modelName: wildcard.modelName,
-      taskScope: wildcard.taskScope,
-      maxTokens: wildcard.maxTokens,
-      extraConfig: (wildcard.extraConfig as Record<string, unknown>) ?? {},
-    };
+  if (defaultModel) {
+    logger.info(
+      { taskScope, defaultModelId: defaultModel.id },
+      "Using default-scope model as final fallback",
+    );
+    return toSelectedModel(defaultModel);
   }
 
   logger.error({ taskScope }, "No model config available for task scope");
   return null;
+}
+
+async function resolveFallbackChain(
+  modelId: number,
+  visited: Set<number>,
+): Promise<typeof aiModelConfigsTable.$inferSelect | null> {
+  if (visited.has(modelId)) {
+    logger.warn({ modelId, visited: [...visited] }, "Circular fallback chain detected");
+    return null;
+  }
+  visited.add(modelId);
+
+  const [model] = await db
+    .select()
+    .from(aiModelConfigsTable)
+    .where(eq(aiModelConfigsTable.id, modelId));
+
+  if (!model) return null;
+  if (model.isActive) return model;
+
+  if (model.fallbackModelId != null) {
+    return resolveFallbackChain(model.fallbackModelId, visited);
+  }
+  return null;
+}
+
+function toSelectedModel(
+  row: typeof aiModelConfigsTable.$inferSelect,
+): SelectedModel {
+  return {
+    id: row.id,
+    provider: row.provider,
+    modelName: row.modelName,
+    taskScope: row.taskScope,
+    maxTokens: row.maxTokens,
+    costPerInputToken: row.costPerInputToken,
+    costPerOutputToken: row.costPerOutputToken,
+    extraConfig: (row.extraConfig as Record<string, unknown>) ?? {},
+  };
 }

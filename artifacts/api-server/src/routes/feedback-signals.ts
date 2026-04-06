@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and } from "drizzle-orm";
-import { db, feedbackSignalsTable, applicationsTable } from "@workspace/db";
+import { db, feedbackSignalsTable, applicationsTable, eventLogsTable } from "@workspace/db";
 import {
   ListFeedbackSignalsQueryParams,
   ListFeedbackSignalsResponse,
@@ -47,12 +47,16 @@ router.post("/feedback-signals", async (req, res): Promise<void> => {
     return;
   }
 
+  const [existingApp] = await db
+    .select()
+    .from(applicationsTable)
+    .where(eq(applicationsTable.id, parsed.data.applicationId));
+
   const [row] = await db
     .insert(feedbackSignalsTable)
     .values(parsed.data)
     .returning();
 
-  // Update the application notes/status based on outcome signal
   const outcomesToStatus: Record<string, string> = {
     rejected: "rejected",
     offer: "offer_received",
@@ -60,14 +64,38 @@ router.post("/feedback-signals", async (req, res): Promise<void> => {
     ghosted: "ghosted",
   };
   const newStatus = outcomesToStatus[parsed.data.outcome];
-  if (newStatus) {
+  if (newStatus && existingApp) {
+    const previousStatus = existingApp.status;
     await db
       .update(applicationsTable)
       .set({ status: newStatus })
       .where(eq(applicationsTable.id, parsed.data.applicationId));
+
+    await db.insert(eventLogsTable).values({
+      entityType: "application",
+      entityId: parsed.data.applicationId,
+      applicationId: parsed.data.applicationId,
+      jobId: existingApp.jobId,
+      eventType: "status_transition",
+      previousState: previousStatus,
+      nextState: newStatus,
+      actorType: "system",
+      metadata: {
+        triggeredBy: "feedback_signal",
+        feedbackSignalId: row.id,
+        outcome: parsed.data.outcome,
+        signalType: parsed.data.signalType,
+      },
+    });
+
     req.log.info(
-      { applicationId: parsed.data.applicationId, outcome: parsed.data.outcome, newStatus },
-      "Application status updated from feedback signal",
+      {
+        applicationId: parsed.data.applicationId,
+        outcome: parsed.data.outcome,
+        from: previousStatus,
+        to: newStatus,
+      },
+      "Application status updated from feedback signal; EventLog written",
     );
   }
 

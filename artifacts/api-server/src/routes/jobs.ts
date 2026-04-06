@@ -1,6 +1,13 @@
 import { Router, type IRouter } from "express";
 import { eq, and } from "drizzle-orm";
-import { db, jobsTable, roleProfilesTable, claimsTable } from "@workspace/db";
+import {
+  db,
+  jobsTable,
+  roleProfilesTable,
+  claimsTable,
+  resumeVersionsTable,
+  coverLetterVersionsTable,
+} from "@workspace/db";
 import {
   ListJobsQueryParams,
   ListJobsResponse,
@@ -21,8 +28,10 @@ import {
   GetJobClaimMatchesResponse,
   TailorJobResumeParams,
   TailorJobResumeBody,
+  GetResumeVersionResponse,
   DraftCoverLetterParams,
   DraftCoverLetterBody,
+  GetCoverLetterVersionResponse,
 } from "@workspace/api-zod";
 import { scoreJobAgainstProfile, matchClaimsToJob } from "../lib/scoring";
 
@@ -249,7 +258,19 @@ router.post("/jobs/:id/tailor", async (req, res): Promise<void> => {
   }
 
   req.log.info({ jobId: job.id }, "Resume tailor stub called (AI implementation in Task 3)");
-  res.status(202).json({ message: "Resume tailoring queued. AI implementation in Task 3.", jobId: job.id });
+
+  const [resumeVersion] = await db
+    .insert(resumeVersionsTable)
+    .values({
+      jobId: job.id,
+      label: "AI tailored (pending)",
+      status: "pending_approval",
+      claimIds: body.data.claimIds ?? [],
+      notes: "Created by tailor stub; AI content will be filled by Task 3",
+    })
+    .returning();
+
+  res.status(201).json(GetResumeVersionResponse.parse(resumeVersion));
 });
 
 router.post("/jobs/:id/cover-letter", async (req, res): Promise<void> => {
@@ -274,7 +295,19 @@ router.post("/jobs/:id/cover-letter", async (req, res): Promise<void> => {
   }
 
   req.log.info({ jobId: job.id }, "Cover letter draft stub called (AI implementation in Task 3)");
-  res.status(202).json({ message: "Cover letter drafting queued. AI implementation in Task 3.", jobId: job.id });
+
+  const [coverLetterVersion] = await db
+    .insert(coverLetterVersionsTable)
+    .values({
+      jobId: job.id,
+      label: "AI drafted (pending)",
+      status: "pending_approval",
+      claimIds: body.data.claimIds ?? [],
+      notes: "Created by cover-letter stub; AI content will be filled by Task 3",
+    })
+    .returning();
+
+  res.status(201).json(GetCoverLetterVersionResponse.parse(coverLetterVersion));
 });
 
 export default router;
