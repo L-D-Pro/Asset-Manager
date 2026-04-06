@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and } from "drizzle-orm";
-import { db, resumeVersionsTable } from "@workspace/db";
+import { db, resumeVersionsTable, eventLogsTable } from "@workspace/db";
 import {
   ListResumeVersionsQueryParams,
   ListResumeVersionsResponse,
@@ -106,15 +106,38 @@ router.post("/resume-versions/:id/approve", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [row] = await db
-    .update(resumeVersionsTable)
-    .set({ status: "approved" })
-    .where(eq(resumeVersionsTable.id, params.data.id))
-    .returning();
-  if (!row) {
+
+  const existing = await db
+    .select()
+    .from(resumeVersionsTable)
+    .where(eq(resumeVersionsTable.id, params.data.id));
+  if (!existing[0]) {
     res.status(404).json({ error: "Resume version not found" });
     return;
   }
+
+  const previousStatus = existing[0].status;
+
+  const row = await db.transaction(async (tx) => {
+    const [updated] = await tx
+      .update(resumeVersionsTable)
+      .set({ status: "approved" })
+      .where(eq(resumeVersionsTable.id, params.data.id))
+      .returning();
+    await tx.insert(eventLogsTable).values({
+      entityType: "resume_version",
+      entityId: params.data.id,
+      jobId: existing[0]!.jobId ?? null,
+      applicationId: null,
+      eventType: "approval",
+      previousState: previousStatus,
+      nextState: "approved",
+      actorType: "user",
+      metadata: { resumeVersionId: params.data.id },
+    });
+    return updated!;
+  });
+
   req.log.info({ id: params.data.id }, "Resume version approved");
   res.json(ApproveResumeVersionResponse.parse(row));
 });
@@ -125,15 +148,38 @@ router.post("/resume-versions/:id/reject", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [row] = await db
-    .update(resumeVersionsTable)
-    .set({ status: "rejected" })
-    .where(eq(resumeVersionsTable.id, params.data.id))
-    .returning();
-  if (!row) {
+
+  const existing = await db
+    .select()
+    .from(resumeVersionsTable)
+    .where(eq(resumeVersionsTable.id, params.data.id));
+  if (!existing[0]) {
     res.status(404).json({ error: "Resume version not found" });
     return;
   }
+
+  const previousStatus = existing[0].status;
+
+  const row = await db.transaction(async (tx) => {
+    const [updated] = await tx
+      .update(resumeVersionsTable)
+      .set({ status: "rejected" })
+      .where(eq(resumeVersionsTable.id, params.data.id))
+      .returning();
+    await tx.insert(eventLogsTable).values({
+      entityType: "resume_version",
+      entityId: params.data.id,
+      jobId: existing[0]!.jobId ?? null,
+      applicationId: null,
+      eventType: "rejection",
+      previousState: previousStatus,
+      nextState: "rejected",
+      actorType: "user",
+      metadata: { resumeVersionId: params.data.id },
+    });
+    return updated!;
+  });
+
   req.log.info({ id: params.data.id }, "Resume version rejected");
   res.json(RejectResumeVersionResponse.parse(row));
 });

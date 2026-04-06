@@ -1,6 +1,7 @@
 import { openrouter } from "@workspace/integrations-openrouter-ai";
-import { db, eventLogsTable } from "@workspace/db";
-import { selectModelForTask } from "./model-router";
+import { db, eventLogsTable, aiModelConfigsTable } from "@workspace/db";
+import { eq, and } from "drizzle-orm";
+import { selectModelForTask, type SelectedModel } from "./model-router";
 import { logger } from "./logger";
 
 export interface AiCallOptions {
@@ -9,7 +10,6 @@ export interface AiCallOptions {
   userPrompt: string;
   jobId?: number;
   applicationId?: number;
-  maxRetries?: number;
 }
 
 export interface AiCallResult {
@@ -22,27 +22,29 @@ export interface AiCallResult {
 }
 
 /**
- * Calls the AI via OpenRouter using the configured model for the given task type.
- * Falls back via the model-router fallback chain on failure.
- * Logs cost metadata to EventLog after each call.
+ * Calls the AI via OpenRouter, routing through the model fallback chain on failure.
+ *
+ * Resolution strategy on failure:
+ *  1. Call the active model for the task scope.
+ *  2. If that call fails, follow the fallbackModelId chain from that model config.
+ *  3. Log each AI call (success or final failure) to EventLog with token counts + estimated cost.
  */
 export async function callAI(opts: AiCallOptions): Promise<AiCallResult> {
   const { taskType, systemPrompt, userPrompt, jobId, applicationId } = opts;
-  const maxRetries = opts.maxRetries ?? 2;
 
-  const model = await selectModelForTask(taskType);
-  if (!model) {
+  const primaryModel = await selectModelForTask(taskType);
+  if (!primaryModel) {
     throw new Error(`No active AI model configured for task type: ${taskType}`);
   }
 
-  let lastError: unknown;
-  let attempt = 0;
+  const modelChain = await resolveModelChain(primaryModel);
 
-  while (attempt <= maxRetries) {
-    attempt++;
+  let lastError: unknown;
+
+  for (const model of modelChain) {
     try {
       logger.debug(
-        { taskType, modelName: model.modelName, attempt },
+        { taskType, modelName: model.modelName, attempt: modelChain.indexOf(model) + 1 },
         "Calling AI model",
       );
 
@@ -109,23 +111,64 @@ export async function callAI(opts: AiCallOptions): Promise<AiCallResult> {
     } catch (err) {
       lastError = err;
       logger.warn(
-        { taskType, attempt, maxRetries, error: String(err) },
-        "AI call failed, retrying",
+        { taskType, modelName: model.modelName, error: String(err) },
+        "AI call failed, advancing to next model in fallback chain",
       );
-      if (attempt <= maxRetries) {
-        await new Promise((r) => setTimeout(r, 1000 * attempt));
-      }
     }
   }
 
   throw new Error(
-    `AI call failed after ${maxRetries + 1} attempts for task ${taskType}: ${String(lastError)}`,
+    `AI call failed for task ${taskType} after exhausting all ${modelChain.length} model(s) in fallback chain: ${String(lastError)}`,
   );
 }
 
 /**
+ * Builds a list of models to try in order, starting with the primary
+ * and following the fallbackModelId chain.
+ */
+async function resolveModelChain(primary: SelectedModel): Promise<SelectedModel[]> {
+  const chain: SelectedModel[] = [primary];
+  const visited = new Set<number>([primary.id]);
+
+  let currentId: number | null = await getFallbackModelId(primary.id);
+
+  while (currentId != null && !visited.has(currentId)) {
+    visited.add(currentId);
+    const [row] = await db
+      .select()
+      .from(aiModelConfigsTable)
+      .where(and(eq(aiModelConfigsTable.id, currentId), eq(aiModelConfigsTable.isActive, true)));
+
+    if (!row) break;
+
+    chain.push({
+      id: row.id,
+      provider: row.provider,
+      modelName: row.modelName,
+      taskScope: row.taskScope,
+      maxTokens: row.maxTokens,
+      costPerInputToken: row.costPerInputToken,
+      costPerOutputToken: row.costPerOutputToken,
+      extraConfig: (row.extraConfig as Record<string, unknown>) ?? {},
+    });
+
+    currentId = row.fallbackModelId;
+  }
+
+  return chain;
+}
+
+async function getFallbackModelId(modelId: number): Promise<number | null> {
+  const [row] = await db
+    .select({ fallbackModelId: aiModelConfigsTable.fallbackModelId })
+    .from(aiModelConfigsTable)
+    .where(eq(aiModelConfigsTable.id, modelId));
+  return row?.fallbackModelId ?? null;
+}
+
+/**
  * Attempts to parse the AI response as JSON.
- * Falls back to returning the raw content if parsing fails.
+ * Falls back to returning null if parsing fails.
  */
 export function parseJsonResponse<T>(content: string): T | null {
   const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) ??

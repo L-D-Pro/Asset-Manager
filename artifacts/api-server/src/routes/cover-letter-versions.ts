@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and } from "drizzle-orm";
-import { db, coverLetterVersionsTable } from "@workspace/db";
+import { db, coverLetterVersionsTable, eventLogsTable } from "@workspace/db";
 import {
   ListCoverLetterVersionsQueryParams,
   ListCoverLetterVersionsResponse,
@@ -106,15 +106,38 @@ router.post("/cover-letter-versions/:id/approve", async (req, res): Promise<void
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [row] = await db
-    .update(coverLetterVersionsTable)
-    .set({ status: "approved" })
-    .where(eq(coverLetterVersionsTable.id, params.data.id))
-    .returning();
-  if (!row) {
+
+  const existing = await db
+    .select()
+    .from(coverLetterVersionsTable)
+    .where(eq(coverLetterVersionsTable.id, params.data.id));
+  if (!existing[0]) {
     res.status(404).json({ error: "Cover letter version not found" });
     return;
   }
+
+  const previousStatus = existing[0].status;
+
+  const row = await db.transaction(async (tx) => {
+    const [updated] = await tx
+      .update(coverLetterVersionsTable)
+      .set({ status: "approved" })
+      .where(eq(coverLetterVersionsTable.id, params.data.id))
+      .returning();
+    await tx.insert(eventLogsTable).values({
+      entityType: "cover_letter_version",
+      entityId: params.data.id,
+      jobId: existing[0]!.jobId ?? null,
+      applicationId: null,
+      eventType: "approval",
+      previousState: previousStatus,
+      nextState: "approved",
+      actorType: "user",
+      metadata: { coverLetterVersionId: params.data.id },
+    });
+    return updated!;
+  });
+
   req.log.info({ id: params.data.id }, "Cover letter version approved");
   res.json(ApproveCoverLetterVersionResponse.parse(row));
 });
@@ -125,15 +148,38 @@ router.post("/cover-letter-versions/:id/reject", async (req, res): Promise<void>
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [row] = await db
-    .update(coverLetterVersionsTable)
-    .set({ status: "rejected" })
-    .where(eq(coverLetterVersionsTable.id, params.data.id))
-    .returning();
-  if (!row) {
+
+  const existing = await db
+    .select()
+    .from(coverLetterVersionsTable)
+    .where(eq(coverLetterVersionsTable.id, params.data.id));
+  if (!existing[0]) {
     res.status(404).json({ error: "Cover letter version not found" });
     return;
   }
+
+  const previousStatus = existing[0].status;
+
+  const row = await db.transaction(async (tx) => {
+    const [updated] = await tx
+      .update(coverLetterVersionsTable)
+      .set({ status: "rejected" })
+      .where(eq(coverLetterVersionsTable.id, params.data.id))
+      .returning();
+    await tx.insert(eventLogsTable).values({
+      entityType: "cover_letter_version",
+      entityId: params.data.id,
+      jobId: existing[0]!.jobId ?? null,
+      applicationId: null,
+      eventType: "rejection",
+      previousState: previousStatus,
+      nextState: "rejected",
+      actorType: "user",
+      metadata: { coverLetterVersionId: params.data.id },
+    });
+    return updated!;
+  });
+
   req.log.info({ id: params.data.id }, "Cover letter version rejected");
   res.json(RejectCoverLetterVersionResponse.parse(row));
 });
