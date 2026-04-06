@@ -1,4 +1,4 @@
-import { useListJobs, useCreateJob } from "@workspace/api-client-react";
+import { useListJobs, useCreateJob, useScoreJob, getScoreJobQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,6 +25,32 @@ const createJobSchema = z.object({
   sourceUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   rawJdText: z.string().optional(),
 });
+
+function JobScoreChip({ jobId }: { jobId: number }) {
+  const { data: score } = useScoreJob(jobId, undefined, {
+    query: { enabled: true, queryKey: getScoreJobQueryKey(jobId) },
+  });
+
+  if (!score) return null;
+
+  const pct = Math.round(score.score * 100);
+  const color =
+    pct >= 70
+      ? "text-green-600 border-green-300 bg-green-50"
+      : pct >= 40
+      ? "text-yellow-600 border-yellow-300 bg-yellow-50"
+      : "text-red-600 border-red-300 bg-red-50";
+
+  return (
+    <span
+      className={`text-xs font-bold border rounded px-1.5 py-0.5 ${color}`}
+      title={`Role-profile match score${!score.passesHardFilters ? " — fails hard filters" : ""}`}
+      data-testid={`job-score-chip-${jobId}`}
+    >
+      {pct}%{!score.passesHardFilters ? " ✗" : ""}
+    </span>
+  );
+}
 
 export default function JobsPage() {
   const { data: jobs, isLoading } = useListJobs();
@@ -207,9 +233,10 @@ export default function JobsPage() {
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-2">
+                      <div className="flex items-center gap-3 mb-2 flex-wrap">
                         <h3 className="font-semibold text-lg" data-testid={`text-job-title-${job.id}`}>{job.title}</h3>
                         {getStatusBadge(job.status)}
+                        <JobScoreChip jobId={job.id} />
                       </div>
                       <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
                         <div className="flex items-center gap-1">

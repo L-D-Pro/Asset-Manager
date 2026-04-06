@@ -2,10 +2,12 @@ import { useListFeedbackSignals, useCreateFeedbackSignal, getListFeedbackSignals
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import { Activity, Plus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,12 +15,21 @@ import * as z from "zod";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { format } from "date-fns";
 
 const signalSchema = z.object({
   applicationId: z.coerce.number().min(1, "App ID is required"),
   signalType: z.string().min(1, "Signal type is required"),
   outcome: z.string().min(1, "Outcome is required"),
+  notes: z.string().optional(),
 });
+
+const SIGNAL_COLORS: Record<string, string> = {
+  response: "bg-blue-100 text-blue-800",
+  interview: "bg-green-100 text-green-800",
+  offer: "bg-emerald-100 text-emerald-800",
+  rejection: "bg-red-100 text-red-800",
+};
 
 export default function FeedbackPage() {
   const { data: signals, isLoading } = useListFeedbackSignals();
@@ -29,7 +40,7 @@ export default function FeedbackPage() {
 
   const form = useForm<z.infer<typeof signalSchema>>({
     resolver: zodResolver(signalSchema),
-    defaultValues: { applicationId: 0, signalType: "response", outcome: "positive" },
+    defaultValues: { applicationId: 0, signalType: "response", outcome: "positive", notes: "" },
   });
 
   const onSubmit = (data: z.infer<typeof signalSchema>) => {
@@ -39,7 +50,8 @@ export default function FeedbackPage() {
         setIsDialogOpen(false);
         form.reset();
         queryClient.invalidateQueries({ queryKey: getListFeedbackSignalsQueryKey() });
-      }
+      },
+      onError: () => toast({ title: "Failed to log signal", variant: "destructive" })
     });
   };
 
@@ -48,7 +60,7 @@ export default function FeedbackPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Feedback Signals</h1>
-          <p className="text-muted-foreground mt-1">Log outcomes to improve future matching.</p>
+          <p className="text-muted-foreground mt-1">Log outcomes and notes to improve future matching and scoring.</p>
         </div>
         
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -60,45 +72,101 @@ export default function FeedbackPage() {
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField control={form.control} name="applicationId" render={({field}) => (
-                  <FormItem><FormLabel>Application ID</FormLabel>
-                  <FormControl><Input type="number" {...field}/></FormControl></FormItem>
-                )}/>
-                <FormField control={form.control} name="signalType" render={({field}) => (
-                  <FormItem><FormLabel>Signal Type</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
-                    <SelectContent>
-                      <SelectItem value="response">Response</SelectItem>
-                      <SelectItem value="interview">Interview</SelectItem>
-                      <SelectItem value="offer">Offer</SelectItem>
-                      <SelectItem value="rejection">Rejection</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <FormItem>
+                    <FormLabel>Application ID</FormLabel>
+                    <FormControl><Input type="number" {...field} data-testid="input-signal-appid"/></FormControl>
+                    <FormMessage />
                   </FormItem>
                 )}/>
-                <FormField control={form.control} name="outcome" render={({field}) => (
-                  <FormItem><FormLabel>Outcome</FormLabel>
-                  <FormControl><Input {...field}/></FormControl></FormItem>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField control={form.control} name="signalType" render={({field}) => (
+                    <FormItem>
+                      <FormLabel>Signal Type</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-signal-type">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="response">Response</SelectItem>
+                          <SelectItem value="interview">Interview</SelectItem>
+                          <SelectItem value="offer">Offer</SelectItem>
+                          <SelectItem value="rejection">Rejection</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )}/>
+                  <FormField control={form.control} name="outcome" render={({field}) => (
+                    <FormItem>
+                      <FormLabel>Outcome</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-signal-outcome">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="positive">Positive</SelectItem>
+                          <SelectItem value="neutral">Neutral</SelectItem>
+                          <SelectItem value="negative">Negative</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )}/>
+                </div>
+                <FormField control={form.control} name="notes" render={({field}) => (
+                  <FormItem>
+                    <FormLabel>Notes</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        {...field}
+                        placeholder="What happened? Any specific feedback from recruiter or hiring manager?"
+                        className="h-24"
+                        data-testid="input-signal-notes"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}/>
-                <Button type="submit" className="w-full" disabled={createSignal.isPending}>Log Feedback</Button>
+                <Button type="submit" className="w-full" disabled={createSignal.isPending} data-testid="btn-submit-signal">
+                  {createSignal.isPending ? "Logging…" : "Log Feedback"}
+                </Button>
               </form>
             </Form>
           </DialogContent>
         </Dialog>
       </div>
 
-      {isLoading ? <Skeleton className="h-40 w-full" /> : (
+      {isLoading ? (
         <div className="space-y-2">
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-16 w-full" />
+        </div>
+      ) : signals?.length === 0 ? (
+        <Card className="flex flex-col items-center justify-center p-12 text-center border-dashed">
+          <Activity className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
+          <h3 className="text-lg font-medium">No feedback signals yet</h3>
+          <p className="text-sm text-muted-foreground mt-1 max-w-sm">Log your first application outcome to start building signal data.</p>
+        </Card>
+      ) : (
+        <div className="border rounded-md divide-y bg-card">
           {signals?.map(s => (
-            <Card key={s.id} className="bg-card">
-              <CardContent className="p-4 flex justify-between items-center">
-                <div className="flex gap-4 items-center">
-                  <span className="font-semibold">App #{s.applicationId}</span>
-                  <span className="text-sm border px-2 py-1 rounded bg-muted">{s.signalType}</span>
-                  <span className="text-sm text-muted-foreground">{s.outcome}</span>
-                </div>
-              </CardContent>
-            </Card>
+            <div key={s.id} className="p-4 space-y-1" data-testid={`row-signal-${s.id}`}>
+              <div className="flex items-center gap-3">
+                <span className="font-semibold">App #{s.applicationId}</span>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${SIGNAL_COLORS[s.signalType] ?? "bg-muted text-muted-foreground"}`}>
+                  {s.signalType}
+                </span>
+                <span className="text-sm text-muted-foreground capitalize">{s.outcome}</span>
+                {s.createdAt && (
+                  <span className="text-xs text-muted-foreground ml-auto">{format(new Date(s.createdAt), "MMM d, yyyy")}</span>
+                )}
+              </div>
+              {s.notes && (
+                <p className="text-sm text-muted-foreground pl-1">{s.notes}</p>
+              )}
+            </div>
           ))}
         </div>
       )}
