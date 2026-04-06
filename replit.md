@@ -70,10 +70,16 @@ OpenRouter integration wired. Model: `anthropic/claude-3.5-haiku` for all task s
 - `artifacts/api-server/src/lib/pipelines/cover-letter-draft.ts` — Cover letter draft pipeline
 
 ### How it works:
-1. `selectModelForTask(scope)` resolves the active model via fallback chain
-2. `callAI()` calls OpenRouter, retries on failure (up to 2x), logs token usage + cost to EventLog
-3. Each pipeline formats prompts with job + claim context, parses JSON response, persists results
+1. `selectModelForTask(scope)` resolves the active model via fallback chain from `ai_model_configs`
+2. `callAI()` builds the full fallback model chain, calls each in turn on failure, logs every attempt (success AND failure) to EventLog
+3. Each pipeline formats prompts with job + claim context, parses JSON response, runs truth-lock validation, persists results
 4. All AI output goes to `pending_approval` status — human must approve before use
+5. Approve/reject transitions enforce state machine: only `pending_approval` → `approved`/`rejected`; returns HTTP 409 otherwise
+
+### OpenRouter env vars
+The integration uses `AI_INTEGRATIONS_OPENROUTER_BASE_URL` and `AI_INTEGRATIONS_OPENROUTER_API_KEY`
+(provisioned by the Replit OpenRouter integration), **not** a bare `OPENROUTER_API_KEY`.
+The `openrouter` client reads these automatically via `@workspace/integrations-openrouter-ai`.
 
 ## Architecture Notes
 

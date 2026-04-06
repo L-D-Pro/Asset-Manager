@@ -118,6 +118,13 @@ router.post("/resume-versions/:id/approve", async (req, res): Promise<void> => {
 
   const previousStatus = existing[0].status;
 
+  if (previousStatus !== "pending_approval") {
+    res.status(409).json({
+      error: `Cannot approve a resume version in status "${previousStatus}". Only "pending_approval" versions can be approved.`,
+    });
+    return;
+  }
+
   const row = await db.transaction(async (tx) => {
     const [updated] = await tx
       .update(resumeVersionsTable)
@@ -159,6 +166,13 @@ router.post("/resume-versions/:id/reject", async (req, res): Promise<void> => {
   }
 
   const previousStatus = existing[0].status;
+
+  if (previousStatus !== "pending_approval") {
+    res.status(409).json({
+      error: `Cannot reject a resume version in status "${previousStatus}". Only "pending_approval" versions can be rejected.`,
+    });
+    return;
+  }
 
   const row = await db.transaction(async (tx) => {
     const [updated] = await tx

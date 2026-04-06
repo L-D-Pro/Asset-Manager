@@ -27,7 +27,12 @@ export interface AiCallResult {
  * Resolution strategy on failure:
  *  1. Call the active model for the task scope.
  *  2. If that call fails, follow the fallbackModelId chain from that model config.
- *  3. Log each AI call (success or final failure) to EventLog with token counts + estimated cost.
+ *  3. Log each attempt (success or failure) to EventLog for full auditability.
+ *
+ * Note on env vars: this integration uses AI_INTEGRATIONS_OPENROUTER_BASE_URL and
+ * AI_INTEGRATIONS_OPENROUTER_API_KEY (provisioned by the Replit OpenRouter integration),
+ * not a bare OPENROUTER_API_KEY. The `openrouter` client from @workspace/integrations-openrouter-ai
+ * reads these automatically.
  */
 export async function callAI(opts: AiCallOptions): Promise<AiCallResult> {
   const { taskType, systemPrompt, userPrompt, jobId, applicationId } = opts;
@@ -38,7 +43,7 @@ export async function callAI(opts: AiCallOptions): Promise<AiCallResult> {
   }
 
   const modelChain = await resolveModelChain(primaryModel);
-
+  const attemptErrors: Array<{ modelName: string; error: string }> = [];
   let lastError: unknown;
 
   for (const model of modelChain) {
@@ -71,13 +76,7 @@ export async function callAI(opts: AiCallOptions): Promise<AiCallResult> {
       const totalCost = costIn != null && costOut != null ? costIn + costOut : null;
 
       logger.info(
-        {
-          taskType,
-          modelName: model.modelName,
-          promptTokens,
-          completionTokens,
-          totalCost,
-        },
+        { taskType, modelName: model.modelName, promptTokens, completionTokens, totalCost },
         "AI call completed",
       );
 
@@ -97,6 +96,9 @@ export async function callAI(opts: AiCallOptions): Promise<AiCallResult> {
           promptTokens,
           completionTokens,
           estimatedCostUsd: totalCost,
+          succeeded: true,
+          attemptNumber: modelChain.indexOf(model) + 1,
+          priorFailures: attemptErrors,
         },
       });
 
@@ -110,11 +112,36 @@ export async function callAI(opts: AiCallOptions): Promise<AiCallResult> {
       };
     } catch (err) {
       lastError = err;
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      attemptErrors.push({ modelName: model.modelName, error: errorMsg });
       logger.warn(
-        { taskType, modelName: model.modelName, error: String(err) },
+        { taskType, modelName: model.modelName, error: errorMsg },
         "AI call failed, advancing to next model in fallback chain",
       );
     }
+  }
+
+  // Log the terminal failure to EventLog for auditability
+  try {
+    await db.insert(eventLogsTable).values({
+      entityType: "ai_call",
+      entityId: jobId ?? 0,
+      applicationId: applicationId ?? null,
+      jobId: jobId ?? null,
+      eventType: "ai_call_failed",
+      previousState: null,
+      nextState: `${taskType}_failed`,
+      actorType: "system",
+      metadata: {
+        taskType,
+        succeeded: false,
+        modelsAttempted: modelChain.length,
+        attemptErrors,
+        finalError: lastError instanceof Error ? lastError.message : String(lastError),
+      },
+    });
+  } catch (logErr) {
+    logger.error({ logErr }, "Failed to write AI failure to event_logs");
   }
 
   throw new Error(

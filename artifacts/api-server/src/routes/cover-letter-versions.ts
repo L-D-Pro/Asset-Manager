@@ -118,6 +118,13 @@ router.post("/cover-letter-versions/:id/approve", async (req, res): Promise<void
 
   const previousStatus = existing[0].status;
 
+  if (previousStatus !== "pending_approval") {
+    res.status(409).json({
+      error: `Cannot approve a cover letter version in status "${previousStatus}". Only "pending_approval" versions can be approved.`,
+    });
+    return;
+  }
+
   const row = await db.transaction(async (tx) => {
     const [updated] = await tx
       .update(coverLetterVersionsTable)
@@ -159,6 +166,13 @@ router.post("/cover-letter-versions/:id/reject", async (req, res): Promise<void>
   }
 
   const previousStatus = existing[0].status;
+
+  if (previousStatus !== "pending_approval") {
+    res.status(409).json({
+      error: `Cannot reject a cover letter version in status "${previousStatus}". Only "pending_approval" versions can be rejected.`,
+    });
+    return;
+  }
 
   const row = await db.transaction(async (tx) => {
     const [updated] = await tx
