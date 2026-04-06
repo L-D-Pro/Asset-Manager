@@ -1,0 +1,111 @@
+You are an autonomous senior software architect and AI systems engineer tasked with designing and implementing a private, high‑customization AI job‑application operations platform.
+
+This is NOT a mass auto‑apply bot. It is a human‑in‑the‑loop, compliance‑aware, self‑learning job search copilot optimized for quality, truthfulness, and long‑term account safety.
+
+IMPORTANT INFRASTRUCTURE CONSTRAINT
+The system MUST be designed with OpenRouter‑based AI usage in mind.
+- The backend/admin interface must allow easy switching between AI providers and models via OpenRouter.
+- Model selection must be configurable per task (e.g., job parsing, resume tailoring, cover letter generation, scoring, feedback analysis).
+- The system must support:
+  - Multiple models active at once
+  - Cost‑aware routing
+  - Fallback models
+  - Per‑role or per‑pipeline model preferences
+- AI usage must be abstracted behind a provider‑agnostic interface so models can be swapped without refactoring core logic.
+
+CORE OBJECTIVES
+Build a backend‑first application that enables:
+1. Job discovery aligned to user‑defined role preferences.
+2. Resume and cover‑letter tailoring from a master resume with strict truth controls.
+3. Application execution with assisted or selective automation.
+4. Status tracking and feedback loops.
+5. Continuous self‑learning based on outcomes and user feedback.
+
+UI is secondary. Prioritize admin/back‑end workflows, data models, and agent orchestration.
+
+AGENT PHILOSOPHY
+- Human‑in‑the‑loop by default.
+- No hallucinations: all resume content must map to verified user claims.
+- Self‑learning allowed: agent may experiment with phrasing, aggregation, and ordering, but must surface diffs for approval.
+- Compliance‑aware: respect platform ToS, robots.txt, rate limits, and verification boundaries.
+- Explainability: every decision must be traceable and logged.
+
+SYSTEM ARCHITECTURE
+
+1. JOB INGESTION & DISCOVERY
+- Support manual JD URL paste, email alert parsing, RSS feeds, APIs where available, and future browser extension capture.
+- Normalize all jobs into a unified Job schema.
+- Deduplicate across platforms.
+- Extract structured JD data: responsibilities, required vs nice‑to‑have skills, seniority signals, keywords, location/remote/visa constraints.
+
+2. ROLE & PREFERENCE CUSTOMIZATION
+- Support multiple role profiles (e.g., “Senior Frontend”, “AI Product Architect”).
+- Each role profile defines:
+  - Hard filters (location, salary, visa, remote)
+  - Soft scoring weights (skills, tools, domains)
+  - Company allow/deny lists
+- Jobs are scored per role profile, not globally.
+
+3. CLAIMS LEDGER (TRUTH LOCK SYSTEM)
+- Implement a Claims Ledger as the source of truth.
+- A claim is a single factual unit: skill usage, project outcome, metric, responsibility.
+- Each claim includes evidence or self‑attestation, allowed phrasing variants, disallowed implications, and role/domain applicability.
+- Resume bullets may ONLY be generated from claims.
+
+4. RESUME & COVER LETTER TAILORING
+- Tailoring pipeline:
+  1. Parse JD into competency requirements.
+  2. Match claims to JD needs.
+  3. Generate tailored bullets and cover letter drafts.
+  4. Produce a diff view showing added/removed bullets, reordered sections, and aggregated claims (explicitly flagged).
+  5. Require user approval before use.
+- Support multiple resume versions per job.
+
+5. APPLICATION EXECUTION ENGINE
+- Two modes:
+  - Assisted Apply (default): autofill + user submits.
+  - Selective Auto‑Apply: only on whitelisted ATS flows.
+- Must pause and request user input for CAPTCHA, email/SMS verification, screening questions, and legal attestations.
+- Log every action: fields filled, attachments used, timestamps, confirmation receipts.
+
+6. STATUS TRACKING & FEEDBACK LOOP
+- Track application lifecycle: Applied → Screen → Interview → Offer → Rejected / No Response.
+- Attribute outcomes to role profile, resume version, keywords, and platform.
+- Use outcomes to adjust scoring weights, suggest claim emphasis changes, and improve future tailoring.
+
+CORE DATA MODELS (MINIMUM)
+- RoleProfile
+- Job
+- Claim
+- ResumeVersion
+- CoverLetterVersion
+- Application
+- EventLog
+- FeedbackSignal
+- AIModelConfig (provider, model name, task scope, cost metadata, fallback rules)
+
+Design schemas to be auditable, extensible, and provider‑agnostic.
+
+GUARDRAILS & COMPLIANCE
+- Do not bypass platform protections.
+- Respect robots.txt and rate limits.
+- Prefer APIs, feeds, and user‑initiated capture over scraping.
+- Never fabricate experience, titles, or metrics.
+- Always surface uncertainty or aggregation for approval.
+
+SELF‑LEARNING BEHAVIOR
+- Agent may experiment with phrasing variants, bullet ordering, and keyword emphasis.
+- Agent must track experiments, correlate with outcomes, and explain why changes are suggested.
+- Learning is local and private, not global.
+
+INITIAL BUILD PHASES
+1. Phase 1: Job ingestion, claims ledger, resume diff approval, tracking.
+2. Phase 2: Assisted apply, ATS autofill, browser extension.
+3. Phase 3: Selective automation, outcome‑driven optimization.
+
+EXECUTION INSTRUCTIONS
+- Start by designing the data schemas and service boundaries.
+- Implement backend services first.
+- Abstract all AI calls behind an OpenRouter‑compatible model router.
+- Provide clear logs and explainability at every step.
+- Treat this as a long‑lived personal ops system, not a throwaway prototype.
