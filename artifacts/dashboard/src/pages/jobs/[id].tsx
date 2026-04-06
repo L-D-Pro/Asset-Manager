@@ -1,4 +1,4 @@
-import { useGetJob, useParseJobDescription, useTailorJobResume, useDraftCoverLetter, getGetJobQueryKey, useScoreJob, useGetJobClaimMatches } from "@workspace/api-client-react";
+import { useGetJob, useParseJobDescription, useTailorJobResume, useDraftCoverLetter, getGetJobQueryKey, useScoreJob, getScoreJobQueryKey, useGetJobClaimMatches, getGetJobClaimMatchesQueryKey } from "@workspace/api-client-react";
 import { useParams, Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,8 +13,8 @@ export default function JobDetail() {
   const { id } = useParams();
   const jobId = parseInt(id || "0", 10);
   const { data: job, isLoading } = useGetJob(jobId, { query: { enabled: !!jobId, queryKey: getGetJobQueryKey(jobId) } });
-  const { data: score, isLoading: scoreLoading } = useScoreJob(jobId, { query: { enabled: !!jobId }});
-  const { data: claimMatches, isLoading: matchesLoading } = useGetJobClaimMatches(jobId, { query: { enabled: !!jobId }});
+  const { data: score, isLoading: scoreLoading } = useScoreJob(jobId, undefined, { query: { enabled: !!jobId, queryKey: getScoreJobQueryKey(jobId) }});
+  const { data: claimMatches, isLoading: matchesLoading } = useGetJobClaimMatches(jobId, { query: { enabled: !!jobId, queryKey: getGetJobClaimMatchesQueryKey(jobId) }});
   
   const parseJob = useParseJobDescription();
   const tailorResume = useTailorJobResume();

@@ -1,4 +1,4 @@
-import { useListAiModelConfigs, useCreateAiModelConfig, useUpdateAiModelConfig, useDeleteAiModelConfig, getListAiModelConfigsQueryKey } from "@workspace/api-client-react";
+import { useListAiModelConfigs, useCreateAiModelConfig, useUpdateAiModelConfig, useDeleteAiModelConfig, getListAiModelConfigsQueryKey, type AiModelConfig } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -56,7 +56,7 @@ export default function AiConfigPage() {
     }
   };
 
-  const handleEdit = (c: any) => {
+  const handleEdit = (c: AiModelConfig) => {
     setEditingId(c.id);
     form.reset({ taskScope: c.taskScope, provider: c.provider, modelName: c.modelName });
     setIsDialogOpen(true);

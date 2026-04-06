@@ -17,7 +17,7 @@ export default function ResumeVersionsPage() {
 
   const handleApprove = (id: number) => {
     approve.mutate(
-      { id, data: {} },
+      { id },
       {
         onSuccess: () => {
           toast({ title: "Resume version approved" });
@@ -29,7 +29,7 @@ export default function ResumeVersionsPage() {
 
   const handleReject = (id: number) => {
     reject.mutate(
-      { id, data: {} },
+      { id },
       {
         onSuccess: () => {
           toast({ title: "Resume version rejected" });
@@ -114,11 +114,11 @@ export default function ResumeVersionsPage() {
                     )}
                   </div>
                 </div>
-                {version.diffData && (
+                {Boolean(version.diffData) && (
                   <div className="mt-4 p-4 bg-muted/50 rounded-md text-sm border">
                     <p className="font-medium mb-2">Changes Summary:</p>
                     <pre className="text-xs overflow-auto max-h-32">
-                      {JSON.stringify(version.diffData, null, 2)}
+                      {JSON.stringify(version.diffData as Record<string, unknown>, null, 2)}
                     </pre>
                   </div>
                 )}

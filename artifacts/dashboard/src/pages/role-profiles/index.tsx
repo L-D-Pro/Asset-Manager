@@ -1,4 +1,4 @@
-import { useListRoleProfiles, useCreateRoleProfile, useUpdateRoleProfile, useDeleteRoleProfile, getListRoleProfilesQueryKey } from "@workspace/api-client-react";
+import { useListRoleProfiles, useCreateRoleProfile, useUpdateRoleProfile, useDeleteRoleProfile, getListRoleProfilesQueryKey, type RoleProfile } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -54,7 +54,7 @@ export default function RoleProfilesPage() {
     }
   };
 
-  const handleEdit = (p: any) => {
+  const handleEdit = (p: RoleProfile) => {
     setEditingId(p.id);
     form.reset({ name: p.name, description: p.description || "" });
     setIsDialogOpen(true);

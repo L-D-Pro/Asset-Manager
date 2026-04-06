@@ -17,7 +17,7 @@ export default function CoverLettersPage() {
 
   const handleApprove = (id: number) => {
     approve.mutate(
-      { id, data: {} },
+      { id },
       {
         onSuccess: () => {
           toast({ title: "Cover letter approved" });
@@ -29,7 +29,7 @@ export default function CoverLettersPage() {
 
   const handleReject = (id: number) => {
     reject.mutate(
-      { id, data: {} },
+      { id },
       {
         onSuccess: () => {
           toast({ title: "Cover letter rejected" });
