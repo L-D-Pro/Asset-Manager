@@ -54,12 +54,34 @@ Defined in `lib/api-spec/openapi.yaml`. Key endpoint groups:
 - `/feedback-signals` — CRUD
 - `/ai-model-configs` — CRUD
 
+## AI Pipeline (Task 3 — COMPLETE)
+
+OpenRouter integration wired. Model: `anthropic/claude-3.5-haiku` for all task scopes.
+
+### AI task scopes seeded in `ai_model_configs`:
+- `jd_parsing` — Claude 3.5 Haiku, 4096 tokens, $0.0000008/$0.000004 per in/out token
+- `resume_tailoring` — Claude 3.5 Haiku, 8192 tokens
+- `cover_letter` — Claude 3.5 Haiku, 4096 tokens
+
+### Pipeline files:
+- `artifacts/api-server/src/lib/ai-client.ts` — OpenRouter caller with retry logic and cost logging to EventLog
+- `artifacts/api-server/src/lib/pipelines/jd-parse.ts` — JD parse pipeline
+- `artifacts/api-server/src/lib/pipelines/resume-tailor.ts` — Resume tailoring pipeline
+- `artifacts/api-server/src/lib/pipelines/cover-letter-draft.ts` — Cover letter draft pipeline
+
+### How it works:
+1. `selectModelForTask(scope)` resolves the active model via fallback chain
+2. `callAI()` calls OpenRouter, retries on failure (up to 2x), logs token usage + cost to EventLog
+3. Each pipeline formats prompts with job + claim context, parses JSON response, persists results
+4. All AI output goes to `pending_approval` status — human must approve before use
+
 ## Architecture Notes
 
 - Claims Ledger is the truth lock: all resume bullets must map to approved claims
-- AI calls are abstracted behind a provider-agnostic interface (Task 3)
-- All decisions are logged to event_logs for full auditability
+- AI pipelines use OpenRouter via `@workspace/integrations-openrouter-ai`
+- All AI calls are cost-logged to event_logs with token counts and estimated USD
 - Human approval required for all AI-generated content before use
 - `lib/api-zod/src/index.ts` exports only `./generated/api` to avoid duplicate exports
+- `lib/db/src/schema/index.ts` exports `conversations` and `messages` tables (for future AI chat history)
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.

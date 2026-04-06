@@ -7,4 +7,6 @@ export * from "./applications";
 export * from "./event-logs";
 export * from "./feedback-signals";
 export * from "./ai-model-configs";
+export * from "./conversations";
+export * from "./messages";
 export * from "./relations";

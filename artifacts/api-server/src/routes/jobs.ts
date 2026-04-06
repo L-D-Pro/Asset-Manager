@@ -34,6 +34,9 @@ import {
   GetCoverLetterVersionResponse,
 } from "@workspace/api-zod";
 import { scoreJobAgainstProfile, matchClaimsToJob } from "../lib/scoring";
+import { runJdParsePipeline } from "../lib/pipelines/jd-parse";
+import { runResumeTailorPipeline } from "../lib/pipelines/resume-tailor";
+import { runCoverLetterPipeline } from "../lib/pipelines/cover-letter-draft";
 
 const router: IRouter = Router();
 
@@ -196,14 +199,14 @@ router.post("/jobs/:id/parse", async (req, res): Promise<void> => {
   }
 
   const rawJdText = body.data.rawJdText ?? job.rawJdText;
+  if (!rawJdText) {
+    res.status(400).json({ error: "rawJdText is required — provide it in the request body or store it on the job first" });
+    return;
+  }
 
-  req.log.info({ jobId: job.id }, "JD parse stub called (AI implementation in Task 3)");
+  req.log.info({ jobId: job.id }, "Starting JD parse pipeline");
 
-  const [updated] = await db
-    .update(jobsTable)
-    .set({ rawJdText: rawJdText ?? job.rawJdText, status: "parsing" })
-    .where(eq(jobsTable.id, params.data.id))
-    .returning();
+  const updated = await runJdParsePipeline(job, rawJdText);
 
   res.json(ParseJobDescriptionResponse.parse(updated));
 });
@@ -257,18 +260,18 @@ router.post("/jobs/:id/tailor", async (req, res): Promise<void> => {
     return;
   }
 
-  req.log.info({ jobId: job.id }, "Resume tailor stub called (AI implementation in Task 3)");
+  const allClaims = await db
+    .select()
+    .from(claimsTable)
+    .where(eq(claimsTable.isActive, true));
 
-  const [resumeVersion] = await db
-    .insert(resumeVersionsTable)
-    .values({
-      jobId: job.id,
-      label: "AI tailored (pending)",
-      status: "pending_approval",
-      claimIds: body.data.claimIds ?? [],
-      notes: "Created by tailor stub; AI content will be filled by Task 3",
-    })
-    .returning();
+  req.log.info({ jobId: job.id }, "Starting resume tailor pipeline");
+
+  const resumeVersion = await runResumeTailorPipeline(
+    job,
+    allClaims,
+    body.data.claimIds,
+  );
 
   res.status(201).json(GetResumeVersionResponse.parse(resumeVersion));
 });
@@ -294,18 +297,28 @@ router.post("/jobs/:id/cover-letter", async (req, res): Promise<void> => {
     return;
   }
 
-  req.log.info({ jobId: job.id }, "Cover letter draft stub called (AI implementation in Task 3)");
+  const allClaims = await db
+    .select()
+    .from(claimsTable)
+    .where(eq(claimsTable.isActive, true));
 
-  const [coverLetterVersion] = await db
-    .insert(coverLetterVersionsTable)
-    .values({
-      jobId: job.id,
-      label: "AI drafted (pending)",
-      status: "pending_approval",
-      claimIds: body.data.claimIds ?? [],
-      notes: "Created by cover-letter stub; AI content will be filled by Task 3",
-    })
-    .returning();
+  let roleProfile = null;
+  if (job.roleProfileId) {
+    const [rp] = await db
+      .select()
+      .from(roleProfilesTable)
+      .where(eq(roleProfilesTable.id, job.roleProfileId));
+    roleProfile = rp ?? null;
+  }
+
+  req.log.info({ jobId: job.id }, "Starting cover letter draft pipeline");
+
+  const coverLetterVersion = await runCoverLetterPipeline(
+    job,
+    roleProfile,
+    allClaims,
+    body.data.claimIds,
+  );
 
   res.status(201).json(GetCoverLetterVersionResponse.parse(coverLetterVersion));
 });
