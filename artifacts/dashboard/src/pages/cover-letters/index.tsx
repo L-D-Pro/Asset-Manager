@@ -1,4 +1,4 @@
-import { useListCoverLetterVersions, useApproveCoverLetterVersion, useRejectCoverLetterVersion, useListClaims, getListCoverLetterVersionsQueryKey, type CoverLetterVersion } from "@workspace/api-client-react";
+import { useListCoverLetterVersions, useApproveCoverLetterVersion, useRejectCoverLetterVersion, useUpdateCoverLetterVersion, useListClaims, getListCoverLetterVersionsQueryKey, type CoverLetterVersion } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -37,6 +37,7 @@ export default function CoverLettersPage() {
   const { data: claims } = useListClaims();
   const approve = useApproveCoverLetterVersion();
   const reject = useRejectCoverLetterVersion();
+  const updateCL = useUpdateCoverLetterVersion();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [revisionTarget, setRevisionTarget] = useState<CoverLetterVersion | null>(null);
@@ -58,18 +59,28 @@ export default function CoverLettersPage() {
   };
 
   const handleReject = (id: number, note?: string) => {
-    reject.mutate(
-      { id },
-      {
-        onSuccess: () => {
-          toast({ title: note ? `Rejected: ${note.slice(0, 40)}` : "Cover letter rejected" });
-          queryClient.invalidateQueries({ queryKey: getListCoverLetterVersionsQueryKey() });
-          setRevisionTarget(null);
-          setRevisionNote("");
-        },
-        onError: () => toast({ title: "Failed to reject", variant: "destructive" })
-      }
-    );
+    const doReject = () => {
+      reject.mutate(
+        { id },
+        {
+          onSuccess: () => {
+            toast({ title: note ? `Rejected with note: "${note.slice(0, 40)}"` : "Cover letter rejected" });
+            queryClient.invalidateQueries({ queryKey: getListCoverLetterVersionsQueryKey() });
+            setRevisionTarget(null);
+            setRevisionNote("");
+          },
+          onError: () => toast({ title: "Failed to reject", variant: "destructive" })
+        }
+      );
+    };
+    if (note) {
+      updateCL.mutate(
+        { id, data: { notes: `Revision request: ${note}` } },
+        { onSuccess: doReject, onError: doReject }
+      );
+    } else {
+      doReject();
+    }
   };
 
   const parseAnnotations = (version: CoverLetterVersion): AnnotatedParagraph[] | null => {
@@ -231,7 +242,7 @@ export default function CoverLettersPage() {
               <Button variant="outline" onClick={() => { setRevisionTarget(null); setRevisionNote(""); }}>Cancel</Button>
               <Button
                 variant="destructive"
-                disabled={reject.isPending}
+                disabled={reject.isPending || updateCL.isPending}
                 onClick={() => revisionTarget && handleReject(revisionTarget.id, revisionNote)}
                 data-testid="btn-confirm-revision"
               >

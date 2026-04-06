@@ -1,4 +1,4 @@
-import { useListJobs, useCreateJob, useScoreJob, getScoreJobQueryKey } from "@workspace/api-client-react";
+import { useListJobs, useCreateJob, useScoreJob, useListRoleProfiles, getScoreJobQueryKey, type RoleProfile } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,9 +26,12 @@ const createJobSchema = z.object({
   rawJdText: z.string().optional(),
 });
 
-function JobScoreChip({ jobId }: { jobId: number }) {
-  const { data: score } = useScoreJob(jobId, undefined, {
-    query: { enabled: true, queryKey: getScoreJobQueryKey(jobId) },
+function JobScoreChip({ jobId, roleProfileId, profileName }: { jobId: number; roleProfileId?: number; profileName?: string }) {
+  const { data: score } = useScoreJob(jobId, roleProfileId ? { roleProfileId } : undefined, {
+    query: {
+      enabled: true,
+      queryKey: roleProfileId ? [...getScoreJobQueryKey(jobId), roleProfileId] : getScoreJobQueryKey(jobId),
+    },
   });
 
   if (!score) return null;
@@ -44,16 +47,31 @@ function JobScoreChip({ jobId }: { jobId: number }) {
   return (
     <span
       className={`text-xs font-bold border rounded px-1.5 py-0.5 ${color}`}
-      title={`Role-profile match score${!score.passesHardFilters ? " — fails hard filters" : ""}`}
-      data-testid={`job-score-chip-${jobId}`}
+      title={`${profileName ? `${profileName}: ` : ""}match score${!score.passesHardFilters ? " — fails hard filters" : ""}`}
+      data-testid={`job-score-chip-${jobId}${roleProfileId ? `-${roleProfileId}` : ""}`}
     >
+      {profileName && <span className="font-normal mr-1">{profileName}</span>}
       {pct}%{!score.passesHardFilters ? " ✗" : ""}
     </span>
   );
 }
 
+function JobScoreChips({ jobId, profiles }: { jobId: number; profiles: RoleProfile[] }) {
+  if (profiles.length === 0) {
+    return <JobScoreChip jobId={jobId} />;
+  }
+  return (
+    <div className="flex gap-1 flex-wrap">
+      {profiles.map(p => (
+        <JobScoreChip key={p.id} jobId={jobId} roleProfileId={p.id} profileName={p.name} />
+      ))}
+    </div>
+  );
+}
+
 export default function JobsPage() {
   const { data: jobs, isLoading } = useListJobs();
+  const { data: roleProfiles = [] } = useListRoleProfiles();
   const createJob = useCreateJob();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
@@ -236,7 +254,7 @@ export default function JobsPage() {
                       <div className="flex items-center gap-3 mb-2 flex-wrap">
                         <h3 className="font-semibold text-lg" data-testid={`text-job-title-${job.id}`}>{job.title}</h3>
                         {getStatusBadge(job.status)}
-                        <JobScoreChip jobId={job.id} />
+                        <JobScoreChips jobId={job.id} profiles={roleProfiles} />
                       </div>
                       <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
                         <div className="flex items-center gap-1">

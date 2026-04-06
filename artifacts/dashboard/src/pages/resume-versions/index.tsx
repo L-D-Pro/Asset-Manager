@@ -1,10 +1,17 @@
-import { useListResumeVersions, useApproveResumeVersion, useRejectResumeVersion, getListResumeVersionsQueryKey } from "@workspace/api-client-react";
+import {
+  useListResumeVersions,
+  useApproveResumeVersion,
+  useRejectResumeVersion,
+  useCreateFeedbackSignal,
+  getListResumeVersionsQueryKey,
+} from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { FileText, Check, X, ExternalLink, Plus, Minus, ArrowLeftRight, ThumbsUp, ThumbsDown } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { FileText, Check, X, ExternalLink, Plus, Minus, ArrowLeftRight, ThumbsUp, ThumbsDown, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -23,8 +30,44 @@ type DiffData = {
 };
 
 type ChangeDecision = "accept" | "reject" | "pending";
-
 type VersionDecisions = Record<string, ChangeDecision>;
+
+function hasDiffContent(d: DiffData): boolean {
+  return !!(
+    (d.addedBullets && d.addedBullets.length > 0) ||
+    (d.removedBullets && d.removedBullets.length > 0) ||
+    (d.reorderedSections && d.reorderedSections.length > 0) ||
+    d.summary
+  );
+}
+
+function buildInitialDecisions(versionId: number, d: DiffData): VersionDecisions {
+  const out: VersionDecisions = {};
+  (d.addedBullets ?? []).forEach((_, i) => { out[`${versionId}-add-${i}`] = "pending"; });
+  (d.removedBullets ?? []).forEach((_, i) => { out[`${versionId}-rem-${i}`] = "pending"; });
+  (d.reorderedSections ?? []).forEach((_, i) => { out[`${versionId}-reord-${i}`] = "pending"; });
+  return out;
+}
+
+function decisionsToNote(decisions: VersionDecisions, diffData: DiffData): string {
+  const accepted: string[] = [];
+  const rejected: string[] = [];
+  Object.entries(decisions).forEach(([key, d]) => {
+    const parts = key.split("-");
+    const type = parts[1];
+    const idx = parseInt(parts[2], 10);
+    let text = "";
+    if (type === "add") text = diffData.addedBullets?.[idx] ?? key;
+    else if (type === "rem") text = diffData.removedBullets?.[idx] ?? key;
+    else if (type === "reord") text = diffData.reorderedSections?.[idx] ?? key;
+    if (d === "accept") accepted.push(`+ ${text}`);
+    else if (d === "reject") rejected.push(`- ${text}`);
+  });
+  const lines: string[] = ["Resume version change review:"];
+  if (accepted.length) { lines.push("ACCEPTED:"); accepted.forEach(l => lines.push(l)); }
+  if (rejected.length) { lines.push("REJECTED:"); rejected.forEach(l => lines.push(l)); }
+  return lines.join("\n");
+}
 
 function ChangeItem({
   text,
@@ -40,14 +83,10 @@ function ChangeItem({
   onDecide: (key: string, d: ChangeDecision) => void;
 }) {
   const colorBase =
-    type === "added"
-      ? "bg-green-50 border-green-200 text-green-800"
-      : type === "removed"
-      ? "bg-red-50 border-red-200 text-red-800"
-      : "bg-blue-50 border-blue-200 text-blue-800";
-
+    type === "added" ? "bg-green-50 border-green-200 text-green-800" :
+    type === "removed" ? "bg-red-50 border-red-200 text-red-800" :
+    "bg-blue-50 border-blue-200 text-blue-800";
   const prefix = type === "added" ? "+" : type === "removed" ? "−" : "↕";
-
   return (
     <li className={`flex items-start gap-2 px-3 py-2 border-b last:border-b-0 ${colorBase} ${decision === "reject" ? "opacity-50 line-through" : ""}`}>
       <span className="font-mono mt-0.5 shrink-0">{prefix}</span>
@@ -87,9 +126,10 @@ function DiffReview({
   decisions: VersionDecisions;
   onDecide: (key: string, d: ChangeDecision) => void;
 }) {
+  const total = Object.keys(decisions).length;
   const accepted = Object.values(decisions).filter(d => d === "accept").length;
   const rejected = Object.values(decisions).filter(d => d === "reject").length;
-  const total = Object.keys(decisions).length;
+  const pending = total - accepted - rejected;
 
   return (
     <div className="space-y-3">
@@ -99,15 +139,13 @@ function DiffReview({
           <p>{diffData.summary}</p>
         </div>
       )}
-
       {total > 0 && (
-        <div className="text-xs text-muted-foreground flex gap-3">
-          <span className="text-green-600">{accepted} accepted</span>
-          <span className="text-red-600">{rejected} rejected</span>
-          <span>{total - accepted - rejected} pending</span>
+        <div className="text-xs flex gap-3" data-testid={`decisions-summary-${versionId}`}>
+          <span className="text-green-600 font-medium">{accepted} accepted</span>
+          <span className="text-red-600 font-medium">{rejected} rejected</span>
+          {pending > 0 && <span className="text-orange-600 font-medium">{pending} pending decision</span>}
         </div>
       )}
-
       {diffData.addedBullets && diffData.addedBullets.length > 0 && (
         <div className="rounded-md border overflow-hidden">
           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 border-b text-xs font-semibold text-green-700">
@@ -115,19 +153,12 @@ function DiffReview({
           </div>
           <ul>
             {diffData.addedBullets.map((b, i) => (
-              <ChangeItem
-                key={`${versionId}-add-${i}`}
-                text={b}
-                type="added"
-                changeKey={`${versionId}-add-${i}`}
-                decision={decisions[`${versionId}-add-${i}`] ?? "pending"}
-                onDecide={onDecide}
-              />
+              <ChangeItem key={`${versionId}-add-${i}`} text={b} type="added" changeKey={`${versionId}-add-${i}`}
+                decision={decisions[`${versionId}-add-${i}`] ?? "pending"} onDecide={onDecide} />
             ))}
           </ul>
         </div>
       )}
-
       {diffData.removedBullets && diffData.removedBullets.length > 0 && (
         <div className="rounded-md border overflow-hidden">
           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 border-b text-xs font-semibold text-red-700">
@@ -135,19 +166,12 @@ function DiffReview({
           </div>
           <ul>
             {diffData.removedBullets.map((b, i) => (
-              <ChangeItem
-                key={`${versionId}-rem-${i}`}
-                text={b}
-                type="removed"
-                changeKey={`${versionId}-rem-${i}`}
-                decision={decisions[`${versionId}-rem-${i}`] ?? "pending"}
-                onDecide={onDecide}
-              />
+              <ChangeItem key={`${versionId}-rem-${i}`} text={b} type="removed" changeKey={`${versionId}-rem-${i}`}
+                decision={decisions[`${versionId}-rem-${i}`] ?? "pending"} onDecide={onDecide} />
             ))}
           </ul>
         </div>
       )}
-
       {diffData.reorderedSections && diffData.reorderedSections.length > 0 && (
         <div className="rounded-md border overflow-hidden">
           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border-b text-xs font-semibold text-blue-700">
@@ -155,28 +179,17 @@ function DiffReview({
           </div>
           <ul>
             {diffData.reorderedSections.map((s, i) => (
-              <ChangeItem
-                key={`${versionId}-reord-${i}`}
-                text={s}
-                type="reordered"
-                changeKey={`${versionId}-reord-${i}`}
-                decision={decisions[`${versionId}-reord-${i}`] ?? "pending"}
-                onDecide={onDecide}
-              />
+              <ChangeItem key={`${versionId}-reord-${i}`} text={s} type="reordered" changeKey={`${versionId}-reord-${i}`}
+                decision={decisions[`${versionId}-reord-${i}`] ?? "pending"} onDecide={onDecide} />
             ))}
           </ul>
         </div>
       )}
-
       {diffData.bulletsTotal !== undefined && (
         <div className="flex gap-3 text-xs text-muted-foreground">
           <span>{diffData.bulletsTotal} bullets total</span>
-          {diffData.bulletsPassedValidation !== undefined && (
-            <span>{diffData.bulletsPassedValidation} passed truth-lock</span>
-          )}
-          {diffData.bulletsDiscarded !== undefined && diffData.bulletsDiscarded > 0 && (
-            <span className="text-destructive">{diffData.bulletsDiscarded} discarded</span>
-          )}
+          {diffData.bulletsPassedValidation !== undefined && <span>{diffData.bulletsPassedValidation} passed truth-lock</span>}
+          {diffData.bulletsDiscarded !== undefined && diffData.bulletsDiscarded > 0 && <span className="text-destructive">{diffData.bulletsDiscarded} discarded</span>}
           {diffData.modelName && <span>via {diffData.modelName}</span>}
         </div>
       )}
@@ -184,35 +197,17 @@ function DiffReview({
   );
 }
 
-function hasDiffContent(d: DiffData): boolean {
-  return !!(
-    (d.addedBullets && d.addedBullets.length > 0) ||
-    (d.removedBullets && d.removedBullets.length > 0) ||
-    (d.reorderedSections && d.reorderedSections.length > 0) ||
-    d.summary
-  );
-}
-
-function buildInitialDecisions(versionId: number, d: DiffData): VersionDecisions {
-  const out: VersionDecisions = {};
-  (d.addedBullets ?? []).forEach((_, i) => { out[`${versionId}-add-${i}`] = "pending"; });
-  (d.removedBullets ?? []).forEach((_, i) => { out[`${versionId}-rem-${i}`] = "pending"; });
-  (d.reorderedSections ?? []).forEach((_, i) => { out[`${versionId}-reord-${i}`] = "pending"; });
-  return out;
-}
-
 export default function ResumeVersionsPage() {
   const { data: versions, isLoading } = useListResumeVersions();
   const approve = useApproveResumeVersion();
   const reject = useRejectResumeVersion();
+  const logFeedback = useCreateFeedbackSignal();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [decisions, setDecisions] = useState<Record<number, VersionDecisions>>({});
 
   const getDecisions = (versionId: number, diffData: DiffData): VersionDecisions => {
-    if (!decisions[versionId]) {
-      return buildInitialDecisions(versionId, diffData);
-    }
+    if (!decisions[versionId]) return buildInitialDecisions(versionId, diffData);
     return decisions[versionId];
   };
 
@@ -223,45 +218,59 @@ export default function ResumeVersionsPage() {
     }));
   };
 
-  const handleApprove = (id: number) => {
-    approve.mutate(
-      { id },
-      {
+  const handleAcceptAll = (versionId: number, diffData: DiffData) => {
+    const all = buildInitialDecisions(versionId, diffData);
+    const accepted: VersionDecisions = {};
+    Object.keys(all).forEach(k => { accepted[k] = "accept"; });
+    setDecisions(prev => ({ ...prev, [versionId]: accepted }));
+  };
+
+  const handleApprove = (id: number, diffData: DiffData | null | undefined, versionDecisions: VersionDecisions, applicationId?: number | null) => {
+    const total = Object.keys(versionDecisions).length;
+    const pending = Object.values(versionDecisions).filter(d => d === "pending").length;
+    if (total > 0 && pending > 0) {
+      toast({ title: `Please decide all ${pending} pending change(s) before approving`, variant: "destructive" });
+      return;
+    }
+    const doApprove = () => {
+      approve.mutate({ id }, {
         onSuccess: () => {
-          toast({ title: "Resume version approved" });
+          toast({ title: "Resume version approved and decisions logged" });
           queryClient.invalidateQueries({ queryKey: getListResumeVersionsQueryKey() });
         },
         onError: () => toast({ title: "Failed to approve", variant: "destructive" })
-      }
-    );
+      });
+    };
+    if (total > 0 && diffData && applicationId) {
+      const note = decisionsToNote(versionDecisions, diffData);
+      logFeedback.mutate(
+        { data: { applicationId, signalType: "resume_review", outcome: "completed", notes: note } },
+        { onSuccess: doApprove, onError: doApprove }
+      );
+    } else {
+      doApprove();
+    }
   };
 
   const handleReject = (id: number) => {
-    reject.mutate(
-      { id },
-      {
-        onSuccess: () => {
-          toast({ title: "Resume version rejected" });
-          queryClient.invalidateQueries({ queryKey: getListResumeVersionsQueryKey() });
-        },
-        onError: () => toast({ title: "Failed to reject", variant: "destructive" })
-      }
-    );
+    reject.mutate({ id }, {
+      onSuccess: () => {
+        toast({ title: "Resume version rejected" });
+        queryClient.invalidateQueries({ queryKey: getListResumeVersionsQueryKey() });
+      },
+      onError: () => toast({ title: "Failed to reject", variant: "destructive" })
+    });
   };
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Resume Queue</h1>
-        <p className="text-muted-foreground mt-1">Review each individual change, then approve or reject the version.</p>
+        <p className="text-muted-foreground mt-1">Review each individual change before approving. Decisions are logged as traceable feedback signals.</p>
       </div>
-
       <div className="grid gap-4">
         {isLoading ? (
-          <>
-            <Skeleton className="h-32 w-full" />
-            <Skeleton className="h-32 w-full" />
-          </>
+          <><Skeleton className="h-32 w-full" /><Skeleton className="h-32 w-full" /></>
         ) : versions?.length === 0 ? (
           <Card className="flex flex-col items-center justify-center p-12 text-center border-dashed">
             <FileText className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
@@ -274,9 +283,10 @@ export default function ResumeVersionsPage() {
           versions?.map((version) => {
             const diffData = version.diffData as DiffData | null | undefined;
             const hasDiff = diffData && hasDiffContent(diffData);
-            const versionDecisions = hasDiff
-              ? getDecisions(version.id, diffData)
-              : {};
+            const versionDecisions = hasDiff ? getDecisions(version.id, diffData) : {};
+            const totalDecisions = Object.keys(versionDecisions).length;
+            const pendingCount = Object.values(versionDecisions).filter(d => d === "pending").length;
+            const hasPending = pendingCount > 0;
 
             return (
               <Card key={version.id} data-testid={`card-resume-${version.id}`}>
@@ -291,6 +301,11 @@ export default function ResumeVersionsPage() {
                         }>
                           {version.status.replace("_", " ")}
                         </Badge>
+                        {version.status === "pending_approval" && hasDiff && hasPending && (
+                          <Badge variant="outline" className="text-orange-600 border-orange-300 text-xs">
+                            {pendingCount} undecided
+                          </Badge>
+                        )}
                       </div>
                       <CardDescription>
                         {version.jobId && (
@@ -299,13 +314,22 @@ export default function ResumeVersionsPage() {
                         Created {new Date(version.createdAt).toLocaleString()}
                       </CardDescription>
                     </div>
-
                     <div className="flex items-center gap-2">
+                      {version.status === "pending_approval" && hasDiff && totalDecisions > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs"
+                          onClick={() => handleAcceptAll(version.id, diffData)}
+                          data-testid={`btn-accept-all-${version.id}`}
+                        >
+                          Accept All
+                        </Button>
+                      )}
                       {version.status === "pending_approval" && (
                         <>
                           <Button
-                            variant="outline"
-                            size="sm"
+                            variant="outline" size="sm"
                             className="text-destructive hover:bg-destructive/10"
                             onClick={() => handleReject(version.id)}
                             disabled={reject.isPending}
@@ -314,10 +338,9 @@ export default function ResumeVersionsPage() {
                             <X className="mr-1 h-4 w-4" /> Reject
                           </Button>
                           <Button
-                            variant="default"
-                            size="sm"
-                            onClick={() => handleApprove(version.id)}
-                            disabled={approve.isPending}
+                            variant="default" size="sm"
+                            onClick={() => handleApprove(version.id, diffData, versionDecisions, null)}
+                            disabled={approve.isPending || logFeedback.isPending}
                             data-testid={`btn-approve-resume-${version.id}`}
                           >
                             <Check className="mr-1 h-4 w-4" /> Approve
@@ -334,13 +357,20 @@ export default function ResumeVersionsPage() {
                     </div>
                   </div>
                 </CardHeader>
-
                 {hasDiff && (
                   <>
                     <Separator />
-                    <CardContent className="pt-4">
-                      <p className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wide">
-                        Per-Change Review — accept or reject individual changes before finalizing
+                    <CardContent className="pt-4 space-y-3">
+                      {version.status === "pending_approval" && hasPending && (
+                        <Alert variant="default" className="border-orange-200 bg-orange-50">
+                          <AlertCircle className="h-4 w-4 text-orange-600" />
+                          <AlertDescription className="text-orange-800 text-xs">
+                            {pendingCount} change{pendingCount > 1 ? "s" : ""} still need{pendingCount === 1 ? "s" : ""} a decision. Accept or reject each before approving — decisions are logged as traceable feedback.
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        Per-Change Review
                       </p>
                       <DiffReview
                         diffData={diffData}
