@@ -1,9 +1,9 @@
 import { useListJobs, useCreateJob } from "@workspace/api-client-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Link } from "wouter";
+import { Link } from "react-router-dom";
 import { Plus, Briefcase, MapPin, Building, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -202,16 +202,16 @@ export default function JobsPage() {
           </Card>
         ) : (
           jobs?.map((job) => (
-            <Link key={job.id} href={`/jobs/${job.id}`}>
+            <Link key={job.id} to={`/jobs/${job.id}`}>
               <Card className="hover:border-primary/50 transition-colors cursor-pointer" data-testid={`card-job-${job.id}`}>
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between">
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="font-semibold text-lg" data-testid={`text-job-title-${job.id}`}>{job.title}</h3>
                         {getStatusBadge(job.status)}
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
                         <div className="flex items-center gap-1">
                           <Building className="h-4 w-4" />
                           <span data-testid={`text-job-company-${job.id}`}>{job.company}</span>
@@ -225,9 +225,12 @@ export default function JobsPage() {
                         <div className="flex items-center gap-1">
                           <span>Added {format(new Date(job.createdAt), "MMM d, yyyy")}</span>
                         </div>
+                        {job.parsedRequiredSkills && job.parsedRequiredSkills.length > 0 && (
+                          <span className="text-xs">{job.parsedRequiredSkills.length} required skills</span>
+                        )}
                       </div>
                     </div>
-                    <div className="flex flex-col items-end gap-2">
+                    <div className="flex flex-col items-end gap-2 shrink-0 ml-4">
                       {job.sourceUrl && (
                         <a 
                           href={job.sourceUrl} 

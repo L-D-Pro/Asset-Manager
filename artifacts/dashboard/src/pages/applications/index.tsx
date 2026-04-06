@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Activity, Plus, FileText, Mail } from "lucide-react";
-import { Link } from "wouter";
+import { Link } from "react-router-dom";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -247,19 +247,19 @@ export default function ApplicationsPage() {
                     <span className="text-xs text-muted-foreground capitalize">{app.applyMode}</span>
                   </div>
                   <div className="text-sm text-muted-foreground flex items-center gap-3 flex-wrap">
-                    <Link href={`/jobs/${app.jobId}`} className="text-primary hover:underline">
+                    <Link to={`/jobs/${app.jobId}`} className="text-primary hover:underline">
                       Job #{app.jobId}
                     </Link>
                     {app.resumeVersionId && (
                       <span className="flex items-center gap-1 text-xs">
                         <FileText className="h-3 w-3" />
-                        Resume <Link href="/resume-versions" className="text-primary hover:underline">#{app.resumeVersionId}</Link>
+                        Resume <Link to="/resume-versions" className="text-primary hover:underline">#{app.resumeVersionId}</Link>
                       </span>
                     )}
                     {app.coverLetterVersionId && (
                       <span className="flex items-center gap-1 text-xs">
                         <Mail className="h-3 w-3" />
-                        Cover Letter <Link href="/cover-letters" className="text-primary hover:underline">#{app.coverLetterVersionId}</Link>
+                        Cover Letter <Link to="/cover-letters" className="text-primary hover:underline">#{app.coverLetterVersionId}</Link>
                       </span>
                     )}
                     {app.appliedAt && (

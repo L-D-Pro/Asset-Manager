@@ -1,12 +1,10 @@
-import { Sidebar as SidebarComponent, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarProvider } from "@/components/ui/sidebar";
-import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Briefcase, FileText, CheckSquare, MessageSquare, Settings, UserCircle, Activity, ChevronRight, FileCode } from "lucide-react";
+import { Sidebar as SidebarComponent, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
+import { NavLink } from "react-router-dom";
+import { LayoutDashboard, Briefcase, FileText, CheckSquare, MessageSquare, Settings, UserCircle, Activity, FileCode } from "lucide-react";
 
 export function Sidebar() {
-  const [location] = useLocation();
-
   const navigation = [
-    { name: "Dashboard", href: "/", icon: LayoutDashboard },
+    { name: "Dashboard", href: "/", icon: LayoutDashboard, exact: true },
     { name: "Jobs Pipeline", href: "/jobs", icon: Briefcase },
     { name: "Applications", href: "/applications", icon: Activity },
     { name: "Claims Ledger", href: "/claims", icon: CheckSquare },
@@ -27,19 +25,24 @@ export function Sidebar() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu>
-          {navigation.map((item) => {
-            const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
-            return (
-              <SidebarMenuItem key={item.name}>
-                <SidebarMenuButton asChild isActive={isActive} tooltip={item.name}>
-                  <Link href={item.href} className="flex items-center gap-3">
-                    <item.icon className="h-4 w-4" />
-                    <span>{item.name}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            );
-          })}
+          {navigation.map((item) => (
+            <SidebarMenuItem key={item.name}>
+              <NavLink
+                to={item.href}
+                end={item.exact}
+                className="contents"
+              >
+                {({ isActive }) => (
+                  <SidebarMenuButton isActive={isActive} tooltip={item.name} asChild>
+                    <span className="flex items-center gap-3 cursor-pointer">
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.name}</span>
+                    </span>
+                  </SidebarMenuButton>
+                )}
+              </NavLink>
+            </SidebarMenuItem>
+          ))}
         </SidebarMenu>
       </SidebarContent>
     </SidebarComponent>

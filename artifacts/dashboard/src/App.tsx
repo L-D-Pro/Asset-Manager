@@ -1,4 +1,4 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -17,33 +17,34 @@ import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
 
-function Router() {
+function AppRoutes() {
   return (
     <MainLayout>
-      <Switch>
-        <Route path="/" component={Dashboard} />
-        <Route path="/jobs" component={JobsList} />
-        <Route path="/jobs/:id" component={JobDetail} />
-        <Route path="/claims" component={ClaimsPage} />
-        <Route path="/resume-versions" component={ResumeVersionsPage} />
-        <Route path="/cover-letters" component={CoverLettersPage} />
-        <Route path="/applications" component={ApplicationsPage} />
-        <Route path="/ai-config" component={AiConfigPage} />
-        <Route path="/role-profiles" component={RoleProfilesPage} />
-        <Route path="/feedback" component={FeedbackPage} />
-        <Route component={NotFound} />
-      </Switch>
+      <Routes>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/jobs" element={<JobsList />} />
+        <Route path="/jobs/:id" element={<JobDetail />} />
+        <Route path="/claims" element={<ClaimsPage />} />
+        <Route path="/resume-versions" element={<ResumeVersionsPage />} />
+        <Route path="/cover-letters" element={<CoverLettersPage />} />
+        <Route path="/applications" element={<ApplicationsPage />} />
+        <Route path="/ai-config" element={<AiConfigPage />} />
+        <Route path="/role-profiles" element={<RoleProfilesPage />} />
+        <Route path="/feedback" element={<FeedbackPage />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
     </MainLayout>
   );
 }
 
 function App() {
+  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <Router />
-        </WouterRouter>
+        <BrowserRouter basename={base}>
+          <AppRoutes />
+        </BrowserRouter>
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>
