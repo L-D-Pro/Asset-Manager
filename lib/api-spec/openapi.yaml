@@ -767,6 +767,24 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/EventLog"
+    post:
+      operationId: createEventLog
+      tags: [event-logs]
+      summary: Create a manual event log entry
+      description: Event logs are append-only audit records. Create a manual entry for user-initiated events not triggered by automated pipelines.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEventLogBody"
+      responses:
+        "201":
+          description: Created event log entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventLog"
 
   /event-logs/{id}:
     get:
@@ -1635,6 +1653,9 @@ components:
         createdAt:
           type: string
           format: date-time
+        updatedAt:
+          type: string
+          format: date-time
       required:
         - id
         - entityType
@@ -1643,6 +1664,34 @@ components:
         - metadata
         - actorType
         - createdAt
+        - updatedAt
+
+    CreateEventLogBody:
+      type: object
+      description: Event logs are append-only audit records. Only create manual entries for user-initiated events not automatically triggered by pipelines.
+      properties:
+        entityType:
+          type: string
+        entityId:
+          type: integer
+        applicationId:
+          type: ["integer", "null"]
+        jobId:
+          type: ["integer", "null"]
+        eventType:
+          type: string
+        previousState:
+          type: ["string", "null"]
+        nextState:
+          type: ["string", "null"]
+        metadata:
+          type: object
+        actorType:
+          type: string
+      required:
+        - entityType
+        - entityId
+        - eventType
 
     # ── Feedback Signal ──────────────────────────────────────────────────────
     FeedbackSignal:

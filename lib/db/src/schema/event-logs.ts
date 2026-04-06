@@ -41,6 +41,10 @@ export const eventLogsTable = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
   },
   (table) => [
     index("event_logs_entity_idx").on(table.entityType, table.entityId),
@@ -53,6 +57,7 @@ export const eventLogsTable = pgTable(
 export const insertEventLogSchema = createInsertSchema(eventLogsTable).omit({
   id: true,
   createdAt: true,
+  updatedAt: true,
 });
 
 export type InsertEventLog = z.infer<typeof insertEventLogSchema>;

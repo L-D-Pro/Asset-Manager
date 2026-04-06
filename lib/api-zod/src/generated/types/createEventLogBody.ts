@@ -5,10 +5,12 @@
  * Job Application Operations Platform API
  * OpenAPI spec version: 0.1.0
  */
-import type { EventLogMetadata } from "./eventLogMetadata";
+import type { CreateEventLogBodyMetadata } from "./createEventLogBodyMetadata";
 
-export interface EventLog {
-  id: number;
+/**
+ * Event logs are append-only audit records. Only create manual entries for user-initiated events not automatically triggered by pipelines.
+ */
+export interface CreateEventLogBody {
   entityType: string;
   entityId: number;
   /** @nullable */
@@ -20,8 +22,6 @@ export interface EventLog {
   previousState?: string | null;
   /** @nullable */
   nextState?: string | null;
-  metadata: EventLogMetadata;
-  actorType: string;
-  createdAt: Date;
-  updatedAt: Date;
+  metadata?: CreateEventLogBodyMetadata;
+  actorType?: string;
 }

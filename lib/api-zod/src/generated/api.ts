@@ -908,8 +908,29 @@ export const ListEventLogsResponseItem = zod.object({
   metadata: zod.object({}).passthrough(),
   actorType: zod.string(),
   createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
 });
 export const ListEventLogsResponse = zod.array(ListEventLogsResponseItem);
+
+/**
+ * Event logs are append-only audit records. Create a manual entry for user-initiated events not triggered by automated pipelines.
+ * @summary Create a manual event log entry
+ */
+export const CreateEventLogBody = zod
+  .object({
+    entityType: zod.string(),
+    entityId: zod.number(),
+    applicationId: zod.number().nullish(),
+    jobId: zod.number().nullish(),
+    eventType: zod.string(),
+    previousState: zod.string().nullish(),
+    nextState: zod.string().nullish(),
+    metadata: zod.object({}).passthrough().optional(),
+    actorType: zod.string().optional(),
+  })
+  .describe(
+    "Event logs are append-only audit records. Only create manual entries for user-initiated events not automatically triggered by pipelines.",
+  );
 
 /**
  * @summary Get an event log entry by ID
@@ -930,6 +951,7 @@ export const GetEventLogResponse = zod.object({
   metadata: zod.object({}).passthrough(),
   actorType: zod.string(),
   createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
 });
 
 /**

@@ -18,6 +18,8 @@ export * from "./createAiModelConfigBody";
 export * from "./createAiModelConfigBodyExtraConfig";
 export * from "./createApplicationBody";
 export * from "./createClaimBody";
+export * from "./createEventLogBody";
+export * from "./createEventLogBodyMetadata";
 export * from "./createFeedbackSignalBody";
 export * from "./createFeedbackSignalBodyAttributionData";
 export * from "./createJobBody";
