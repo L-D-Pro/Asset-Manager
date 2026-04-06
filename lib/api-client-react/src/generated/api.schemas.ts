@@ -524,7 +524,10 @@ export type ListJobsParams = {
 };
 
 export type ScoreJobParams = {
-  roleProfileId: number;
+  /**
+   * Override the role profile to score against. Defaults to the job's linked roleProfileId.
+   */
+  roleProfileId?: number;
 };
 
 export type ListClaimsParams = {

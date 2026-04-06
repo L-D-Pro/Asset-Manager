@@ -52,11 +52,6 @@ router.post("/feedback-signals", async (req, res): Promise<void> => {
     .from(applicationsTable)
     .where(eq(applicationsTable.id, parsed.data.applicationId));
 
-  const [row] = await db
-    .insert(feedbackSignalsTable)
-    .values(parsed.data)
-    .returning();
-
   const outcomesToStatus: Record<string, string> = {
     rejected: "rejected",
     offer: "offer_received",
@@ -64,38 +59,48 @@ router.post("/feedback-signals", async (req, res): Promise<void> => {
     ghosted: "ghosted",
   };
   const newStatus = outcomesToStatus[parsed.data.outcome];
+
+  const row = await db.transaction(async (tx) => {
+    const [inserted] = await tx
+      .insert(feedbackSignalsTable)
+      .values(parsed.data)
+      .returning();
+
+    if (newStatus && existingApp) {
+      const previousStatus = existingApp.status;
+      await tx
+        .update(applicationsTable)
+        .set({ status: newStatus })
+        .where(eq(applicationsTable.id, parsed.data.applicationId));
+      await tx.insert(eventLogsTable).values({
+        entityType: "application",
+        entityId: parsed.data.applicationId,
+        applicationId: parsed.data.applicationId,
+        jobId: existingApp.jobId,
+        eventType: "status_transition",
+        previousState: previousStatus,
+        nextState: newStatus,
+        actorType: "system",
+        metadata: {
+          triggeredBy: "feedback_signal",
+          feedbackSignalId: inserted.id,
+          outcome: parsed.data.outcome,
+          signalType: parsed.data.signalType,
+        },
+      });
+    }
+    return inserted;
+  });
+
   if (newStatus && existingApp) {
-    const previousStatus = existingApp.status;
-    await db
-      .update(applicationsTable)
-      .set({ status: newStatus })
-      .where(eq(applicationsTable.id, parsed.data.applicationId));
-
-    await db.insert(eventLogsTable).values({
-      entityType: "application",
-      entityId: parsed.data.applicationId,
-      applicationId: parsed.data.applicationId,
-      jobId: existingApp.jobId,
-      eventType: "status_transition",
-      previousState: previousStatus,
-      nextState: newStatus,
-      actorType: "system",
-      metadata: {
-        triggeredBy: "feedback_signal",
-        feedbackSignalId: row.id,
-        outcome: parsed.data.outcome,
-        signalType: parsed.data.signalType,
-      },
-    });
-
     req.log.info(
       {
         applicationId: parsed.data.applicationId,
         outcome: parsed.data.outcome,
-        from: previousStatus,
+        from: existingApp.status,
         to: newStatus,
       },
-      "Application status updated from feedback signal; EventLog written",
+      "Application status updated from feedback signal; EventLog written atomically",
     );
   }
 

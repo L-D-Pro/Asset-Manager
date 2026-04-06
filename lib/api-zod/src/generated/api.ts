@@ -271,7 +271,12 @@ export const ScoreJobParams = zod.object({
 });
 
 export const ScoreJobQueryParams = zod.object({
-  roleProfileId: zod.coerce.number(),
+  roleProfileId: zod.coerce
+    .number()
+    .optional()
+    .describe(
+      "Override the role profile to score against. Defaults to the job's linked roleProfileId.",
+    ),
 });
 
 export const ScoreJobResponse = zod.object({

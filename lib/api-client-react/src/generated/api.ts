@@ -993,7 +993,7 @@ export const useDeleteJob = <
 /**
  * @summary Score a job against a role profile
  */
-export const getScoreJobUrl = (id: number, params: ScoreJobParams) => {
+export const getScoreJobUrl = (id: number, params?: ScoreJobParams) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -1011,7 +1011,7 @@ export const getScoreJobUrl = (id: number, params: ScoreJobParams) => {
 
 export const scoreJob = async (
   id: number,
-  params: ScoreJobParams,
+  params?: ScoreJobParams,
   options?: RequestInit,
 ): Promise<JobScoreResult> => {
   return customFetch<JobScoreResult>(getScoreJobUrl(id, params), {
@@ -1029,7 +1029,7 @@ export const getScoreJobQueryOptions = <
   TError = ErrorType<NotFoundResponse>,
 >(
   id: number,
-  params: ScoreJobParams,
+  params?: ScoreJobParams,
   options?: {
     query?: UseQueryOptions<
       Awaited<ReturnType<typeof scoreJob>>,
@@ -1071,7 +1071,7 @@ export function useScoreJob<
   TError = ErrorType<NotFoundResponse>,
 >(
   id: number,
-  params: ScoreJobParams,
+  params?: ScoreJobParams,
   options?: {
     query?: UseQueryOptions<
       Awaited<ReturnType<typeof scoreJob>>,

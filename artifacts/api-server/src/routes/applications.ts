@@ -16,30 +16,6 @@ import {
 
 const router: IRouter = Router();
 
-/**
- * Writes an EventLog entry for an application status transition.
- * Called automatically on create and update when status changes.
- */
-async function writeApplicationEventLog(opts: {
-  applicationId: number;
-  jobId: number;
-  previousState: string | null;
-  nextState: string;
-  actorType?: string;
-  metadata?: Record<string, unknown>;
-}): Promise<void> {
-  await db.insert(eventLogsTable).values({
-    entityType: "application",
-    entityId: opts.applicationId,
-    applicationId: opts.applicationId,
-    jobId: opts.jobId,
-    eventType: "status_transition",
-    previousState: opts.previousState,
-    nextState: opts.nextState,
-    actorType: opts.actorType ?? "user",
-    metadata: opts.metadata ?? {},
-  });
-}
 
 router.get("/applications/stats", async (req, res): Promise<void> => {
   req.log.info("Fetching application stats");
@@ -111,17 +87,23 @@ router.post("/applications", async (req, res): Promise<void> => {
     return;
   }
 
-  const [row] = await db
-    .insert(applicationsTable)
-    .values(parsed.data)
-    .returning();
-
-  await writeApplicationEventLog({
-    applicationId: row.id,
-    jobId: row.jobId,
-    previousState: null,
-    nextState: row.status,
-    metadata: { applyMode: row.applyMode },
+  const row = await db.transaction(async (tx) => {
+    const [inserted] = await tx
+      .insert(applicationsTable)
+      .values(parsed.data)
+      .returning();
+    await tx.insert(eventLogsTable).values({
+      entityType: "application",
+      entityId: inserted.id,
+      applicationId: inserted.id,
+      jobId: inserted.jobId,
+      eventType: "status_transition",
+      previousState: null,
+      nextState: inserted.status,
+      actorType: "user",
+      metadata: { applyMode: inserted.applyMode },
+    });
+    return inserted;
   });
 
   req.log.info({ applicationId: row.id, jobId: row.jobId, status: row.status }, "Application created");
@@ -167,24 +149,39 @@ router.patch("/applications/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  const [row] = await db
-    .update(applicationsTable)
-    .set(parsed.data)
-    .where(eq(applicationsTable.id, params.data.id))
-    .returning();
+  const statusChanging =
+    parsed.data.status != null && parsed.data.status !== existing.status;
+
+  const row = await db.transaction(async (tx) => {
+    const [updated] = await tx
+      .update(applicationsTable)
+      .set(parsed.data)
+      .where(eq(applicationsTable.id, params.data.id))
+      .returning();
+    if (!updated) return null;
+
+    if (statusChanging) {
+      await tx.insert(eventLogsTable).values({
+        entityType: "application",
+        entityId: updated.id,
+        applicationId: updated.id,
+        jobId: updated.jobId,
+        eventType: "status_transition",
+        previousState: existing.status,
+        nextState: updated.status,
+        actorType: "user",
+        metadata: {},
+      });
+    }
+    return updated;
+  });
 
   if (!row) {
     res.status(404).json({ error: "Application not found" });
     return;
   }
 
-  if (parsed.data.status != null && parsed.data.status !== existing.status) {
-    await writeApplicationEventLog({
-      applicationId: row.id,
-      jobId: row.jobId,
-      previousState: existing.status,
-      nextState: row.status,
-    });
+  if (statusChanging) {
     req.log.info(
       { applicationId: row.id, from: existing.status, to: row.status },
       "Application status transitioned",
