@@ -84,12 +84,8 @@ export default function CoverLettersPage() {
   };
 
   const parseAnnotations = (version: CoverLetterVersion): AnnotatedParagraph[] | null => {
-    if (!version.annotatedParagraphs) return null;
-    try {
-      return version.annotatedParagraphs as AnnotatedParagraph[];
-    } catch {
-      return null;
-    }
+    if (!Array.isArray(version.annotatedParagraphs)) return null;
+    return version.annotatedParagraphs as AnnotatedParagraph[];
   };
 
   return (

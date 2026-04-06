@@ -2,7 +2,7 @@ import {
   useListResumeVersions,
   useApproveResumeVersion,
   useRejectResumeVersion,
-  useCreateFeedbackSignal,
+  useUpdateResumeVersion,
   getListResumeVersionsQueryKey,
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -201,7 +201,7 @@ export default function ResumeVersionsPage() {
   const { data: versions, isLoading } = useListResumeVersions();
   const approve = useApproveResumeVersion();
   const reject = useRejectResumeVersion();
-  const logFeedback = useCreateFeedbackSignal();
+  const updateResume = useUpdateResumeVersion();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [decisions, setDecisions] = useState<Record<number, VersionDecisions>>({});
@@ -225,7 +225,7 @@ export default function ResumeVersionsPage() {
     setDecisions(prev => ({ ...prev, [versionId]: accepted }));
   };
 
-  const handleApprove = (id: number, diffData: DiffData | null | undefined, versionDecisions: VersionDecisions, applicationId?: number | null) => {
+  const handleApprove = (id: number, diffData: DiffData | null | undefined, versionDecisions: VersionDecisions) => {
     const total = Object.keys(versionDecisions).length;
     const pending = Object.values(versionDecisions).filter(d => d === "pending").length;
     if (total > 0 && pending > 0) {
@@ -235,16 +235,16 @@ export default function ResumeVersionsPage() {
     const doApprove = () => {
       approve.mutate({ id }, {
         onSuccess: () => {
-          toast({ title: "Resume version approved and decisions logged" });
+          toast({ title: total > 0 ? "Resume version approved with change decisions recorded" : "Resume version approved" });
           queryClient.invalidateQueries({ queryKey: getListResumeVersionsQueryKey() });
         },
         onError: () => toast({ title: "Failed to approve", variant: "destructive" })
       });
     };
-    if (total > 0 && diffData && applicationId) {
+    if (total > 0 && diffData) {
       const note = decisionsToNote(versionDecisions, diffData);
-      logFeedback.mutate(
-        { data: { applicationId, signalType: "resume_review", outcome: "completed", notes: note } },
+      updateResume.mutate(
+        { id, data: { notes: note } },
         { onSuccess: doApprove, onError: doApprove }
       );
     } else {
@@ -266,7 +266,7 @@ export default function ResumeVersionsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Resume Queue</h1>
-        <p className="text-muted-foreground mt-1">Review each individual change before approving. Decisions are logged as traceable feedback signals.</p>
+        <p className="text-muted-foreground mt-1">Review each individual change before approving. Accepted/rejected bullet decisions are recorded on the version before approval.</p>
       </div>
       <div className="grid gap-4">
         {isLoading ? (
@@ -339,8 +339,8 @@ export default function ResumeVersionsPage() {
                           </Button>
                           <Button
                             variant="default" size="sm"
-                            onClick={() => handleApprove(version.id, diffData, versionDecisions, null)}
-                            disabled={approve.isPending || logFeedback.isPending}
+                            onClick={() => handleApprove(version.id, diffData, versionDecisions)}
+                            disabled={approve.isPending || updateResume.isPending}
                             data-testid={`btn-approve-resume-${version.id}`}
                           >
                             <Check className="mr-1 h-4 w-4" /> Approve
@@ -365,7 +365,7 @@ export default function ResumeVersionsPage() {
                         <Alert variant="default" className="border-orange-200 bg-orange-50">
                           <AlertCircle className="h-4 w-4 text-orange-600" />
                           <AlertDescription className="text-orange-800 text-xs">
-                            {pendingCount} change{pendingCount > 1 ? "s" : ""} still need{pendingCount === 1 ? "s" : ""} a decision. Accept or reject each before approving — decisions are logged as traceable feedback.
+                            {pendingCount} change{pendingCount > 1 ? "s" : ""} still need{pendingCount === 1 ? "s" : ""} a decision. Accept or reject each before approving — your decisions will be saved on the version record.
                           </AlertDescription>
                         </Alert>
                       )}
