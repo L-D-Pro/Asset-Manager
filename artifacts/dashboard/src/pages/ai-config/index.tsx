@@ -46,6 +46,7 @@ export default function AiConfigPage() {
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [isCustomScope, setIsCustomScope] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -99,6 +100,8 @@ export default function AiConfigPage() {
 
   const handleEdit = (c: AiModelConfig) => {
     setEditingId(c.id);
+    const isCustom = !TASK_SCOPES.includes(c.taskScope);
+    setIsCustomScope(isCustom);
     form.reset({
       taskScope: c.taskScope,
       provider: c.provider,
@@ -126,6 +129,7 @@ export default function AiConfigPage() {
   const handleClose = () => {
     setIsDialogOpen(false);
     setEditingId(null);
+    setIsCustomScope(false);
     form.reset();
   };
 
@@ -156,7 +160,18 @@ export default function AiConfigPage() {
                 <FormField control={form.control} name="taskScope" render={({field}) => (
                   <FormItem>
                     <FormLabel>Task Scope</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select
+                      onValueChange={(v) => {
+                        if (v === "__custom") {
+                          setIsCustomScope(true);
+                          field.onChange("");
+                        } else {
+                          setIsCustomScope(false);
+                          field.onChange(v);
+                        }
+                      }}
+                      value={isCustomScope ? "__custom" : field.value}
+                    >
                       <FormControl>
                         <SelectTrigger data-testid="select-config-scope">
                           <SelectValue placeholder="Select scope" />
@@ -167,10 +182,10 @@ export default function AiConfigPage() {
                         <SelectItem value="__custom">Custom…</SelectItem>
                       </SelectContent>
                     </Select>
-                    {field.value === "__custom" && (
+                    {isCustomScope && (
                       <FormControl>
                         <Input
-                          {...field}
+                          value={field.value}
                           placeholder="my_custom_scope"
                           data-testid="input-config-scope"
                           onChange={(e) => field.onChange(e.target.value)}
