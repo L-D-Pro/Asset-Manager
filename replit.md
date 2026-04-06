@@ -90,4 +90,31 @@ The `openrouter` client reads these automatically via `@workspace/integrations-o
 - `lib/api-zod/src/index.ts` exports only `./generated/api` to avoid duplicate exports
 - `lib/db/src/schema/index.ts` exports `conversations` and `messages` tables (for future AI chat history)
 
+## React Dashboard (Task 4 — COMPLETE)
+
+Built at `artifacts/dashboard/` — React + Vite + Tailwind + shadcn UI.
+Preview path: `/` (port 23183).
+
+### Pages
+
+| Route | Purpose |
+|-------|---------|
+| `/` | Dashboard: stats cards (total apps, interview rate, response rate, active jobs) |
+| `/jobs` | Jobs Pipeline: filterable list, create form |
+| `/jobs/:id` | Job Detail: JD, AI triggers (parse/tailor/cover letter), score, claim matches |
+| `/claims` | Claims Ledger: full CRUD for truth-lock claims |
+| `/resume-versions` | Resume Queue: pending AI-tailored resumes with approve/reject |
+| `/cover-letters` | Cover Letter Queue: pending AI cover letters with approve/reject |
+| `/applications` | Application Tracker: track submitted apps and pipeline stage |
+| `/role-profiles` | Role Profiles: CRUD for target scoring profiles |
+| `/ai-config` | AI Model Config: manage per-task model configs |
+| `/feedback` | Feedback Signals: log interview/rejection/offer outcomes |
+
+### Key implementation details
+- API hooks imported from `@workspace/api-client-react` (Orval-generated, Tanstack Query)
+- Wouter for client-side routing
+- Loading states on all slow AI mutation triggers (parse, tailor, draft)
+- Human-in-the-loop approve/reject flows are the primary user actions
+- All interactive elements have data-testid attributes
+
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
