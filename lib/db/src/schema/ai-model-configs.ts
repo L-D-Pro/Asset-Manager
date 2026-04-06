@@ -26,7 +26,10 @@ export const aiModelConfigsTable = pgTable(
 
     priority: integer("priority").notNull().default(1),
 
-    fallbackModelId: integer("fallback_model_id"),
+    fallbackModelId: integer("fallback_model_id").references(
+      (): any => aiModelConfigsTable.id,
+      { onDelete: "set null" },
+    ),
 
     costPerInputToken: text("cost_per_input_token"),
     costPerOutputToken: text("cost_per_output_token"),

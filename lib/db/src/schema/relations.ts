@@ -7,6 +7,7 @@ import { coverLetterVersionsTable } from "./cover-letter-versions";
 import { applicationsTable } from "./applications";
 import { eventLogsTable } from "./event-logs";
 import { feedbackSignalsTable } from "./feedback-signals";
+import { aiModelConfigsTable } from "./ai-model-configs";
 
 export const roleProfilesRelations = relations(
   roleProfilesTable,
@@ -92,6 +93,20 @@ export const feedbackSignalsRelations = relations(
     resumeVersion: one(resumeVersionsTable, {
       fields: [feedbackSignalsTable.resumeVersionId],
       references: [resumeVersionsTable.id],
+    }),
+  }),
+);
+
+export const aiModelConfigsRelations = relations(
+  aiModelConfigsTable,
+  ({ one, many }) => ({
+    fallbackModel: one(aiModelConfigsTable, {
+      fields: [aiModelConfigsTable.fallbackModelId],
+      references: [aiModelConfigsTable.id],
+      relationName: "fallback",
+    }),
+    fallbackDependents: many(aiModelConfigsTable, {
+      relationName: "fallback",
     }),
   }),
 );
