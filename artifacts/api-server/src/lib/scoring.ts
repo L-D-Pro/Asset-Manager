@@ -1,13 +1,28 @@
 import type { Job, RoleProfile, Claim } from "@workspace/db";
 
+/**
+ * The result of scoring a job against a role profile.
+ *
+ * Returned by `scoreJobAgainstProfile()`. The `score` (0–100) reflects how well
+ * the job's keywords match the role profile's soft weights. `passesHardFilters`
+ * is independent of the score — a job can score 100 and still fail hard filters.
+ */
 export interface JobScoreResult {
+  /** The ID of the job that was scored. */
   jobId: number;
+  /** The ID of the role profile used for scoring. */
   roleProfileId: number;
+  /** Normalised soft-weight match score (0–100). */
   score: number;
+  /** Whether the job passed all hard filter rules (required keywords, blocked keywords, min salary). */
   passesHardFilters: boolean;
+  /** Descriptions of each hard filter rule that failed (empty array if all passed). */
   hardFilterFailures: string[];
+  /** Keywords from the role profile's soft weights that were found in the job. */
   matchedSkills: string[];
+  /** Job's required skills that are not covered by any soft-weight keyword. */
   unmatchedRequiredSkills: string[];
+  /** Job's nice-to-have skills that overlap with matched soft-weight keywords. */
   matchedNiceToHaveSkills: string[];
 }
 
@@ -169,16 +184,36 @@ export function scoreJobAgainstProfile(
   };
 }
 
+/**
+ * A single claim's relevance score against a job.
+ *
+ * Returned by `matchClaimsToJob()`, sorted descending by `score`.
+ */
 export interface ClaimMatchResult {
+  /** The claim that was evaluated. */
   claim: Claim;
+  /** Relevance score: +3 per required-skill match, +2 per nice-to-have match, +1 per keyword match. */
   score: number;
+  /** Keywords that matched between this claim and the job. */
   matchedKeywords: string[];
+  /** The best match type found: `"required"` > `"nice_to_have"` > `"keyword"`. */
   matchType: "required" | "nice_to_have" | "keyword";
 }
 
 /**
  * Ranks claims by relevance to a job's required skills, nice-to-have skills, and keywords.
  * Each claim is scored by how many of its tags and phrasing variants overlap with job terms.
+ *
+ * Scoring weights:
+ * - Required skill match: +3 per unique keyword
+ * - Nice-to-have skill match: +2 per unique keyword
+ * - General keyword match: +1 per unique keyword
+ *
+ * Returns only claims with `score > 0`, sorted descending by score.
+ * Claims with zero overlap are excluded entirely.
+ *
+ * Used by the resume tailor and cover letter pipelines to select the top-15 most
+ * relevant claims when no explicit `claimIds` are provided.
  */
 export function matchClaimsToJob(job: Job, claims: Claim[]): ClaimMatchResult[] {
   const requiredSkills = (job.parsedRequiredSkills ?? []).map(normalize);

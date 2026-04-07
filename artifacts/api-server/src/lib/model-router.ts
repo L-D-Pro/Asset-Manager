@@ -2,14 +2,28 @@ import { eq, and } from "drizzle-orm";
 import { db, aiModelConfigsTable } from "@workspace/db";
 import { logger } from "./logger";
 
+/**
+ * The resolved model configuration selected by the router for a specific task.
+ *
+ * This is a projection of `ai_model_configs` row fields needed by `callAI()`.
+ * It is returned by `selectModelForTask()` and consumed by the pipeline layer.
+ */
 export interface SelectedModel {
+  /** Database ID of the `ai_model_configs` row. */
   id: number;
+  /** Provider identifier (e.g. `"openrouter"`). */
   provider: string;
+  /** Model identifier passed to the provider API (e.g. `"anthropic/claude-3.5-haiku"`). */
   modelName: string;
+  /** The task scope this config was selected for. */
   taskScope: string;
+  /** Maximum completion tokens. Null means no explicit limit is sent to the API. */
   maxTokens: number | null;
+  /** Cost per input token in USD (stored as string for decimal precision). */
   costPerInputToken: string | null;
+  /** Cost per output token in USD. */
   costPerOutputToken: string | null;
+  /** Reserved for future per-call settings (temperature, stop sequences, etc.). */
   extraConfig: Record<string, unknown>;
 }
 

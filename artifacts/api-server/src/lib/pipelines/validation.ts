@@ -1,9 +1,21 @@
 import { logger } from "../logger";
 import type { Claim } from "@workspace/db";
 
+/**
+ * Thrown when AI output fails truth-lock validation — specifically when zero
+ * valid content items remain after filtering hallucinated claim IDs.
+ *
+ * Callers should catch this specifically (via `instanceof TruthLockViolation`)
+ * to distinguish truth-lock failures from unexpected runtime errors, then store
+ * the raw AI output in the version record for debugging.
+ *
+ * The `details` property contains structured context (e.g. `rawContent`, `context`)
+ * that callers can log or persist.
+ */
 export class TruthLockViolation extends Error {
   constructor(
     message: string,
+    /** Structured details for logging and storage (e.g. raw AI output, context label). */
     public readonly details: Record<string, unknown>,
   ) {
     super(message);
@@ -123,6 +135,9 @@ export function validateParagraph(
 /**
  * Checks if AI output was too malformed to produce any usable content.
  * Throws TruthLockViolation so callers can store raw output for debugging.
+ *
+ * Called after all validation passes to catch the case where every item was discarded.
+ * The thrown error carries the first 1000 characters of raw AI output for debugging.
  */
 export function assertMinimumContent<T>(
   items: T[],

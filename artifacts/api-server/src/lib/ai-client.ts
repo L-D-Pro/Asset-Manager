@@ -4,20 +4,43 @@ import { eq, and } from "drizzle-orm";
 import { selectModelForTask, type SelectedModel } from "./model-router";
 import { logger } from "./logger";
 
+/**
+ * Options for a single AI call.
+ *
+ * `taskType` maps to the `taskScope` column in `ai_model_configs` and determines
+ * which model (and fallback chain) is used.
+ */
 export interface AiCallOptions {
+  /** Task identifier — used to select the correct model config (e.g. `"jd_parsing"`, `"resume_tailoring"`). */
   taskType: string;
+  /** System-level instruction prompt sent as the first message. */
   systemPrompt: string;
+  /** User-facing prompt sent as the second message. */
   userPrompt: string;
+  /** Job ID for EventLog context. Pass when the call is tied to a specific job. */
   jobId?: number;
+  /** Application ID for EventLog context. Pass when the call is tied to a specific application. */
   applicationId?: number;
 }
 
+/**
+ * The result returned from a successful AI call.
+ *
+ * Includes the raw text content plus metadata about which model was used and
+ * how many tokens were consumed (for cost logging purposes).
+ */
 export interface AiCallResult {
+  /** Raw text content from the AI's first choice. May be empty string on degenerate responses. */
   content: string;
+  /** The model identifier that produced this response (e.g. `"anthropic/claude-3.5-haiku"`). */
   modelName: string;
+  /** Provider that served the response (e.g. `"openrouter"`). */
   provider: string;
+  /** The task scope resolved for this call. */
   taskScope: string;
+  /** Number of input (prompt) tokens consumed. */
   promptTokens: number;
+  /** Number of output (completion) tokens produced. */
   completionTokens: number;
 }
 
@@ -195,7 +218,11 @@ async function getFallbackModelId(modelId: number): Promise<number | null> {
 
 /**
  * Attempts to parse the AI response as JSON.
- * Falls back to returning null if parsing fails.
+ *
+ * Strips Markdown code fences (` ```json ... ``` `) before parsing.
+ * Falls back to returning `null` if no valid JSON can be extracted.
+ * Callers should treat a `null` return as a soft failure and decide whether to
+ * store the raw content for debugging or retry.
  */
 export function parseJsonResponse<T>(content: string): T | null {
   const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) ??
