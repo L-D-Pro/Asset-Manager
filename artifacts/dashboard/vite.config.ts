@@ -51,6 +51,18 @@ export default defineConfig({
       strict: true,
       deny: ["**/.*"],
     },
+    // Local dev proxy: forwards /api/* to the API server.
+    // In production (Replit / DigitalOcean) the reverse proxy handles this routing.
+    // Set API_SERVER_URL in your local .env to override (default: http://localhost:5000).
+    ...(process.env.REPL_ID === undefined && {
+      proxy: {
+        "/api": {
+          target: process.env.API_SERVER_URL ?? "http://localhost:5000",
+          changeOrigin: true,
+          secure: false,
+        },
+      },
+    }),
   },
   preview: {
     port,
