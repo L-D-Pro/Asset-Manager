@@ -1,6 +1,6 @@
 import { Sidebar as SidebarComponent, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, Briefcase, FileText, CheckSquare, MessageSquare, Settings, UserCircle, Activity, FileCode } from "lucide-react";
+import { LayoutDashboard, Briefcase, FileText, CheckSquare, MessageSquare, Settings, UserCircle, Activity, FileCode, BookOpen } from "lucide-react";
 
 export function Sidebar() {
   const navigation = [
@@ -13,6 +13,7 @@ export function Sidebar() {
     { name: "Feedback Signals", href: "/feedback", icon: Activity },
     { name: "Role Profiles", href: "/role-profiles", icon: UserCircle },
     { name: "AI Config", href: "/ai-config", icon: Settings },
+    { name: "Guide", href: "/guide", icon: BookOpen },
   ];
 
   return (

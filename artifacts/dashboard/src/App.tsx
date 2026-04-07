@@ -13,6 +13,7 @@ import ApplicationsPage from "@/pages/applications";
 import AiConfigPage from "@/pages/ai-config";
 import RoleProfilesPage from "@/pages/role-profiles";
 import FeedbackPage from "@/pages/feedback";
+import GuidePage from "@/pages/guide";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ function AppRoutes() {
         <Route path="/ai-config" element={<AiConfigPage />} />
         <Route path="/role-profiles" element={<RoleProfilesPage />} />
         <Route path="/feedback" element={<FeedbackPage />} />
+        <Route path="/guide" element={<GuidePage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </MainLayout>

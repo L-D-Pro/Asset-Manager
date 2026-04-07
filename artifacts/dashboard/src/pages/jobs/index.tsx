@@ -36,7 +36,7 @@ function JobScoreChip({ jobId, roleProfileId, profileName }: { jobId: number; ro
 
   if (!score) return null;
 
-  const pct = Math.round(score.score * 100);
+  const pct = Math.round(score.score);
   const color =
     pct >= 70
       ? "text-green-600 border-green-300 bg-green-50"

@@ -64,7 +64,7 @@ export default function JobDetail() {
     );
   };
 
-  const scorePercent = score ? Math.round(score.score * 100) : null;
+  const scorePercent = score ? Math.round(score.score) : null;
 
   return (
     <div className="space-y-6">
@@ -215,7 +215,7 @@ export default function JobDetail() {
                           <div className="flex items-start justify-between gap-2">
                             <p className="text-sm font-medium leading-snug flex-1">{match.claim.summary}</p>
                             <Badge variant="outline" className="text-xs shrink-0">
-                              {Math.round(match.score * 100)}%
+                              {match.score} pts
                             </Badge>
                           </div>
                           <div className="flex items-center gap-2 flex-wrap">
@@ -226,7 +226,7 @@ export default function JobDetail() {
                               </span>
                             ))}
                           </div>
-                          <Progress value={match.score * 100} className="h-1" />
+                          <Progress value={Math.min(match.score * 10, 100)} className="h-1" />
                         </div>
                       ))}
                     </div>
