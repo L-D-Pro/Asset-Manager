@@ -1,8 +1,10 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { MainLayout } from "@/components/layout/main-layout";
+import { AuthProvider, useAuth } from "@/context/auth";
+import LoginPage from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import JobsList from "@/pages/jobs";
 import JobDetail from "@/pages/jobs/[id]";
@@ -14,11 +16,40 @@ import AiConfigPage from "@/pages/ai-config";
 import RoleProfilesPage from "@/pages/role-profiles";
 import FeedbackPage from "@/pages/feedback";
 import GuidePage from "@/pages/guide";
+import AccountPage from "@/pages/account";
 import NotFound from "@/pages/not-found";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error) => {
+        if (error instanceof Error && error.message.includes("401")) return false;
+        return failureCount < 2;
+      },
+    },
+  },
+});
 
-function AppRoutes() {
+/**
+ * Wraps all protected routes. Shows a spinner while auth loads,
+ * redirects to /login if unauthenticated, renders the app if authenticated.
+ */
+function ProtectedRoutes() {
+  const { user } = useAuth();
+  const location = useLocation();
+
+  if (user === undefined) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  if (user === null) {
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  }
+
   return (
     <MainLayout>
       <Routes>
@@ -33,9 +64,23 @@ function AppRoutes() {
         <Route path="/role-profiles" element={<RoleProfilesPage />} />
         <Route path="/feedback" element={<FeedbackPage />} />
         <Route path="/guide" element={<GuidePage />} />
+        <Route path="/account" element={<AccountPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </MainLayout>
+  );
+}
+
+function AppRoutes() {
+  const { user } = useAuth();
+  return (
+    <Routes>
+      <Route
+        path="/login"
+        element={user && user !== undefined ? <Navigate to="/" replace /> : <LoginPage />}
+      />
+      <Route path="/*" element={<ProtectedRoutes />} />
+    </Routes>
   );
 }
 
@@ -45,7 +90,9 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <BrowserRouter basename={base}>
-          <AppRoutes />
+          <AuthProvider>
+            <AppRoutes />
+          </AuthProvider>
         </BrowserRouter>
         <Toaster />
       </TooltipProvider>

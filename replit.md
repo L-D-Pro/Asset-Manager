@@ -112,9 +112,68 @@ Preview path: `/` (port 23183).
 
 ### Key implementation details
 - API hooks imported from `@workspace/api-client-react` (Orval-generated, Tanstack Query)
-- Wouter for client-side routing
+- All fetch calls include `credentials: "include"` for session cookies (set in `lib/api-client-react/src/custom-fetch.ts`)
 - Loading states on all slow AI mutation triggers (parse, tailor, draft)
 - Human-in-the-loop approve/reject flows are the primary user actions
 - All interactive elements have data-testid attributes
+
+## Authentication (COMPLETE)
+
+Private session-based auth. Single admin user only.
+
+### Stack
+- **Backend**: `express-session` + `connect-pg-simple` (PostgreSQL session store) + `bcryptjs` (password hashing, cost 12) + `speakeasy` (TOTP 2FA)
+- **Frontend**: `AuthContext` + protected routes via `ProtectedRoutes` component
+
+### Pages / Routes
+
+| Route | Description |
+|-------|-------------|
+| `/login` | Login page (outside MainLayout, always accessible) |
+| `/account` | Account management — change password, email, enable/disable 2FA |
+
+### API Endpoints (all at `/api/auth/...`)
+
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| POST | `/auth/login` | public | Password login, returns `{totpRequired: true}` if 2FA active |
+| POST | `/auth/login/totp` | partial | Complete 2FA login with TOTP code or recovery code |
+| POST | `/auth/logout` | public | Destroys session, clears cookie |
+| GET | `/auth/me` | public | Returns current user or 401 |
+| PUT | `/auth/password` | protected | Change password (requires current password) |
+| PUT | `/auth/email` | protected | Change email address |
+| POST | `/auth/2fa/setup` | protected | Generate TOTP secret + QR code |
+| POST | `/auth/2fa/enable` | protected | Confirm setup with TOTP code, returns 8 recovery codes |
+| POST | `/auth/2fa/disable` | protected | Disable 2FA (requires TOTP confirmation) |
+| POST | `/auth/2fa/regenerate-codes` | protected | Regenerate 8 recovery codes (requires TOTP) |
+
+### DB Tables
+- `admin_users` — single admin user: `username`, `email`, `password_hash`, `totp_secret`, `totp_enabled`, `totp_recovery_codes` (hashed JSON array)
+- `session` — express-session store (connect-pg-simple managed)
+
+### Key files
+- `lib/db/src/schema/admin-users.ts` — schema
+- `artifacts/api-server/src/app.ts` — session middleware config
+- `artifacts/api-server/src/middlewares/auth.ts` — `requireAuth` middleware
+- `artifacts/api-server/src/routes/auth.ts` — all auth routes
+- `artifacts/api-server/src/index.ts` — admin user bootstrap on startup
+- `artifacts/dashboard/src/context/auth.tsx` — AuthContext with login/logout/verifyTotp
+- `artifacts/dashboard/src/pages/login/index.tsx` — Login + TOTP verification UI
+- `artifacts/dashboard/src/pages/account/index.tsx` — Account management page
+
+### Environment Variables Required
+- `SESSION_SECRET` — random secret for signing sessions (already provisioned as a Replit secret)
+
+### Admin User Bootstrap
+On first startup, the server auto-creates the admin user from env vars:
+- `ADMIN_USERNAME` + `ADMIN_PASSWORD` (≥12 chars) + `ADMIN_EMAIL`
+- After creation, delete these vars from environment for security
+- The current admin user: username `admin`, email `admin@jobops.local` (created at deploy time)
+
+### Security Notes
+- Sessions expire after 7 days; `httpOnly`, `SameSite: lax` (dev) / `strict` (prod)
+- Timing-attack-safe login (bcrypt runs even for nonexistent users)
+- 8 bcrypt-hashed single-use recovery codes for 2FA lockout scenarios
+- All protected API routes return 401 with `{"error":"Unauthorized"}` — no route enumeration
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.

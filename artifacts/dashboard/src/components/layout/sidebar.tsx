@@ -1,8 +1,11 @@
-import { Sidebar as SidebarComponent, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
+import { Sidebar as SidebarComponent, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, Briefcase, FileText, CheckSquare, MessageSquare, Settings, UserCircle, Activity, FileCode, BookOpen } from "lucide-react";
+import { LayoutDashboard, Briefcase, FileText, CheckSquare, MessageSquare, Settings, UserCircle, Activity, FileCode, BookOpen, LogOut, User } from "lucide-react";
+import { useAuth } from "@/context/auth";
 
 export function Sidebar() {
+  const { user, logout } = useAuth();
+
   const navigation = [
     { name: "Dashboard", href: "/", icon: LayoutDashboard, exact: true },
     { name: "Jobs Pipeline", href: "/jobs", icon: Briefcase },
@@ -15,6 +18,11 @@ export function Sidebar() {
     { name: "AI Config", href: "/ai-config", icon: Settings },
     { name: "Guide", href: "/guide", icon: BookOpen },
   ];
+
+  const handleLogout = async () => {
+    await logout();
+    window.location.replace("/login");
+  };
 
   return (
     <SidebarComponent className="border-r bg-sidebar">
@@ -46,6 +54,30 @@ export function Sidebar() {
           ))}
         </SidebarMenu>
       </SidebarContent>
+      <SidebarFooter className="border-t p-2">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <NavLink to="/account" className="contents">
+              {({ isActive }) => (
+                <SidebarMenuButton isActive={isActive} tooltip="Account" asChild>
+                  <span className="flex items-center gap-3 cursor-pointer">
+                    <User className="h-4 w-4" />
+                    <span className="flex-1 text-sm">{user?.username ?? "Account"}</span>
+                  </span>
+                </SidebarMenuButton>
+              )}
+            </NavLink>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton tooltip="Sign out" asChild onClick={handleLogout}>
+              <span className="flex items-center gap-3 cursor-pointer text-muted-foreground hover:text-foreground">
+                <LogOut className="h-4 w-4" />
+                <span>Sign out</span>
+              </span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
     </SidebarComponent>
   );
 }

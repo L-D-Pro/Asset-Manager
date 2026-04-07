@@ -1,4 +1,6 @@
 import { Router, type IRouter } from "express";
+import { requireAuth } from "../middlewares/auth";
+import authRouter from "./auth";
 import healthRouter from "./health";
 import roleProfilesRouter from "./role-profiles";
 import jobsRouter from "./jobs";
@@ -14,10 +16,14 @@ import aiModelConfigsRouter from "./ai-model-configs";
  * Root API router. Aggregates all entity-specific sub-routers and mounts them
  * at the `/api` prefix (set in `app.ts`).
  *
- * Each sub-router owns all routes for its entity group:
- * - `healthRouter`            — GET /healthz
+ * Auth routes and health check are mounted WITHOUT `requireAuth` so they remain public.
+ * All other routes are gated behind `requireAuth`, which validates the session.
+ *
+ * Route groups:
+ * - `authRouter`              — POST /auth/login, /auth/logout, /auth/login/totp, GET /auth/me, etc.
+ * - `healthRouter`            — GET /healthz (public — used by load balancers)
  * - `roleProfilesRouter`      — CRUD /role-profiles
- * - `jobsRouter`              — CRUD /jobs + AI trigger sub-routes (parse, score, tailor, cover-letter)
+ * - `jobsRouter`              — CRUD /jobs + AI trigger sub-routes
  * - `claimsRouter`            — CRUD /claims
  * - `resumeVersionsRouter`    — CRUD /resume-versions + approve/reject state machine
  * - `coverLetterVersionsRouter` — CRUD /cover-letter-versions + approve/reject
@@ -28,7 +34,12 @@ import aiModelConfigsRouter from "./ai-model-configs";
  */
 const router: IRouter = Router();
 
+// Public routes — no auth required
+router.use(authRouter);
 router.use(healthRouter);
+
+// Protected routes — require a valid authenticated session
+router.use(requireAuth);
 router.use(roleProfilesRouter);
 router.use(jobsRouter);
 router.use(claimsRouter);

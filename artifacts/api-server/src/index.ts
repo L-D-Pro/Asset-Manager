@@ -1,16 +1,57 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { db } from "@workspace/db";
+import { adminUsersTable } from "@workspace/db";
+import bcrypt from "bcryptjs";
 
 /**
  * API server entry point.
  *
  * Reads the `PORT` environment variable and starts the Express HTTP server.
- * Throws immediately on startup if `PORT` is absent or not a positive integer —
- * a missing port is a misconfiguration that should surface loudly rather than
- * silently binding to a default.
+ * Throws immediately on startup if `PORT` is absent or not a positive integer.
  *
- * The Replit workflow system injects `PORT` automatically for each registered artifact.
+ * Also runs a one-time admin user bootstrap if:
+ *  - No admin user exists in the database, AND
+ *  - ADMIN_USERNAME + ADMIN_PASSWORD environment variables are set.
+ *
+ * This lets you create the initial account on first deploy without running
+ * a separate CLI script.
  */
+
+/**
+ * Bootstrap the admin user if none exists.
+ * Reads ADMIN_USERNAME, ADMIN_PASSWORD, ADMIN_EMAIL from environment.
+ * Safe to call on every startup — exits silently if user already exists.
+ */
+async function bootstrapAdminUser() {
+  const existing = await db.select({ id: adminUsersTable.id }).from(adminUsersTable).limit(1);
+  if (existing.length > 0) return; // Already set up
+
+  const username = (process.env.ADMIN_USERNAME ?? "").toLowerCase().trim();
+  const password = process.env.ADMIN_PASSWORD ?? "";
+  const email = process.env.ADMIN_EMAIL ?? "admin@localhost";
+
+  if (!username || !password) {
+    logger.warn(
+      "No admin user found. Set ADMIN_USERNAME and ADMIN_PASSWORD environment variables " +
+      "to auto-create one on next startup."
+    );
+    return;
+  }
+
+  if (password.length < 12) {
+    logger.error("ADMIN_PASSWORD must be at least 12 characters. Admin user NOT created.");
+    return;
+  }
+
+  const passwordHash = await bcrypt.hash(password, 12);
+  await db.insert(adminUsersTable).values({ username, email, passwordHash });
+  logger.info({ username, email }, "Admin user created from environment variables.");
+  logger.warn(
+    "Remove ADMIN_USERNAME and ADMIN_PASSWORD from environment after first login for security."
+  );
+}
+
 const rawPort = process.env["PORT"];
 
 if (!rawPort) {
@@ -24,6 +65,11 @@ const port = Number(rawPort);
 if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
+
+// Bootstrap admin user before accepting connections
+bootstrapAdminUser().catch((err) => {
+  logger.error({ err }, "Admin bootstrap failed");
+});
 
 app.listen(port, (err) => {
   if (err) {
