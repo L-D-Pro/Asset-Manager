@@ -1,6 +1,16 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 
+/**
+ * API server entry point.
+ *
+ * Reads the `PORT` environment variable and starts the Express HTTP server.
+ * Throws immediately on startup if `PORT` is absent or not a positive integer —
+ * a missing port is a misconfiguration that should surface loudly rather than
+ * silently binding to a default.
+ *
+ * The Replit workflow system injects `PORT` automatically for each registered artifact.
+ */
 const rawPort = process.env["PORT"];
 
 if (!rawPort) {

@@ -1,6 +1,11 @@
 # Data Model Reference
 
-All tables are defined with Drizzle ORM in `lib/db/src/schema/`. The DB client is exported from `lib/db/src/client.ts`. Every table has `createdAt` and `updatedAt` timestamps (UTC with timezone).
+All tables are defined with Drizzle ORM in `lib/db/src/schema/`. The DB client is exported from `lib/db/src/client.ts`. Every table has `createdAt` and `updatedAt` timestamps (UTC with timezone) unless noted otherwise.
+
+**11 tables in total** (exported from `lib/db/src/schema/index.ts`):
+`role_profiles`, `jobs`, `claims`, `resume_versions`, `cover_letter_versions`,
+`applications`, `event_logs`, `feedback_signals`, `ai_model_configs`,
+`conversations`, `messages`
 
 ## Entity-Relationship Summary
 
@@ -214,3 +219,39 @@ Per-task AI model routing configuration. Supports multiple active models per tas
 **Indexes**: `(task_scope, is_active)`, `(task_scope)`.
 
 **Self-referential fallback chain**: the `fallback_model_id` column creates a linked list of models. The model router follows this chain, detecting cycles via a visited set to prevent infinite loops.
+
+---
+
+## `conversations`
+
+Persistent chat threads for in-app AI assistance. Groups a sequence of `messages` exchanged between the user and the AI assistant.
+
+Intended for future in-dashboard AI chat features (e.g. "Explain why this claim matches this job", "Suggest a stronger phrasing").
+
+Note: this table has only a `createdAt` timestamp (no `updatedAt`).
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | serial | PK | Auto-increment |
+| `title` | text | NOT NULL | Human-readable conversation title (e.g. auto-generated from first message) |
+
+**Indexes**: none beyond PK.
+
+---
+
+## `messages`
+
+Individual turns within a `conversations` thread. Records a single exchange between the user and the AI.
+
+`role` values follow the OpenAI/OpenRouter convention: `"user"` (human), `"assistant"` (AI), `"system"` (injected context). Messages are cascade-deleted when their parent conversation is deleted.
+
+Note: this table has only a `createdAt` timestamp (no `updatedAt`).
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | serial | PK | Auto-increment |
+| `conversation_id` | integer | FK → `conversations.id` ON DELETE CASCADE, NOT NULL | The conversation this message belongs to |
+| `role` | text | NOT NULL | Message role: `"user"`, `"assistant"`, or `"system"` |
+| `content` | text | NOT NULL | Full text content of the message |
+
+**Indexes**: none beyond PK.
