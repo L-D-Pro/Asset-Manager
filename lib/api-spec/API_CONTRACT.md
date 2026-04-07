@@ -24,7 +24,7 @@ Two outputs are configured:
 - **Client**: `react-query` (TanStack Query v5)
 - **Mode**: `split` (one file per endpoint group)
 - **Base URL**: `/api`
-- **Mutator**: `lib/api-client-react/src/custom-fetch.ts` — a thin wrapper around `fetch` that reads the `BASE_PATH` environment variable to construct the correct URL for Replit's path-based proxy routing.
+- **Mutator**: `lib/api-client-react/src/custom-fetch.ts` — a custom fetch wrapper with configurable base URL (set at runtime via `setBaseUrl()`), bearer-token auth injection (`setAuthTokenGetter()`), and structured error handling via `ApiError` and `ResponseParseError` classes. The dashboard calls `setBaseUrl()` with the appropriate base path for Replit's path-based proxy routing.
 - The title is normalised to `"Api"` via `titleTransformer` so the generated filename is always `api.ts`.
 
 ### `zod` output
@@ -138,7 +138,7 @@ Event logs are read-only. No create/update/delete endpoints are exposed.
 ### Health
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/health` | Health check — returns `{ status: "ok" }` |
+| GET | `/healthz` | Health check — returns `{ status: "ok" }` |
 
 ## Zod Validation Strategy
 

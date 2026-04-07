@@ -15,7 +15,7 @@ import aiModelConfigsRouter from "./ai-model-configs";
  * at the `/api` prefix (set in `app.ts`).
  *
  * Each sub-router owns all routes for its entity group:
- * - `healthRouter`            — GET /health
+ * - `healthRouter`            — GET /healthz
  * - `roleProfilesRouter`      — CRUD /role-profiles
  * - `jobsRouter`              — CRUD /jobs + AI trigger sub-routes (parse, score, tailor, cover-letter)
  * - `claimsRouter`            — CRUD /claims

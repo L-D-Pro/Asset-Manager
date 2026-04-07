@@ -7,7 +7,7 @@ Build history for the four planned implementation phases. All four tasks are com
 **Status: COMPLETE**
 
 **What it delivers**:
-- Full PostgreSQL schema via Drizzle ORM (9 tables): `role_profiles`, `jobs`, `claims`, `resume_versions`, `cover_letter_versions`, `applications`, `event_logs`, `feedback_signals`, `ai_model_configs`
+- Full PostgreSQL schema via Drizzle ORM (11 tables): `role_profiles`, `jobs`, `claims`, `resume_versions`, `cover_letter_versions`, `applications`, `event_logs`, `feedback_signals`, `ai_model_configs`, `conversations`, `messages`
 - All table schemas with constraints, indexes, relationships, and `drizzle-zod` insert schemas
 - OpenAPI spec (`lib/api-spec/openapi.yaml`) with 55+ endpoint definitions covering all CRUD operations and AI-trigger routes
 - Orval codegen config generating two downstream packages: `@workspace/api-client-react` (TanStack Query hooks) and `@workspace/api-zod` (Zod validation schemas)
