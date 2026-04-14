@@ -82,11 +82,11 @@ Job Ops is a **private admin dashboard** that helps one person (you, the founder
 
 > **Test-phase MVP: YES** — with two conditions noted below.
 
-**Rationale**: All CRUD flows work without manual DB edits. Data persists reliably in PostgreSQL. The human-in-the-loop approval workflow (diff review, thumbs up/down, revision notes) is fully functional. The Claims Ledger enforces truth-locking. AI Config is editable in the UI. The app is ready for private testing **as long as** you have an OpenRouter API key configured and you are aware of the score display bug (now fixed) and the lack of authentication.
+**Rationale**: All CRUD flows work without manual DB edits. Data persists reliably in PostgreSQL. The human-in-the-loop approval workflow (diff review, thumbs up/down, revision notes) is fully functional. The Claims Ledger enforces truth-locking. AI Config is editable in the UI. The app is ready for private testing **as long as** you have an OpenRouter API key configured and your production deployment is configured with the correct session/auth environment variables.
 
 **Conditions**:
 1. **OpenRouter API key must be set** in the environment (`AI_INTEGRATIONS_OPENROUTER_API_KEY`). Without it, all AI pipeline buttons will return errors. The app will not crash, but AI features will be non-functional.
-2. **No authentication layer**: The dashboard is fully open. Do not expose it to the internet without adding authentication (Clerk, Replit Auth, or similar).
+2. **Session auth must be configured correctly**: Set `SESSION_SECRET`, bootstrap the admin account on first startup, and remove the `ADMIN_*` env vars after the first successful login.
 
 ---
 
@@ -512,12 +512,12 @@ Enter `costPerInputToken` and `costPerOutputToken` values (in USD per token) whe
 | BUG-01 | High | **Score display: 10000% instead of 100%** — `JobScoreChip` did `Math.round(score.score * 100)` but API returns score as an already-normalized 0–100 integer | ✅ Fixed: changed to `Math.round(score.score)` in both `jobs/index.tsx` and `jobs/[id].tsx` |
 | BUG-02 | Medium | **Claim match score displayed as percentage** — claim match score is a raw keyword-overlap integer (e.g., 3, 6, 9), not a fraction. UI displayed it as `300%`, `600%`, etc. | ✅ Fixed: changed to `{match.score} pts` and capped progress bar at `Math.min(match.score * 10, 100)` |
 | BUG-03 | Low | **Score missing when no Role Profile assigned** — jobs with no profile-specific score show no chip, which may be confusing | Not fixed (UI design decision — document as known limitation) |
-| BUG-04 | Medium | **No auth layer** — dashboard is fully open to anyone with the URL | Documented; requires auth before public exposure |
+| BUG-04 | Medium | **Production auth hardening required** — secure cookie behavior depends on correct proxy/env setup | ✅ Fixed in code: production now trusts the proxy and uses session auth + TOTP |
 | BUG-05 | Low | **Feedback Signals page is sparse** — minimal UI, no data visualization | Documented as known limitation |
 
 ### Risk Areas
 
-- **AI calls with no key**: All three pipeline buttons (`Parse JD`, `Tailor Resume`, `Draft Cover Letter`) fail silently with an error toast. The error message from OpenRouter is not surfaced to the UI — you only see "Failed to parse/tailor/draft". Check API server logs for the underlying error.
+- **AI calls with no key**: All three pipeline buttons (`Parse JD`, `Tailor Resume`, `Draft Cover Letter`) fail with destructive toasts that now include the server error message when available. Check API server logs for full request context.
 - **Score after DB reset**: If you delete all claims, scores become 0 for all jobs. This is expected but not obviously communicated.
 - **Large JD text**: Very long job descriptions (>10k tokens) may hit OpenRouter context limits or increase cost significantly.
 
@@ -610,7 +610,7 @@ If you hit a rate limit, the error will appear in API server logs as an HTTP 429
 
 | Area | Limitation | Workaround |
 |------|-----------|------------|
-| **Authentication** | No auth — anyone with the URL can access everything | Don't expose publicly; use Replit private deployment |
+| **Authentication** | Single-admin session auth only — this is not a multi-user product | Keep the deployment private and protect the admin credentials carefully |
 | **AI polling** | Dashboard does not auto-poll for AI completion | Manually navigate to Resumes/Cover Letters queue after running AI actions |
 | **Job URL import** | "Source URL" field is stored but not scraped — you must paste JD text manually | Copy/paste JD text into the Raw JD Text field |
 | **Resume base document** | The tailor pipeline generates a diff, but there is no stored "base resume" document — the diff is relative to claims only | Keep your base resume as a separate document; apply the diff manually |
@@ -630,7 +630,7 @@ If you hit a rate limit, the error will appear in API server logs as an HTTP 429
 
 | # | Improvement | Effort |
 |---|-------------|--------|
-| P0-1 | **Add authentication** (Clerk or Replit Auth) — the entire dashboard is currently open | ~1 day |
+| P0-1 | **Finalize deployment hardening for the existing session auth layer** — verify envs, secure cookies, admin bootstrap removal, and smoke tests | ~2 hours |
 | P0-2 | **Surface AI error details in the UI** — currently shows generic "Failed to X" toast; log the actual error message | 2 hours |
 | P0-3 | **Auto-refresh Resumes/Cover Letters queue** after AI pipeline actions (or add a polling indicator) | 2 hours |
 

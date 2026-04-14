@@ -17,6 +17,7 @@ import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { getListJobsQueryKey } from "@workspace/api-client-react";
+import { getErrorMessage } from "@/lib/api-errors";
 
 const createJobSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -98,8 +99,12 @@ export default function JobsPage() {
           form.reset();
           queryClient.invalidateQueries({ queryKey: getListJobsQueryKey() });
         },
-        onError: () => {
-          toast({ title: "Failed to ingest job", variant: "destructive" });
+        onError: (error) => {
+          toast({
+            title: "Failed to ingest job",
+            description: getErrorMessage(error, "Please try again."),
+            variant: "destructive",
+          });
         },
       }
     );

@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { useState } from "react";
+import { getErrorMessage } from "@/lib/api-errors";
 
 type DiffData = {
   addedBullets?: string[];
@@ -28,6 +29,45 @@ type DiffData = {
   bulletsPassedValidation?: number;
   bulletsDiscarded?: number;
 };
+
+function DocumentPreview({
+  content,
+  baseResumeVersionId,
+}: {
+  content: string | null | undefined;
+  baseResumeVersionId: number | null | undefined;
+}) {
+  if (!content) {
+    return (
+      <Alert variant="default" className="border-dashed">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          No full tailored draft was stored for this version.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+          Tailored Draft
+        </p>
+        {baseResumeVersionId != null && (
+          <Badge variant="outline" className="text-xs">
+            Base Resume #{baseResumeVersionId}
+          </Badge>
+        )}
+      </div>
+      <div className="rounded-md border bg-muted/20 p-4">
+        <pre className="whitespace-pre-wrap break-words text-sm leading-6 font-sans">
+          {content}
+        </pre>
+      </div>
+    </div>
+  );
+}
 
 type ChangeDecision = "accept" | "reject" | "pending";
 type VersionDecisions = Record<string, ChangeDecision>;
@@ -238,7 +278,12 @@ export default function ResumeVersionsPage() {
           toast({ title: total > 0 ? "Resume version approved with change decisions recorded" : "Resume version approved" });
           queryClient.invalidateQueries({ queryKey: getListResumeVersionsQueryKey() });
         },
-        onError: () => toast({ title: "Failed to approve", variant: "destructive" })
+        onError: (error) =>
+          toast({
+            title: "Failed to approve resume version",
+            description: getErrorMessage(error, "Please try again."),
+            variant: "destructive",
+          })
       });
     };
     if (total > 0 && diffData) {
@@ -258,7 +303,12 @@ export default function ResumeVersionsPage() {
         toast({ title: "Resume version rejected" });
         queryClient.invalidateQueries({ queryKey: getListResumeVersionsQueryKey() });
       },
-      onError: () => toast({ title: "Failed to reject", variant: "destructive" })
+      onError: (error) =>
+        toast({
+          title: "Failed to reject resume version",
+          description: getErrorMessage(error, "Please try again."),
+          variant: "destructive",
+        })
     });
   };
 
@@ -283,6 +333,8 @@ export default function ResumeVersionsPage() {
           versions?.map((version) => {
             const diffData = version.diffData as DiffData | null | undefined;
             const hasDiff = diffData && hasDiffContent(diffData);
+            const hasDocument = Boolean(version.tailoredDocumentText);
+            const shouldShowReview = hasDiff || hasDocument;
             const versionDecisions = hasDiff ? getDecisions(version.id, diffData) : {};
             const totalDecisions = Object.keys(versionDecisions).length;
             const pendingCount = Object.values(versionDecisions).filter(d => d === "pending").length;
@@ -357,11 +409,15 @@ export default function ResumeVersionsPage() {
                     </div>
                   </div>
                 </CardHeader>
-                {hasDiff && (
+                {shouldShowReview && (
                   <>
                     <Separator />
                     <CardContent className="pt-4 space-y-3">
-                      {version.status === "pending_approval" && hasPending && (
+                      <DocumentPreview
+                        content={version.tailoredDocumentText}
+                        baseResumeVersionId={version.baseResumeVersionId}
+                      />
+                      {version.status === "pending_approval" && hasDiff && hasPending && (
                         <Alert variant="default" className="border-orange-200 bg-orange-50">
                           <AlertCircle className="h-4 w-4 text-orange-600" />
                           <AlertDescription className="text-orange-800 text-xs">
@@ -369,15 +425,19 @@ export default function ResumeVersionsPage() {
                           </AlertDescription>
                         </Alert>
                       )}
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                        Per-Change Review
-                      </p>
-                      <DiffReview
-                        diffData={diffData}
-                        versionId={version.id}
-                        decisions={versionDecisions}
-                        onDecide={handleDecide(version.id)}
-                      />
+                      {hasDiff && (
+                        <>
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                            Per-Change Review
+                          </p>
+                          <DiffReview
+                            diffData={diffData}
+                            versionId={version.id}
+                            decisions={versionDecisions}
+                            onDecide={handleDecide(version.id)}
+                          />
+                        </>
+                      )}
                     </CardContent>
                   </>
                 )}

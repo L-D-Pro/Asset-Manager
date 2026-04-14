@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Building, MapPin, ExternalLink, ArrowLeft, Wand2, AlertCircle, Tag } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { getErrorMessage } from "@/lib/api-errors";
 
 export default function JobDetail() {
   const { id } = useParams<{ id: string }>();
@@ -39,7 +40,12 @@ export default function JobDetail() {
           toast({ title: "Parsing started" });
           queryClient.invalidateQueries({ queryKey: getGetJobQueryKey(jobId) });
         },
-        onError: () => toast({ title: "Failed to parse", variant: "destructive" })
+        onError: (error) =>
+          toast({
+            title: "Failed to parse job description",
+            description: getErrorMessage(error, "Please try again."),
+            variant: "destructive",
+          })
       }
     );
   };
@@ -49,7 +55,12 @@ export default function JobDetail() {
       { id: jobId, data: {} },
       {
         onSuccess: () => toast({ title: "Resume tailoring started" }),
-        onError: () => toast({ title: "Failed to tailor resume", variant: "destructive" })
+        onError: (error) =>
+          toast({
+            title: "Failed to tailor resume",
+            description: getErrorMessage(error, "Please try again."),
+            variant: "destructive",
+          })
       }
     );
   };
@@ -59,7 +70,12 @@ export default function JobDetail() {
       { id: jobId, data: {} },
       {
         onSuccess: () => toast({ title: "Cover letter drafting started" }),
-        onError: () => toast({ title: "Failed to draft cover letter", variant: "destructive" })
+        onError: (error) =>
+          toast({
+            title: "Failed to draft cover letter",
+            description: getErrorMessage(error, "Please try again."),
+            variant: "destructive",
+          })
       }
     );
   };

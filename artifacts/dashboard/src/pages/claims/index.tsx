@@ -16,6 +16,7 @@ import * as z from "zod";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { getErrorMessage } from "@/lib/api-errors";
 
 const claimSchema = z.object({
   summary: z.string().min(1, "Summary is required"),
@@ -82,6 +83,12 @@ export default function ClaimsPage() {
             handleCloseDialog();
             queryClient.invalidateQueries({ queryKey: getListClaimsQueryKey() });
           },
+          onError: (error) =>
+            toast({
+              title: "Failed to update claim",
+              description: getErrorMessage(error, "Please try again."),
+              variant: "destructive",
+            }),
         }
       );
     } else {
@@ -93,6 +100,12 @@ export default function ClaimsPage() {
             handleCloseDialog();
             queryClient.invalidateQueries({ queryKey: getListClaimsQueryKey() });
           },
+          onError: (error) =>
+            toast({
+              title: "Failed to create claim",
+              description: getErrorMessage(error, "Please try again."),
+              variant: "destructive",
+            }),
         }
       );
     }
@@ -119,6 +132,12 @@ export default function ClaimsPage() {
           toast({ title: claim.isActive ? "Claim deactivated" : "Claim activated" });
           queryClient.invalidateQueries({ queryKey: getListClaimsQueryKey() });
         },
+        onError: (error) =>
+          toast({
+            title: "Failed to update claim status",
+            description: getErrorMessage(error, "Please try again."),
+            variant: "destructive",
+          }),
       }
     );
   };
@@ -132,6 +151,12 @@ export default function ClaimsPage() {
             toast({ title: "Claim deleted" });
             queryClient.invalidateQueries({ queryKey: getListClaimsQueryKey() });
           },
+          onError: (error) =>
+            toast({
+              title: "Failed to delete claim",
+              description: getErrorMessage(error, "Please try again."),
+              variant: "destructive",
+            }),
         }
       );
     }

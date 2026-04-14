@@ -11,6 +11,7 @@ import { Link } from "react-router-dom";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { getErrorMessage } from "@/lib/api-errors";
 
 type AnnotatedParagraph = {
   text: string;
@@ -53,7 +54,12 @@ export default function CoverLettersPage() {
           toast({ title: "Cover letter approved" });
           queryClient.invalidateQueries({ queryKey: getListCoverLetterVersionsQueryKey() });
         },
-        onError: () => toast({ title: "Failed to approve", variant: "destructive" })
+        onError: (error) =>
+          toast({
+            title: "Failed to approve cover letter",
+            description: getErrorMessage(error, "Please try again."),
+            variant: "destructive",
+          })
       }
     );
   };
@@ -69,7 +75,12 @@ export default function CoverLettersPage() {
             setRevisionTarget(null);
             setRevisionNote("");
           },
-          onError: () => toast({ title: "Failed to reject", variant: "destructive" })
+          onError: (error) =>
+            toast({
+              title: "Failed to reject cover letter",
+              description: getErrorMessage(error, "Please try again."),
+              variant: "destructive",
+            })
         }
       );
     };

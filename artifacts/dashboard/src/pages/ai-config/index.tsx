@@ -16,6 +16,7 @@ import * as z from "zod";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { getErrorMessage } from "@/lib/api-errors";
 
 const TASK_SCOPES = [
   "default",
@@ -84,7 +85,12 @@ export default function AiConfigPage() {
           handleClose();
           queryClient.invalidateQueries({ queryKey: getListAiModelConfigsQueryKey() });
         },
-        onError: () => toast({ title: "Failed to update", variant: "destructive" })
+        onError: (error) =>
+          toast({
+            title: "Failed to update AI config",
+            description: getErrorMessage(error, "Please try again."),
+            variant: "destructive",
+          })
       });
     } else {
       createConfig.mutate({ data: payload }, {
@@ -93,7 +99,12 @@ export default function AiConfigPage() {
           handleClose();
           queryClient.invalidateQueries({ queryKey: getListAiModelConfigsQueryKey() });
         },
-        onError: () => toast({ title: "Failed to create", variant: "destructive" })
+        onError: (error) =>
+          toast({
+            title: "Failed to create AI config",
+            description: getErrorMessage(error, "Please try again."),
+            variant: "destructive",
+          })
       });
     }
   };
@@ -121,7 +132,13 @@ export default function AiConfigPage() {
         onSuccess: () => {
           toast({ title: "Config deleted" });
           queryClient.invalidateQueries({ queryKey: getListAiModelConfigsQueryKey() });
-        }
+        },
+        onError: (error) =>
+          toast({
+            title: "Failed to delete AI config",
+            description: getErrorMessage(error, "Please try again."),
+            variant: "destructive",
+          }),
       });
     }
   };

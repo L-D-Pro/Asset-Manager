@@ -20,17 +20,20 @@ import type {
   AiModelConfig,
   Application,
   ApplicationStats,
+  BaseResumeVersion,
   Claim,
   ClaimMatch,
   CoverLetterVersion,
   CreateAiModelConfigBody,
   CreateApplicationBody,
+  CreateBaseResumeBody,
   CreateClaimBody,
   CreateEventLogBody,
   CreateFeedbackSignalBody,
   CreateJobBody,
   CreateRoleProfileBody,
   DraftCoverLetterBody,
+  ErrorResponse,
   EventLog,
   FeedbackSignal,
   HealthStatus,
@@ -62,10 +65,6 @@ import type {
 
 import { customFetch } from "../custom-fetch";
 import type { ErrorType, BodyType } from "../custom-fetch";
-
-type AwaitedInput<T> = PromiseLike<T> | T;
-
-type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
@@ -562,6 +561,326 @@ export const useDeleteRoleProfile = <
   TContext
 > => {
   return useMutation(getDeleteRoleProfileMutationOptions(options));
+};
+
+/**
+ * @summary Get the current base resume
+ */
+export const getGetBaseResumeUrl = () => {
+  return `/api/base-resume`;
+};
+
+export const getBaseResume = async (
+  options?: RequestInit,
+): Promise<BaseResumeVersion> => {
+  return customFetch<BaseResumeVersion>(getGetBaseResumeUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetBaseResumeQueryKey = () => {
+  return [`/api/base-resume`] as const;
+};
+
+export const getGetBaseResumeQueryOptions = <
+  TData = Awaited<ReturnType<typeof getBaseResume>>,
+  TError = ErrorType<NotFoundResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getBaseResume>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetBaseResumeQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getBaseResume>>> = ({
+    signal,
+  }) => getBaseResume({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getBaseResume>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetBaseResumeQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getBaseResume>>
+>;
+export type GetBaseResumeQueryError = ErrorType<NotFoundResponse>;
+
+/**
+ * @summary Get the current base resume
+ */
+
+export function useGetBaseResume<
+  TData = Awaited<ReturnType<typeof getBaseResume>>,
+  TError = ErrorType<NotFoundResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getBaseResume>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetBaseResumeQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Save a new current base resume version
+ */
+export const getCreateBaseResumeUrl = () => {
+  return `/api/base-resume`;
+};
+
+export const createBaseResume = async (
+  createBaseResumeBody: CreateBaseResumeBody,
+  options?: RequestInit,
+): Promise<BaseResumeVersion> => {
+  return customFetch<BaseResumeVersion>(getCreateBaseResumeUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createBaseResumeBody),
+  });
+};
+
+export const getCreateBaseResumeMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createBaseResume>>,
+    TError,
+    { data: BodyType<CreateBaseResumeBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createBaseResume>>,
+  TError,
+  { data: BodyType<CreateBaseResumeBody> },
+  TContext
+> => {
+  const mutationKey = ["createBaseResume"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createBaseResume>>,
+    { data: BodyType<CreateBaseResumeBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createBaseResume(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateBaseResumeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createBaseResume>>
+>;
+export type CreateBaseResumeMutationBody = BodyType<CreateBaseResumeBody>;
+export type CreateBaseResumeMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Save a new current base resume version
+ */
+export const useCreateBaseResume = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createBaseResume>>,
+    TError,
+    { data: BodyType<CreateBaseResumeBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createBaseResume>>,
+  TError,
+  { data: BodyType<CreateBaseResumeBody> },
+  TContext
+> => {
+  return useMutation(getCreateBaseResumeMutationOptions(options));
+};
+
+/**
+ * @summary List base resume version history
+ */
+export const getListBaseResumeHistoryUrl = () => {
+  return `/api/base-resume/history`;
+};
+
+export const listBaseResumeHistory = async (
+  options?: RequestInit,
+): Promise<BaseResumeVersion[]> => {
+  return customFetch<BaseResumeVersion[]>(getListBaseResumeHistoryUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListBaseResumeHistoryQueryKey = () => {
+  return [`/api/base-resume/history`] as const;
+};
+
+export const getListBaseResumeHistoryQueryOptions = <
+  TData = Awaited<ReturnType<typeof listBaseResumeHistory>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listBaseResumeHistory>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListBaseResumeHistoryQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listBaseResumeHistory>>
+  > = ({ signal }) => listBaseResumeHistory({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listBaseResumeHistory>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListBaseResumeHistoryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listBaseResumeHistory>>
+>;
+export type ListBaseResumeHistoryQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List base resume version history
+ */
+
+export function useListBaseResumeHistory<
+  TData = Awaited<ReturnType<typeof listBaseResumeHistory>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listBaseResumeHistory>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListBaseResumeHistoryQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Restore a historical base resume version as the new current version
+ */
+export const getRestoreBaseResumeVersionUrl = (id: number) => {
+  return `/api/base-resume/${id}/restore`;
+};
+
+export const restoreBaseResumeVersion = async (
+  id: number,
+  options?: RequestInit,
+): Promise<BaseResumeVersion> => {
+  return customFetch<BaseResumeVersion>(getRestoreBaseResumeVersionUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getRestoreBaseResumeVersionMutationOptions = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof restoreBaseResumeVersion>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof restoreBaseResumeVersion>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["restoreBaseResumeVersion"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof restoreBaseResumeVersion>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return restoreBaseResumeVersion(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RestoreBaseResumeVersionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof restoreBaseResumeVersion>>
+>;
+
+export type RestoreBaseResumeVersionMutationError = ErrorType<NotFoundResponse>;
+
+/**
+ * @summary Restore a historical base resume version as the new current version
+ */
+export const useRestoreBaseResumeVersion = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof restoreBaseResumeVersion>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof restoreBaseResumeVersion>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getRestoreBaseResumeVersionMutationOptions(options));
 };
 
 /**
@@ -1285,7 +1604,7 @@ export const tailorJobResume = async (
 };
 
 export const getTailorJobResumeMutationOptions = <
-  TError = ErrorType<NotFoundResponse>,
+  TError = ErrorType<ErrorResponse | NotFoundResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1326,13 +1645,15 @@ export type TailorJobResumeMutationResult = NonNullable<
   Awaited<ReturnType<typeof tailorJobResume>>
 >;
 export type TailorJobResumeMutationBody = BodyType<TailorResumeBody>;
-export type TailorJobResumeMutationError = ErrorType<NotFoundResponse>;
+export type TailorJobResumeMutationError = ErrorType<
+  ErrorResponse | NotFoundResponse
+>;
 
 /**
  * @summary AI-tailor resume for a job (creates a ResumeVersion)
  */
 export const useTailorJobResume = <
-  TError = ErrorType<NotFoundResponse>,
+  TError = ErrorType<ErrorResponse | NotFoundResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<

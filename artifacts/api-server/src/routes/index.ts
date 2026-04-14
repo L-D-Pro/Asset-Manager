@@ -3,6 +3,7 @@ import { requireAuth } from "../middlewares/auth";
 import authRouter from "./auth";
 import healthRouter from "./health";
 import roleProfilesRouter from "./role-profiles";
+import baseResumeRouter from "./base-resume";
 import jobsRouter from "./jobs";
 import claimsRouter from "./claims";
 import resumeVersionsRouter from "./resume-versions";
@@ -41,6 +42,7 @@ router.use(healthRouter);
 // Protected routes — require a valid authenticated session
 router.use(requireAuth);
 router.use(roleProfilesRouter);
+router.use(baseResumeRouter);
 router.use(jobsRouter);
 router.use(claimsRouter);
 router.use(resumeVersionsRouter);

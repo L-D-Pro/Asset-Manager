@@ -10,6 +10,7 @@ import {
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { jobsTable } from "./jobs";
+import { baseResumeVersionsTable } from "./base-resume-versions";
 
 /**
  * Resume versions — AI-tailored resume drafts awaiting human approval.
@@ -36,6 +37,17 @@ export const resumeVersionsTable = pgTable(
       onDelete: "cascade",
     }),
 
+    /**
+     * The exact base resume version used as the source-of-truth input when this
+     * tailored draft was generated.
+     */
+    baseResumeVersionId: integer("base_resume_version_id").references(
+      () => baseResumeVersionsTable.id,
+      {
+        onDelete: "set null",
+      },
+    ),
+
     /** Human-readable label (e.g. "AI tailored — Jun 15, 2025"). Auto-set by the pipeline. */
     label: text("label"),
 
@@ -44,6 +56,9 @@ export const resumeVersionsTable = pgTable(
      * Values: `pending_approval`, `approved`, `rejected`
      */
     status: text("status").notNull().default("pending_approval"),
+
+    /** Full tailored plain-text resume draft generated from the base resume. */
+    tailoredDocumentText: text("tailored_document_text"),
 
     /**
      * Array of validated tailored bullet objects.
@@ -85,6 +100,9 @@ export const resumeVersionsTable = pgTable(
   },
   (table) => [
     index("resume_versions_job_id_idx").on(table.jobId),
+    index("resume_versions_base_resume_version_id_idx").on(
+      table.baseResumeVersionId,
+    ),
     index("resume_versions_status_idx").on(table.status),
   ],
 );

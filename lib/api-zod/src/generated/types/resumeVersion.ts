@@ -11,8 +11,12 @@ export interface ResumeVersion {
   /** @nullable */
   jobId?: number | null;
   /** @nullable */
+  baseResumeVersionId?: number | null;
+  /** @nullable */
   label?: string | null;
   status: string;
+  /** @nullable */
+  tailoredDocumentText?: string | null;
   /** Array of bullet objects with claim attribution */
   tailoredBullets?: unknown;
   /** Structured diff showing added/removed/reordered bullets */

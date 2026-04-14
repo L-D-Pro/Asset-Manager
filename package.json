@@ -2,11 +2,17 @@
   "name": "workspace",
   "version": "0.0.0",
   "license": "MIT",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": "24.x",
+    "pnpm": "10.x"
+  },
   "scripts": {
     "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
-    "build": "pnpm run typecheck && pnpm -r --if-present run build",
+    "build": "corepack pnpm run typecheck && corepack pnpm --filter @workspace/api-server run build && corepack pnpm --filter @workspace/dashboard run build && corepack pnpm --filter @workspace/mockup-sandbox run build",
     "typecheck:libs": "tsc --build",
-    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
+    "typecheck": "corepack pnpm run typecheck:libs && corepack pnpm --filter @workspace/api-server run typecheck && corepack pnpm --filter @workspace/dashboard run typecheck && corepack pnpm --filter @workspace/mockup-sandbox run typecheck && corepack pnpm --filter @workspace/scripts run typecheck",
+    "smoke:test": "corepack pnpm --filter @workspace/scripts run smoke:test"
   },
   "private": true,
   "devDependencies": {

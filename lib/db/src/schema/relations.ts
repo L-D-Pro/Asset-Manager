@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm";
 import { roleProfilesTable } from "./role-profiles";
+import { baseResumeVersionsTable } from "./base-resume-versions";
 import { jobsTable } from "./jobs";
 import { claimsTable } from "./claims";
 import { resumeVersionsTable } from "./resume-versions";
@@ -13,6 +14,13 @@ export const roleProfilesRelations = relations(
   roleProfilesTable,
   ({ many }) => ({
     jobs: many(jobsTable),
+  }),
+);
+
+export const baseResumeVersionsRelations = relations(
+  baseResumeVersionsTable,
+  ({ many }) => ({
+    resumeVersions: many(resumeVersionsTable),
   }),
 );
 
@@ -35,6 +43,10 @@ export const resumeVersionsRelations = relations(
     job: one(jobsTable, {
       fields: [resumeVersionsTable.jobId],
       references: [jobsTable.id],
+    }),
+    baseResumeVersion: one(baseResumeVersionsTable, {
+      fields: [resumeVersionsTable.baseResumeVersionId],
+      references: [baseResumeVersionsTable.id],
     }),
     applications: many(applicationsTable),
     feedbackSignals: many(feedbackSignalsTable),

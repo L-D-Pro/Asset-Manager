@@ -12,6 +12,8 @@ tags:
     description: Health operations
   - name: role-profiles
     description: Role profile management
+  - name: base-resume
+    description: Global base resume management
   - name: jobs
     description: Job ingestion and management
   - name: claims
@@ -127,6 +129,70 @@ paths:
           $ref: "#/components/responses/NotFound"
 
   # ── Jobs ───────────────────────────────────────────────────────────────────
+  /base-resume:
+    get:
+      operationId: getBaseResume
+      tags: [base-resume]
+      summary: Get the current base resume
+      responses:
+        "200":
+          description: Current base resume version
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BaseResumeVersion"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: createBaseResume
+      tags: [base-resume]
+      summary: Save a new current base resume version
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBaseResumeBody"
+      responses:
+        "201":
+          description: Newly created current base resume version
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BaseResumeVersion"
+
+  /base-resume/history:
+    get:
+      operationId: listBaseResumeHistory
+      tags: [base-resume]
+      summary: List base resume version history
+      responses:
+        "200":
+          description: Base resume history newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BaseResumeVersion"
+
+  /base-resume/{id}/restore:
+    post:
+      operationId: restoreBaseResumeVersion
+      tags: [base-resume]
+      summary: Restore a historical base resume version as the new current version
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "201":
+          description: Newly created restored current base resume version
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BaseResumeVersion"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /jobs:
     get:
       operationId: listJobs
@@ -295,11 +361,17 @@ paths:
               $ref: "#/components/schemas/TailorResumeBody"
       responses:
         "201":
-          description: Newly created resume version with diff
+          description: Newly created resume version with a full tailored draft
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ResumeVersion"
+        "400":
+          description: Base resume missing or request invalid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "404":
           $ref: "#/components/responses/NotFound"
 
@@ -1021,6 +1093,40 @@ components:
         - error
 
     # ── Role Profile ────────────────────────────────────────────────────────
+    BaseResumeVersion:
+      type: object
+      properties:
+        id:
+          type: integer
+        label:
+          type: ["string", "null"]
+        contentText:
+          type: string
+        isCurrent:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - contentText
+        - isCurrent
+        - createdAt
+        - updatedAt
+
+    CreateBaseResumeBody:
+      type: object
+      properties:
+        label:
+          type: ["string", "null"]
+        contentText:
+          type: string
+      required:
+        - contentText
+
     RoleProfile:
       type: object
       properties:
@@ -1425,10 +1531,14 @@ components:
           type: integer
         jobId:
           type: ["integer", "null"]
+        baseResumeVersionId:
+          type: ["integer", "null"]
         label:
           type: ["string", "null"]
         status:
           type: string
+        tailoredDocumentText:
+          type: ["string", "null"]
         tailoredBullets:
           description: Array of bullet objects with claim attribution
         diffData:

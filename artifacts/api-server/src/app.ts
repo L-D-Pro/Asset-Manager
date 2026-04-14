@@ -6,6 +6,7 @@ import ConnectPgSimple from "connect-pg-simple";
 import { pool } from "@workspace/db";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import type { SessionMiddlewareFactory } from "./lib/http-types";
 
 /**
  * Configured Express 5 application.
@@ -23,7 +24,8 @@ import { logger } from "./lib/logger";
  * are needed in route handlers for unexpected errors.
  */
 
-const PgSession = ConnectPgSimple(session);
+const sessionMiddleware = session as unknown as SessionMiddlewareFactory;
+const PgSession = ConnectPgSimple(sessionMiddleware);
 
 const SESSION_SECRET = process.env.SESSION_SECRET;
 if (!SESSION_SECRET) {
@@ -33,6 +35,11 @@ if (!SESSION_SECRET) {
 const isProduction = process.env.NODE_ENV === "production";
 
 const app: Express = express();
+
+if (isProduction) {
+  // Required so secure cookies work correctly behind App Platform's proxy.
+  app.set("trust proxy", 1);
+}
 
 app.use(
   pinoHttp({
@@ -99,7 +106,7 @@ app.use(
 
 // PostgreSQL-backed session store — persists sessions across server restarts
 app.use(
-  session({
+  sessionMiddleware({
     store: new PgSession({
       pool,
       tableName: "session",

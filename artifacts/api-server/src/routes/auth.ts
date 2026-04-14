@@ -7,6 +7,7 @@ import { adminUsersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { logger } from "../lib/logger";
+import type { JobOpsRequest } from "../lib/http-types";
 
 /**
  * Auth router — all routes are mounted at /api/auth
@@ -71,7 +72,7 @@ async function hashRecoveryCodes(codes: string[]): Promise<string> {
 
 // ─── POST /api/auth/login ────────────────────────────────────────────────────
 
-authRouter.post("/auth/login", async (req, res): Promise<void> => {
+authRouter.post("/auth/login", async (req: JobOpsRequest, res): Promise<void> => {
   const { username, password } = req.body as { username?: string; password?: string };
 
   if (!username || !password) {
@@ -93,7 +94,7 @@ authRouter.post("/auth/login", async (req, res): Promise<void> => {
   }
 
   // Password is correct. Regenerate session to prevent fixation attacks.
-  req.session.regenerate((err) => {
+  req.session.regenerate((err: unknown) => {
     if (err) {
       logger.error({ err }, "Session regeneration failed");
       res.status(500).json({ error: "Internal server error" });
@@ -118,7 +119,7 @@ authRouter.post("/auth/login", async (req, res): Promise<void> => {
 
 // ─── POST /api/auth/login/totp ──────────────────────────────────────────────
 
-authRouter.post("/auth/login/totp", async (req, res): Promise<void> => {
+authRouter.post("/auth/login/totp", async (req: JobOpsRequest, res): Promise<void> => {
   if (!req.session.adminId) {
     res.status(401).json({ error: "Complete password login first" });
     return;
@@ -187,8 +188,8 @@ authRouter.post("/auth/login/totp", async (req, res): Promise<void> => {
 
 // ─── POST /api/auth/logout ──────────────────────────────────────────────────
 
-authRouter.post("/auth/logout", (req, res): void => {
-  req.session.destroy((err) => {
+authRouter.post("/auth/logout", (req: JobOpsRequest, res): void => {
+  req.session.destroy((err: unknown) => {
     if (err) {
       logger.error({ err }, "Session destroy failed");
       res.status(500).json({ error: "Logout failed" });
@@ -201,7 +202,7 @@ authRouter.post("/auth/logout", (req, res): void => {
 
 // ─── GET /api/auth/me ────────────────────────────────────────────────────────
 
-authRouter.get("/auth/me", async (req, res): Promise<void> => {
+authRouter.get("/auth/me", async (req: JobOpsRequest, res): Promise<void> => {
   if (!req.session.adminId || req.session.totpVerified === false) {
     res.status(401).json({ error: "Unauthorized" });
     return;
@@ -222,7 +223,7 @@ authRouter.get("/auth/me", async (req, res): Promise<void> => {
 
 // ─── PUT /api/auth/password ─────────────────────────────────────────────────
 
-authRouter.put("/auth/password", requireAuth, async (req, res): Promise<void> => {
+authRouter.put("/auth/password", requireAuth, async (req: JobOpsRequest, res): Promise<void> => {
   const { currentPassword, newPassword } = req.body as {
     currentPassword?: string;
     newPassword?: string;
@@ -265,7 +266,7 @@ authRouter.put("/auth/password", requireAuth, async (req, res): Promise<void> =>
 
 // ─── PUT /api/auth/email ─────────────────────────────────────────────────────
 
-authRouter.put("/auth/email", requireAuth, async (req, res): Promise<void> => {
+authRouter.put("/auth/email", requireAuth, async (req: JobOpsRequest, res): Promise<void> => {
   const { email } = req.body as { email?: string };
 
   if (!email || !email.includes("@")) {
@@ -284,7 +285,7 @@ authRouter.put("/auth/email", requireAuth, async (req, res): Promise<void> => {
 
 // ─── POST /api/auth/2fa/setup ────────────────────────────────────────────────
 
-authRouter.post("/auth/2fa/setup", requireAuth, async (req, res): Promise<void> => {
+authRouter.post("/auth/2fa/setup", requireAuth, async (req: JobOpsRequest, res): Promise<void> => {
   const admin = await db.query.adminUsersTable.findFirst({
     where: eq(adminUsersTable.id, req.session.adminId!),
   });
@@ -317,7 +318,7 @@ authRouter.post("/auth/2fa/setup", requireAuth, async (req, res): Promise<void> 
 
 // ─── POST /api/auth/2fa/enable ───────────────────────────────────────────────
 
-authRouter.post("/auth/2fa/enable", requireAuth, async (req, res): Promise<void> => {
+authRouter.post("/auth/2fa/enable", requireAuth, async (req: JobOpsRequest, res): Promise<void> => {
   const { token } = req.body as { token?: string };
 
   if (!token) {
@@ -357,7 +358,7 @@ authRouter.post("/auth/2fa/enable", requireAuth, async (req, res): Promise<void>
 
 // ─── POST /api/auth/2fa/disable ─────────────────────────────────────────────
 
-authRouter.post("/auth/2fa/disable", requireAuth, async (req, res): Promise<void> => {
+authRouter.post("/auth/2fa/disable", requireAuth, async (req: JobOpsRequest, res): Promise<void> => {
   const { token } = req.body as { token?: string };
 
   if (!token) {
@@ -391,7 +392,7 @@ authRouter.post("/auth/2fa/disable", requireAuth, async (req, res): Promise<void
 
 // ─── POST /api/auth/2fa/regenerate-codes ────────────────────────────────────
 
-authRouter.post("/auth/2fa/regenerate-codes", requireAuth, async (req, res): Promise<void> => {
+authRouter.post("/auth/2fa/regenerate-codes", requireAuth, async (req: JobOpsRequest, res): Promise<void> => {
   const { token } = req.body as { token?: string };
 
   if (!token) {

@@ -16,6 +16,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { getErrorMessage } from "@/lib/api-errors";
 
 const appSchema = z.object({
   jobId: z.coerce.number().min(1, "Job ID is required"),
@@ -65,6 +66,12 @@ export default function ApplicationsPage() {
             handleClose();
             queryClient.invalidateQueries({ queryKey: getListApplicationsQueryKey() });
           },
+          onError: (error) =>
+            toast({
+              title: "Failed to update application",
+              description: getErrorMessage(error, "Please try again."),
+              variant: "destructive",
+            }),
         }
       );
     } else {
@@ -76,7 +83,12 @@ export default function ApplicationsPage() {
             handleClose();
             queryClient.invalidateQueries({ queryKey: getListApplicationsQueryKey() });
           },
-          onError: () => toast({ title: "Error creating application", variant: "destructive" })
+          onError: (error) =>
+            toast({
+              title: "Failed to create application",
+              description: getErrorMessage(error, "Please try again."),
+              variant: "destructive",
+            })
         }
       );
     }

@@ -1,4 +1,5 @@
 export * from "./role-profiles";
+export * from "./base-resume-versions";
 export * from "./jobs";
 export * from "./claims";
 export * from "./resume-versions";

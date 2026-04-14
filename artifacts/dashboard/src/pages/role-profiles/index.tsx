@@ -16,6 +16,7 @@ import * as z from "zod";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { getErrorMessage } from "@/lib/api-errors";
 
 const softWeightEntrySchema = z.object({
   keyword: z.string().min(1),
@@ -111,7 +112,13 @@ export default function RoleProfilesPage() {
           toast({ title: "Profile updated" });
           handleClose();
           queryClient.invalidateQueries({ queryKey: getListRoleProfilesQueryKey() });
-        }
+        },
+        onError: (error) =>
+          toast({
+            title: "Failed to update role profile",
+            description: getErrorMessage(error, "Please try again."),
+            variant: "destructive",
+          }),
       });
     } else {
       createProfile.mutate({ data: payload }, {
@@ -119,7 +126,13 @@ export default function RoleProfilesPage() {
           toast({ title: "Profile created" });
           handleClose();
           queryClient.invalidateQueries({ queryKey: getListRoleProfilesQueryKey() });
-        }
+        },
+        onError: (error) =>
+          toast({
+            title: "Failed to create role profile",
+            description: getErrorMessage(error, "Please try again."),
+            variant: "destructive",
+          }),
       });
     }
   };
@@ -143,7 +156,13 @@ export default function RoleProfilesPage() {
   const handleDelete = (id: number) => {
     if(confirm("Delete this role profile?")) {
       deleteProfile.mutate({ id }, {
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: getListRoleProfilesQueryKey() })
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: getListRoleProfilesQueryKey() }),
+        onError: (error) =>
+          toast({
+            title: "Failed to delete role profile",
+            description: getErrorMessage(error, "Please try again."),
+            variant: "destructive",
+          }),
       });
     }
   };

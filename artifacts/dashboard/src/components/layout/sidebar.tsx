@@ -1,6 +1,6 @@
 import { Sidebar as SidebarComponent, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, Briefcase, FileText, CheckSquare, MessageSquare, Settings, UserCircle, Activity, FileCode, BookOpen, LogOut, User } from "lucide-react";
+import { LayoutDashboard, Briefcase, FileText, CheckSquare, MessageSquare, Settings, UserCircle, Activity, FileCode, BookOpen, LogOut, User, ScrollText } from "lucide-react";
 import { useAuth } from "@/context/auth";
 
 export function Sidebar() {
@@ -11,6 +11,7 @@ export function Sidebar() {
     { name: "Jobs Pipeline", href: "/jobs", icon: Briefcase },
     { name: "Applications", href: "/applications", icon: Activity },
     { name: "Claims Ledger", href: "/claims", icon: CheckSquare },
+    { name: "Base Resume", href: "/base-resume", icon: ScrollText },
     { name: "Resumes (Queue)", href: "/resume-versions", icon: FileText },
     { name: "Cover Letters (Queue)", href: "/cover-letters", icon: MessageSquare },
     { name: "Feedback Signals", href: "/feedback", icon: Activity },

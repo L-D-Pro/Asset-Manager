@@ -1,4 +1,9 @@
-import { db, resumeVersionsTable } from "@workspace/db";
+import {
+  db,
+  resumeVersionsTable,
+  baseResumeVersionsTable,
+} from "@workspace/db";
+import { eq } from "drizzle-orm";
 import { callAI, parseJsonResponse } from "../ai-client";
 import { matchClaimsToJob } from "../scoring";
 import { validateBullet, assertMinimumContent, TruthLockViolation } from "./validation";
@@ -14,6 +19,7 @@ interface RawBullet {
 }
 
 interface TailoringResult {
+  documentText?: unknown;
   bullets?: RawBullet[];
   addedBullets?: string[];
   removedBullets?: string[];
@@ -21,17 +27,26 @@ interface TailoringResult {
   summary?: string;
 }
 
+export class MissingBaseResumeError extends Error {
+  constructor() {
+    super("Base resume is required before tailoring. Save your current resume first.");
+    this.name = "MissingBaseResumeError";
+  }
+}
+
 const SYSTEM_PROMPT = `You are an expert resume writer and career coach specializing in ATS-optimized resumes.
-Your task is to tailor resume bullet points to a specific job, using ONLY the provided claims as source material.
+Your task is to tailor a full plain-text resume draft to a specific job, using the provided base resume as structure and ONLY the provided claims as new factual source material.
 CRITICAL RULES — NEVER VIOLATE:
 1. Every bullet MUST trace back to a provided claim. Do NOT invent new achievements.
 2. Use ONLY claim IDs from the provided list. Do NOT use any other IDs.
 3. Bullets that combine multiple claims must explicitly flag isAggregated: true.
 4. Use strong action verbs and quantifiable language where supported by claims.
 5. Match the job's required skills and keywords where truthfully supported by claims.
+6. Return a complete resume draft in plain text with section headings and bullets.
 
 Return ONLY valid JSON with this exact structure:
 {
+  "documentText": "Full tailored resume draft in plain text",
   "bullets": [
     {
       "text": "Tailored bullet text",
@@ -64,6 +79,15 @@ export async function runResumeTailorPipeline(
 ): Promise<typeof resumeVersionsTable.$inferSelect> {
   logger.info({ jobId: job.id, claimIds }, "Starting resume tailor pipeline");
 
+  const [baseResumeVersion] = await db
+    .select()
+    .from(baseResumeVersionsTable)
+    .where(eq(baseResumeVersionsTable.isCurrent, true));
+
+  if (!baseResumeVersion) {
+    throw new MissingBaseResumeError();
+  }
+
   let selectedClaims: Claim[];
   if (claimIds && claimIds.length > 0) {
     selectedClaims = allClaims.filter((c) => claimIds.includes(c.id));
@@ -80,6 +104,8 @@ export async function runResumeTailorPipeline(
         jobId: job.id,
         label: "AI tailored — no claims available",
         status: "pending_approval",
+        baseResumeVersionId: baseResumeVersion.id,
+        tailoredDocumentText: baseResumeVersion.contentText,
         claimIds: [],
         notes: "No matching claims found. Add claims to your Claims Ledger first.",
         tailoredBullets: [],
@@ -107,13 +133,21 @@ Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed
   const result = await callAI({
     taskType: "resume_tailoring",
     systemPrompt: SYSTEM_PROMPT,
-    userPrompt: `Tailor resume bullets for this job:\n\n${jobContext}\n\nAvailable claims (use ONLY these):\n${claimsContext}`,
+    userPrompt:
+      `Tailor the base resume for this job.\n\n` +
+      `Base Resume (current source of truth):\n${baseResumeVersion.contentText}\n\n` +
+      `${jobContext}\n\nAvailable claims (use ONLY these):\n${claimsContext}`,
     jobId: job.id,
   });
 
   const parsed = parseJsonResponse<TailoringResult>(result.content);
 
-  if (!parsed || !Array.isArray(parsed.bullets)) {
+  if (
+    !parsed ||
+    typeof parsed.documentText !== "string" ||
+    parsed.documentText.trim() === "" ||
+    !Array.isArray(parsed.bullets)
+  ) {
     logger.error(
       { jobId: job.id, raw: result.content.slice(0, 500) },
       "AI returned unparseable JSON for resume tailoring — storing failed version",
@@ -124,8 +158,10 @@ Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed
         jobId: job.id,
         label: "AI tailored — generation failed",
         status: "pending_approval",
+        baseResumeVersionId: baseResumeVersion.id,
         claimIds: [],
         tailoredBullets: [],
+        tailoredDocumentText: null,
         rawContent: result.content,
         notes: "AI output could not be parsed as structured JSON. Review raw content and regenerate.",
       })
@@ -151,8 +187,10 @@ Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed
           jobId: job.id,
           label: "AI tailored — truth lock failure",
           status: "pending_approval",
+          baseResumeVersionId: baseResumeVersion.id,
           claimIds: [],
           tailoredBullets: [],
+          tailoredDocumentText: parsed.documentText,
           rawContent: result.content,
           notes: `Truth lock failure: ${err.message}. All AI-generated bullets cited claim IDs not in the selected set. Review claims and regenerate.`,
         })
@@ -181,7 +219,9 @@ Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed
       jobId: job.id,
       label: `AI tailored — ${new Date().toLocaleDateString()}`,
       status: "pending_approval",
+      baseResumeVersionId: baseResumeVersion.id,
       claimIds: usedClaimIds,
+      tailoredDocumentText: parsed.documentText,
       tailoredBullets: validatedBullets as unknown as Record<string, unknown>[],
       diffData: diffData as unknown as Record<string, unknown>,
       notes: parsed.summary ?? "AI-generated resume tailoring",

@@ -1,0 +1,131 @@
+# DigitalOcean Deployment Guide
+
+This repo is ready to deploy as a private Phase 1 system on DigitalOcean App Platform. The deployment serves:
+
+- a Node/Express API at `/api/*`
+- a static React dashboard at `/`
+- a managed PostgreSQL database
+
+It does **not** automate job-site logins or submit applications on external platforms yet.
+
+## Before You Start
+
+1. Push the repo to GitHub with `pnpm-lock.yaml` committed.
+2. Make sure the root `package.json` changes are present:
+   - `packageManager: pnpm@10.33.0`
+   - `engines.node: 24.x`
+3. Decide whether you want to use the default `*.ondigitalocean.app` domain first or attach a custom domain immediately.
+
+## App Spec Path
+
+The repo includes a DigitalOcean App Platform template at [app.yaml](/c:/Users/uberc/Asset%20Manager%20Project/Asset-Manager/.do/app.yaml).
+
+Before using it:
+
+1. Replace `REPLACE_WITH_YOUR_GITHUB_OWNER/REPLACE_WITH_YOUR_REPO`.
+2. Replace `REPLACE_WITH_YOUR_DOMAIN`.
+3. Replace the bootstrap admin values.
+4. Replace the OpenRouter key and session secret placeholders.
+
+## Recommended Deploy Flow
+
+1. In DigitalOcean, create a new App Platform app from GitHub.
+2. Import or paste the `.do/app.yaml` spec.
+3. Keep the app in a single region for all components.
+4. Confirm the API service uses:
+   - build command: `./scripts/do-build.sh api`
+   - run command: `node --enable-source-maps artifacts/api-server/dist/index.mjs`
+   - internal port: `8080`
+   - health check: `/api/healthz`
+5. Confirm the dashboard static site uses:
+   - build command: `./scripts/do-build.sh dashboard`
+   - output directory: `artifacts/dashboard/dist/public`
+6. Confirm ingress rules:
+   - `/api` routes to the `api` service
+   - `/` routes to the `dashboard` static site
+   - `/api` preserves the path prefix when forwarded
+7. Review the managed PostgreSQL database component or attach an existing cluster.
+8. Deploy.
+
+## Required Environment Variables
+
+The API service must have:
+
+- `NODE_ENV=production`
+- `DATABASE_URL`
+- `SESSION_SECRET`
+- `AI_INTEGRATIONS_OPENROUTER_API_KEY`
+- `AI_INTEGRATIONS_OPENROUTER_BASE_URL=https://openrouter.ai/api/v1`
+- `ADMIN_USERNAME`
+- `ADMIN_PASSWORD`
+- `ADMIN_EMAIL`
+- `ALLOWED_ORIGINS=https://<your-dashboard-domain>`
+
+Notes:
+
+- `PORT` is injected automatically by App Platform from `http_port`.
+- `ADMIN_*` vars are first-run bootstrap only. Remove them after the first successful login and redeploy.
+- `ALLOWED_ORIGINS` should match the final dashboard origin exactly.
+
+## Why The DO Build Script Exists
+
+DigitalOcean App Platform builds on Linux, and this monorepo has already shown the usual platform-sensitive native package issues around `esbuild` and Rollup optional binaries when the install state is stale or was produced on another OS.
+
+The DigitalOcean build script in [do-build.sh](/c:/Users/uberc/Asset%20Manager%20Project/Asset-Manager/scripts/do-build.sh):
+
+- removes `package-lock.json` and `yarn.lock` if they exist
+- removes all `node_modules` directories
+- performs a fresh Linux-side `pnpm install --frozen-lockfile`
+- runs the right codegen/build steps for the selected component
+
+Important:
+
+- it does **not** delete `pnpm-lock.yaml`
+- it is intended for the App Platform build environment, not your normal local development flow
+
+## First Boot Checklist
+
+1. Open `https://<your-domain>/api/healthz` and confirm `{"status":"ok"}`.
+2. Open the dashboard and log in with the bootstrap admin account.
+3. Confirm the admin user is created.
+4. Remove `ADMIN_USERNAME`, `ADMIN_PASSWORD`, and `ADMIN_EMAIL` from the app config.
+5. Redeploy once more.
+6. Re-test login.
+
+## Post-Deploy Smoke Test
+
+Run the script in [smoke-test.ts](/c:/Users/uberc/Asset%20Manager%20Project/Asset-Manager/scripts/src/smoke-test.ts):
+
+```bash
+JOB_OPS_BASE_URL=https://your-domain \
+JOB_OPS_USERNAME=admin \
+JOB_OPS_PASSWORD='your-password' \
+pnpm smoke:test
+```
+
+If the account has 2FA enabled:
+
+```bash
+JOB_OPS_BASE_URL=https://your-domain \
+JOB_OPS_USERNAME=admin \
+JOB_OPS_PASSWORD='your-password' \
+JOB_OPS_TOTP_TOKEN=123456 \
+pnpm smoke:test
+```
+
+To include the AI endpoints for a known job:
+
+```bash
+JOB_OPS_BASE_URL=https://your-domain \
+JOB_OPS_USERNAME=admin \
+JOB_OPS_PASSWORD='your-password' \
+JOB_OPS_JOB_ID=123 \
+JOB_OPS_RUN_AI=true \
+pnpm smoke:test
+```
+
+## Known Production Constraints
+
+- The app is still human-in-the-loop. It does not log into LinkedIn, Indeed, ZipRecruiter, Greenhouse, Lever, Workday, or company career sites.
+- Secure session cookies require proxy awareness; the API now sets `trust proxy` in production for App Platform.
+- The dashboard expects same-origin `/api/*` routing in production, so the ingress rule is not optional.

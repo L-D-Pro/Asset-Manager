@@ -35,7 +35,10 @@ import {
 } from "@workspace/api-zod";
 import { scoreJobAgainstProfile, matchClaimsToJob } from "../lib/scoring";
 import { runJdParsePipeline } from "../lib/pipelines/jd-parse";
-import { runResumeTailorPipeline } from "../lib/pipelines/resume-tailor";
+import {
+  runResumeTailorPipeline,
+  MissingBaseResumeError,
+} from "../lib/pipelines/resume-tailor";
 import { runCoverLetterPipeline } from "../lib/pipelines/cover-letter-draft";
 
 const router: IRouter = Router();
@@ -267,13 +270,21 @@ router.post("/jobs/:id/tailor", async (req, res): Promise<void> => {
 
   req.log.info({ jobId: job.id }, "Starting resume tailor pipeline");
 
-  const resumeVersion = await runResumeTailorPipeline(
-    job,
-    allClaims,
-    body.data.claimIds,
-  );
+  try {
+    const resumeVersion = await runResumeTailorPipeline(
+      job,
+      allClaims,
+      body.data.claimIds,
+    );
 
-  res.status(201).json(GetResumeVersionResponse.parse(resumeVersion));
+    res.status(201).json(GetResumeVersionResponse.parse(resumeVersion));
+  } catch (error) {
+    if (error instanceof MissingBaseResumeError) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
+    throw error;
+  }
 });
 
 router.post("/jobs/:id/cover-letter", async (req, res): Promise<void> => {

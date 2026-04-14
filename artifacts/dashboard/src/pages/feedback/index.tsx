@@ -16,6 +16,7 @@ import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
+import { getErrorMessage } from "@/lib/api-errors";
 
 const signalSchema = z.object({
   applicationId: z.coerce.number().min(1, "App ID is required"),
@@ -51,7 +52,12 @@ export default function FeedbackPage() {
         form.reset();
         queryClient.invalidateQueries({ queryKey: getListFeedbackSignalsQueryKey() });
       },
-      onError: () => toast({ title: "Failed to log signal", variant: "destructive" })
+      onError: (error) =>
+        toast({
+          title: "Failed to log feedback signal",
+          description: getErrorMessage(error, "Please try again."),
+          variant: "destructive",
+        })
     });
   };
 

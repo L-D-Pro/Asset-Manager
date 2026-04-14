@@ -13,6 +13,22 @@ export interface ErrorResponse {
   error: string;
 }
 
+export interface BaseResumeVersion {
+  id: number;
+  /** @nullable */
+  label?: string | null;
+  contentText: string;
+  isCurrent: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateBaseResumeBody {
+  /** @nullable */
+  label?: string | null;
+  contentText: string;
+}
+
 /**
  * JSON object with hard filter criteria
  */
@@ -241,8 +257,12 @@ export interface ResumeVersion {
   /** @nullable */
   jobId?: number | null;
   /** @nullable */
+  baseResumeVersionId?: number | null;
+  /** @nullable */
   label?: string | null;
   status: string;
+  /** @nullable */
+  tailoredDocumentText?: string | null;
   /** Array of bullet objects with claim attribution */
   tailoredBullets?: unknown;
   /** Structured diff showing added/removed/reordered bullets */

@@ -121,6 +121,48 @@ export const DeleteRoleProfileParams = zod.object({
 });
 
 /**
+ * @summary Get the current base resume
+ */
+export const GetBaseResumeResponse = zod.object({
+  id: zod.number(),
+  label: zod.string().nullish(),
+  contentText: zod.string(),
+  isCurrent: zod.boolean(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Save a new current base resume version
+ */
+export const CreateBaseResumeBody = zod.object({
+  label: zod.string().nullish(),
+  contentText: zod.string(),
+});
+
+/**
+ * @summary List base resume version history
+ */
+export const ListBaseResumeHistoryResponseItem = zod.object({
+  id: zod.number(),
+  label: zod.string().nullish(),
+  contentText: zod.string(),
+  isCurrent: zod.boolean(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListBaseResumeHistoryResponse = zod.array(
+  ListBaseResumeHistoryResponseItem,
+);
+
+/**
+ * @summary Restore a historical base resume version as the new current version
+ */
+export const RestoreBaseResumeVersionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
  * @summary List jobs
  */
 export const ListJobsQueryParams = zod.object({
@@ -486,8 +528,10 @@ export const ListResumeVersionsQueryParams = zod.object({
 export const ListResumeVersionsResponseItem = zod.object({
   id: zod.number(),
   jobId: zod.number().nullish(),
+  baseResumeVersionId: zod.number().nullish(),
   label: zod.string().nullish(),
   status: zod.string(),
+  tailoredDocumentText: zod.string().nullish(),
   tailoredBullets: zod
     .unknown()
     .optional()
@@ -517,8 +561,10 @@ export const GetResumeVersionParams = zod.object({
 export const GetResumeVersionResponse = zod.object({
   id: zod.number(),
   jobId: zod.number().nullish(),
+  baseResumeVersionId: zod.number().nullish(),
   label: zod.string().nullish(),
   status: zod.string(),
+  tailoredDocumentText: zod.string().nullish(),
   tailoredBullets: zod
     .unknown()
     .optional()
@@ -553,8 +599,10 @@ export const UpdateResumeVersionBody = zod.object({
 export const UpdateResumeVersionResponse = zod.object({
   id: zod.number(),
   jobId: zod.number().nullish(),
+  baseResumeVersionId: zod.number().nullish(),
   label: zod.string().nullish(),
   status: zod.string(),
+  tailoredDocumentText: zod.string().nullish(),
   tailoredBullets: zod
     .unknown()
     .optional()
@@ -588,8 +636,10 @@ export const ApproveResumeVersionParams = zod.object({
 export const ApproveResumeVersionResponse = zod.object({
   id: zod.number(),
   jobId: zod.number().nullish(),
+  baseResumeVersionId: zod.number().nullish(),
   label: zod.string().nullish(),
   status: zod.string(),
+  tailoredDocumentText: zod.string().nullish(),
   tailoredBullets: zod
     .unknown()
     .optional()
@@ -616,8 +666,10 @@ export const RejectResumeVersionParams = zod.object({
 export const RejectResumeVersionResponse = zod.object({
   id: zod.number(),
   jobId: zod.number().nullish(),
+  baseResumeVersionId: zod.number().nullish(),
   label: zod.string().nullish(),
   status: zod.string(),
+  tailoredDocumentText: zod.string().nullish(),
   tailoredBullets: zod
     .unknown()
     .optional()

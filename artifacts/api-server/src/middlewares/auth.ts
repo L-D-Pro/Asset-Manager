@@ -1,4 +1,5 @@
-import type { Request, Response, NextFunction } from "express";
+import type { Response, NextFunction } from "express";
+import type { JobOpsRequest } from "../lib/http-types";
 
 /**
  * Authentication middleware.
@@ -13,7 +14,7 @@ import type { Request, Response, NextFunction } from "express";
  * Public routes (health check, auth endpoints) are whitelisted and
  * do not go through this middleware — see `routes/index.ts`.
  */
-export function requireAuth(req: Request, res: Response, next: NextFunction): void {
+export function requireAuth(req: JobOpsRequest, res: Response, next: NextFunction): void {
   if (!req.session.adminId) {
     res.status(401).json({ error: "Unauthorized" });
     return;
