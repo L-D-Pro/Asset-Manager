@@ -4,6 +4,7 @@ import { eq, and } from "drizzle-orm";
 import { selectModelForTask, type SelectedModel } from "./model-router";
 import { resolvePromptForTask } from "./prompt-router";
 import { logger } from "./logger";
+import { mintRunId } from "./lineage";
 
 /**
  * Options for a single AI call.
@@ -22,6 +23,8 @@ export interface AiCallOptions {
   jobId?: number;
   /** Application ID for EventLog context. Pass when the call is tied to a specific application. */
   applicationId?: number;
+  /** Optional pre-minted canonical lineage ID. If omitted, callAI mints one once and reuses it across retries. */
+  runId?: string;
 }
 
 /**
@@ -45,6 +48,10 @@ export interface AiCallResult {
   completionTokens: number;
   /** Active prompt version used for this call, if one was configured. */
   promptVersionId: number | null;
+  /** Canonical lineage ID shared by all attempts and the root AI event log row. */
+  runId: string;
+  /** Inserted event-log row ID for the successful AI root event, or the terminal failure row when all attempts fail. */
+  eventLogId: number;
 }
 
 /**
@@ -62,6 +69,7 @@ export interface AiCallResult {
  */
 export async function callAI(opts: AiCallOptions): Promise<AiCallResult> {
   const { taskType, systemPrompt, userPrompt, jobId, applicationId } = opts;
+  const runId = opts.runId ?? mintRunId();
   const resolvedPrompt = await resolvePromptForTask(
     taskType,
     systemPrompt,
@@ -111,11 +119,12 @@ export async function callAI(opts: AiCallOptions): Promise<AiCallResult> {
         "AI call completed",
       );
 
-      await db.insert(eventLogsTable).values({
+      const [eventLog] = await db.insert(eventLogsTable).values({
         entityType: "ai_call",
         entityId: jobId ?? 0,
         applicationId: applicationId ?? null,
         jobId: jobId ?? null,
+        runId,
         eventType: "ai_call",
         previousState: null,
         nextState: taskType,
@@ -132,8 +141,9 @@ export async function callAI(opts: AiCallOptions): Promise<AiCallResult> {
           succeeded: true,
           attemptNumber: modelChain.indexOf(model) + 1,
           priorFailures: attemptErrors,
+          runId,
         },
-      });
+      }).returning({ id: eventLogsTable.id });
 
       return {
         content,
@@ -143,6 +153,8 @@ export async function callAI(opts: AiCallOptions): Promise<AiCallResult> {
         promptTokens,
         completionTokens,
         promptVersionId: resolvedPrompt.promptVersionId,
+        runId,
+        eventLogId: eventLog!.id,
       };
     } catch (err) {
       lastError = err;
@@ -157,11 +169,12 @@ export async function callAI(opts: AiCallOptions): Promise<AiCallResult> {
 
   // Log the terminal failure to EventLog for auditability
   try {
-    await db.insert(eventLogsTable).values({
+    const [failureEvent] = await db.insert(eventLogsTable).values({
       entityType: "ai_call",
       entityId: jobId ?? 0,
       applicationId: applicationId ?? null,
       jobId: jobId ?? null,
+      runId,
       eventType: "ai_call_failed",
       previousState: null,
       nextState: `${taskType}_failed`,
@@ -174,9 +187,23 @@ export async function callAI(opts: AiCallOptions): Promise<AiCallResult> {
         modelsAttempted: modelChain.length,
         attemptErrors,
         finalError: lastError instanceof Error ? lastError.message : String(lastError),
+        runId,
       },
-    });
+    }).returning({ id: eventLogsTable.id });
+
+    throw Object.assign(
+      new Error(
+        `AI call failed for task ${taskType} after exhausting all ${modelChain.length} model(s) in fallback chain: ${String(lastError)}`,
+      ),
+      {
+        runId,
+        eventLogId: failureEvent!.id,
+      },
+    );
   } catch (logErr) {
+    if (logErr instanceof Error && "eventLogId" in logErr) {
+      throw logErr;
+    }
     logger.error({ logErr }, "Failed to write AI failure to event_logs");
   }
 
