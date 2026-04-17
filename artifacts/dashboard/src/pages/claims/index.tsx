@@ -1,14 +1,15 @@
-import { useListClaims, useCreateClaim, useUpdateClaim, useDeleteClaim, getListClaimsQueryKey, type Claim } from "@workspace/api-client-react";
+import { useListClaims, useCreateClaim, useUpdateClaim, useDeleteClaim, useDraftClaims, getListClaimsQueryKey, type Claim, type CreateClaimBody } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Plus, CheckSquare, Pencil, Trash2, EyeOff, X } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Plus, CheckSquare, Pencil, Trash2, EyeOff, X, Sparkles } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,6 +18,7 @@ import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { getErrorMessage } from "@/lib/api-errors";
+import { AiProgressButton } from "@/components/ai/ai-progress-button";
 
 const claimSchema = z.object({
   summary: z.string().min(1, "Summary is required"),
@@ -29,6 +31,15 @@ const claimSchema = z.object({
 
 type FormValues = z.infer<typeof claimSchema>;
 type ClaimFilter = "all" | "active" | "inactive";
+
+type DraftClaimReview = Required<Pick<CreateClaimBody, "summary" | "evidenceType" | "isActive">> &
+  Pick<CreateClaimBody, "evidence" | "domain"> & {
+    clientId: string;
+    selected: boolean;
+    phrasingVariantsText: string;
+    disallowedImplicationsText: string;
+    applicableTagsText: string;
+  };
 
 function buildPayload(data: FormValues) {
   return {
@@ -52,8 +63,15 @@ export default function ClaimsPage() {
   const createClaim = useCreateClaim();
   const updateClaim = useUpdateClaim();
   const deleteClaim = useDeleteClaim();
+  const draftClaims = useDraftClaims();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isAiDialogOpen, setIsAiDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [draftSourceText, setDraftSourceText] = useState("");
+  const [draftPrompt, setDraftPrompt] = useState("");
+  const [draftFile, setDraftFile] = useState<File | null>(null);
+  const [draftReviews, setDraftReviews] = useState<DraftClaimReview[]>([]);
+  const [creatingDrafts, setCreatingDrafts] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -168,6 +186,82 @@ export default function ClaimsPage() {
     form.reset({ summary: "", domain: "", evidence: "", isActive: true, phrasingVariants: [], applicableTags: [] });
   };
 
+  const handleDraftClaims = () => {
+    if (!draftSourceText.trim() && !draftFile) {
+      toast({
+        title: "Add source material",
+        description: "Paste notes or upload a DOCX/PDF file.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    draftClaims.mutate(
+      {
+        data: {
+          sourceText: draftSourceText.trim() || undefined,
+          prompt: draftPrompt.trim() || undefined,
+          file: draftFile ?? undefined,
+        },
+      },
+      {
+        onSuccess: (response) => {
+          setDraftReviews(response.claims.map(toDraftReview));
+          toast({
+            title: "Draft claims ready",
+            description: `${response.claims.length} claim${response.claims.length === 1 ? "" : "s"} generated for review.`,
+          });
+        },
+        onError: (error) =>
+          toast({
+            title: "Failed to draft claims",
+            description: getErrorMessage(error, "Please adjust the source and try again."),
+            variant: "destructive",
+          }),
+      },
+    );
+  };
+
+  const handleCreateSelectedDrafts = async () => {
+    const selected = draftReviews.filter((draft) => draft.selected);
+    if (selected.length === 0) {
+      toast({
+        title: "Select at least one draft",
+        description: "Only selected drafts will be added to the Claims Ledger.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setCreatingDrafts(true);
+    try {
+      for (const draft of selected) {
+        await createClaim.mutateAsync({ data: fromDraftReview(draft) });
+      }
+
+      toast({
+        title: "Claims created",
+        description: `${selected.length} claim${selected.length === 1 ? "" : "s"} added to the ledger.`,
+      });
+      setDraftReviews((current) => current.filter((draft) => !draft.selected));
+      await queryClient.invalidateQueries({ queryKey: getListClaimsQueryKey() });
+    } catch (error) {
+      toast({
+        title: "Failed to create selected claims",
+        description: getErrorMessage(error, "Please review the drafts and try again."),
+        variant: "destructive",
+      });
+    } finally {
+      setCreatingDrafts(false);
+    }
+  };
+
+  const updateDraftReview = (clientId: string, patch: Partial<DraftClaimReview>) => {
+    setDraftReviews((current) =>
+      current.map((draft) => draft.clientId === clientId ? { ...draft, ...patch } : draft),
+    );
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -176,16 +270,164 @@ export default function ClaimsPage() {
           <p className="text-muted-foreground mt-1">Verified achievements that serve as ground truth for AI tailoring.</p>
         </div>
 
-        <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) handleCloseDialog(); else setIsDialogOpen(true); }}>
-          <DialogTrigger asChild>
-            <Button data-testid="btn-add-claim">
-              <Plus className="mr-2 h-4 w-4" />
-              New Claim
-            </Button>
-          </DialogTrigger>
+        <div className="flex items-center gap-2">
+          <Dialog open={isAiDialogOpen} onOpenChange={setIsAiDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" data-testid="btn-ai-draft-claims">
+                <Sparkles className="mr-2 h-4 w-4" />
+                AI Draft Claims
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>AI Draft Claims</DialogTitle>
+                <DialogDescription>
+                  Turn notes or a source document into draft claims, then review and create only the ones you approve.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-5">
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium" htmlFor="draft-source-text">Source notes</label>
+                    <Textarea
+                      id="draft-source-text"
+                      value={draftSourceText}
+                      onChange={(event) => setDraftSourceText(event.target.value)}
+                      placeholder="Paste project summaries, work notes, accomplishments, or raw experience notes..."
+                      className="min-h-44"
+                      data-testid="textarea-claim-draft-source"
+                    />
+                  </div>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium" htmlFor="draft-prompt">Optional instruction</label>
+                      <Textarea
+                        id="draft-prompt"
+                        value={draftPrompt}
+                        onChange={(event) => setDraftPrompt(event.target.value)}
+                        placeholder="Example: focus on leadership, analytics, platform work, or customer impact."
+                        className="min-h-24"
+                        data-testid="textarea-claim-draft-prompt"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium" htmlFor="draft-file">Upload source document</label>
+                      <Input
+                        id="draft-file"
+                        type="file"
+                        accept=".docx,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        onChange={(event) => setDraftFile(event.target.files?.[0] ?? null)}
+                        data-testid="input-claim-draft-file"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        {draftFile ? draftFile.name : "DOCX or text-based PDF. The file is converted to text and not stored."}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <AiProgressButton
+                    type="button"
+                    onClick={handleDraftClaims}
+                    isPending={draftClaims.isPending}
+                    idleLabel="Draft Claims"
+                    data-testid="btn-generate-claim-drafts"
+                  />
+                </div>
+
+                {draftReviews.length > 0 && (
+                  <div className="space-y-4 border-t pt-5">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <h3 className="font-semibold">Review Drafts</h3>
+                        <p className="text-sm text-muted-foreground">Edit, select, and create only the claims you can verify.</p>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={handleCreateSelectedDrafts}
+                        disabled={creatingDrafts || createClaim.isPending}
+                        data-testid="btn-create-selected-drafts"
+                      >
+                        {creatingDrafts ? "Creating..." : "Create Selected"}
+                      </Button>
+                    </div>
+
+                    <div className="space-y-3">
+                      {draftReviews.map((draft, index) => (
+                        <div key={draft.clientId} className="rounded-md border p-4 space-y-3">
+                          <div className="flex items-center gap-3">
+                            <Checkbox
+                              checked={draft.selected}
+                              onCheckedChange={(checked) => updateDraftReview(draft.clientId, { selected: checked === true })}
+                              data-testid={`checkbox-draft-claim-${index}`}
+                            />
+                            <span className="text-sm font-medium">Draft {index + 1}</span>
+                          </div>
+                          <div className="grid gap-3 md:grid-cols-2">
+                            <div className="md:col-span-2 space-y-2">
+                              <label className="text-xs font-medium" htmlFor={`draft-summary-${draft.clientId}`}>Summary</label>
+                              <Textarea
+                                id={`draft-summary-${draft.clientId}`}
+                                value={draft.summary}
+                                onChange={(event) => updateDraftReview(draft.clientId, { summary: event.target.value })}
+                                className="min-h-20"
+                                data-testid={`textarea-draft-summary-${index}`}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-xs font-medium" htmlFor={`draft-domain-${draft.clientId}`}>Domain</label>
+                              <Input
+                                id={`draft-domain-${draft.clientId}`}
+                                value={draft.domain ?? ""}
+                                onChange={(event) => updateDraftReview(draft.clientId, { domain: event.target.value })}
+                                data-testid={`input-draft-domain-${index}`}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-xs font-medium" htmlFor={`draft-tags-${draft.clientId}`}>Tags</label>
+                              <Input
+                                id={`draft-tags-${draft.clientId}`}
+                                value={draft.applicableTagsText}
+                                onChange={(event) => updateDraftReview(draft.clientId, { applicableTagsText: event.target.value })}
+                                placeholder="comma-separated"
+                                data-testid={`input-draft-tags-${index}`}
+                              />
+                            </div>
+                            <div className="md:col-span-2 space-y-2">
+                              <label className="text-xs font-medium" htmlFor={`draft-evidence-${draft.clientId}`}>Evidence</label>
+                              <Textarea
+                                id={`draft-evidence-${draft.clientId}`}
+                                value={draft.evidence ?? ""}
+                                onChange={(event) => updateDraftReview(draft.clientId, { evidence: event.target.value })}
+                                className="min-h-16"
+                                data-testid={`textarea-draft-evidence-${index}`}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) handleCloseDialog(); else setIsDialogOpen(true); }}>
+            <DialogTrigger asChild>
+              <Button data-testid="btn-add-claim">
+                <Plus className="mr-2 h-4 w-4" />
+                New Claim
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingId ? "Edit Claim" : "Create New Claim"}</DialogTitle>
+              <DialogDescription>
+                Add one verified factual achievement or responsibility to the truth ledger.
+              </DialogDescription>
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
@@ -245,12 +487,16 @@ export default function ClaimsPage() {
 
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <FormLabel>Phrasing Variants</FormLabel>
+                    <div>
+                      <p className="text-sm font-medium leading-none">Phrasing Variants</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Alternative wordings used by the AI when the primary summary doesn't fit.
+                      </p>
+                    </div>
                     <Button type="button" variant="outline" size="sm" onClick={() => pvAppend({ text: "" })} data-testid="btn-add-variant">
                       <Plus className="h-3 w-3 mr-1" /> Add
                     </Button>
                   </div>
-                  <FormDescription className="text-xs mb-2">Alternative wordings used by the AI when the primary summary doesn't fit.</FormDescription>
                   <div className="space-y-2">
                     {pvFields.map((f, i) => (
                       <div key={f.id} className="flex gap-2">
@@ -271,12 +517,16 @@ export default function ClaimsPage() {
 
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <FormLabel>Applicable Tags</FormLabel>
+                    <div>
+                      <p className="text-sm font-medium leading-none">Applicable Tags</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Domain tags used for filtering and matching (e.g. "distributed-systems", "leadership").
+                      </p>
+                    </div>
                     <Button type="button" variant="outline" size="sm" onClick={() => tagAppend({ tag: "" })} data-testid="btn-add-tag">
                       <Plus className="h-3 w-3 mr-1" /> Add
                     </Button>
                   </div>
-                  <FormDescription className="text-xs mb-2">Domain tags used for filtering and matching (e.g. "distributed-systems", "leadership").</FormDescription>
                   <div className="flex flex-wrap gap-2">
                     {tagFields.map((f, i) => (
                       <div key={f.id} className="flex items-center gap-1 bg-secondary rounded-full px-2 py-1">
@@ -300,7 +550,8 @@ export default function ClaimsPage() {
               </form>
             </Form>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
@@ -395,4 +646,39 @@ export default function ClaimsPage() {
       </div>
     </div>
   );
+}
+
+function toDraftReview(claim: CreateClaimBody, index: number): DraftClaimReview {
+  return {
+    clientId: `${Date.now()}-${index}`,
+    selected: true,
+    summary: claim.summary ?? "",
+    evidence: claim.evidence ?? "",
+    evidenceType: claim.evidenceType ?? "self_attestation",
+    domain: claim.domain ?? "",
+    isActive: claim.isActive ?? true,
+    phrasingVariantsText: (claim.phrasingVariants ?? []).join(", "),
+    disallowedImplicationsText: (claim.disallowedImplications ?? []).join(", "),
+    applicableTagsText: (claim.applicableTags ?? []).join(", "),
+  };
+}
+
+function fromDraftReview(draft: DraftClaimReview): CreateClaimBody {
+  return {
+    summary: draft.summary.trim(),
+    evidence: draft.evidence?.trim() || undefined,
+    evidenceType: draft.evidenceType,
+    phrasingVariants: splitCommaList(draft.phrasingVariantsText),
+    disallowedImplications: splitCommaList(draft.disallowedImplicationsText),
+    domain: draft.domain?.trim() || undefined,
+    applicableTags: splitCommaList(draft.applicableTagsText),
+    isActive: draft.isActive,
+  };
+}
+
+function splitCommaList(value: string): string[] {
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
 }

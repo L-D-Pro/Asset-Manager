@@ -5,7 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Settings, Plus, Pencil, Trash2, ArrowRight } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -23,6 +23,10 @@ const TASK_SCOPES = [
   "jd_parsing",
   "resume_tailoring",
   "cover_letter",
+  "claim_generation",
+  "job_fit_scoring",
+  "proposal_drafting",
+  "project_fit_scoring",
   "validation",
 ];
 
@@ -171,7 +175,12 @@ export default function AiConfigPage() {
             <Button data-testid="btn-add-config"><Plus className="mr-2 h-4 w-4"/>New Config</Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg">
-            <DialogHeader><DialogTitle>{editingId ? "Edit Config" : "New Config"}</DialogTitle></DialogHeader>
+            <DialogHeader>
+              <DialogTitle>{editingId ? "Edit Config" : "New Config"}</DialogTitle>
+              <DialogDescription>
+                Add or update the model routing settings used by the AI pipelines.
+              </DialogDescription>
+            </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
                 <FormField control={form.control} name="taskScope" render={({field}) => (

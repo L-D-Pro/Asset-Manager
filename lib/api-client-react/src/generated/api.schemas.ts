@@ -29,6 +29,11 @@ export interface CreateBaseResumeBody {
   contentText: string;
 }
 
+export interface ImportBaseResumeBody {
+  file: Blob;
+  label?: string;
+}
+
 /**
  * JSON object with hard filter criteria
  */
@@ -250,6 +255,26 @@ export interface UpdateClaimBody {
   domain?: string | null;
   applicableTags?: string[];
   isActive?: boolean;
+}
+
+export interface DraftClaimsBody {
+  sourceText?: string;
+  prompt?: string;
+  file?: Blob;
+}
+
+export type DraftClaimsResponseMetadata = {
+  sourceTextChars?: number;
+  extractedTextChars?: number;
+  promptChars?: number;
+  truncated?: boolean;
+  /** @nullable */
+  filename?: string | null;
+};
+
+export interface DraftClaimsResponse {
+  claims: CreateClaimBody[];
+  metadata: DraftClaimsResponseMetadata;
 }
 
 export interface ResumeVersion {
@@ -533,6 +558,665 @@ export interface UpdateAiModelConfigBody {
   extraConfig?: UpdateAiModelConfigBodyExtraConfig;
 }
 
+export type AiReviewOverviewStats = {
+  recentAiEvents?: number;
+  evaluations?: number;
+  activePromptVersions?: number;
+  trainingExamples?: number;
+  failedAiEvents?: number;
+};
+
+export type AiRunEvaluationMetadata = { [key: string]: unknown };
+
+export interface AiRunEvaluation {
+  id: number;
+  /** @nullable */
+  eventLogId?: number | null;
+  /** @nullable */
+  promptVersionId?: number | null;
+  taskScope: string;
+  /** @nullable */
+  entityType?: string | null;
+  /** @nullable */
+  entityId?: number | null;
+  /** @nullable */
+  truthfulnessScore?: number | null;
+  /** @nullable */
+  relevanceScore?: number | null;
+  /** @nullable */
+  formattingScore?: number | null;
+  /** @nullable */
+  attributionScore?: number | null;
+  /** @nullable */
+  approvalOutcome?: string | null;
+  /** @nullable */
+  editDistance?: number | null;
+  /** @nullable */
+  downstreamOutcome?: string | null;
+  evaluatorType: string;
+  /** @nullable */
+  notes?: string | null;
+  metadata: AiRunEvaluationMetadata;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type AiPromptVersionMetadata = { [key: string]: unknown };
+
+export interface AiPromptVersion {
+  id: number;
+  taskScope: string;
+  version: number;
+  label: string;
+  systemPrompt: string;
+  /** @nullable */
+  userPromptTemplate?: string | null;
+  /** @nullable */
+  notes?: string | null;
+  isActive: boolean;
+  metadata: AiPromptVersionMetadata;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type AiTrainingExampleInputSnapshot = { [key: string]: unknown };
+
+export type AiTrainingExampleMetadata = { [key: string]: unknown };
+
+export interface AiTrainingExample {
+  id: number;
+  taskScope: string;
+  /** @nullable */
+  sourceEntityType?: string | null;
+  /** @nullable */
+  sourceEntityId?: number | null;
+  /** @nullable */
+  evaluationId?: number | null;
+  inputSnapshot: AiTrainingExampleInputSnapshot;
+  approvedOutput: string;
+  /** @nullable */
+  rejectedOutput?: string | null;
+  /** @nullable */
+  notes?: string | null;
+  /** @nullable */
+  qualityScore?: number | null;
+  isActive: boolean;
+  metadata: AiTrainingExampleMetadata;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AiReviewOverview {
+  recentAiEvents: EventLog[];
+  evaluations: AiRunEvaluation[];
+  promptVersions: AiPromptVersion[];
+  trainingExamples: AiTrainingExample[];
+  stats: AiReviewOverviewStats;
+}
+
+export type CreateAiPromptVersionBodyMetadata = { [key: string]: unknown };
+
+export interface CreateAiPromptVersionBody {
+  taskScope: string;
+  version?: number;
+  label: string;
+  systemPrompt: string;
+  /** @nullable */
+  userPromptTemplate?: string | null;
+  /** @nullable */
+  notes?: string | null;
+  isActive?: boolean;
+  metadata?: CreateAiPromptVersionBodyMetadata;
+}
+
+export type UpdateAiPromptVersionBodyMetadata = { [key: string]: unknown };
+
+export interface UpdateAiPromptVersionBody {
+  taskScope?: string;
+  version?: number;
+  label?: string;
+  systemPrompt?: string;
+  /** @nullable */
+  userPromptTemplate?: string | null;
+  /** @nullable */
+  notes?: string | null;
+  isActive?: boolean;
+  metadata?: UpdateAiPromptVersionBodyMetadata;
+}
+
+export type CreateAiRunEvaluationBodyMetadata = { [key: string]: unknown };
+
+export interface CreateAiRunEvaluationBody {
+  /** @nullable */
+  eventLogId?: number | null;
+  /** @nullable */
+  promptVersionId?: number | null;
+  taskScope: string;
+  /** @nullable */
+  entityType?: string | null;
+  /** @nullable */
+  entityId?: number | null;
+  /** @nullable */
+  truthfulnessScore?: number | null;
+  /** @nullable */
+  relevanceScore?: number | null;
+  /** @nullable */
+  formattingScore?: number | null;
+  /** @nullable */
+  attributionScore?: number | null;
+  /** @nullable */
+  approvalOutcome?: string | null;
+  /** @nullable */
+  editDistance?: number | null;
+  /** @nullable */
+  downstreamOutcome?: string | null;
+  evaluatorType?: string;
+  /** @nullable */
+  notes?: string | null;
+  metadata?: CreateAiRunEvaluationBodyMetadata;
+}
+
+export type CreateAiTrainingExampleBodyInputSnapshot = {
+  [key: string]: unknown;
+};
+
+export type CreateAiTrainingExampleBodyMetadata = { [key: string]: unknown };
+
+export interface CreateAiTrainingExampleBody {
+  taskScope: string;
+  /** @nullable */
+  sourceEntityType?: string | null;
+  /** @nullable */
+  sourceEntityId?: number | null;
+  /** @nullable */
+  evaluationId?: number | null;
+  inputSnapshot?: CreateAiTrainingExampleBodyInputSnapshot;
+  approvedOutput: string;
+  /** @nullable */
+  rejectedOutput?: string | null;
+  /** @nullable */
+  notes?: string | null;
+  /** @nullable */
+  qualityScore?: number | null;
+  isActive?: boolean;
+  metadata?: CreateAiTrainingExampleBodyMetadata;
+}
+
+export type SiteAdapterMetadata = { [key: string]: unknown };
+
+export interface SiteAdapter {
+  id: number;
+  platform: string;
+  label: string;
+  adapterType: string;
+  allowedAutomationLevel: string;
+  isActive: boolean;
+  requiresHumanFinalSubmit: boolean;
+  /** @nullable */
+  notes?: string | null;
+  metadata: SiteAdapterMetadata;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CreateSiteAdapterBodyMetadata = { [key: string]: unknown };
+
+export interface CreateSiteAdapterBody {
+  platform: string;
+  label: string;
+  adapterType?: string;
+  allowedAutomationLevel?: string;
+  isActive?: boolean;
+  requiresHumanFinalSubmit?: boolean;
+  /** @nullable */
+  notes?: string | null;
+  metadata?: CreateSiteAdapterBodyMetadata;
+}
+
+export type ApplicationSessionMetadata = { [key: string]: unknown };
+
+export interface ApplicationSession {
+  id: number;
+  /** @nullable */
+  applicationId?: number | null;
+  /** @nullable */
+  jobId?: number | null;
+  /** @nullable */
+  siteAdapterId?: number | null;
+  platform: string;
+  /** @nullable */
+  targetUrl?: string | null;
+  status: string;
+  /** @nullable */
+  humanCheckpoint?: string | null;
+  /** @nullable */
+  currentStep?: string | null;
+  metadata: ApplicationSessionMetadata;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CreateApplicationSessionBodyMetadata = { [key: string]: unknown };
+
+export interface CreateApplicationSessionBody {
+  /** @nullable */
+  applicationId?: number | null;
+  /** @nullable */
+  jobId?: number | null;
+  /** @nullable */
+  siteAdapterId?: number | null;
+  platform: string;
+  /** @nullable */
+  targetUrl?: string | null;
+  status?: string;
+  /** @nullable */
+  humanCheckpoint?: string | null;
+  /** @nullable */
+  currentStep?: string | null;
+  metadata?: CreateApplicationSessionBodyMetadata;
+}
+
+export type ApplicationFormFieldMetadata = { [key: string]: unknown };
+
+export interface ApplicationFormField {
+  id: number;
+  sessionId: number;
+  fieldKey: string;
+  /** @nullable */
+  label?: string | null;
+  fieldType: string;
+  /** @nullable */
+  detectedValue?: string | null;
+  /** @nullable */
+  suggestedValue?: string | null;
+  /** @nullable */
+  approvedValue?: string | null;
+  status: string;
+  isSensitive: boolean;
+  metadata: ApplicationFormFieldMetadata;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CreateApplicationFormFieldBodyMetadata = { [key: string]: unknown };
+
+export interface CreateApplicationFormFieldBody {
+  fieldKey: string;
+  /** @nullable */
+  label?: string | null;
+  fieldType?: string;
+  /** @nullable */
+  detectedValue?: string | null;
+  /** @nullable */
+  suggestedValue?: string | null;
+  /** @nullable */
+  approvedValue?: string | null;
+  status?: string;
+  isSensitive?: boolean;
+  metadata?: CreateApplicationFormFieldBodyMetadata;
+}
+
+export type ApplicationActionMetadata = { [key: string]: unknown };
+
+export interface ApplicationAction {
+  id: number;
+  sessionId: number;
+  actionType: string;
+  status: string;
+  requiresHumanApproval: boolean;
+  summary: string;
+  metadata: ApplicationActionMetadata;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CreateApplicationActionBodyMetadata = { [key: string]: unknown };
+
+export interface CreateApplicationActionBody {
+  actionType: string;
+  status?: string;
+  requiresHumanApproval?: boolean;
+  summary: string;
+  metadata?: CreateApplicationActionBodyMetadata;
+}
+
+export interface ApplicationSessionDetail {
+  session: ApplicationSession;
+  fields: ApplicationFormField[];
+  actions: ApplicationAction[];
+}
+
+export type FreelanceProfilePortfolioProjectsItem = { [key: string]: unknown };
+
+export type FreelanceProfileCaseStudiesItem = { [key: string]: unknown };
+
+export type FreelanceProfileProofLinksItem = { [key: string]: unknown };
+
+export type FreelanceProfileMetadata = { [key: string]: unknown };
+
+export interface FreelanceProfile {
+  id: number;
+  name: string;
+  contractorResumeText: string;
+  portfolioProjects: FreelanceProfilePortfolioProjectsItem[];
+  skills: string[];
+  caseStudies: FreelanceProfileCaseStudiesItem[];
+  /** @nullable */
+  hourlyRateMin?: string | null;
+  /** @nullable */
+  hourlyRateTarget?: string | null;
+  /** @nullable */
+  availability?: string | null;
+  preferredProjectTypes: string[];
+  disallowedClaims: string[];
+  proofLinks: FreelanceProfileProofLinksItem[];
+  isActive: boolean;
+  metadata: FreelanceProfileMetadata;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CreateFreelanceProfileBodyPortfolioProjectsItem = {
+  [key: string]: unknown;
+};
+
+export type CreateFreelanceProfileBodyCaseStudiesItem = {
+  [key: string]: unknown;
+};
+
+export type CreateFreelanceProfileBodyProofLinksItem = {
+  [key: string]: unknown;
+};
+
+export type CreateFreelanceProfileBodyMetadata = { [key: string]: unknown };
+
+export interface CreateFreelanceProfileBody {
+  name: string;
+  contractorResumeText?: string;
+  portfolioProjects?: CreateFreelanceProfileBodyPortfolioProjectsItem[];
+  skills?: string[];
+  caseStudies?: CreateFreelanceProfileBodyCaseStudiesItem[];
+  /** @nullable */
+  hourlyRateMin?: string | null;
+  /** @nullable */
+  hourlyRateTarget?: string | null;
+  /** @nullable */
+  availability?: string | null;
+  preferredProjectTypes?: string[];
+  disallowedClaims?: string[];
+  proofLinks?: CreateFreelanceProfileBodyProofLinksItem[];
+  isActive?: boolean;
+  metadata?: CreateFreelanceProfileBodyMetadata;
+}
+
+export type UpdateFreelanceProfileBodyPortfolioProjectsItem = {
+  [key: string]: unknown;
+};
+
+export type UpdateFreelanceProfileBodyCaseStudiesItem = {
+  [key: string]: unknown;
+};
+
+export type UpdateFreelanceProfileBodyProofLinksItem = {
+  [key: string]: unknown;
+};
+
+export type UpdateFreelanceProfileBodyMetadata = { [key: string]: unknown };
+
+export interface UpdateFreelanceProfileBody {
+  name?: string;
+  contractorResumeText?: string;
+  portfolioProjects?: UpdateFreelanceProfileBodyPortfolioProjectsItem[];
+  skills?: string[];
+  caseStudies?: UpdateFreelanceProfileBodyCaseStudiesItem[];
+  /** @nullable */
+  hourlyRateMin?: string | null;
+  /** @nullable */
+  hourlyRateTarget?: string | null;
+  /** @nullable */
+  availability?: string | null;
+  preferredProjectTypes?: string[];
+  disallowedClaims?: string[];
+  proofLinks?: UpdateFreelanceProfileBodyProofLinksItem[];
+  isActive?: boolean;
+  metadata?: UpdateFreelanceProfileBodyMetadata;
+}
+
+export type ProjectSourceMetadata = { [key: string]: unknown };
+
+export interface ProjectSource {
+  id: number;
+  platform: string;
+  sourceType: string;
+  /** @nullable */
+  sourceUrl?: string | null;
+  /** @nullable */
+  title?: string | null;
+  /** @nullable */
+  rawText?: string | null;
+  metadata: ProjectSourceMetadata;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CreateProjectSourceBodyMetadata = { [key: string]: unknown };
+
+export interface CreateProjectSourceBody {
+  platform?: string;
+  sourceType?: string;
+  /** @nullable */
+  sourceUrl?: string | null;
+  /** @nullable */
+  title?: string | null;
+  /** @nullable */
+  rawText?: string | null;
+  metadata?: CreateProjectSourceBodyMetadata;
+}
+
+export type FreelanceProjectClientMetadata = { [key: string]: unknown };
+
+export type FreelanceProjectMetadata = { [key: string]: unknown };
+
+export interface FreelanceProject {
+  id: number;
+  /** @nullable */
+  profileId?: number | null;
+  /** @nullable */
+  sourceId?: number | null;
+  platform: string;
+  title: string;
+  /** @nullable */
+  clientName?: string | null;
+  /** @nullable */
+  projectUrl?: string | null;
+  descriptionText: string;
+  /** @nullable */
+  budgetType?: string | null;
+  /** @nullable */
+  budgetMin?: string | null;
+  /** @nullable */
+  budgetMax?: string | null;
+  /** @nullable */
+  hourlyMin?: string | null;
+  /** @nullable */
+  hourlyMax?: string | null;
+  requiredSkills: string[];
+  clientMetadata: FreelanceProjectClientMetadata;
+  /** @nullable */
+  fitScore?: number | null;
+  riskFlags: string[];
+  status: string;
+  metadata: FreelanceProjectMetadata;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CreateFreelanceProjectBodyClientMetadata = {
+  [key: string]: unknown;
+};
+
+export type CreateFreelanceProjectBodyMetadata = { [key: string]: unknown };
+
+export interface CreateFreelanceProjectBody {
+  /** @nullable */
+  profileId?: number | null;
+  /** @nullable */
+  sourceId?: number | null;
+  platform?: string;
+  title: string;
+  /** @nullable */
+  clientName?: string | null;
+  /** @nullable */
+  projectUrl?: string | null;
+  descriptionText: string;
+  /** @nullable */
+  budgetType?: string | null;
+  /** @nullable */
+  budgetMin?: string | null;
+  /** @nullable */
+  budgetMax?: string | null;
+  /** @nullable */
+  hourlyMin?: string | null;
+  /** @nullable */
+  hourlyMax?: string | null;
+  requiredSkills?: string[];
+  clientMetadata?: CreateFreelanceProjectBodyClientMetadata;
+  status?: string;
+  metadata?: CreateFreelanceProjectBodyMetadata;
+}
+
+export type ProposalVersionMilestonesItem = { [key: string]: unknown };
+
+export type ProposalVersionCitedProofItem = { [key: string]: unknown };
+
+export type ProposalVersionMetadata = { [key: string]: unknown };
+
+export interface ProposalVersion {
+  id: number;
+  projectId: number;
+  /** @nullable */
+  profileId?: number | null;
+  /** @nullable */
+  label?: string | null;
+  status: string;
+  proposalText: string;
+  /** @nullable */
+  clientMessageText?: string | null;
+  /** @nullable */
+  bidAmount?: string | null;
+  /** @nullable */
+  bidType?: string | null;
+  milestones: ProposalVersionMilestonesItem[];
+  citedProof: ProposalVersionCitedProofItem[];
+  /** @nullable */
+  riskNotes?: string | null;
+  /** @nullable */
+  rawContent?: string | null;
+  metadata: ProposalVersionMetadata;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CreateProposalVersionBodyMilestonesItem = {
+  [key: string]: unknown;
+};
+
+export type CreateProposalVersionBodyCitedProofItem = {
+  [key: string]: unknown;
+};
+
+export type CreateProposalVersionBodyMetadata = { [key: string]: unknown };
+
+export interface CreateProposalVersionBody {
+  projectId: number;
+  /** @nullable */
+  profileId?: number | null;
+  /** @nullable */
+  label?: string | null;
+  status?: string;
+  proposalText: string;
+  /** @nullable */
+  clientMessageText?: string | null;
+  /** @nullable */
+  bidAmount?: string | null;
+  /** @nullable */
+  bidType?: string | null;
+  milestones?: CreateProposalVersionBodyMilestonesItem[];
+  citedProof?: CreateProposalVersionBodyCitedProofItem[];
+  /** @nullable */
+  riskNotes?: string | null;
+  /** @nullable */
+  rawContent?: string | null;
+  metadata?: CreateProposalVersionBodyMetadata;
+}
+
+export type ProposalOutcomeMetadata = { [key: string]: unknown };
+
+export interface ProposalOutcome {
+  id: number;
+  /** @nullable */
+  proposalVersionId?: number | null;
+  /** @nullable */
+  projectId?: number | null;
+  outcome: string;
+  /** @nullable */
+  actualEarnings?: string | null;
+  /** @nullable */
+  clientQuality?: number | null;
+  /** @nullable */
+  notes?: string | null;
+  metadata: ProposalOutcomeMetadata;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CreateProposalOutcomeBodyMetadata = { [key: string]: unknown };
+
+export interface CreateProposalOutcomeBody {
+  /** @nullable */
+  proposalVersionId?: number | null;
+  /** @nullable */
+  projectId?: number | null;
+  outcome: string;
+  /** @nullable */
+  actualEarnings?: string | null;
+  /** @nullable */
+  clientQuality?: number | null;
+  /** @nullable */
+  notes?: string | null;
+  metadata?: CreateProposalOutcomeBodyMetadata;
+}
+
+export type ClientMessageTemplateMetadata = { [key: string]: unknown };
+
+export interface ClientMessageTemplate {
+  id: number;
+  name: string;
+  templateText: string;
+  useCase: string;
+  isActive: boolean;
+  metadata: ClientMessageTemplateMetadata;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CreateClientMessageTemplateBodyMetadata = {
+  [key: string]: unknown;
+};
+
+export interface CreateClientMessageTemplateBody {
+  name: string;
+  templateText: string;
+  useCase?: string;
+  isActive?: boolean;
+  metadata?: CreateClientMessageTemplateBodyMetadata;
+}
+
+/**
+ * Bad request
+ */
+export type BadRequestResponse = ErrorResponse;
+
 /**
  * Not found
  */
@@ -583,6 +1267,20 @@ export type ListFeedbackSignalsParams = {
 };
 
 export type ListAiModelConfigsParams = {
+  taskScope?: string;
+  isActive?: boolean;
+};
+
+export type ListAiPromptVersionsParams = {
+  taskScope?: string;
+  isActive?: boolean;
+};
+
+export type ListAiRunEvaluationsParams = {
+  taskScope?: string;
+};
+
+export type ListAiTrainingExamplesParams = {
   taskScope?: string;
   isActive?: boolean;
 };

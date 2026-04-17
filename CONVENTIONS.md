@@ -84,17 +84,20 @@ All workspace packages are listed in `pnpm-workspace.yaml` under `packages:` and
 
 ## Environment Variables and Secrets
 
-**Never hardcode secrets or environment-specific values.** All secrets and config are managed via Replit's environment variable system.
+**Never hardcode secrets or environment-specific values.** Use the root `.env` locally and platform-managed secrets in production.
 
 | Variable | Where used | Description |
 |----------|-----------|-------------|
 | `DATABASE_URL` | `lib/db/src/client.ts` | PostgreSQL connection string |
-| `PORT` | `artifacts/api-server/src/index.ts`, `artifacts/dashboard/vite.config.ts` | Port the server binds to |
-| `BASE_PATH` | `artifacts/dashboard/vite.config.ts` | Vite base path for Replit proxy routing |
-| `AI_INTEGRATIONS_OPENROUTER_BASE_URL` | `@workspace/integrations-openrouter-ai` | OpenRouter API endpoint (Replit-provisioned) |
-| `AI_INTEGRATIONS_OPENROUTER_API_KEY` | `@workspace/integrations-openrouter-ai` | OpenRouter API key (Replit-provisioned) |
+| `SESSION_SECRET` | `artifacts/api-server/src/app.ts` | Session signing secret, at least 32 chars |
+| `PORT` | API/dashboard dev servers | Port the server binds to; API defaults to 8080, dashboard defaults to 5173 |
+| `API_SERVER_URL` | `artifacts/dashboard/vite.config.ts` | Optional Vite dev proxy target override |
+| `ALLOWED_ORIGINS` | `artifacts/api-server/src/app.ts` | Comma-separated production CORS origins |
+| `AI_INTEGRATIONS_OPENROUTER_BASE_URL` | `@workspace/integrations-openrouter-ai` | OpenRouter API endpoint |
+| `AI_INTEGRATIONS_OPENROUTER_API_KEY` | `@workspace/integrations-openrouter-ai` | OpenRouter API key |
+| `ADMIN_USERNAME` / `ADMIN_PASSWORD` / `ADMIN_EMAIL` | `artifacts/api-server/src/index.ts` | First-run admin bootstrap only |
 
-The API server throws immediately on startup if `PORT` is missing or invalid. The dashboard falls back to port `5173` and base path `/` if these are absent (safe for local/CI builds). Do not add checks for optional vars that already have safe defaults.
+The API server loads the root `.env` through Node's `--env-file-if-exists` flag in normal start scripts. Remove `ADMIN_*` vars after the first successful bootstrap in production.
 
 ## Shared Library Patterns
 
@@ -125,7 +128,7 @@ No automated test suite exists at this time. The approach to verification is:
 3. **EventLog as audit trail** — every AI call and state change is logged, enabling post-hoc debugging.
 4. **Structured error responses** — all API errors are logged and returned in a consistent format so callers can surface them clearly.
 
-Future: add integration tests for route handlers and unit tests for `scoring.ts` and `validation.ts`.
+Future: add integration tests for route handlers, unit tests for `scoring.ts`/`validation.ts`, and E2E tests for auth, base resume import, AI draft claims, AI Review, Assisted Apply, and Freelance Copilot.
 
 ## pnpm Workspace Security Policy
 

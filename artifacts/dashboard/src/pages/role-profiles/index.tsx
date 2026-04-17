@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { UserCircle, Plus, Pencil, Trash2, ChevronDown, ChevronUp, Filter, Scale } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -228,7 +228,12 @@ export default function RoleProfilesPage() {
             <Button data-testid="btn-add-profile"><Plus className="mr-2 h-4 w-4"/>New Profile</Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader><DialogTitle>{editingId ? "Edit Role Profile" : "New Role Profile"}</DialogTitle></DialogHeader>
+            <DialogHeader>
+              <DialogTitle>{editingId ? "Edit Role Profile" : "New Role Profile"}</DialogTitle>
+              <DialogDescription>
+                Define the hard filters and soft skill weights used to score jobs.
+              </DialogDescription>
+            </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <FormField control={form.control} name="name" render={({field}) => (

@@ -10,12 +10,19 @@ import { Building, MapPin, ExternalLink, ArrowLeft, Wand2, AlertCircle, Tag } fr
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { getErrorMessage } from "@/lib/api-errors";
+import { AiProgressButton } from "@/components/ai/ai-progress-button";
 
 export default function JobDetail() {
   const { id } = useParams<{ id: string }>();
   const jobId = parseInt(id || "0", 10);
   const { data: job, isLoading } = useGetJob(jobId, { query: { enabled: !!jobId, queryKey: getGetJobQueryKey(jobId) } });
-  const { data: score, isLoading: scoreLoading } = useScoreJob(jobId, undefined, { query: { enabled: !!jobId, queryKey: getScoreJobQueryKey(jobId) }});
+  const roleProfileId = job?.roleProfileId ?? undefined;
+  const { data: score, isLoading: scoreLoading } = useScoreJob(jobId, roleProfileId ? { roleProfileId } : undefined, {
+    query: {
+      enabled: !!jobId && !!roleProfileId,
+      queryKey: roleProfileId ? [...getScoreJobQueryKey(jobId), roleProfileId] : getScoreJobQueryKey(jobId),
+    },
+  });
   const { data: claimMatches, isLoading: matchesLoading } = useGetJobClaimMatches(jobId, { query: { enabled: !!jobId, queryKey: getGetJobClaimMatchesQueryKey(jobId) }});
   
   const parseJob = useParseJobDescription();
@@ -127,30 +134,29 @@ export default function JobDetail() {
               </div>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-3">
-              <Button 
-                variant="secondary" 
-                onClick={handleParse} 
-                disabled={parseJob.isPending}
+              <AiProgressButton
+                variant="secondary"
+                onClick={handleParse}
+                isPending={parseJob.isPending}
+                idleLabel="Parse JD"
                 data-testid="btn-parse-jd"
-              >
-                {parseJob.isPending ? "Parsing..." : "Parse JD"}
-              </Button>
-              <Button 
-                variant="secondary" 
-                onClick={handleTailor} 
-                disabled={tailorResume.isPending || !job.parsedRequiredSkills}
+              />
+              <AiProgressButton
+                variant="secondary"
+                onClick={handleTailor}
+                isPending={tailorResume.isPending}
+                disabled={!job.parsedRequiredSkills}
+                idleLabel="Tailor Resume"
                 data-testid="btn-tailor-resume"
-              >
-                {tailorResume.isPending ? "Tailoring..." : "Tailor Resume"}
-              </Button>
-              <Button 
-                variant="secondary" 
-                onClick={handleCoverLetter} 
-                disabled={draftCoverLetter.isPending || !job.parsedRequiredSkills}
+              />
+              <AiProgressButton
+                variant="secondary"
+                onClick={handleCoverLetter}
+                isPending={draftCoverLetter.isPending}
+                disabled={!job.parsedRequiredSkills}
+                idleLabel="Draft Cover Letter"
                 data-testid="btn-draft-cl"
-              >
-                {draftCoverLetter.isPending ? "Drafting..." : "Draft Cover Letter"}
-              </Button>
+              />
             </CardContent>
           </Card>
 

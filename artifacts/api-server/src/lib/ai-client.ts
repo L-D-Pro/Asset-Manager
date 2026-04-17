@@ -2,6 +2,7 @@ import { openrouter } from "@workspace/integrations-openrouter-ai";
 import { db, eventLogsTable, aiModelConfigsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { selectModelForTask, type SelectedModel } from "./model-router";
+import { resolvePromptForTask } from "./prompt-router";
 import { logger } from "./logger";
 
 /**
@@ -42,6 +43,8 @@ export interface AiCallResult {
   promptTokens: number;
   /** Number of output (completion) tokens produced. */
   completionTokens: number;
+  /** Active prompt version used for this call, if one was configured. */
+  promptVersionId: number | null;
 }
 
 /**
@@ -59,6 +62,11 @@ export interface AiCallResult {
  */
 export async function callAI(opts: AiCallOptions): Promise<AiCallResult> {
   const { taskType, systemPrompt, userPrompt, jobId, applicationId } = opts;
+  const resolvedPrompt = await resolvePromptForTask(
+    taskType,
+    systemPrompt,
+    userPrompt,
+  );
 
   const primaryModel = await selectModelForTask(taskType);
   if (!primaryModel) {
@@ -80,8 +88,8 @@ export async function callAI(opts: AiCallOptions): Promise<AiCallResult> {
         model: model.modelName,
         max_tokens: model.maxTokens ?? 8192,
         messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
+          { role: "system", content: resolvedPrompt.systemPrompt },
+          { role: "user", content: resolvedPrompt.userPrompt },
         ],
       });
 
@@ -114,6 +122,8 @@ export async function callAI(opts: AiCallOptions): Promise<AiCallResult> {
         actorType: "system",
         metadata: {
           taskType,
+          promptVersionId: resolvedPrompt.promptVersionId,
+          promptLabel: resolvedPrompt.promptLabel,
           modelName: model.modelName,
           provider: model.provider,
           promptTokens,
@@ -132,6 +142,7 @@ export async function callAI(opts: AiCallOptions): Promise<AiCallResult> {
         taskScope: model.taskScope,
         promptTokens,
         completionTokens,
+        promptVersionId: resolvedPrompt.promptVersionId,
       };
     } catch (err) {
       lastError = err;
@@ -157,6 +168,8 @@ export async function callAI(opts: AiCallOptions): Promise<AiCallResult> {
       actorType: "system",
       metadata: {
         taskType,
+        promptVersionId: resolvedPrompt.promptVersionId,
+        promptLabel: resolvedPrompt.promptLabel,
         succeeded: false,
         modelsAttempted: modelChain.length,
         attemptErrors,

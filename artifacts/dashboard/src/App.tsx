@@ -16,6 +16,9 @@ import ResumeVersionsPage from "@/pages/resume-versions";
 import CoverLettersPage from "@/pages/cover-letters";
 import ApplicationsPage from "@/pages/applications";
 import AiConfigPage from "@/pages/ai-config";
+import AiReviewPage from "@/pages/ai-review";
+import AssistedApplyPage from "@/pages/assisted-apply";
+import FreelancePage from "@/pages/freelance";
 import RoleProfilesPage from "@/pages/role-profiles";
 import FeedbackPage from "@/pages/feedback";
 import GuidePage from "@/pages/guide";
@@ -90,6 +93,9 @@ function ProtectedRoutes() {
         <Route path="/resume-versions" element={<ResumeVersionsPage />} />
         <Route path="/cover-letters" element={<CoverLettersPage />} />
         <Route path="/applications" element={<ApplicationsPage />} />
+        <Route path="/assisted-apply" element={<AssistedApplyPage />} />
+        <Route path="/freelance" element={<FreelancePage />} />
+        <Route path="/ai-review" element={<AiReviewPage />} />
         <Route path="/ai-config" element={<AiConfigPage />} />
         <Route path="/role-profiles" element={<RoleProfilesPage />} />
         <Route path="/feedback" element={<FeedbackPage />} />

@@ -12,6 +12,9 @@ import applicationsRouter from "./applications";
 import eventLogsRouter from "./event-logs";
 import feedbackSignalsRouter from "./feedback-signals";
 import aiModelConfigsRouter from "./ai-model-configs";
+import aiLearningRouter from "./ai-learning";
+import assistedApplyRouter from "./assisted-apply";
+import freelanceRouter from "./freelance";
 
 /**
  * Root API router. Aggregates all entity-specific sub-routers and mounts them
@@ -51,5 +54,8 @@ router.use(applicationsRouter);
 router.use(eventLogsRouter);
 router.use(feedbackSignalsRouter);
 router.use(aiModelConfigsRouter);
+router.use(aiLearningRouter);
+router.use(assistedApplyRouter);
+router.use(freelanceRouter);
 
 export default router;

@@ -1,92 +1,165 @@
 # Task Status
 
-Build history for the four planned implementation phases. All four tasks are complete.
+Last updated: April 16, 2026
 
-## Task #1 — Foundation: Schema, Data Models & OpenAPI Spec
+## Completed Core Platform
 
-**Status: COMPLETE**
+### Foundation
 
-**What it delivers**:
-- Full PostgreSQL schema via Drizzle ORM (11 tables): `role_profiles`, `jobs`, `claims`, `resume_versions`, `cover_letter_versions`, `applications`, `event_logs`, `feedback_signals`, `ai_model_configs`, `conversations`, `messages`
-- All table schemas with constraints, indexes, relationships, and `drizzle-zod` insert schemas
-- OpenAPI spec (`lib/api-spec/openapi.yaml`) with 55+ endpoint definitions covering all CRUD operations and AI-trigger routes
-- Orval codegen config generating two downstream packages: `@workspace/api-client-react` (TanStack Query hooks) and `@workspace/api-zod` (Zod validation schemas)
+- pnpm monorepo with Node 24 and TypeScript 5.9.
+- Drizzle/PostgreSQL schema package in `lib/db`.
+- OpenAPI source of truth in `lib/api-spec/openapi.yaml`.
+- Orval-generated `@workspace/api-zod` and `@workspace/api-client-react`.
+- Express 5 API bundled by esbuild.
+- React/Vite/Tailwind dashboard.
 
-**Key files**: `lib/db/src/schema/*.ts`, `lib/api-spec/openapi.yaml`, `lib/api-spec/orval.config.ts`
+### Auth and Production Readiness
 
----
+- Session auth with `express-session` and `connect-pg-simple`.
+- Admin bootstrap from env vars on first startup.
+- Password hashing with `bcryptjs`.
+- TOTP 2FA with `speakeasy`.
+- Recovery codes.
+- Protected dashboard routes.
+- Session table startup safety.
+- DigitalOcean deployment docs and smoke test docs.
 
-## Task #2 — Backend API: Route Handlers & Business Logic
+### Job Ops Core
 
-**Status: COMPLETE**
+- Role profiles.
+- Job ingestion and parsing.
+- Job scoring.
+- Claim matching.
+- Claims Ledger CRUD.
+- Base resume management with immutable history.
+- DOCX/PDF base resume import.
+- Resume tailoring with full draft text and base resume version traceability.
+- Cover letter drafting.
+- Resume and cover letter approval/rejection state machines.
+- Application tracker.
+- Feedback signals.
+- Event logs.
+- AI model config/fallback routing.
 
-**What it delivers**:
-- Express 5 application (`artifacts/api-server/`) with all route handlers wired
-- Full CRUD for all 9 entities
-- Application stats endpoint (`GET /api/applications/stats`)
-- Job scoring endpoint (`GET /api/jobs/:id/score`) — evaluates a job against a role profile's hard filters and soft weights
-- Claim matching endpoint (`GET /api/jobs/:id/claim-matches`) — ranks all active claims by relevance to a job's parsed JD
-- Approve/reject state machine endpoints for resume versions and cover letter versions
-- EventLog immutable audit trail (read-only API)
-- Zod-based request validation using generated schemas from `@workspace/api-zod`
+### AI Pipelines
 
-**Key files**: `artifacts/api-server/src/routes/*.ts`, `artifacts/api-server/src/lib/scoring.ts`
+- OpenRouter integration.
+- Per-task model routing through `ai_model_configs`.
+- Prompt-version override through `ai_prompt_versions`.
+- AI event logging with model, prompt version, tokens, cost, and fallback metadata.
+- JD parse pipeline.
+- claim_generation pipeline for AI Draft Claims.
+- resume_tailoring pipeline using current base resume + truth-lock claims.
+- cover_letter pipeline using claim-attributed paragraphs.
+- proposal_drafting pipeline for freelance proposal drafts.
 
----
+### Dashboard
 
-## Task #3 — AI Router & Claims Ledger Pipelines
+- Dashboard overview.
+- Jobs Pipeline.
+- Job Detail with AI actions.
+- Claims Ledger with AI Draft Claims.
+- Base Resume with text editor, history, restore, DOCX/PDF import.
+- Resumes Queue.
+- Cover Letters Queue.
+- Applications.
+- Feedback Signals.
+- Role Profiles.
+- AI Config.
+- AI Review.
+- Assisted Apply.
+- Freelance Copilot.
+- Account.
+- Guide.
 
-**Status: COMPLETE**
+## Completed Smart AI Foundation
 
-**What it delivers**:
-- OpenRouter AI integration via `@workspace/integrations-openrouter-ai`
-- `selectModelForTask()` — per-task model routing with priority ordering, fallback chain, and default-scope catch-all
-- `callAI()` — full model chain execution with per-attempt EventLog cost logging (token counts + estimated USD)
-- JD parse pipeline (`jd-parse.ts`) — AI-extracts structured fields from raw JD text
-- Resume tailor pipeline (`resume-tailor.ts`) — matches claims to JD, generates bullet-attributed tailored resume, validates all claim IDs against the Claims Ledger (truth lock)
-- Cover letter pipeline (`cover-letter-draft.ts`) — generates annotated paragraphs with paragraph-level claim attribution
-- Truth-lock validation (`validation.ts`) — `validateBullet()`, `validateParagraph()`, `validateClaimIds()`, `TruthLockViolation` error class
+- `ai_prompt_versions`: versioned prompts for task scopes.
+- `ai_run_evaluations`: human/system review records for AI outputs.
+- `ai_training_examples`: curated examples for future few-shot/eval/fine-tune use.
+- `feedback_signals` extended for richer attribution.
+- `/ai-review/overview` dashboard/API surface.
 
-**Dependency on Task #2**: requires route handlers to wire the AI trigger endpoints; requires the DB schema from Task #1.
+Current learning strategy is supervised prompt/eval/outcome learning, not fine-tuning.
 
-**Key files**: `artifacts/api-server/src/lib/ai-client.ts`, `artifacts/api-server/src/lib/model-router.ts`, `artifacts/api-server/src/lib/pipelines/*.ts`
+## Completed Assisted Apply Foundation
 
----
+- `site_adapters`
+- `application_sessions`
+- `application_form_fields`
+- `application_actions`
+- Assisted Apply dashboard page.
+- Human-checkpoint and safety-policy metadata.
 
-## Task #4 — React Dashboard: Job Ops Admin UI
+Not yet built:
 
-**Status: COMPLETE**
+- Browser extension.
+- Playwright worker.
+- Site-specific field adapters.
+- Credential vault.
+- Automated form fill.
+- Final submission automation.
 
-**What it delivers**:
-- React + Vite SPA (`artifacts/dashboard/`) with 10 pages + 404
-- Full sidebar layout with react-router-dom routing
-- Dashboard overview with application stats cards
-- Jobs Pipeline: filterable job list, create form, per-role-profile score chips, link to job detail
-- Job Detail: raw JD display, AI trigger buttons (parse/tailor/cover letter), score display, claim match list
-- Claims Ledger: full CRUD, phrasing variants editor (useFieldArray), applicable tags editor, domain filter, active/inactive tabs
-- Resume Queue: per-change diff review with thumbs-up/thumbs-down per bullet, approval blocked until all decisions made, decisions persisted to `notes` field on version record
-- Cover Letter Queue: annotated paragraph view with claim attribution pills, request-revision dialog (note stored to `notes` field before rejection)
-- Applications Tracker: pipeline stage management
-- Role Profiles: hard filters editor (required/blocked keywords, min salary), soft weights dynamic array
-- AI Model Config: per-task model config CRUD with custom task scope input (separate `isCustomScope` state)
-- Feedback Signals: create/list outcome signals with notes
+## Completed Freelance Copilot Foundation
 
-**Dependency on Tasks #1–#3**: requires the complete API to be running; uses `@workspace/api-client-react` generated hooks exclusively.
+- `freelance_profiles`
+- `project_sources`
+- `freelance_projects`
+- `proposal_versions`
+- `proposal_outcomes`
+- `client_message_templates`
+- project fit scoring heuristic
+- proposal drafting AI pipeline
+- Freelance Copilot dashboard page
 
-**Key files**: `artifacts/dashboard/src/App.tsx`, `artifacts/dashboard/src/pages/**/*.tsx`, `artifacts/dashboard/src/components/layout/sidebar.tsx`
+Not yet built:
 
----
+- Official Upwork API integration.
+- Browser extension capture.
+- Upwork outcome analytics.
+- Advanced bid optimization.
 
-## Dependency Chain
+## Current Verification
 
+Latest verification run:
+
+```powershell
+corepack pnpm run typecheck
+corepack pnpm --filter @workspace/api-server run build
+corepack pnpm --filter @workspace/dashboard run build
 ```
-Task #1 (Schema + Spec)
-    ↓
-Task #2 (Route Handlers) — depends on #1 for DB schema and generated Zod schemas
-    ↓
-Task #3 (AI Pipelines) — depends on #2 for wired routes and DB client
-    ↓
-Task #4 (Dashboard) — depends on #1 for generated API hooks; exercises #2 and #3 via API calls
+
+Status:
+
+- Full workspace typecheck passes.
+- API production build passes.
+- Dashboard production build passes with existing Vite sourcemap/chunk-size warnings.
+
+## Required Before Testing Latest Features
+
+Push schema to the configured database:
+
+```powershell
+corepack pnpm --filter @workspace/db run push
 ```
 
-Tasks #1 through #3 must complete in order (each depends on the previous). Task #4 requires #1 for the generated React hooks but can be developed in parallel with #2 and #3 if the spec is stable.
+Then smoke test:
+
+- login/session
+- base resume save/import/restore
+- AI Draft Claims
+- job parse/score/tailor/cover letter
+- approval/rejection conflict behavior
+- AI Review prompt version creation
+- Assisted Apply session creation
+- Freelance profile/project/proposal flow
+
+## Next Engineering Priorities
+
+1. Run schema push and local/Neon smoke test.
+2. Commit/push latest feature set.
+3. Add richer AI evaluation forms and training-example promotion UI.
+4. Add export/copy/PDF for approved documents/proposals.
+5. Build browser extension MVP for user-opened page capture.
+6. Build Playwright apply-worker only for whitelisted/permitted ATS flows.
+7. Add outcome analytics correlating claims, prompt versions, models, and applications/proposals.

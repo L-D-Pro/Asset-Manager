@@ -1,12 +1,12 @@
 # DigitalOcean Deployment Guide
 
-This repo is ready to deploy as a private Phase 1 system on DigitalOcean App Platform. The deployment serves:
+This repo is ready to deploy as a private human-in-the-loop system on DigitalOcean App Platform. The deployment serves:
 
 - a Node/Express API at `/api/*`
 - a static React dashboard at `/`
 - a managed PostgreSQL database
 
-It does **not** automate job-site logins or submit applications on external platforms yet.
+It does **not** automate job-site logins, bypass MFA/CAPTCHA, scrape prohibited platforms, auto-bid on Upwork, or submit applications/proposals on external platforms.
 
 ## Before You Start
 
@@ -44,8 +44,13 @@ Before using it:
    - `/api` routes to the `api` service
    - `/` routes to the `dashboard` static site
    - `/api` preserves the path prefix when forwarded
-7. Review the managed PostgreSQL database component or attach an existing cluster.
+7. Review the managed PostgreSQL database component, attach an existing DigitalOcean cluster, or use an external Neon `DATABASE_URL`.
 8. Deploy.
+9. After first deploy, push the latest schema to the production database before testing new AI Review, Assisted Apply, Freelance, base-resume import, and AI claim drafting features:
+
+```bash
+corepack pnpm --filter @workspace/db run push
+```
 
 ## Required Environment Variables
 
@@ -124,8 +129,17 @@ JOB_OPS_RUN_AI=true \
 pnpm smoke:test
 ```
 
+Manual checks after the script:
+
+- Base Resume: save text, import DOCX/PDF, restore history
+- Claims Ledger: create a claim and run AI Draft Claims
+- AI Review: create a prompt version
+- Assisted Apply: create a safe session record
+- Freelance Copilot: create profile, capture project, score project, draft proposal
+
 ## Known Production Constraints
 
-- The app is still human-in-the-loop. It does not log into LinkedIn, Indeed, ZipRecruiter, Greenhouse, Lever, Workday, or company career sites.
+- The app is still human-in-the-loop. It has assisted-apply scaffolding, but it does not log into LinkedIn, Indeed, ZipRecruiter, Greenhouse, Lever, Workday, Upwork, or company career sites.
+- Upwork/freelance support drafts proposals for review; it does not scrape Upwork, auto-bid, or message clients automatically.
 - Secure session cookies require proxy awareness; the API now sets `trust proxy` in production for App Platform.
 - The dashboard expects same-origin `/api/*` routing in production, so the ingress rule is not optional.

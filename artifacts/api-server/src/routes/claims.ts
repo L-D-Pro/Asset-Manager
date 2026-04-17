@@ -11,7 +11,15 @@ import {
   UpdateClaimBody,
   UpdateClaimResponse,
   DeleteClaimParams,
+  DraftClaimsResponse,
 } from "@workspace/api-zod";
+import {
+  extractTextFromDocumentFile,
+  getUploadedDocument,
+  parseSingleDocumentUpload,
+  UploadValidationError,
+} from "../lib/document-text";
+import { draftClaimsFromSource } from "../lib/pipelines/claim-generation";
 
 const router: IRouter = Router();
 
@@ -48,6 +56,48 @@ router.post("/claims", async (req, res): Promise<void> => {
   }
   const [row] = await db.insert(claimsTable).values(parsed.data).returning();
   res.status(201).json(GetClaimResponse.parse(row));
+});
+
+router.post("/claims/draft", async (req, res): Promise<void> => {
+  try {
+    await parseSingleDocumentUpload(req, res);
+
+    const sourceText = getStringBodyField(req.body.sourceText);
+    const prompt = getStringBodyField(req.body.prompt);
+    const file = getUploadedDocument(req);
+    const extractedText = file ? await extractTextFromDocumentFile(file) : "";
+
+    if (!sourceText.trim() && !extractedText.trim()) {
+      res.status(400).json({ error: "Provide pasted notes or upload a DOCX/PDF source file." });
+      return;
+    }
+
+    if (file && extractedText.length < 20) {
+      res.status(400).json({
+        error: "Could not extract enough readable text from this file. For scanned PDFs, paste the text instead.",
+      });
+      return;
+    }
+
+    const result = await draftClaimsFromSource({
+      sourceText,
+      prompt,
+      extractedText,
+      filename: file?.originalname ?? null,
+    });
+
+    res.json(DraftClaimsResponse.parse(result));
+  } catch (err) {
+    if (err instanceof UploadValidationError) {
+      res.status(err.statusCode).json({ error: err.message });
+      return;
+    }
+
+    req.log.error({ err }, "Failed to draft claims");
+    res.status(500).json({
+      error: err instanceof Error ? err.message : "Failed to draft claims",
+    });
+  }
 });
 
 router.get("/claims/:id", async (req, res): Promise<void> => {
@@ -109,3 +159,7 @@ router.delete("/claims/:id", async (req, res): Promise<void> => {
 });
 
 export default router;
+
+function getStringBodyField(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}

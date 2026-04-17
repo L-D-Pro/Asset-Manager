@@ -11,6 +11,12 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { applicationsTable } from "./applications";
 import { resumeVersionsTable } from "./resume-versions";
+import { jobsTable } from "./jobs";
+import { roleProfilesTable } from "./role-profiles";
+import { baseResumeVersionsTable } from "./base-resume-versions";
+import { coverLetterVersionsTable } from "./cover-letter-versions";
+import { aiPromptVersionsTable } from "./ai-prompt-versions";
+import { eventLogsTable } from "./event-logs";
 
 /**
  * Feedback signals — outcome data from the application lifecycle.
@@ -49,6 +55,42 @@ export const feedbackSignalsTable = pgTable(
       () => resumeVersionsTable.id,
       { onDelete: "set null" },
     ),
+    jobId: integer("job_id").references(() => jobsTable.id, {
+      onDelete: "set null",
+    }),
+    roleProfileId: integer("role_profile_id").references(
+      () => roleProfilesTable.id,
+      { onDelete: "set null" },
+    ),
+    baseResumeVersionId: integer("base_resume_version_id").references(
+      () => baseResumeVersionsTable.id,
+      { onDelete: "set null" },
+    ),
+    coverLetterVersionId: integer("cover_letter_version_id").references(
+      () => coverLetterVersionsTable.id,
+      { onDelete: "set null" },
+    ),
+    promptVersionId: integer("prompt_version_id").references(
+      () => aiPromptVersionsTable.id,
+      { onDelete: "set null" },
+    ),
+    modelName: text("model_name"),
+    selectedClaimIds: integer("selected_claim_ids").array().notNull().default([]),
+    finalResult: text("final_result"),
+
+    /**
+     * Canonical AI lineage key for downstream approval/evaluation/feedback joins.
+     * Nullable-first so historical signals remain readable but cannot be treated as trusted lineage.
+     */
+    runId: text("run_id"),
+
+    /**
+     * Event-log anchor used to join this signal back to the originating AI run chain.
+     * Later route enforcement should require this for new in-scope signals.
+     */
+    eventLogId: integer("event_log_id").references(() => eventLogsTable.id, {
+      onDelete: "set null",
+    }),
 
     /**
      * The outcome of the signal.
@@ -85,6 +127,10 @@ export const feedbackSignalsTable = pgTable(
   },
   (table) => [
     index("feedback_signals_application_id_idx").on(table.applicationId),
+    index("feedback_signals_job_id_idx").on(table.jobId),
+    index("feedback_signals_resume_version_id_idx").on(table.resumeVersionId),
+    index("feedback_signals_event_log_id_idx").on(table.eventLogId),
+    index("feedback_signals_run_id_idx").on(table.runId),
     index("feedback_signals_outcome_idx").on(table.outcome),
     index("feedback_signals_signal_type_idx").on(table.signalType),
   ],

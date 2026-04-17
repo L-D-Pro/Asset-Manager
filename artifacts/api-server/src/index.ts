@@ -1,6 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
-import { db } from "@workspace/db";
+import { db, pool } from "@workspace/db";
 import { adminUsersTable } from "@workspace/db";
 import bcrypt from "bcryptjs";
 
@@ -52,6 +52,21 @@ async function bootstrapAdminUser() {
   );
 }
 
+async function ensureSessionTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS "session" (
+      "sid" varchar NOT NULL COLLATE "default",
+      "sess" json NOT NULL,
+      "expire" timestamp(6) NOT NULL,
+      CONSTRAINT "session_pkey" PRIMARY KEY ("sid") NOT DEFERRABLE INITIALLY IMMEDIATE
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");
+  `);
+}
+
 const rawPort = process.env["PORT"];
 
 if (!rawPort) {
@@ -66,16 +81,21 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-// Bootstrap admin user before accepting connections
-bootstrapAdminUser().catch((err) => {
-  logger.error({ err }, "Admin bootstrap failed");
-});
+async function main() {
+  await ensureSessionTable();
+  await bootstrapAdminUser();
 
-app.listen(port, (err) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
-    process.exit(1);
-  }
+  app.listen(port, (err) => {
+    if (err) {
+      logger.error({ err }, "Error listening on port");
+      process.exit(1);
+    }
 
-  logger.info({ port }, "Server listening");
+    logger.info({ port }, "Server listening");
+  });
+}
+
+main().catch((err) => {
+  logger.error({ err }, "Server startup failed");
+  process.exit(1);
 });

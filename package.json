@@ -8,7 +8,8 @@
     "pnpm": "10.x"
   },
   "scripts": {
-    "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
+    "preinstall": "node -e \"const fs=require('fs'); for (const f of ['package-lock.json','yarn.lock']) if (fs.existsSync(f)) fs.rmSync(f); if (!(process.env.npm_config_user_agent || '').startsWith('pnpm/')) { console.error('Use pnpm instead'); process.exit(1); }\"",
+    "dev": "corepack pnpm -r --parallel --filter @workspace/api-server --filter @workspace/dashboard run dev",
     "build": "corepack pnpm run typecheck && corepack pnpm --filter @workspace/api-server run build && corepack pnpm --filter @workspace/dashboard run build && corepack pnpm --filter @workspace/mockup-sandbox run build",
     "typecheck:libs": "tsc --build",
     "typecheck": "corepack pnpm run typecheck:libs && corepack pnpm --filter @workspace/api-server run typecheck && corepack pnpm --filter @workspace/dashboard run typecheck && corepack pnpm --filter @workspace/mockup-sandbox run typecheck && corepack pnpm --filter @workspace/scripts run typecheck",

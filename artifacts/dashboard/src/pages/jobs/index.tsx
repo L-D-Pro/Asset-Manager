@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Plus, Briefcase, MapPin, Building, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -28,9 +28,13 @@ const createJobSchema = z.object({
 });
 
 function JobScoreChip({ jobId, roleProfileId, profileName }: { jobId: number; roleProfileId?: number; profileName?: string }) {
+  if (!roleProfileId) {
+    return null;
+  }
+
   const { data: score } = useScoreJob(jobId, roleProfileId ? { roleProfileId } : undefined, {
     query: {
-      enabled: true,
+      enabled: !!roleProfileId,
       queryKey: roleProfileId ? [...getScoreJobQueryKey(jobId), roleProfileId] : getScoreJobQueryKey(jobId),
     },
   });
@@ -58,9 +62,7 @@ function JobScoreChip({ jobId, roleProfileId, profileName }: { jobId: number; ro
 }
 
 function JobScoreChips({ jobId, profiles }: { jobId: number; profiles: RoleProfile[] }) {
-  if (profiles.length === 0) {
-    return <JobScoreChip jobId={jobId} />;
-  }
+  if (profiles.length === 0) return null;
   return (
     <div className="flex gap-1 flex-wrap">
       {profiles.map(p => (
@@ -77,6 +79,7 @@ export default function JobsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const form = useForm<z.infer<typeof createJobSchema>>({
     resolver: zodResolver(createJobSchema),
@@ -251,8 +254,20 @@ export default function JobsPage() {
           </Card>
         ) : (
           jobs?.map((job) => (
-            <Link key={job.id} to={`/jobs/${job.id}`}>
-              <Card className="hover:border-primary/50 transition-colors cursor-pointer" data-testid={`card-job-${job.id}`}>
+            <Card
+              key={job.id}
+              className="hover:border-primary/50 transition-colors cursor-pointer"
+              data-testid={`card-job-${job.id}`}
+              role="link"
+              tabIndex={0}
+              onClick={() => navigate(`/jobs/${job.id}`)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  navigate(`/jobs/${job.id}`);
+                }
+              }}
+            >
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
@@ -296,8 +311,7 @@ export default function JobsPage() {
                     </div>
                   </div>
                 </CardContent>
-              </Card>
-            </Link>
+            </Card>
           ))
         )}
       </div>

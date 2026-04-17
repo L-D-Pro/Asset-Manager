@@ -30,6 +30,12 @@ tags:
     description: Outcome feedback signals
   - name: ai-model-configs
     description: AI model configuration
+  - name: ai-learning
+    description: Prompt versions, evaluations, and training examples
+  - name: assisted-apply
+    description: Human-approved assisted apply session scaffolding
+  - name: freelance
+    description: Freelance project and proposal copilot
 
 paths:
   /healthz:
@@ -160,6 +166,27 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BaseResumeVersion"
+
+  /base-resume/import:
+    post:
+      operationId: importBaseResume
+      tags: [base-resume]
+      summary: Import a DOCX or PDF resume as the new current base resume
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/ImportBaseResumeBody"
+      responses:
+        "201":
+          description: Newly imported current base resume version
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BaseResumeVersion"
+        "400":
+          $ref: "#/components/responses/BadRequest"
 
   /base-resume/history:
     get:
@@ -438,6 +465,27 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Claim"
+
+  /claims/draft:
+    post:
+      operationId: draftClaims
+      tags: [claims]
+      summary: Draft claims from pasted text and optional uploaded evidence
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/DraftClaimsBody"
+      responses:
+        "200":
+          description: Draft claims for review
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DraftClaimsResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
 
   /claims/{id}:
     get:
@@ -1058,6 +1106,556 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  # ── AI Learning ────────────────────────────────────────────────────────────
+  /ai-review/overview:
+    get:
+      operationId: getAiReviewOverview
+      tags: [ai-learning]
+      summary: Get AI review overview
+      responses:
+        "200":
+          description: AI review overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiReviewOverview"
+
+  /ai-prompt-versions:
+    get:
+      operationId: listAiPromptVersions
+      tags: [ai-learning]
+      summary: List AI prompt versions
+      parameters:
+        - name: taskScope
+          in: query
+          schema:
+            type: string
+        - name: isActive
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Prompt versions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AiPromptVersion"
+    post:
+      operationId: createAiPromptVersion
+      tags: [ai-learning]
+      summary: Create AI prompt version
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAiPromptVersionBody"
+      responses:
+        "201":
+          description: Created prompt version
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiPromptVersion"
+
+  /ai-prompt-versions/{id}:
+    patch:
+      operationId: updateAiPromptVersion
+      tags: [ai-learning]
+      summary: Update AI prompt version
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAiPromptVersionBody"
+      responses:
+        "200":
+          description: Updated prompt version
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiPromptVersion"
+
+  /ai-run-evaluations:
+    get:
+      operationId: listAiRunEvaluations
+      tags: [ai-learning]
+      summary: List AI run evaluations
+      parameters:
+        - name: taskScope
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: AI run evaluations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AiRunEvaluation"
+    post:
+      operationId: createAiRunEvaluation
+      tags: [ai-learning]
+      summary: Create AI run evaluation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAiRunEvaluationBody"
+      responses:
+        "201":
+          description: Created evaluation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiRunEvaluation"
+
+  /ai-training-examples:
+    get:
+      operationId: listAiTrainingExamples
+      tags: [ai-learning]
+      summary: List AI training examples
+      parameters:
+        - name: taskScope
+          in: query
+          schema:
+            type: string
+        - name: isActive
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Training examples
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AiTrainingExample"
+    post:
+      operationId: createAiTrainingExample
+      tags: [ai-learning]
+      summary: Create AI training example
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAiTrainingExampleBody"
+      responses:
+        "201":
+          description: Created training example
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiTrainingExample"
+
+  # ── Assisted Apply ─────────────────────────────────────────────────────────
+  /site-adapters:
+    get:
+      operationId: listSiteAdapters
+      tags: [assisted-apply]
+      summary: List site adapters
+      responses:
+        "200":
+          description: Site adapters
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SiteAdapter"
+    post:
+      operationId: createSiteAdapter
+      tags: [assisted-apply]
+      summary: Create site adapter
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSiteAdapterBody"
+      responses:
+        "201":
+          description: Created site adapter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SiteAdapter"
+
+  /application-sessions:
+    get:
+      operationId: listApplicationSessions
+      tags: [assisted-apply]
+      summary: List assisted application sessions
+      responses:
+        "200":
+          description: Application sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ApplicationSession"
+    post:
+      operationId: createApplicationSession
+      tags: [assisted-apply]
+      summary: Create assisted application session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateApplicationSessionBody"
+      responses:
+        "201":
+          description: Created application session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationSession"
+
+  /application-sessions/{id}:
+    get:
+      operationId: getApplicationSession
+      tags: [assisted-apply]
+      summary: Get assisted application session with fields and actions
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Application session detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationSessionDetail"
+
+  /application-sessions/{id}/fields:
+    post:
+      operationId: createApplicationSessionField
+      tags: [assisted-apply]
+      summary: Create assisted application form field
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateApplicationFormFieldBody"
+      responses:
+        "201":
+          description: Created form field
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationFormField"
+
+  /application-sessions/{id}/actions:
+    post:
+      operationId: createApplicationSessionAction
+      tags: [assisted-apply]
+      summary: Log assisted application action
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateApplicationActionBody"
+      responses:
+        "201":
+          description: Created application action
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationAction"
+
+  # ── Freelance ──────────────────────────────────────────────────────────────
+  /freelance-profiles:
+    get:
+      operationId: listFreelanceProfiles
+      tags: [freelance]
+      summary: List freelance profiles
+      responses:
+        "200":
+          description: Freelance profiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FreelanceProfile"
+    post:
+      operationId: createFreelanceProfile
+      tags: [freelance]
+      summary: Create freelance profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFreelanceProfileBody"
+      responses:
+        "201":
+          description: Created freelance profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FreelanceProfile"
+
+  /freelance-profiles/{id}:
+    patch:
+      operationId: updateFreelanceProfile
+      tags: [freelance]
+      summary: Update freelance profile
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateFreelanceProfileBody"
+      responses:
+        "200":
+          description: Updated freelance profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FreelanceProfile"
+
+  /project-sources:
+    get:
+      operationId: listProjectSources
+      tags: [freelance]
+      summary: List project sources
+      responses:
+        "200":
+          description: Project sources
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProjectSource"
+    post:
+      operationId: createProjectSource
+      tags: [freelance]
+      summary: Create project source
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProjectSourceBody"
+      responses:
+        "201":
+          description: Created project source
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectSource"
+
+  /freelance-projects:
+    get:
+      operationId: listFreelanceProjects
+      tags: [freelance]
+      summary: List freelance projects
+      responses:
+        "200":
+          description: Freelance projects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FreelanceProject"
+    post:
+      operationId: createFreelanceProject
+      tags: [freelance]
+      summary: Create freelance project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFreelanceProjectBody"
+      responses:
+        "201":
+          description: Created freelance project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FreelanceProject"
+
+  /freelance-projects/{id}/score:
+    post:
+      operationId: scoreFreelanceProject
+      tags: [freelance]
+      summary: Score freelance project fit
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Scored freelance project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FreelanceProject"
+
+  /freelance-projects/{id}/draft-proposal:
+    post:
+      operationId: draftFreelanceProposal
+      tags: [freelance]
+      summary: Draft human-reviewed freelance proposal
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "201":
+          description: Created proposal draft
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProposalVersion"
+
+  /proposal-versions:
+    get:
+      operationId: listProposalVersions
+      tags: [freelance]
+      summary: List proposal versions
+      responses:
+        "200":
+          description: Proposal versions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProposalVersion"
+    post:
+      operationId: createProposalVersion
+      tags: [freelance]
+      summary: Create proposal version
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProposalVersionBody"
+      responses:
+        "201":
+          description: Created proposal version
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProposalVersion"
+
+  /proposal-versions/{id}/approve:
+    post:
+      operationId: approveProposalVersion
+      tags: [freelance]
+      summary: Approve proposal version
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Approved proposal version
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProposalVersion"
+
+  /proposal-versions/{id}/reject:
+    post:
+      operationId: rejectProposalVersion
+      tags: [freelance]
+      summary: Reject proposal version
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Rejected proposal version
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProposalVersion"
+
+  /proposal-outcomes:
+    get:
+      operationId: listProposalOutcomes
+      tags: [freelance]
+      summary: List proposal outcomes
+      responses:
+        "200":
+          description: Proposal outcomes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProposalOutcome"
+    post:
+      operationId: createProposalOutcome
+      tags: [freelance]
+      summary: Create proposal outcome
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProposalOutcomeBody"
+      responses:
+        "201":
+          description: Created proposal outcome
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProposalOutcome"
+
+  /client-message-templates:
+    get:
+      operationId: listClientMessageTemplates
+      tags: [freelance]
+      summary: List client message templates
+      responses:
+        "200":
+          description: Client message templates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ClientMessageTemplate"
+    post:
+      operationId: createClientMessageTemplate
+      tags: [freelance]
+      summary: Create client message template
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateClientMessageTemplateBody"
+      responses:
+        "201":
+          description: Created client message template
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClientMessageTemplate"
+
 components:
   parameters:
     Id:
@@ -1068,6 +1666,13 @@ components:
         type: integer
 
   responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
     NotFound:
       description: Not found
       content:
@@ -1126,6 +1731,17 @@ components:
           type: string
       required:
         - contentText
+
+    ImportBaseResumeBody:
+      type: object
+      properties:
+        file:
+          type: string
+          format: binary
+        label:
+          type: string
+      required:
+        - file
 
     RoleProfile:
       type: object
@@ -1522,6 +2138,41 @@ components:
             type: string
         isActive:
           type: boolean
+
+    DraftClaimsBody:
+      type: object
+      properties:
+        sourceText:
+          type: string
+        prompt:
+          type: string
+        file:
+          type: string
+          format: binary
+
+    DraftClaimsResponse:
+      type: object
+      properties:
+        claims:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreateClaimBody"
+        metadata:
+          type: object
+          properties:
+            sourceTextChars:
+              type: integer
+            extractedTextChars:
+              type: integer
+            promptChars:
+              type: integer
+            truncated:
+              type: boolean
+            filename:
+              type: ["string", "null"]
+      required:
+        - claims
+        - metadata
 
     # ── Resume Version ───────────────────────────────────────────────────────
     ResumeVersion:
@@ -1965,3 +2616,1031 @@ components:
           type: ["integer", "null"]
         extraConfig:
           type: object
+
+    # ── Smart AI Strategy / Learning / Assisted Apply / Freelance ───────────
+    AiReviewOverview:
+      type: object
+      properties:
+        recentAiEvents:
+          type: array
+          items:
+            $ref: "#/components/schemas/EventLog"
+        evaluations:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiRunEvaluation"
+        promptVersions:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiPromptVersion"
+        trainingExamples:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiTrainingExample"
+        stats:
+          type: object
+          properties:
+            recentAiEvents:
+              type: integer
+            evaluations:
+              type: integer
+            activePromptVersions:
+              type: integer
+            trainingExamples:
+              type: integer
+            failedAiEvents:
+              type: integer
+      required:
+        - recentAiEvents
+        - evaluations
+        - promptVersions
+        - trainingExamples
+        - stats
+
+    AiPromptVersion:
+      type: object
+      properties:
+        id:
+          type: integer
+        taskScope:
+          type: string
+        version:
+          type: integer
+        label:
+          type: string
+        systemPrompt:
+          type: string
+        userPromptTemplate:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        isActive:
+          type: boolean
+        metadata:
+          type: object
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - taskScope
+        - version
+        - label
+        - systemPrompt
+        - isActive
+        - metadata
+        - createdAt
+        - updatedAt
+
+    CreateAiPromptVersionBody:
+      type: object
+      properties:
+        taskScope:
+          type: string
+        version:
+          type: integer
+        label:
+          type: string
+        systemPrompt:
+          type: string
+        userPromptTemplate:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        isActive:
+          type: boolean
+        metadata:
+          type: object
+      required:
+        - taskScope
+        - label
+        - systemPrompt
+
+    UpdateAiPromptVersionBody:
+      type: object
+      properties:
+        taskScope:
+          type: string
+        version:
+          type: integer
+        label:
+          type: string
+        systemPrompt:
+          type: string
+        userPromptTemplate:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        isActive:
+          type: boolean
+        metadata:
+          type: object
+
+    AiRunEvaluation:
+      type: object
+      properties:
+        id:
+          type: integer
+        eventLogId:
+          type: ["integer", "null"]
+        promptVersionId:
+          type: ["integer", "null"]
+        taskScope:
+          type: string
+        entityType:
+          type: ["string", "null"]
+        entityId:
+          type: ["integer", "null"]
+        truthfulnessScore:
+          type: ["integer", "null"]
+        relevanceScore:
+          type: ["integer", "null"]
+        formattingScore:
+          type: ["integer", "null"]
+        attributionScore:
+          type: ["integer", "null"]
+        approvalOutcome:
+          type: ["string", "null"]
+        editDistance:
+          type: ["integer", "null"]
+        downstreamOutcome:
+          type: ["string", "null"]
+        evaluatorType:
+          type: string
+        notes:
+          type: ["string", "null"]
+        metadata:
+          type: object
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - taskScope
+        - evaluatorType
+        - metadata
+        - createdAt
+        - updatedAt
+
+    CreateAiRunEvaluationBody:
+      type: object
+      properties:
+        eventLogId:
+          type: ["integer", "null"]
+        promptVersionId:
+          type: ["integer", "null"]
+        taskScope:
+          type: string
+        entityType:
+          type: ["string", "null"]
+        entityId:
+          type: ["integer", "null"]
+        truthfulnessScore:
+          type: ["integer", "null"]
+        relevanceScore:
+          type: ["integer", "null"]
+        formattingScore:
+          type: ["integer", "null"]
+        attributionScore:
+          type: ["integer", "null"]
+        approvalOutcome:
+          type: ["string", "null"]
+        editDistance:
+          type: ["integer", "null"]
+        downstreamOutcome:
+          type: ["string", "null"]
+        evaluatorType:
+          type: string
+        notes:
+          type: ["string", "null"]
+        metadata:
+          type: object
+      required:
+        - taskScope
+
+    AiTrainingExample:
+      type: object
+      properties:
+        id:
+          type: integer
+        taskScope:
+          type: string
+        sourceEntityType:
+          type: ["string", "null"]
+        sourceEntityId:
+          type: ["integer", "null"]
+        evaluationId:
+          type: ["integer", "null"]
+        inputSnapshot:
+          type: object
+        approvedOutput:
+          type: string
+        rejectedOutput:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        qualityScore:
+          type: ["integer", "null"]
+        isActive:
+          type: boolean
+        metadata:
+          type: object
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - taskScope
+        - inputSnapshot
+        - approvedOutput
+        - isActive
+        - metadata
+        - createdAt
+        - updatedAt
+
+    CreateAiTrainingExampleBody:
+      type: object
+      properties:
+        taskScope:
+          type: string
+        sourceEntityType:
+          type: ["string", "null"]
+        sourceEntityId:
+          type: ["integer", "null"]
+        evaluationId:
+          type: ["integer", "null"]
+        inputSnapshot:
+          type: object
+        approvedOutput:
+          type: string
+        rejectedOutput:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        qualityScore:
+          type: ["integer", "null"]
+        isActive:
+          type: boolean
+        metadata:
+          type: object
+      required:
+        - taskScope
+        - approvedOutput
+
+    SiteAdapter:
+      type: object
+      properties:
+        id:
+          type: integer
+        platform:
+          type: string
+        label:
+          type: string
+        adapterType:
+          type: string
+        allowedAutomationLevel:
+          type: string
+        isActive:
+          type: boolean
+        requiresHumanFinalSubmit:
+          type: boolean
+        notes:
+          type: ["string", "null"]
+        metadata:
+          type: object
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - platform
+        - label
+        - adapterType
+        - allowedAutomationLevel
+        - isActive
+        - requiresHumanFinalSubmit
+        - metadata
+        - createdAt
+        - updatedAt
+
+    CreateSiteAdapterBody:
+      type: object
+      properties:
+        platform:
+          type: string
+        label:
+          type: string
+        adapterType:
+          type: string
+        allowedAutomationLevel:
+          type: string
+        isActive:
+          type: boolean
+        requiresHumanFinalSubmit:
+          type: boolean
+        notes:
+          type: ["string", "null"]
+        metadata:
+          type: object
+      required:
+        - platform
+        - label
+
+    ApplicationSession:
+      type: object
+      properties:
+        id:
+          type: integer
+        applicationId:
+          type: ["integer", "null"]
+        jobId:
+          type: ["integer", "null"]
+        siteAdapterId:
+          type: ["integer", "null"]
+        platform:
+          type: string
+        targetUrl:
+          type: ["string", "null"]
+        status:
+          type: string
+        humanCheckpoint:
+          type: ["string", "null"]
+        currentStep:
+          type: ["string", "null"]
+        metadata:
+          type: object
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - platform
+        - status
+        - metadata
+        - createdAt
+        - updatedAt
+
+    CreateApplicationSessionBody:
+      type: object
+      properties:
+        applicationId:
+          type: ["integer", "null"]
+        jobId:
+          type: ["integer", "null"]
+        siteAdapterId:
+          type: ["integer", "null"]
+        platform:
+          type: string
+        targetUrl:
+          type: ["string", "null"]
+        status:
+          type: string
+        humanCheckpoint:
+          type: ["string", "null"]
+        currentStep:
+          type: ["string", "null"]
+        metadata:
+          type: object
+      required:
+        - platform
+
+    ApplicationFormField:
+      type: object
+      properties:
+        id:
+          type: integer
+        sessionId:
+          type: integer
+        fieldKey:
+          type: string
+        label:
+          type: ["string", "null"]
+        fieldType:
+          type: string
+        detectedValue:
+          type: ["string", "null"]
+        suggestedValue:
+          type: ["string", "null"]
+        approvedValue:
+          type: ["string", "null"]
+        status:
+          type: string
+        isSensitive:
+          type: boolean
+        metadata:
+          type: object
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - sessionId
+        - fieldKey
+        - fieldType
+        - status
+        - isSensitive
+        - metadata
+        - createdAt
+        - updatedAt
+
+    CreateApplicationFormFieldBody:
+      type: object
+      properties:
+        fieldKey:
+          type: string
+        label:
+          type: ["string", "null"]
+        fieldType:
+          type: string
+        detectedValue:
+          type: ["string", "null"]
+        suggestedValue:
+          type: ["string", "null"]
+        approvedValue:
+          type: ["string", "null"]
+        status:
+          type: string
+        isSensitive:
+          type: boolean
+        metadata:
+          type: object
+      required:
+        - fieldKey
+
+    ApplicationAction:
+      type: object
+      properties:
+        id:
+          type: integer
+        sessionId:
+          type: integer
+        actionType:
+          type: string
+        status:
+          type: string
+        requiresHumanApproval:
+          type: boolean
+        summary:
+          type: string
+        metadata:
+          type: object
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - sessionId
+        - actionType
+        - status
+        - requiresHumanApproval
+        - summary
+        - metadata
+        - createdAt
+        - updatedAt
+
+    CreateApplicationActionBody:
+      type: object
+      properties:
+        actionType:
+          type: string
+        status:
+          type: string
+        requiresHumanApproval:
+          type: boolean
+        summary:
+          type: string
+        metadata:
+          type: object
+      required:
+        - actionType
+        - summary
+
+    ApplicationSessionDetail:
+      type: object
+      properties:
+        session:
+          $ref: "#/components/schemas/ApplicationSession"
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/ApplicationFormField"
+        actions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ApplicationAction"
+      required:
+        - session
+        - fields
+        - actions
+
+    FreelanceProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        contractorResumeText:
+          type: string
+        portfolioProjects:
+          type: array
+          items:
+            type: object
+        skills:
+          type: array
+          items:
+            type: string
+        caseStudies:
+          type: array
+          items:
+            type: object
+        hourlyRateMin:
+          type: ["string", "null"]
+        hourlyRateTarget:
+          type: ["string", "null"]
+        availability:
+          type: ["string", "null"]
+        preferredProjectTypes:
+          type: array
+          items:
+            type: string
+        disallowedClaims:
+          type: array
+          items:
+            type: string
+        proofLinks:
+          type: array
+          items:
+            type: object
+        isActive:
+          type: boolean
+        metadata:
+          type: object
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - contractorResumeText
+        - portfolioProjects
+        - skills
+        - caseStudies
+        - preferredProjectTypes
+        - disallowedClaims
+        - proofLinks
+        - isActive
+        - metadata
+        - createdAt
+        - updatedAt
+
+    CreateFreelanceProfileBody:
+      type: object
+      properties:
+        name:
+          type: string
+        contractorResumeText:
+          type: string
+        portfolioProjects:
+          type: array
+          items:
+            type: object
+        skills:
+          type: array
+          items:
+            type: string
+        caseStudies:
+          type: array
+          items:
+            type: object
+        hourlyRateMin:
+          type: ["string", "null"]
+        hourlyRateTarget:
+          type: ["string", "null"]
+        availability:
+          type: ["string", "null"]
+        preferredProjectTypes:
+          type: array
+          items:
+            type: string
+        disallowedClaims:
+          type: array
+          items:
+            type: string
+        proofLinks:
+          type: array
+          items:
+            type: object
+        isActive:
+          type: boolean
+        metadata:
+          type: object
+      required:
+        - name
+
+    UpdateFreelanceProfileBody:
+      type: object
+      properties:
+        name:
+          type: string
+        contractorResumeText:
+          type: string
+        portfolioProjects:
+          type: array
+          items:
+            type: object
+        skills:
+          type: array
+          items:
+            type: string
+        caseStudies:
+          type: array
+          items:
+            type: object
+        hourlyRateMin:
+          type: ["string", "null"]
+        hourlyRateTarget:
+          type: ["string", "null"]
+        availability:
+          type: ["string", "null"]
+        preferredProjectTypes:
+          type: array
+          items:
+            type: string
+        disallowedClaims:
+          type: array
+          items:
+            type: string
+        proofLinks:
+          type: array
+          items:
+            type: object
+        isActive:
+          type: boolean
+        metadata:
+          type: object
+
+    ProjectSource:
+      type: object
+      properties:
+        id:
+          type: integer
+        platform:
+          type: string
+        sourceType:
+          type: string
+        sourceUrl:
+          type: ["string", "null"]
+        title:
+          type: ["string", "null"]
+        rawText:
+          type: ["string", "null"]
+        metadata:
+          type: object
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - platform
+        - sourceType
+        - metadata
+        - createdAt
+        - updatedAt
+
+    CreateProjectSourceBody:
+      type: object
+      properties:
+        platform:
+          type: string
+        sourceType:
+          type: string
+        sourceUrl:
+          type: ["string", "null"]
+        title:
+          type: ["string", "null"]
+        rawText:
+          type: ["string", "null"]
+        metadata:
+          type: object
+
+    FreelanceProject:
+      type: object
+      properties:
+        id:
+          type: integer
+        profileId:
+          type: ["integer", "null"]
+        sourceId:
+          type: ["integer", "null"]
+        platform:
+          type: string
+        title:
+          type: string
+        clientName:
+          type: ["string", "null"]
+        projectUrl:
+          type: ["string", "null"]
+        descriptionText:
+          type: string
+        budgetType:
+          type: ["string", "null"]
+        budgetMin:
+          type: ["string", "null"]
+        budgetMax:
+          type: ["string", "null"]
+        hourlyMin:
+          type: ["string", "null"]
+        hourlyMax:
+          type: ["string", "null"]
+        requiredSkills:
+          type: array
+          items:
+            type: string
+        clientMetadata:
+          type: object
+        fitScore:
+          type: ["integer", "null"]
+        riskFlags:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+        metadata:
+          type: object
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - platform
+        - title
+        - descriptionText
+        - requiredSkills
+        - clientMetadata
+        - riskFlags
+        - status
+        - metadata
+        - createdAt
+        - updatedAt
+
+    CreateFreelanceProjectBody:
+      type: object
+      properties:
+        profileId:
+          type: ["integer", "null"]
+        sourceId:
+          type: ["integer", "null"]
+        platform:
+          type: string
+        title:
+          type: string
+        clientName:
+          type: ["string", "null"]
+        projectUrl:
+          type: ["string", "null"]
+        descriptionText:
+          type: string
+        budgetType:
+          type: ["string", "null"]
+        budgetMin:
+          type: ["string", "null"]
+        budgetMax:
+          type: ["string", "null"]
+        hourlyMin:
+          type: ["string", "null"]
+        hourlyMax:
+          type: ["string", "null"]
+        requiredSkills:
+          type: array
+          items:
+            type: string
+        clientMetadata:
+          type: object
+        status:
+          type: string
+        metadata:
+          type: object
+      required:
+        - title
+        - descriptionText
+
+    ProposalVersion:
+      type: object
+      properties:
+        id:
+          type: integer
+        projectId:
+          type: integer
+        profileId:
+          type: ["integer", "null"]
+        label:
+          type: ["string", "null"]
+        status:
+          type: string
+        proposalText:
+          type: string
+        clientMessageText:
+          type: ["string", "null"]
+        bidAmount:
+          type: ["string", "null"]
+        bidType:
+          type: ["string", "null"]
+        milestones:
+          type: array
+          items:
+            type: object
+        citedProof:
+          type: array
+          items:
+            type: object
+        riskNotes:
+          type: ["string", "null"]
+        rawContent:
+          type: ["string", "null"]
+        metadata:
+          type: object
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - projectId
+        - status
+        - proposalText
+        - milestones
+        - citedProof
+        - metadata
+        - createdAt
+        - updatedAt
+
+    CreateProposalVersionBody:
+      type: object
+      properties:
+        projectId:
+          type: integer
+        profileId:
+          type: ["integer", "null"]
+        label:
+          type: ["string", "null"]
+        status:
+          type: string
+        proposalText:
+          type: string
+        clientMessageText:
+          type: ["string", "null"]
+        bidAmount:
+          type: ["string", "null"]
+        bidType:
+          type: ["string", "null"]
+        milestones:
+          type: array
+          items:
+            type: object
+        citedProof:
+          type: array
+          items:
+            type: object
+        riskNotes:
+          type: ["string", "null"]
+        rawContent:
+          type: ["string", "null"]
+        metadata:
+          type: object
+      required:
+        - projectId
+        - proposalText
+
+    ProposalOutcome:
+      type: object
+      properties:
+        id:
+          type: integer
+        proposalVersionId:
+          type: ["integer", "null"]
+        projectId:
+          type: ["integer", "null"]
+        outcome:
+          type: string
+        actualEarnings:
+          type: ["string", "null"]
+        clientQuality:
+          type: ["integer", "null"]
+        notes:
+          type: ["string", "null"]
+        metadata:
+          type: object
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - outcome
+        - metadata
+        - createdAt
+        - updatedAt
+
+    CreateProposalOutcomeBody:
+      type: object
+      properties:
+        proposalVersionId:
+          type: ["integer", "null"]
+        projectId:
+          type: ["integer", "null"]
+        outcome:
+          type: string
+        actualEarnings:
+          type: ["string", "null"]
+        clientQuality:
+          type: ["integer", "null"]
+        notes:
+          type: ["string", "null"]
+        metadata:
+          type: object
+      required:
+        - outcome
+
+    ClientMessageTemplate:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        templateText:
+          type: string
+        useCase:
+          type: string
+        isActive:
+          type: boolean
+        metadata:
+          type: object
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - templateText
+        - useCase
+        - isActive
+        - metadata
+        - createdAt
+        - updatedAt
+
+    CreateClientMessageTemplateBody:
+      type: object
+      properties:
+        name:
+          type: string
+        templateText:
+          type: string
+        useCase:
+          type: string
+        isActive:
+          type: boolean
+        metadata:
+          type: object
+      required:
+        - name
+        - templateText

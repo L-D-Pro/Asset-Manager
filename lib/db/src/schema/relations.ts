@@ -9,6 +9,8 @@ import { applicationsTable } from "./applications";
 import { eventLogsTable } from "./event-logs";
 import { feedbackSignalsTable } from "./feedback-signals";
 import { aiModelConfigsTable } from "./ai-model-configs";
+import { aiRunEvaluationsTable } from "./ai-run-evaluations";
+import { aiPromptVersionsTable } from "./ai-prompt-versions";
 
 export const roleProfilesRelations = relations(
   roleProfilesTable,
@@ -48,6 +50,11 @@ export const resumeVersionsRelations = relations(
       fields: [resumeVersionsTable.baseResumeVersionId],
       references: [baseResumeVersionsTable.id],
     }),
+    lineageEventLog: one(eventLogsTable, {
+      fields: [resumeVersionsTable.eventLogId],
+      references: [eventLogsTable.id],
+      relationName: "resume_version_lineage_event",
+    }),
     applications: many(applicationsTable),
     feedbackSignals: many(feedbackSignalsTable),
   }),
@@ -59,6 +66,11 @@ export const coverLetterVersionsRelations = relations(
     job: one(jobsTable, {
       fields: [coverLetterVersionsTable.jobId],
       references: [jobsTable.id],
+    }),
+    lineageEventLog: one(eventLogsTable, {
+      fields: [coverLetterVersionsTable.eventLogId],
+      references: [eventLogsTable.id],
+      relationName: "cover_letter_version_lineage_event",
     }),
     applications: many(applicationsTable),
   }),
@@ -84,7 +96,7 @@ export const applicationsRelations = relations(
   }),
 );
 
-export const eventLogsRelations = relations(eventLogsTable, ({ one }) => ({
+export const eventLogsRelations = relations(eventLogsTable, ({ one, many }) => ({
   application: one(applicationsTable, {
     fields: [eventLogsTable.applicationId],
     references: [applicationsTable.id],
@@ -93,6 +105,14 @@ export const eventLogsRelations = relations(eventLogsTable, ({ one }) => ({
     fields: [eventLogsTable.jobId],
     references: [jobsTable.id],
   }),
+  resumeVersions: many(resumeVersionsTable, {
+    relationName: "resume_version_lineage_event",
+  }),
+  coverLetterVersions: many(coverLetterVersionsTable, {
+    relationName: "cover_letter_version_lineage_event",
+  }),
+  aiRunEvaluations: many(aiRunEvaluationsTable),
+  feedbackSignals: many(feedbackSignalsTable),
 }));
 
 export const feedbackSignalsRelations = relations(
@@ -105,6 +125,24 @@ export const feedbackSignalsRelations = relations(
     resumeVersion: one(resumeVersionsTable, {
       fields: [feedbackSignalsTable.resumeVersionId],
       references: [resumeVersionsTable.id],
+    }),
+    lineageEventLog: one(eventLogsTable, {
+      fields: [feedbackSignalsTable.eventLogId],
+      references: [eventLogsTable.id],
+    }),
+  }),
+);
+
+export const aiRunEvaluationsRelations = relations(
+  aiRunEvaluationsTable,
+  ({ one }) => ({
+    lineageEventLog: one(eventLogsTable, {
+      fields: [aiRunEvaluationsTable.eventLogId],
+      references: [eventLogsTable.id],
+    }),
+    promptVersion: one(aiPromptVersionsTable, {
+      fields: [aiRunEvaluationsTable.promptVersionId],
+      references: [aiPromptVersionsTable.id],
     }),
   }),
 );

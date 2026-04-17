@@ -1,257 +1,474 @@
-# Data Model Reference
-
-All tables are defined with Drizzle ORM in `lib/db/src/schema/`. The DB client is exported from `lib/db/src/client.ts`. Every table has `createdAt` and `updatedAt` timestamps (UTC with timezone) unless noted otherwise.
-
-**11 tables in total** (exported from `lib/db/src/schema/index.ts`):
-`role_profiles`, `jobs`, `claims`, `resume_versions`, `cover_letter_versions`,
-`applications`, `event_logs`, `feedback_signals`, `ai_model_configs`,
-`conversations`, `messages`
-
-## Entity-Relationship Summary
-
-```
-role_profiles ──────────────── jobs (many jobs per profile, FK nullable)
-                                 │
-                    ┌────────────┼────────────────┐
-                    │            │                │
-            resume_versions  cover_letter_versions  applications
-                    │                              │
-                    └─────── feedback_signals ─────┘
-                                 │
-                          event_logs (polymorphic — references any entity via entityType + entityId)
-                          ai_model_configs (self-referential fallback chain)
-                          claims (standalone — no FK to jobs; matched at pipeline runtime)
-```
-
----
-
-## `role_profiles`
-
-Named target-role configurations. The user creates one per type of role they are searching for (e.g. "Senior Frontend", "Staff AI Engineer"). Jobs are scored per profile, not globally.
-
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| `id` | serial | PK | Auto-increment |
-| `name` | text | NOT NULL | Human-readable profile name |
-| `description` | text | nullable | Optional longer description |
-| `hard_filters` | jsonb | NOT NULL, default `{}` | Structured as `{ requiredKeywords: string[], blockedKeywords: string[], minSalary: number }`. A job that fails any hard filter gets `passesHardFilters: false` regardless of soft score. |
-| `soft_weights` | jsonb | NOT NULL, default `{}` | Structured as `{ [keyword: string]: number }` (keyword → weight 0–10). Used to compute a 0–100 normalised job score. |
-| `company_allow_list` | text[] | NOT NULL, default `[]` | Companies the user prefers (informational — not yet enforced in scoring). |
-| `company_deny_list` | text[] | NOT NULL, default `[]` | Companies to exclude (informational — not yet enforced in scoring). |
-| `is_active` | boolean | NOT NULL, default `true` | Inactive profiles are excluded from scoring. |
-
-**Indexes**: none beyond PK.
-
----
-
-## `jobs`
-
-One row per ingested job posting. Deduplication is done via `deduplication_hash`. Parsed fields are populated by the JD parse pipeline.
-
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| `id` | serial | PK | Auto-increment |
-| `role_profile_id` | integer | FK → `role_profiles.id` ON DELETE SET NULL, nullable | The profile this job was ingested against. Used as the default scoring profile. |
-| `title` | text | NOT NULL | Job title |
-| `company` | text | NOT NULL | Company name |
-| `location` | text | nullable | City/country string |
-| `remote_type` | text | nullable | `remote`, `hybrid`, `onsite`, or null |
-| `salary_min` | integer | nullable | Minimum salary (in `salary_currency`) |
-| `salary_max` | integer | nullable | Maximum salary |
-| `salary_currency` | text | nullable | `USD`, `GBP`, `EUR`, etc. |
-| `visa_sponsorship` | text | nullable | `yes`, `no`, `unknown` |
-| `source_url` | text | nullable | Original job posting URL |
-| `source_platform` | text | nullable | `linkedin`, `greenhouse`, `lever`, etc. |
-| `raw_jd_text` | text | nullable | Full raw text of the job description (pre-parse) |
-| `parsed_responsibilities` | text[] | nullable | Extracted from JD by AI |
-| `parsed_required_skills` | text[] | nullable | Required skills extracted by AI |
-| `parsed_nice_to_have_skills` | text[] | nullable | Nice-to-have skills extracted by AI |
-| `parsed_keywords` | text[] | nullable | General keywords extracted by AI |
-| `parsed_seniority_signal` | text | nullable | `junior`, `mid`, `senior`, `staff`, `principal`, etc. |
-| `parsed_structured_data` | jsonb | nullable | Full structured JSON from the AI parse response |
-| `status` | text | NOT NULL, default `new` | `new` → `scored` → `applied` / `parse_failed` |
-| `deduplication_hash` | text | nullable | Hash of (title + company + sourceUrl) for dedup |
-
-**Indexes**: `(role_profile_id, status)`, `(deduplication_hash)`, `(status)`.
-
----
-
-## `claims`
-
-The Claims Ledger — the single source of truth for all factual statements the user can make about themselves. Resume bullets can only be generated from approved claims.
-
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| `id` | serial | PK | Auto-increment |
-| `summary` | text | NOT NULL | The canonical statement of the claim (e.g. "Led migration of monolith to microservices, reducing P99 latency by 40%") |
-| `evidence` | text | nullable | Source of truth: link, document reference, or self-attestation text |
-| `evidence_type` | text | NOT NULL, default `self_attestation` | `self_attestation`, `document`, `url`, etc. |
-| `phrasing_variants` | text[] | NOT NULL, default `[]` | Alternative phrasings the AI may use for this claim |
-| `disallowed_implications` | text[] | NOT NULL, default `[]` | Things this claim must NEVER imply (e.g. "sole contributor") |
-| `domain` | text | nullable | Professional domain (e.g. `backend`, `ml`, `leadership`) — used for filtering |
-| `applicable_tags` | text[] | NOT NULL, default `[]` | Tags for matching (e.g. `["typescript", "react", "team-lead"]`) |
-| `is_active` | boolean | NOT NULL, default `true` | Inactive claims are excluded from pipeline matching |
-
-**Indexes**: `(domain, is_active)`, `(is_active)`.
-
----
-
-## `resume_versions`
-
-One row per AI-tailored resume version. Always starts in `pending_approval`. Approved versions can be linked to applications.
-
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| `id` | serial | PK | Auto-increment |
-| `job_id` | integer | FK → `jobs.id` ON DELETE CASCADE, nullable | The job this resume was tailored for |
-| `label` | text | nullable | Human-readable label (auto-set by pipeline e.g. "AI tailored — Jun 15, 2025") |
-| `status` | text | NOT NULL, default `pending_approval` | State machine: `pending_approval` → `approved` or `rejected` |
-| `tailored_bullets` | jsonb | NOT NULL, default `[]` | Array of `{ text, claimIds, section, isAggregated, originalText }` |
-| `diff_data` | jsonb | nullable | `{ addedBullets, removedBullets, reorderedSections, summary, generatedAt, modelName, bulletsTotal, bulletsPassedValidation, bulletsDiscarded }` |
-| `claim_ids` | integer[] | NOT NULL, default `[]` | Flat list of all claim IDs referenced by this version |
-| `file_url` | text | nullable | URL to the rendered PDF/DOCX if exported |
-| `raw_content` | text | nullable | Raw AI output stored when parsing fails (for debugging) |
-| `notes` | text | nullable | User or system notes; also used to store per-change review decisions |
-
-**Indexes**: `(job_id)`, `(status)`.
-
----
-
-## `cover_letter_versions`
-
-One row per AI-drafted cover letter. Same approval state machine as resume versions.
-
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| `id` | serial | PK | Auto-increment |
-| `job_id` | integer | FK → `jobs.id` ON DELETE CASCADE, nullable | The job this cover letter was drafted for |
-| `label` | text | nullable | Human-readable label |
-| `status` | text | NOT NULL, default `pending_approval` | `pending_approval` → `approved` or `rejected` |
-| `draft_content` | text | nullable | Full plain-text cover letter draft |
-| `annotated_paragraphs` | jsonb | NOT NULL, default `[]` | Array of `{ text, claimIds, role }` where role is `opening`, `hook`, `body`, or `closing` |
-| `claim_ids` | integer[] | NOT NULL, default `[]` | Flat list of all claim IDs referenced |
-| `notes` | text | nullable | Revision notes stored here when user requests revision via the dashboard |
+# Data Model
 
-**Indexes**: `(job_id)`, `(status)`.
+Last updated: April 16, 2026
 
----
+Job Ops uses PostgreSQL with Drizzle ORM. Most primary keys are serial integers. The schema is grouped by operational domain.
 
-## `applications`
+## Canonical AI Run Lineage Contract (M002)
 
-Tracks the lifecycle of a submitted job application. Links a job to the specific resume/cover letter versions used.
+M002 introduces a canonical `run_id` lineage contract for in-scope job-side AI flows. The AI run is the root of lineage.
 
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| `id` | serial | PK | Auto-increment |
-| `job_id` | integer | FK → `jobs.id` ON DELETE CASCADE, NOT NULL | The job applied to |
-| `resume_version_id` | integer | FK → `resume_versions.id` ON DELETE SET NULL, nullable | Resume used for this application |
-| `cover_letter_version_id` | integer | FK → `cover_letter_versions.id` ON DELETE SET NULL, nullable | Cover letter used |
-| `status` | text | NOT NULL, default `applied` | `applied` → `screen` → `interview` → `offer` / `rejected` / `no_response` |
-| `apply_mode` | text | NOT NULL, default `assisted` | `assisted` (user submits manually) or `auto` (future: selective auto-apply) |
-| `platform` | text | nullable | ATS platform (greenhouse, lever, workday, etc.) |
-| `applied_at` | timestamptz | nullable | When the application was submitted |
-| `confirmation_ref` | text | nullable | ATS confirmation number or email subject |
-| `notes` | text | nullable | Free-text notes |
-| `action_log` | jsonb | NOT NULL, default `[]` | Append-only log of actions taken during assisted/auto apply |
+### In-scope lineage tables
 
-**Indexes**: `(job_id)`, `(status)`, `(job_id, status)`.
+The following tables are in scope for the canonical contract in M002:
 
----
+- `event_logs`
+- `resume_versions`
+- `cover_letter_versions`
+- `ai_run_evaluations`
+- `feedback_signals`
 
-## `event_logs`
+### Canonical rules
 
-Immutable audit log. Every state change, AI call, and key operation writes a row here. No update or delete endpoints are exposed via the API.
+- `event_logs.run_id` is the root lineage key for AI-originated flows.
+- The root row is the originating `event_logs` row for the AI run (`entity_type = "ai_call"`).
+- Downstream generated artifacts, evaluations, approvals, and feedback signals must carry the same `run_id` when they belong to that run.
+- Supporting joins may use both `run_id` and `event_log_id`, but `run_id` is the canonical cross-table lineage key.
+- `run_id` is indexed on every in-scope table to keep future lineage validation and reporting queries performant.
 
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| `id` | serial | PK | Auto-increment |
-| `entity_type` | text | NOT NULL | What entity this event belongs to (e.g. `job`, `resume_version`, `ai_call`) |
-| `entity_id` | integer | NOT NULL | The ID of that entity |
-| `application_id` | integer | FK → `applications.id` ON DELETE CASCADE, nullable | Optional application context |
-| `job_id` | integer | FK → `jobs.id` ON DELETE CASCADE, nullable | Optional job context |
-| `event_type` | text | NOT NULL | The specific event (e.g. `ai_call`, `ai_call_failed`, `status_changed`) |
-| `previous_state` | text | nullable | State before the event |
-| `next_state` | text | nullable | State after the event |
-| `metadata` | jsonb | NOT NULL, default `{}` | Arbitrary structured data — for AI calls includes `modelName`, `promptTokens`, `completionTokens`, `estimatedCostUsd` |
-| `actor_type` | text | NOT NULL, default `user` | `user` or `system` |
+### Legacy and malformed rows
 
-**Indexes**: `(entity_type, entity_id)`, `(application_id)`, `(job_id)`, `(event_type)`.
+This rollout is nullable-first. Historical rows may not have trustworthy lineage.
 
----
+- Rows with null `run_id` remain readable and diagnosable.
+- Rows with null or malformed `run_id` are **not** considered valid lineage.
+- Helpers must fail closed for lineage-sensitive behavior instead of inventing or inferring lineage for old rows.
+- Broken lineage should remain inspectable through helper diagnostics such as missing root run, missing child linkage, invalid `run_id` format, or mismatched joins.
 
-## `feedback_signals`
+## Job Search Core
 
-Outcome signals from the application lifecycle. Used to correlate outcomes with resume versions and role profiles for future self-learning.
+### `role_profiles`
 
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| `id` | serial | PK | Auto-increment |
-| `application_id` | integer | FK → `applications.id` ON DELETE CASCADE, NOT NULL | The application this signal belongs to |
-| `resume_version_id` | integer | FK → `resume_versions.id` ON DELETE SET NULL, nullable | The resume version involved (if relevant) |
-| `outcome` | text | NOT NULL | Outcome label (e.g. `interview`, `rejected`, `offer`, `no_response`, `completed`) |
-| `signal_type` | text | NOT NULL | Signal category (e.g. `ats_screen`, `phone_screen`, `final_round`, `resume_review`, `cover_letter_revision_request`) |
-| `notes` | text | nullable | Free-text notes from the user or system |
-| `attribution_data` | jsonb | NOT NULL, default `{}` | Structured attribution (role profile, keywords, etc.) for future ML/optimization |
-| `processed_at` | timestamptz | nullable | When this signal was incorporated into optimization (future use) |
+Named target profiles for scoring jobs.
 
-**Indexes**: `(application_id)`, `(outcome)`, `(signal_type)`.
+Key fields:
 
----
+- `name`
+- `description`
+- `soft_weights`
+- `hard_filters`
+- `is_active`
 
-## `ai_model_configs`
+### `jobs`
 
-Per-task AI model routing configuration. Supports multiple active models per task scope with priority ordering and fallback chains.
+Ingested job descriptions and parsed JD data.
 
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| `id` | serial | PK | Auto-increment |
-| `task_scope` | text | NOT NULL | Task identifier: `jd_parsing`, `resume_tailoring`, `cover_letter`, `default`, or any custom string |
-| `provider` | text | NOT NULL, default `openrouter` | Provider identifier (currently always `openrouter`) |
-| `model_name` | text | NOT NULL | Model identifier as used by OpenRouter (e.g. `anthropic/claude-3.5-haiku`) |
-| `is_active` | boolean | NOT NULL, default `true` | Inactive configs are skipped during model selection |
-| `priority` | integer | NOT NULL, default `1` | Lower value = tried first within the same task scope |
-| `fallback_model_id` | integer | FK → `ai_model_configs.id` (self-ref) ON DELETE SET NULL, nullable | Next model to try if this one fails or is inactive |
-| `cost_per_input_token` | text | nullable | Cost in USD per input token (stored as string for precision) |
-| `cost_per_output_token` | text | nullable | Cost in USD per output token |
-| `max_tokens` | integer | nullable | Maximum tokens for completions from this model |
-| `extra_config` | jsonb | NOT NULL, default `{}` | Future: temperature, top_p, stop sequences, etc. |
+Key fields:
 
-**Indexes**: `(task_scope, is_active)`, `(task_scope)`.
+- `title`
+- `company`
+- `source_url`
+- `source_platform`
+- `raw_jd_text`
+- parsed skills/responsibilities/keywords/salary fields
+- `status`
 
-**Self-referential fallback chain**: the `fallback_model_id` column creates a linked list of models. The model router follows this chain, detecting cycles via a visited set to prevent infinite loops.
+### `claims`
 
----
+The truth-lock ledger. Each row is an atomic factual statement the AI may use.
 
-## `conversations`
+Key fields:
 
-Persistent chat threads for in-app AI assistance. Groups a sequence of `messages` exchanged between the user and the AI assistant.
+- `summary`
+- `evidence`
+- `evidence_type`
+- `phrasing_variants`
+- `disallowed_implications`
+- `domain`
+- `applicable_tags`
+- `is_active`
 
-Intended for future in-dashboard AI chat features (e.g. "Explain why this claim matches this job", "Suggest a stronger phrasing").
+### `base_resume_versions`
 
-Note: this table has only a `createdAt` timestamp (no `updatedAt`).
+Immutable global base resume history.
 
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| `id` | serial | PK | Auto-increment |
-| `title` | text | NOT NULL | Human-readable conversation title (e.g. auto-generated from first message) |
+Key fields:
 
-**Indexes**: none beyond PK.
+- `content_text`
+- `label`
+- `is_current`
+- timestamps
 
----
+Behavior:
 
-## `messages`
+- Saving creates a new row.
+- Restoring clones an older row into a new current row.
+- Resume tailoring requires exactly one current base resume.
 
-Individual turns within a `conversations` thread. Records a single exchange between the user and the AI.
+### `resume_versions`
 
-`role` values follow the OpenAI/OpenRouter convention: `"user"` (human), `"assistant"` (AI), `"system"` (injected context). Messages are cascade-deleted when their parent conversation is deleted.
+Tailored resume drafts.
 
-Note: this table has only a `createdAt` timestamp (no `updatedAt`).
+Key fields:
 
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| `id` | serial | PK | Auto-increment |
-| `conversation_id` | integer | FK → `conversations.id` ON DELETE CASCADE, NOT NULL | The conversation this message belongs to |
-| `role` | text | NOT NULL | Message role: `"user"`, `"assistant"`, or `"system"` |
-| `content` | text | NOT NULL | Full text content of the message |
+- `job_id`
+- `base_resume_version_id`
+- `run_id`
+- `event_log_id`
+- `status`
+- `tailored_document_text`
+- `tailored_bullets`
+- `diff_data`
+- `claim_ids`
+- `raw_content`
+- `notes`
 
-**Indexes**: none beyond PK.
+Lineage notes:
+
+- `run_id` is the canonical AI lineage key for the generated resume draft.
+- `event_log_id` anchors the draft to the originating AI/event log row.
+- Null lineage fields indicate legacy or non-joinable rows and must not be treated as trusted lineage.
+
+Every generated resume is traceable to the exact base resume version used.
+
+### `cover_letter_versions`
+
+Cover letter drafts.
+
+Key fields:
+
+- `job_id`
+- `run_id`
+- `event_log_id`
+- `status`
+- `draft_content`
+- `annotated_paragraphs`
+- `claim_ids`
+- `notes`
+
+Lineage notes:
+
+- `run_id` is the canonical AI lineage key for the generated cover letter.
+- `event_log_id` anchors the draft to the originating AI/event log row.
+- Legacy rows may lack one or both lineage fields and should fail closed in lineage-sensitive joins.
+
+### `applications`
+
+Lifecycle tracker for submitted or planned applications.
+
+Key fields:
+
+- `job_id`
+- `resume_version_id`
+- `cover_letter_version_id`
+- `status`
+- `apply_mode`
+- `platform`
+- `applied_at`
+- `confirmation_ref`
+- `notes`
+- `action_log`
+
+## Audit, AI Routing, and Learning
+
+### `event_logs`
+
+Append-only audit log for AI calls, state changes, and important system actions.
+
+Key fields:
+
+- `entity_type`
+- `entity_id`
+- `application_id`
+- `job_id`
+- `run_id`
+- `event_type`
+- `previous_state`
+- `next_state`
+- `metadata`
+- `actor_type`
+
+Lineage notes:
+
+- `run_id` is the canonical root lineage key for M002 in-scope job-side AI flows.
+- The originating AI run row in this table is the authoritative root for downstream lineage validation.
+- Event rows without `run_id` remain valid audit history but not valid lineage roots.
+
+AI call metadata stores model, provider, prompt version, token counts, estimated cost, fallback attempts, and failures.
+
+### `feedback_signals`
+
+Outcome and review signals used for future learning.
+
+Key fields:
+
+- `application_id`
+- `resume_version_id`
+- `job_id`
+- `role_profile_id`
+- `base_resume_version_id`
+- `cover_letter_version_id`
+- `prompt_version_id`
+- `model_name`
+- `selected_claim_ids`
+- `final_result`
+- `run_id`
+- `event_log_id`
+- `outcome`
+- `signal_type`
+- `notes`
+- `attribution_data`
+- `processed_at`
+
+Lineage notes:
+
+- `run_id` keeps downstream feedback joinable to the originating AI run.
+- `event_log_id` provides the supporting event anchor for validation and diagnostics.
+- Feedback without trustworthy lineage remains queryable but should be excluded from trusted lineage metrics and enforcement.
+
+### `ai_model_configs`
+
+Per-task model routing and fallback config.
+
+Key fields:
+
+- `task_scope`
+- `provider`
+- `model_name`
+- `is_active`
+- `priority`
+- `fallback_model_id`
+- `cost_per_input_token`
+- `cost_per_output_token`
+- `max_tokens`
+- `extra_config`
+
+### `ai_prompt_versions`
+
+Versioned prompt templates for supervised AI improvement.
+
+Key fields:
+
+- `task_scope`
+- `version`
+- `label`
+- `system_prompt`
+- `user_prompt_template`
+- `is_active`
+- `metadata`
+
+Active prompt versions override built-in pipeline prompts for a task.
+
+### `ai_run_evaluations`
+
+Evaluation records for AI outputs.
+
+Key fields:
+
+- `event_log_id`
+- `run_id`
+- `prompt_version_id`
+- `task_scope`
+- `entity_type`
+- `entity_id`
+- truth/relevance/formatting/attribution scores
+- `approval_outcome`
+- `edit_distance`
+- `downstream_outcome`
+- `evaluator_type`
+- `notes`
+- `metadata`
+
+Lineage notes:
+
+- Evaluations are in-scope for the canonical lineage contract.
+- `run_id` is the canonical join key back to the originating AI run.
+- `event_log_id` preserves a direct event anchor for validation and debugging.
+- Evaluations with null lineage remain readable but are not valid for trusted lineage reporting.
+
+### `ai_training_examples`
+
+Curated examples for few-shot prompting, offline evals, or future fine-tuning.
+
+Key fields:
+
+- `task_scope`
+- `source_entity_type`
+- `source_entity_id`
+- `evaluation_id`
+- `input_snapshot`
+- `approved_output`
+- `rejected_output`
+- `quality_score`
+- `is_active`
+- `metadata`
+
+Only human-approved or human-edited examples should be promoted here.
+
+## Assisted Apply
+
+### `site_adapters`
+
+Policy/config record for supported platforms.
+
+Key fields:
+
+- `platform`
+- `label`
+- `adapter_type`
+- `allowed_automation_level`
+- `is_active`
+- `requires_human_final_submit`
+- `notes`
+- `metadata`
+
+### `application_sessions`
+
+Human-approved assisted-apply session records.
+
+Key fields:
+
+- `application_id`
+- `job_id`
+- `site_adapter_id`
+- `platform`
+- `target_url`
+- `status`
+- `human_checkpoint`
+- `current_step`
+- `metadata`
+
+### `application_form_fields`
+
+Detected/suggested/approved fields for assisted-apply sessions.
+
+Key fields:
+
+- `session_id`
+- `field_key`
+- `label`
+- `field_type`
+- `detected_value`
+- `suggested_value`
+- `approved_value`
+- `status`
+- `is_sensitive`
+- `metadata`
+
+### `application_actions`
+
+Audit log for assisted-apply actions.
+
+Key fields:
+
+- `session_id`
+- `action_type`
+- `status`
+- `requires_human_approval`
+- `summary`
+- `metadata`
+
+## Freelance Copilot
+
+### `freelance_profiles`
+
+Contractor source-of-truth profile.
+
+Key fields:
+
+- `name`
+- `contractor_resume_text`
+- `portfolio_projects`
+- `skills`
+- `case_studies`
+- `hourly_rate_min`
+- `hourly_rate_target`
+- `availability`
+- `preferred_project_types`
+- `disallowed_claims`
+- `proof_links`
+- `is_active`
+
+### `project_sources`
+
+Raw/manual project capture sources.
+
+Key fields:
+
+- `platform`
+- `source_type`
+- `source_url`
+- `title`
+- `raw_text`
+- `metadata`
+
+### `freelance_projects`
+
+Captured Upwork-style projects.
+
+Key fields:
+
+- `profile_id`
+- `source_id`
+- `platform`
+- `title`
+- `client_name`
+- `project_url`
+- `description_text`
+- budget/rate fields
+- `required_skills`
+- `client_metadata`
+- `fit_score`
+- `risk_flags`
+- `status`
+
+### `proposal_versions`
+
+AI or manual proposal drafts.
+
+Key fields:
+
+- `project_id`
+- `profile_id`
+- `status`
+- `proposal_text`
+- `client_message_text`
+- `bid_amount`
+- `bid_type`
+- `milestones`
+- `cited_proof`
+- `risk_notes`
+- `raw_content`
+- `metadata`
+
+Proposal drafts stay pending until approved/rejected by the user.
+
+### `proposal_outcomes`
+
+Outcome tracking for freelance proposals.
+
+Key fields:
+
+- `proposal_version_id`
+- `project_id`
+- `outcome`
+- `actual_earnings`
+- `client_quality`
+- `notes`
+- `metadata`
+
+### `client_message_templates`
+
+Reusable proposal/client message templates.
+
+Key fields:
+
+- `name`
+- `template_text`
+- `use_case`
+- `is_active`
+- `metadata`
+
+## Auth and Legacy Tables
+
+### `admin_users`
+
+Single-user admin auth, password hash, email, TOTP, recovery codes.
+
+### `session`
+
+`connect-pg-simple` session store table.
+
+### `conversations` and `messages`
+
+Legacy/future chat scaffolding. Not used by current routes or dashboard pages.

@@ -141,6 +141,14 @@ export const CreateBaseResumeBody = zod.object({
 });
 
 /**
+ * @summary Import a DOCX or PDF resume as the new current base resume
+ */
+export const ImportBaseResumeBody = zod.object({
+  file: zod.instanceof(File),
+  label: zod.string().optional(),
+});
+
+/**
  * @summary List base resume version history
  */
 export const ListBaseResumeHistoryResponseItem = zod.object({
@@ -455,6 +463,37 @@ export const CreateClaimBody = zod.object({
   domain: zod.string().nullish(),
   applicableTags: zod.array(zod.string()).optional(),
   isActive: zod.boolean().optional(),
+});
+
+/**
+ * @summary Draft claims from pasted text and optional uploaded evidence
+ */
+export const DraftClaimsBody = zod.object({
+  sourceText: zod.string().optional(),
+  prompt: zod.string().optional(),
+  file: zod.instanceof(File).optional(),
+});
+
+export const DraftClaimsResponse = zod.object({
+  claims: zod.array(
+    zod.object({
+      summary: zod.string(),
+      evidence: zod.string().nullish(),
+      evidenceType: zod.string().optional(),
+      phrasingVariants: zod.array(zod.string()).optional(),
+      disallowedImplications: zod.array(zod.string()).optional(),
+      domain: zod.string().nullish(),
+      applicableTags: zod.array(zod.string()).optional(),
+      isActive: zod.boolean().optional(),
+    }),
+  ),
+  metadata: zod.object({
+    sourceTextChars: zod.number().optional(),
+    extractedTextChars: zod.number().optional(),
+    promptChars: zod.number().optional(),
+    truncated: zod.boolean().optional(),
+    filename: zod.string().nullish(),
+  }),
 });
 
 /**
@@ -1208,4 +1247,774 @@ export const UpdateAiModelConfigResponse = zod.object({
  */
 export const DeleteAiModelConfigParams = zod.object({
   id: zod.coerce.number(),
+});
+
+/**
+ * @summary Get AI review overview
+ */
+export const GetAiReviewOverviewResponse = zod.object({
+  recentAiEvents: zod.array(
+    zod.object({
+      id: zod.number(),
+      entityType: zod.string(),
+      entityId: zod.number(),
+      applicationId: zod.number().nullish(),
+      jobId: zod.number().nullish(),
+      eventType: zod.string(),
+      previousState: zod.string().nullish(),
+      nextState: zod.string().nullish(),
+      metadata: zod.object({}).passthrough(),
+      actorType: zod.string(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+  evaluations: zod.array(
+    zod.object({
+      id: zod.number(),
+      eventLogId: zod.number().nullish(),
+      promptVersionId: zod.number().nullish(),
+      taskScope: zod.string(),
+      entityType: zod.string().nullish(),
+      entityId: zod.number().nullish(),
+      truthfulnessScore: zod.number().nullish(),
+      relevanceScore: zod.number().nullish(),
+      formattingScore: zod.number().nullish(),
+      attributionScore: zod.number().nullish(),
+      approvalOutcome: zod.string().nullish(),
+      editDistance: zod.number().nullish(),
+      downstreamOutcome: zod.string().nullish(),
+      evaluatorType: zod.string(),
+      notes: zod.string().nullish(),
+      metadata: zod.object({}).passthrough(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+  promptVersions: zod.array(
+    zod.object({
+      id: zod.number(),
+      taskScope: zod.string(),
+      version: zod.number(),
+      label: zod.string(),
+      systemPrompt: zod.string(),
+      userPromptTemplate: zod.string().nullish(),
+      notes: zod.string().nullish(),
+      isActive: zod.boolean(),
+      metadata: zod.object({}).passthrough(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+  trainingExamples: zod.array(
+    zod.object({
+      id: zod.number(),
+      taskScope: zod.string(),
+      sourceEntityType: zod.string().nullish(),
+      sourceEntityId: zod.number().nullish(),
+      evaluationId: zod.number().nullish(),
+      inputSnapshot: zod.object({}).passthrough(),
+      approvedOutput: zod.string(),
+      rejectedOutput: zod.string().nullish(),
+      notes: zod.string().nullish(),
+      qualityScore: zod.number().nullish(),
+      isActive: zod.boolean(),
+      metadata: zod.object({}).passthrough(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+  stats: zod.object({
+    recentAiEvents: zod.number().optional(),
+    evaluations: zod.number().optional(),
+    activePromptVersions: zod.number().optional(),
+    trainingExamples: zod.number().optional(),
+    failedAiEvents: zod.number().optional(),
+  }),
+});
+
+/**
+ * @summary List AI prompt versions
+ */
+export const ListAiPromptVersionsQueryParams = zod.object({
+  taskScope: zod.coerce.string().optional(),
+  isActive: zod.coerce.boolean().optional(),
+});
+
+export const ListAiPromptVersionsResponseItem = zod.object({
+  id: zod.number(),
+  taskScope: zod.string(),
+  version: zod.number(),
+  label: zod.string(),
+  systemPrompt: zod.string(),
+  userPromptTemplate: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  isActive: zod.boolean(),
+  metadata: zod.object({}).passthrough(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListAiPromptVersionsResponse = zod.array(
+  ListAiPromptVersionsResponseItem,
+);
+
+/**
+ * @summary Create AI prompt version
+ */
+export const CreateAiPromptVersionBody = zod.object({
+  taskScope: zod.string(),
+  version: zod.number().optional(),
+  label: zod.string(),
+  systemPrompt: zod.string(),
+  userPromptTemplate: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  isActive: zod.boolean().optional(),
+  metadata: zod.object({}).passthrough().optional(),
+});
+
+/**
+ * @summary Update AI prompt version
+ */
+export const UpdateAiPromptVersionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateAiPromptVersionBody = zod.object({
+  taskScope: zod.string().optional(),
+  version: zod.number().optional(),
+  label: zod.string().optional(),
+  systemPrompt: zod.string().optional(),
+  userPromptTemplate: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  isActive: zod.boolean().optional(),
+  metadata: zod.object({}).passthrough().optional(),
+});
+
+export const UpdateAiPromptVersionResponse = zod.object({
+  id: zod.number(),
+  taskScope: zod.string(),
+  version: zod.number(),
+  label: zod.string(),
+  systemPrompt: zod.string(),
+  userPromptTemplate: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  isActive: zod.boolean(),
+  metadata: zod.object({}).passthrough(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary List AI run evaluations
+ */
+export const ListAiRunEvaluationsQueryParams = zod.object({
+  taskScope: zod.coerce.string().optional(),
+});
+
+export const ListAiRunEvaluationsResponseItem = zod.object({
+  id: zod.number(),
+  eventLogId: zod.number().nullish(),
+  promptVersionId: zod.number().nullish(),
+  taskScope: zod.string(),
+  entityType: zod.string().nullish(),
+  entityId: zod.number().nullish(),
+  truthfulnessScore: zod.number().nullish(),
+  relevanceScore: zod.number().nullish(),
+  formattingScore: zod.number().nullish(),
+  attributionScore: zod.number().nullish(),
+  approvalOutcome: zod.string().nullish(),
+  editDistance: zod.number().nullish(),
+  downstreamOutcome: zod.string().nullish(),
+  evaluatorType: zod.string(),
+  notes: zod.string().nullish(),
+  metadata: zod.object({}).passthrough(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListAiRunEvaluationsResponse = zod.array(
+  ListAiRunEvaluationsResponseItem,
+);
+
+/**
+ * @summary Create AI run evaluation
+ */
+export const CreateAiRunEvaluationBody = zod.object({
+  eventLogId: zod.number().nullish(),
+  promptVersionId: zod.number().nullish(),
+  taskScope: zod.string(),
+  entityType: zod.string().nullish(),
+  entityId: zod.number().nullish(),
+  truthfulnessScore: zod.number().nullish(),
+  relevanceScore: zod.number().nullish(),
+  formattingScore: zod.number().nullish(),
+  attributionScore: zod.number().nullish(),
+  approvalOutcome: zod.string().nullish(),
+  editDistance: zod.number().nullish(),
+  downstreamOutcome: zod.string().nullish(),
+  evaluatorType: zod.string().optional(),
+  notes: zod.string().nullish(),
+  metadata: zod.object({}).passthrough().optional(),
+});
+
+/**
+ * @summary List AI training examples
+ */
+export const ListAiTrainingExamplesQueryParams = zod.object({
+  taskScope: zod.coerce.string().optional(),
+  isActive: zod.coerce.boolean().optional(),
+});
+
+export const ListAiTrainingExamplesResponseItem = zod.object({
+  id: zod.number(),
+  taskScope: zod.string(),
+  sourceEntityType: zod.string().nullish(),
+  sourceEntityId: zod.number().nullish(),
+  evaluationId: zod.number().nullish(),
+  inputSnapshot: zod.object({}).passthrough(),
+  approvedOutput: zod.string(),
+  rejectedOutput: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  qualityScore: zod.number().nullish(),
+  isActive: zod.boolean(),
+  metadata: zod.object({}).passthrough(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListAiTrainingExamplesResponse = zod.array(
+  ListAiTrainingExamplesResponseItem,
+);
+
+/**
+ * @summary Create AI training example
+ */
+export const CreateAiTrainingExampleBody = zod.object({
+  taskScope: zod.string(),
+  sourceEntityType: zod.string().nullish(),
+  sourceEntityId: zod.number().nullish(),
+  evaluationId: zod.number().nullish(),
+  inputSnapshot: zod.object({}).passthrough().optional(),
+  approvedOutput: zod.string(),
+  rejectedOutput: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  qualityScore: zod.number().nullish(),
+  isActive: zod.boolean().optional(),
+  metadata: zod.object({}).passthrough().optional(),
+});
+
+/**
+ * @summary List site adapters
+ */
+export const ListSiteAdaptersResponseItem = zod.object({
+  id: zod.number(),
+  platform: zod.string(),
+  label: zod.string(),
+  adapterType: zod.string(),
+  allowedAutomationLevel: zod.string(),
+  isActive: zod.boolean(),
+  requiresHumanFinalSubmit: zod.boolean(),
+  notes: zod.string().nullish(),
+  metadata: zod.object({}).passthrough(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListSiteAdaptersResponse = zod.array(ListSiteAdaptersResponseItem);
+
+/**
+ * @summary Create site adapter
+ */
+export const CreateSiteAdapterBody = zod.object({
+  platform: zod.string(),
+  label: zod.string(),
+  adapterType: zod.string().optional(),
+  allowedAutomationLevel: zod.string().optional(),
+  isActive: zod.boolean().optional(),
+  requiresHumanFinalSubmit: zod.boolean().optional(),
+  notes: zod.string().nullish(),
+  metadata: zod.object({}).passthrough().optional(),
+});
+
+/**
+ * @summary List assisted application sessions
+ */
+export const ListApplicationSessionsResponseItem = zod.object({
+  id: zod.number(),
+  applicationId: zod.number().nullish(),
+  jobId: zod.number().nullish(),
+  siteAdapterId: zod.number().nullish(),
+  platform: zod.string(),
+  targetUrl: zod.string().nullish(),
+  status: zod.string(),
+  humanCheckpoint: zod.string().nullish(),
+  currentStep: zod.string().nullish(),
+  metadata: zod.object({}).passthrough(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListApplicationSessionsResponse = zod.array(
+  ListApplicationSessionsResponseItem,
+);
+
+/**
+ * @summary Create assisted application session
+ */
+export const CreateApplicationSessionBody = zod.object({
+  applicationId: zod.number().nullish(),
+  jobId: zod.number().nullish(),
+  siteAdapterId: zod.number().nullish(),
+  platform: zod.string(),
+  targetUrl: zod.string().nullish(),
+  status: zod.string().optional(),
+  humanCheckpoint: zod.string().nullish(),
+  currentStep: zod.string().nullish(),
+  metadata: zod.object({}).passthrough().optional(),
+});
+
+/**
+ * @summary Get assisted application session with fields and actions
+ */
+export const GetApplicationSessionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetApplicationSessionResponse = zod.object({
+  session: zod.object({
+    id: zod.number(),
+    applicationId: zod.number().nullish(),
+    jobId: zod.number().nullish(),
+    siteAdapterId: zod.number().nullish(),
+    platform: zod.string(),
+    targetUrl: zod.string().nullish(),
+    status: zod.string(),
+    humanCheckpoint: zod.string().nullish(),
+    currentStep: zod.string().nullish(),
+    metadata: zod.object({}).passthrough(),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+  }),
+  fields: zod.array(
+    zod.object({
+      id: zod.number(),
+      sessionId: zod.number(),
+      fieldKey: zod.string(),
+      label: zod.string().nullish(),
+      fieldType: zod.string(),
+      detectedValue: zod.string().nullish(),
+      suggestedValue: zod.string().nullish(),
+      approvedValue: zod.string().nullish(),
+      status: zod.string(),
+      isSensitive: zod.boolean(),
+      metadata: zod.object({}).passthrough(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+  actions: zod.array(
+    zod.object({
+      id: zod.number(),
+      sessionId: zod.number(),
+      actionType: zod.string(),
+      status: zod.string(),
+      requiresHumanApproval: zod.boolean(),
+      summary: zod.string(),
+      metadata: zod.object({}).passthrough(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Create assisted application form field
+ */
+export const CreateApplicationSessionFieldParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const CreateApplicationSessionFieldBody = zod.object({
+  fieldKey: zod.string(),
+  label: zod.string().nullish(),
+  fieldType: zod.string().optional(),
+  detectedValue: zod.string().nullish(),
+  suggestedValue: zod.string().nullish(),
+  approvedValue: zod.string().nullish(),
+  status: zod.string().optional(),
+  isSensitive: zod.boolean().optional(),
+  metadata: zod.object({}).passthrough().optional(),
+});
+
+/**
+ * @summary Log assisted application action
+ */
+export const CreateApplicationSessionActionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const CreateApplicationSessionActionBody = zod.object({
+  actionType: zod.string(),
+  status: zod.string().optional(),
+  requiresHumanApproval: zod.boolean().optional(),
+  summary: zod.string(),
+  metadata: zod.object({}).passthrough().optional(),
+});
+
+/**
+ * @summary List freelance profiles
+ */
+export const ListFreelanceProfilesResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  contractorResumeText: zod.string(),
+  portfolioProjects: zod.array(zod.object({}).passthrough()),
+  skills: zod.array(zod.string()),
+  caseStudies: zod.array(zod.object({}).passthrough()),
+  hourlyRateMin: zod.string().nullish(),
+  hourlyRateTarget: zod.string().nullish(),
+  availability: zod.string().nullish(),
+  preferredProjectTypes: zod.array(zod.string()),
+  disallowedClaims: zod.array(zod.string()),
+  proofLinks: zod.array(zod.object({}).passthrough()),
+  isActive: zod.boolean(),
+  metadata: zod.object({}).passthrough(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListFreelanceProfilesResponse = zod.array(
+  ListFreelanceProfilesResponseItem,
+);
+
+/**
+ * @summary Create freelance profile
+ */
+export const CreateFreelanceProfileBody = zod.object({
+  name: zod.string(),
+  contractorResumeText: zod.string().optional(),
+  portfolioProjects: zod.array(zod.object({}).passthrough()).optional(),
+  skills: zod.array(zod.string()).optional(),
+  caseStudies: zod.array(zod.object({}).passthrough()).optional(),
+  hourlyRateMin: zod.string().nullish(),
+  hourlyRateTarget: zod.string().nullish(),
+  availability: zod.string().nullish(),
+  preferredProjectTypes: zod.array(zod.string()).optional(),
+  disallowedClaims: zod.array(zod.string()).optional(),
+  proofLinks: zod.array(zod.object({}).passthrough()).optional(),
+  isActive: zod.boolean().optional(),
+  metadata: zod.object({}).passthrough().optional(),
+});
+
+/**
+ * @summary Update freelance profile
+ */
+export const UpdateFreelanceProfileParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateFreelanceProfileBody = zod.object({
+  name: zod.string().optional(),
+  contractorResumeText: zod.string().optional(),
+  portfolioProjects: zod.array(zod.object({}).passthrough()).optional(),
+  skills: zod.array(zod.string()).optional(),
+  caseStudies: zod.array(zod.object({}).passthrough()).optional(),
+  hourlyRateMin: zod.string().nullish(),
+  hourlyRateTarget: zod.string().nullish(),
+  availability: zod.string().nullish(),
+  preferredProjectTypes: zod.array(zod.string()).optional(),
+  disallowedClaims: zod.array(zod.string()).optional(),
+  proofLinks: zod.array(zod.object({}).passthrough()).optional(),
+  isActive: zod.boolean().optional(),
+  metadata: zod.object({}).passthrough().optional(),
+});
+
+export const UpdateFreelanceProfileResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  contractorResumeText: zod.string(),
+  portfolioProjects: zod.array(zod.object({}).passthrough()),
+  skills: zod.array(zod.string()),
+  caseStudies: zod.array(zod.object({}).passthrough()),
+  hourlyRateMin: zod.string().nullish(),
+  hourlyRateTarget: zod.string().nullish(),
+  availability: zod.string().nullish(),
+  preferredProjectTypes: zod.array(zod.string()),
+  disallowedClaims: zod.array(zod.string()),
+  proofLinks: zod.array(zod.object({}).passthrough()),
+  isActive: zod.boolean(),
+  metadata: zod.object({}).passthrough(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary List project sources
+ */
+export const ListProjectSourcesResponseItem = zod.object({
+  id: zod.number(),
+  platform: zod.string(),
+  sourceType: zod.string(),
+  sourceUrl: zod.string().nullish(),
+  title: zod.string().nullish(),
+  rawText: zod.string().nullish(),
+  metadata: zod.object({}).passthrough(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListProjectSourcesResponse = zod.array(
+  ListProjectSourcesResponseItem,
+);
+
+/**
+ * @summary Create project source
+ */
+export const CreateProjectSourceBody = zod.object({
+  platform: zod.string().optional(),
+  sourceType: zod.string().optional(),
+  sourceUrl: zod.string().nullish(),
+  title: zod.string().nullish(),
+  rawText: zod.string().nullish(),
+  metadata: zod.object({}).passthrough().optional(),
+});
+
+/**
+ * @summary List freelance projects
+ */
+export const ListFreelanceProjectsResponseItem = zod.object({
+  id: zod.number(),
+  profileId: zod.number().nullish(),
+  sourceId: zod.number().nullish(),
+  platform: zod.string(),
+  title: zod.string(),
+  clientName: zod.string().nullish(),
+  projectUrl: zod.string().nullish(),
+  descriptionText: zod.string(),
+  budgetType: zod.string().nullish(),
+  budgetMin: zod.string().nullish(),
+  budgetMax: zod.string().nullish(),
+  hourlyMin: zod.string().nullish(),
+  hourlyMax: zod.string().nullish(),
+  requiredSkills: zod.array(zod.string()),
+  clientMetadata: zod.object({}).passthrough(),
+  fitScore: zod.number().nullish(),
+  riskFlags: zod.array(zod.string()),
+  status: zod.string(),
+  metadata: zod.object({}).passthrough(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListFreelanceProjectsResponse = zod.array(
+  ListFreelanceProjectsResponseItem,
+);
+
+/**
+ * @summary Create freelance project
+ */
+export const CreateFreelanceProjectBody = zod.object({
+  profileId: zod.number().nullish(),
+  sourceId: zod.number().nullish(),
+  platform: zod.string().optional(),
+  title: zod.string(),
+  clientName: zod.string().nullish(),
+  projectUrl: zod.string().nullish(),
+  descriptionText: zod.string(),
+  budgetType: zod.string().nullish(),
+  budgetMin: zod.string().nullish(),
+  budgetMax: zod.string().nullish(),
+  hourlyMin: zod.string().nullish(),
+  hourlyMax: zod.string().nullish(),
+  requiredSkills: zod.array(zod.string()).optional(),
+  clientMetadata: zod.object({}).passthrough().optional(),
+  status: zod.string().optional(),
+  metadata: zod.object({}).passthrough().optional(),
+});
+
+/**
+ * @summary Score freelance project fit
+ */
+export const ScoreFreelanceProjectParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ScoreFreelanceProjectResponse = zod.object({
+  id: zod.number(),
+  profileId: zod.number().nullish(),
+  sourceId: zod.number().nullish(),
+  platform: zod.string(),
+  title: zod.string(),
+  clientName: zod.string().nullish(),
+  projectUrl: zod.string().nullish(),
+  descriptionText: zod.string(),
+  budgetType: zod.string().nullish(),
+  budgetMin: zod.string().nullish(),
+  budgetMax: zod.string().nullish(),
+  hourlyMin: zod.string().nullish(),
+  hourlyMax: zod.string().nullish(),
+  requiredSkills: zod.array(zod.string()),
+  clientMetadata: zod.object({}).passthrough(),
+  fitScore: zod.number().nullish(),
+  riskFlags: zod.array(zod.string()),
+  status: zod.string(),
+  metadata: zod.object({}).passthrough(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Draft human-reviewed freelance proposal
+ */
+export const DraftFreelanceProposalParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary List proposal versions
+ */
+export const ListProposalVersionsResponseItem = zod.object({
+  id: zod.number(),
+  projectId: zod.number(),
+  profileId: zod.number().nullish(),
+  label: zod.string().nullish(),
+  status: zod.string(),
+  proposalText: zod.string(),
+  clientMessageText: zod.string().nullish(),
+  bidAmount: zod.string().nullish(),
+  bidType: zod.string().nullish(),
+  milestones: zod.array(zod.object({}).passthrough()),
+  citedProof: zod.array(zod.object({}).passthrough()),
+  riskNotes: zod.string().nullish(),
+  rawContent: zod.string().nullish(),
+  metadata: zod.object({}).passthrough(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListProposalVersionsResponse = zod.array(
+  ListProposalVersionsResponseItem,
+);
+
+/**
+ * @summary Create proposal version
+ */
+export const CreateProposalVersionBody = zod.object({
+  projectId: zod.number(),
+  profileId: zod.number().nullish(),
+  label: zod.string().nullish(),
+  status: zod.string().optional(),
+  proposalText: zod.string(),
+  clientMessageText: zod.string().nullish(),
+  bidAmount: zod.string().nullish(),
+  bidType: zod.string().nullish(),
+  milestones: zod.array(zod.object({}).passthrough()).optional(),
+  citedProof: zod.array(zod.object({}).passthrough()).optional(),
+  riskNotes: zod.string().nullish(),
+  rawContent: zod.string().nullish(),
+  metadata: zod.object({}).passthrough().optional(),
+});
+
+/**
+ * @summary Approve proposal version
+ */
+export const ApproveProposalVersionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ApproveProposalVersionResponse = zod.object({
+  id: zod.number(),
+  projectId: zod.number(),
+  profileId: zod.number().nullish(),
+  label: zod.string().nullish(),
+  status: zod.string(),
+  proposalText: zod.string(),
+  clientMessageText: zod.string().nullish(),
+  bidAmount: zod.string().nullish(),
+  bidType: zod.string().nullish(),
+  milestones: zod.array(zod.object({}).passthrough()),
+  citedProof: zod.array(zod.object({}).passthrough()),
+  riskNotes: zod.string().nullish(),
+  rawContent: zod.string().nullish(),
+  metadata: zod.object({}).passthrough(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Reject proposal version
+ */
+export const RejectProposalVersionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const RejectProposalVersionResponse = zod.object({
+  id: zod.number(),
+  projectId: zod.number(),
+  profileId: zod.number().nullish(),
+  label: zod.string().nullish(),
+  status: zod.string(),
+  proposalText: zod.string(),
+  clientMessageText: zod.string().nullish(),
+  bidAmount: zod.string().nullish(),
+  bidType: zod.string().nullish(),
+  milestones: zod.array(zod.object({}).passthrough()),
+  citedProof: zod.array(zod.object({}).passthrough()),
+  riskNotes: zod.string().nullish(),
+  rawContent: zod.string().nullish(),
+  metadata: zod.object({}).passthrough(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary List proposal outcomes
+ */
+export const ListProposalOutcomesResponseItem = zod.object({
+  id: zod.number(),
+  proposalVersionId: zod.number().nullish(),
+  projectId: zod.number().nullish(),
+  outcome: zod.string(),
+  actualEarnings: zod.string().nullish(),
+  clientQuality: zod.number().nullish(),
+  notes: zod.string().nullish(),
+  metadata: zod.object({}).passthrough(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListProposalOutcomesResponse = zod.array(
+  ListProposalOutcomesResponseItem,
+);
+
+/**
+ * @summary Create proposal outcome
+ */
+export const CreateProposalOutcomeBody = zod.object({
+  proposalVersionId: zod.number().nullish(),
+  projectId: zod.number().nullish(),
+  outcome: zod.string(),
+  actualEarnings: zod.string().nullish(),
+  clientQuality: zod.number().nullish(),
+  notes: zod.string().nullish(),
+  metadata: zod.object({}).passthrough().optional(),
+});
+
+/**
+ * @summary List client message templates
+ */
+export const ListClientMessageTemplatesResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  templateText: zod.string(),
+  useCase: zod.string(),
+  isActive: zod.boolean(),
+  metadata: zod.object({}).passthrough(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListClientMessageTemplatesResponse = zod.array(
+  ListClientMessageTemplatesResponseItem,
+);
+
+/**
+ * @summary Create client message template
+ */
+export const CreateClientMessageTemplateBody = zod.object({
+  name: zod.string(),
+  templateText: zod.string(),
+  useCase: zod.string().optional(),
+  isActive: zod.boolean().optional(),
+  metadata: zod.object({}).passthrough().optional(),
 });

@@ -1,6 +1,6 @@
 import { Sidebar as SidebarComponent, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, Briefcase, FileText, CheckSquare, MessageSquare, Settings, UserCircle, Activity, FileCode, BookOpen, LogOut, User, ScrollText } from "lucide-react";
+import { LayoutDashboard, Briefcase, FileText, CheckSquare, MessageSquare, Settings, UserCircle, Activity, FileCode, BookOpen, LogOut, User, ScrollText, Brain, MousePointerClick, Handshake } from "lucide-react";
 import { useAuth } from "@/context/auth";
 
 export function Sidebar() {
@@ -10,12 +10,15 @@ export function Sidebar() {
     { name: "Dashboard", href: "/", icon: LayoutDashboard, exact: true },
     { name: "Jobs Pipeline", href: "/jobs", icon: Briefcase },
     { name: "Applications", href: "/applications", icon: Activity },
+    { name: "Assisted Apply", href: "/assisted-apply", icon: MousePointerClick },
+    { name: "Freelance Copilot", href: "/freelance", icon: Handshake },
     { name: "Claims Ledger", href: "/claims", icon: CheckSquare },
     { name: "Base Resume", href: "/base-resume", icon: ScrollText },
     { name: "Resumes (Queue)", href: "/resume-versions", icon: FileText },
     { name: "Cover Letters (Queue)", href: "/cover-letters", icon: MessageSquare },
     { name: "Feedback Signals", href: "/feedback", icon: Activity },
     { name: "Role Profiles", href: "/role-profiles", icon: UserCircle },
+    { name: "AI Review", href: "/ai-review", icon: Brain },
     { name: "AI Config", href: "/ai-config", icon: Settings },
     { name: "Guide", href: "/guide", icon: BookOpen },
   ];

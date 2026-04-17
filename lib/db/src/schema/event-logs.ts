@@ -57,6 +57,14 @@ export const eventLogsTable = pgTable(
     }),
 
     /**
+     * Canonical AI lineage key for M002 in-scope job-side flows.
+     *
+     * Nullable during rollout so legacy audit rows remain readable without
+     * inventing lineage. New in-scope AI-rooted writes should set this.
+     */
+    runId: text("run_id"),
+
+    /**
      * The specific event that occurred.
      * Examples: `"ai_call"`, `"ai_call_failed"`, `"status_changed"`, `"approved"`, `"rejected"`
      */
@@ -93,6 +101,7 @@ export const eventLogsTable = pgTable(
     index("event_logs_entity_idx").on(table.entityType, table.entityId),
     index("event_logs_application_id_idx").on(table.applicationId),
     index("event_logs_job_id_idx").on(table.jobId),
+    index("event_logs_run_id_idx").on(table.runId),
     index("event_logs_event_type_idx").on(table.eventType),
   ],
 );

@@ -2,6 +2,7 @@ import {
   useGetBaseResume,
   useListBaseResumeHistory,
   useCreateBaseResume,
+  useImportBaseResume,
   useRestoreBaseResumeVersion,
   getGetBaseResumeQueryKey,
   getListBaseResumeHistoryQueryKey,
@@ -10,12 +11,13 @@ import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { FileText, RotateCcw, Save, AlertCircle, History } from "lucide-react";
+import { FileText, RotateCcw, Save, AlertCircle, History, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { getErrorMessage } from "@/lib/api-errors";
@@ -34,10 +36,12 @@ export default function BaseResumePage() {
   });
   const { data: history = [], isLoading: historyLoading } = useListBaseResumeHistory();
   const saveResume = useCreateBaseResume();
+  const importResume = useImportBaseResume();
   const restoreResume = useRestoreBaseResumeVersion();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [contentText, setContentText] = useState("");
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
 
   useEffect(() => {
     setContentText(currentResume?.contentText ?? "");
@@ -73,6 +77,41 @@ export default function BaseResumePage() {
           toast({
             title: "Failed to save base resume",
             description: getErrorMessage(error, "Please try again."),
+            variant: "destructive",
+          });
+        },
+      },
+    );
+  };
+
+  const handleImport = () => {
+    if (!uploadFile) {
+      toast({
+        title: "Choose a resume file",
+        description: "Upload a DOCX or text-based PDF resume.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    importResume.mutate(
+      {
+        data: {
+          file: uploadFile,
+          label: `Imported - ${uploadFile.name}`,
+        },
+      },
+      {
+        onSuccess: async (saved) => {
+          setContentText(saved.contentText);
+          setUploadFile(null);
+          await refreshQueries();
+          toast({ title: "Resume imported" });
+        },
+        onError: (error) => {
+          toast({
+            title: "Failed to import resume",
+            description: getErrorMessage(error, "Upload a DOCX or text-based PDF."),
             variant: "destructive",
           });
         },
@@ -150,6 +189,35 @@ export default function BaseResumePage() {
             ) : null}
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="rounded-md border bg-muted/30 p-4 space-y-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                <div className="flex-1 space-y-2">
+                  <label className="text-sm font-medium" htmlFor="base-resume-upload">
+                    Import DOCX or PDF
+                  </label>
+                  <Input
+                    id="base-resume-upload"
+                    type="file"
+                    accept=".docx,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    onChange={(event) => setUploadFile(event.target.files?.[0] ?? null)}
+                    data-testid="input-base-resume-upload"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleImport}
+                  disabled={!uploadFile || importResume.isPending}
+                  data-testid="btn-import-base-resume"
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  {importResume.isPending ? "Importing..." : "Import"}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {uploadFile ? uploadFile.name : "Files are converted to text only; originals are not stored."}
+              </p>
+            </div>
             <Textarea
               value={contentText}
               onChange={(event) => setContentText(event.target.value)}

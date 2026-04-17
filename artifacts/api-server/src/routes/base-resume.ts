@@ -7,6 +7,12 @@ import {
   CreateBaseResumeBody,
   RestoreBaseResumeVersionParams,
 } from "@workspace/api-zod";
+import {
+  extractTextFromDocumentFile,
+  getUploadedDocument,
+  parseSingleDocumentUpload,
+  UploadValidationError,
+} from "../lib/document-text";
 
 const router: IRouter = Router();
 
@@ -63,6 +69,58 @@ router.post("/base-resume", async (req, res): Promise<void> => {
   });
 
   res.status(201).json(GetBaseResumeResponse.parse(row));
+});
+
+router.post("/base-resume/import", async (req, res): Promise<void> => {
+  try {
+    await parseSingleDocumentUpload(req, res);
+
+    const file = getUploadedDocument(req);
+    if (!file) {
+      res.status(400).json({ error: "Upload a DOCX or PDF resume file." });
+      return;
+    }
+
+    const contentText = await extractTextFromDocumentFile(file);
+    if (contentText.length < 20) {
+      res.status(400).json({
+        error: "Could not extract enough readable text from this file. For scanned PDFs, paste the resume text instead.",
+      });
+      return;
+    }
+
+    const label = typeof req.body.label === "string" && req.body.label.trim()
+      ? req.body.label.trim()
+      : `Imported - ${file.originalname}`;
+
+    const row = await db.transaction(async (tx) => {
+      await tx
+        .update(baseResumeVersionsTable)
+        .set({ isCurrent: false })
+        .where(eq(baseResumeVersionsTable.isCurrent, true));
+
+      const [created] = await tx
+        .insert(baseResumeVersionsTable)
+        .values({
+          contentText,
+          label,
+          isCurrent: true,
+        })
+        .returning();
+
+      return created!;
+    });
+
+    res.status(201).json(GetBaseResumeResponse.parse(row));
+  } catch (err) {
+    if (err instanceof UploadValidationError) {
+      res.status(err.statusCode).json({ error: err.message });
+      return;
+    }
+
+    req.log.error({ err }, "Failed to import base resume");
+    res.status(500).json({ error: "Failed to import base resume" });
+  }
 });
 
 router.post("/base-resume/:id/restore", async (req, res): Promise<void> => {

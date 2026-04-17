@@ -37,6 +37,18 @@ export const coverLetterVersionsTable = pgTable(
       onDelete: "cascade",
     }),
 
+    /**
+     * Canonical AI lineage key for this generated artifact.
+     * Nullable-first so pre-M002 rows remain visible but fail closed for lineage joins.
+     */
+    runId: text("run_id"),
+
+    /**
+     * Event-log row for the originating AI run or downstream lineage anchor.
+     * Later tasks can enforce presence on new writes without backfilling legacy rows.
+     */
+    eventLogId: integer("event_log_id"),
+
     /** Human-readable label (e.g. "AI drafted — Jun 15, 2025"). Auto-set by the pipeline. */
     label: text("label"),
 
@@ -76,6 +88,8 @@ export const coverLetterVersionsTable = pgTable(
   },
   (table) => [
     index("cover_letter_versions_job_id_idx").on(table.jobId),
+    index("cover_letter_versions_run_id_idx").on(table.runId),
+    index("cover_letter_versions_event_log_id_idx").on(table.eventLogId),
     index("cover_letter_versions_status_idx").on(table.status),
   ],
 );

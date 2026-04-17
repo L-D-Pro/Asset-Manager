@@ -74,9 +74,19 @@ All endpoints are prefixed with `/api`.
 |--------|------|-------------|
 | GET | `/claims` | List claims (filter by `domain`, `isActive`) |
 | POST | `/claims` | Create a claim |
+| POST | `/claims/draft` | Draft non-persisted claims from pasted text and/or DOCX/PDF upload |
 | GET | `/claims/:id` | Get a single claim |
 | PATCH | `/claims/:id` | Update a claim |
 | DELETE | `/claims/:id` | Delete a claim |
+
+### Base Resume
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/base-resume` | Get current base resume |
+| GET | `/base-resume/history` | List immutable base resume versions |
+| POST | `/base-resume` | Save a new current base resume version |
+| POST | `/base-resume/import` | Import DOCX/PDF and save extracted text as current version |
+| POST | `/base-resume/:id/restore` | Clone a historical version into a new current version |
 
 ### Resume Versions
 | Method | Path | Description |
@@ -114,8 +124,10 @@ All endpoints are prefixed with `/api`.
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/event-logs` | List event logs (filter by `entityType`, `entityId`, `jobId`, `applicationId`) |
+| POST | `/event-logs` | Create a manual event log entry |
+| GET | `/event-logs/:id` | Get a single event log entry |
 
-Event logs are read-only. No create/update/delete endpoints are exposed.
+Event logs are append-only. No update/delete endpoints are exposed.
 
 ### Feedback Signals
 | Method | Path | Description |
@@ -134,6 +146,50 @@ Event logs are read-only. No create/update/delete endpoints are exposed.
 | GET | `/ai-model-configs/:id` | Get a single model config |
 | PATCH | `/ai-model-configs/:id` | Update a model config |
 | DELETE | `/ai-model-configs/:id` | Delete a model config |
+
+### AI Learning / Review
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/ai-review/overview` | Recent AI events, evaluations, prompt versions, examples, and stats |
+| GET | `/ai-prompt-versions` | List prompt versions |
+| POST | `/ai-prompt-versions` | Create prompt version |
+| PATCH | `/ai-prompt-versions/:id` | Update prompt version |
+| GET | `/ai-run-evaluations` | List AI run evaluations |
+| POST | `/ai-run-evaluations` | Create AI run evaluation |
+| GET | `/ai-training-examples` | List curated training examples |
+| POST | `/ai-training-examples` | Create curated training example |
+
+### Assisted Apply
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/site-adapters` | List platform adapter policy records |
+| POST | `/site-adapters` | Create platform adapter policy record |
+| GET | `/application-sessions` | List assisted-apply sessions |
+| POST | `/application-sessions` | Create assisted-apply session |
+| GET | `/application-sessions/:id` | Get session with fields and actions |
+| POST | `/application-sessions/:id/fields` | Add detected/suggested/approved form field |
+| POST | `/application-sessions/:id/actions` | Log assisted-apply action |
+
+### Freelance Copilot
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/freelance-profiles` | List contractor/freelance profiles |
+| POST | `/freelance-profiles` | Create contractor/freelance profile |
+| PATCH | `/freelance-profiles/:id` | Update contractor/freelance profile |
+| GET | `/project-sources` | List captured project sources |
+| POST | `/project-sources` | Create project source |
+| GET | `/freelance-projects` | List freelance projects |
+| POST | `/freelance-projects` | Create freelance project |
+| POST | `/freelance-projects/:id/score` | Score project fit |
+| POST | `/freelance-projects/:id/draft-proposal` | Draft proposal for human review |
+| GET | `/proposal-versions` | List proposal drafts |
+| POST | `/proposal-versions` | Create proposal draft |
+| POST | `/proposal-versions/:id/approve` | Approve proposal draft |
+| POST | `/proposal-versions/:id/reject` | Reject proposal draft |
+| GET | `/proposal-outcomes` | List proposal outcomes |
+| POST | `/proposal-outcomes` | Create proposal outcome |
+| GET | `/client-message-templates` | List client message templates |
+| POST | `/client-message-templates` | Create client message template |
 
 ### Health
 | Method | Path | Description |

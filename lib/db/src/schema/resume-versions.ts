@@ -48,6 +48,19 @@ export const resumeVersionsTable = pgTable(
       },
     ),
 
+    /**
+     * Canonical AI lineage key for this generated artifact.
+     * Nullable during rollout so legacy drafts remain diagnosable but are not
+     * considered valid lineage.
+     */
+    runId: text("run_id"),
+
+    /**
+     * Event-log row for the originating AI run or downstream lineage anchor.
+     * Nullable-first for legacy rows created before the canonical contract.
+     */
+    eventLogId: integer("event_log_id"),
+
     /** Human-readable label (e.g. "AI tailored — Jun 15, 2025"). Auto-set by the pipeline. */
     label: text("label"),
 
@@ -103,6 +116,8 @@ export const resumeVersionsTable = pgTable(
     index("resume_versions_base_resume_version_id_idx").on(
       table.baseResumeVersionId,
     ),
+    index("resume_versions_run_id_idx").on(table.runId),
+    index("resume_versions_event_log_id_idx").on(table.eventLogId),
     index("resume_versions_status_idx").on(table.status),
   ],
 );
