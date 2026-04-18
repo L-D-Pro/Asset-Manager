@@ -50,16 +50,16 @@ vi.mock("@workspace/db", () => ({
   baseResumeVersionsTable: baseResumeVersionsTableMock,
 }));
 
-vi.mock("../ai-client", () => ({
+vi.mock("../../ai-client", () => ({
   callAI: callAIMock,
   parseJsonResponse: parseJsonResponseMock,
 }));
 
-vi.mock("../scoring", () => ({
+vi.mock("../../scoring", () => ({
   matchClaimsToJob: matchClaimsToJobMock,
 }));
 
-vi.mock("../logger", () => ({
+vi.mock("../../logger", () => ({
   logger: loggerMock,
 }));
 
@@ -105,6 +105,16 @@ describe("job lineage pipelines", () => {
     assertMinimumContentMock.mockImplementation(() => undefined);
 
     const { runResumeTailorPipeline } = await import("../resume-tailor");
+
+    await runResumeTailorPipeline(
+      { id: 11, title: "Engineer", company: "Acme" } as never,
+      [{ id: 1, summary: "Built feature", evidence: null } as never],
+      [1],
+    );
+
+    const inserted = resumeInsertValuesMock.mock.calls.at(-1)?.[0];
+    expect(inserted.runId).toBe("run_resume_success_1234567890");
+    expect(inserted.eventLogId).toBe(321);
   });
 
   it("persists lineage on resume truth-lock failures so failed generations remain diagnosable", async () => {

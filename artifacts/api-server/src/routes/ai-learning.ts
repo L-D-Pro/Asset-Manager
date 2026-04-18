@@ -154,12 +154,49 @@ router.get("/ai-run-evaluations", async (req, res): Promise<void> => {
   res.json(rows);
 });
 
+import { validateLineage, isCanonicalRunId } from "../lib/lineage";
+
 router.post("/ai-run-evaluations", async (req, res): Promise<void> => {
   const parsed = insertAiRunEvaluationSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+
+  // Require either runId or a way to derive lineage
+  const { runId, eventLogId, entityType, entityId } = parsed.data;
+
+  if (!isCanonicalRunId(runId)) {
+    res.status(422).json({
+      error: "Lineage validation failed",
+      details: {
+        reasons: ["Invalid or missing run_id"],
+      },
+    });
+    return;
+  }
+
+  // Validate lineage before inserting the evaluation
+  const lineageValidation = await validateLineage({
+    table: "ai_run_evaluations",
+    runId,
+    eventLogId,
+    entityType,
+    entityId,
+  });
+
+  if (!lineageValidation.ok) {
+    res.status(422).json({
+      error: "Lineage validation failed",
+      details: {
+        status: lineageValidation.status,
+        reasons: lineageValidation.diagnostics.reasons,
+      },
+    });
+    return;
+  }
+
+  // Insert the AI run evaluation if lineage validation passes
   const [row] = await db.insert(aiRunEvaluationsTable).values(parsed.data).returning();
   res.status(201).json(row);
 });

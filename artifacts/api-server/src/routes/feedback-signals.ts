@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and } from "drizzle-orm";
-import { db, feedbackSignalsTable, applicationsTable, eventLogsTable } from "@workspace/db";
+import { db, feedbackSignalsTable, applicationsTable, eventLogsTable, resumeVersionsTable } from "@workspace/db";
 import {
   ListFeedbackSignalsQueryParams,
   ListFeedbackSignalsResponse,
@@ -39,6 +39,8 @@ router.get("/feedback-signals", async (req, res): Promise<void> => {
   res.json(ListFeedbackSignalsResponse.parse(rows));
 });
 
+import { validateLineage, isCanonicalRunId } from "../lib/lineage";
+
 router.post("/feedback-signals", async (req, res): Promise<void> => {
   const parsed = CreateFeedbackSignalBody.safeParse(req.body);
   if (!parsed.success) {
@@ -60,10 +62,48 @@ router.post("/feedback-signals", async (req, res): Promise<void> => {
   };
   const newStatus = outcomesToStatus[parsed.data.outcome];
 
+  // Ensure we have a valid run_id 
+  let runId: string | null = null;
+  if (parsed.data.resumeVersionId) {
+    const [row] = await db.select({ runId: resumeVersionsTable.runId }).from(resumeVersionsTable).where(eq(resumeVersionsTable.id, parsed.data.resumeVersionId));
+    runId = row?.runId ?? null;
+  }
+
+  // Note: coverLetterVersionId is not currently part of CreateFeedbackSignalBody.
+  // Once added to the API schema, we can additionally source run_id from cover_letter_versions here.
+
+  // Validate lineage before allowing feedback insert
+  if (!runId || !isCanonicalRunId(runId)) {
+    res.status(422).json({
+      error: "Lineage validation failed",
+      details: {
+        reasons: ["Missing or invalid run_id"],
+      },
+    });
+    return;
+  }
+
+  const lineageValidation = await validateLineage({
+    table: "feedback_signals",
+    runId,
+    applicationId: parsed.data.applicationId,
+  });
+
+  if (!lineageValidation.ok) {
+    res.status(422).json({
+      error: "Lineage validation failed",
+      details: {
+        status: lineageValidation.status,
+        reasons: lineageValidation.diagnostics.reasons,
+      },
+    });
+    return;
+  }
+
   const row = await db.transaction(async (tx) => {
     const [inserted] = await tx
       .insert(feedbackSignalsTable)
-      .values(parsed.data)
+      .values({ ...parsed.data, runId })
       .returning();
 
     if (newStatus && existingApp) {
@@ -81,6 +121,7 @@ router.post("/feedback-signals", async (req, res): Promise<void> => {
         previousState: previousStatus,
         nextState: newStatus,
         actorType: "system",
+        runId,
         metadata: {
           triggeredBy: "feedback_signal",
           feedbackSignalId: inserted.id,

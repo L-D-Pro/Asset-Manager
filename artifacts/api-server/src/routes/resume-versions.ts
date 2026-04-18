@@ -15,6 +15,7 @@ import {
   RejectResumeVersionParams,
   RejectResumeVersionResponse,
 } from "@workspace/api-zod";
+import { validateLineage } from "../lib/lineage";
 
 const router: IRouter = Router();
 
@@ -116,11 +117,34 @@ router.post("/resume-versions/:id/approve", async (req, res): Promise<void> => {
     return;
   }
 
-  const previousStatus = existing[0].status;
+  const resumeVersion = existing[0];
+  const previousStatus = resumeVersion.status;
 
   if (previousStatus !== "pending_approval") {
     res.status(409).json({
       error: `Cannot approve a resume version in status "${previousStatus}". Only "pending_approval" versions can be approved.`,
+    });
+    return;
+  }
+
+  // Validate lineage before processing the approval
+  const lineageValidation = await validateLineage({
+    table: "resume_versions",
+    id: resumeVersion.id,
+    runId: resumeVersion.runId,
+    eventLogId: resumeVersion.eventLogId,
+    entityType: "resume_version",
+    entityId: resumeVersion.id,
+    jobId: resumeVersion.jobId,
+  });
+
+  if (!lineageValidation.ok) {
+    res.status(422).json({
+      error: "Lineage validation failed",
+      details: {
+        status: lineageValidation.status,
+        reasons: lineageValidation.diagnostics.reasons,
+      },
     });
     return;
   }
@@ -140,6 +164,7 @@ router.post("/resume-versions/:id/approve", async (req, res): Promise<void> => {
       previousState: previousStatus,
       nextState: "approved",
       actorType: "user",
+      runId: resumeVersion.runId,
       metadata: { resumeVersionId: params.data.id },
     });
     return updated!;
@@ -165,11 +190,34 @@ router.post("/resume-versions/:id/reject", async (req, res): Promise<void> => {
     return;
   }
 
-  const previousStatus = existing[0].status;
+  const resumeVersion = existing[0];
+  const previousStatus = resumeVersion.status;
 
   if (previousStatus !== "pending_approval") {
     res.status(409).json({
       error: `Cannot reject a resume version in status "${previousStatus}". Only "pending_approval" versions can be rejected.`,
+    });
+    return;
+  }
+
+  // Validate lineage before processing the rejection
+  const lineageValidation = await validateLineage({
+    table: "resume_versions",
+    id: resumeVersion.id,
+    runId: resumeVersion.runId,
+    eventLogId: resumeVersion.eventLogId,
+    entityType: "resume_version",
+    entityId: resumeVersion.id,
+    jobId: resumeVersion.jobId,
+  });
+
+  if (!lineageValidation.ok) {
+    res.status(422).json({
+      error: "Lineage validation failed",
+      details: {
+        status: lineageValidation.status,
+        reasons: lineageValidation.diagnostics.reasons,
+      },
     });
     return;
   }
@@ -189,6 +237,7 @@ router.post("/resume-versions/:id/reject", async (req, res): Promise<void> => {
       previousState: previousStatus,
       nextState: "rejected",
       actorType: "user",
+      runId: resumeVersion.runId,
       metadata: { resumeVersionId: params.data.id },
     });
     return updated!;

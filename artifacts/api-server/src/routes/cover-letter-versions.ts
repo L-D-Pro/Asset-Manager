@@ -15,6 +15,7 @@ import {
   RejectCoverLetterVersionParams,
   RejectCoverLetterVersionResponse,
 } from "@workspace/api-zod";
+import { validateLineage } from "../lib/lineage";
 
 const router: IRouter = Router();
 
@@ -116,11 +117,34 @@ router.post("/cover-letter-versions/:id/approve", async (req, res): Promise<void
     return;
   }
 
-  const previousStatus = existing[0].status;
+  const coverLetterVersion = existing[0];
+  const previousStatus = coverLetterVersion.status;
 
   if (previousStatus !== "pending_approval") {
     res.status(409).json({
       error: `Cannot approve a cover letter version in status "${previousStatus}". Only "pending_approval" versions can be approved.`,
+    });
+    return;
+  }
+
+  // Validate lineage before processing the approval
+  const lineageValidation = await validateLineage({
+    table: "cover_letter_versions",
+    id: coverLetterVersion.id,
+    runId: coverLetterVersion.runId,
+    eventLogId: coverLetterVersion.eventLogId,
+    entityType: "cover_letter_version",
+    entityId: coverLetterVersion.id,
+    jobId: coverLetterVersion.jobId,
+  });
+
+  if (!lineageValidation.ok) {
+    res.status(422).json({
+      error: "Lineage validation failed",
+      details: {
+        status: lineageValidation.status,
+        reasons: lineageValidation.diagnostics.reasons,
+      },
     });
     return;
   }
@@ -140,6 +164,7 @@ router.post("/cover-letter-versions/:id/approve", async (req, res): Promise<void
       previousState: previousStatus,
       nextState: "approved",
       actorType: "user",
+      runId: coverLetterVersion.runId,
       metadata: { coverLetterVersionId: params.data.id },
     });
     return updated!;
@@ -165,11 +190,34 @@ router.post("/cover-letter-versions/:id/reject", async (req, res): Promise<void>
     return;
   }
 
-  const previousStatus = existing[0].status;
+  const coverLetterVersion = existing[0];
+  const previousStatus = coverLetterVersion.status;
 
   if (previousStatus !== "pending_approval") {
     res.status(409).json({
       error: `Cannot reject a cover letter version in status "${previousStatus}". Only "pending_approval" versions can be rejected.`,
+    });
+    return;
+  }
+
+  // Validate lineage before processing the rejection
+  const lineageValidation = await validateLineage({
+    table: "cover_letter_versions",
+    id: coverLetterVersion.id,
+    runId: coverLetterVersion.runId,
+    eventLogId: coverLetterVersion.eventLogId,
+    entityType: "cover_letter_version",
+    entityId: coverLetterVersion.id,
+    jobId: coverLetterVersion.jobId,
+  });
+
+  if (!lineageValidation.ok) {
+    res.status(422).json({
+      error: "Lineage validation failed",
+      details: {
+        status: lineageValidation.status,
+        reasons: lineageValidation.diagnostics.reasons,
+      },
     });
     return;
   }
@@ -189,6 +237,7 @@ router.post("/cover-letter-versions/:id/reject", async (req, res): Promise<void>
       previousState: previousStatus,
       nextState: "rejected",
       actorType: "user",
+      runId: coverLetterVersion.runId,
       metadata: { coverLetterVersionId: params.data.id },
     });
     return updated!;

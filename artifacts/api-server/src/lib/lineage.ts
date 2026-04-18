@@ -85,7 +85,7 @@ export type InScopeLineageRow =
 
 export function mintRunId(seed?: { now?: Date; random?: string }): string {
   const now = seed?.now ?? new Date();
-  const random = (seed?.random ?? crypto.randomUUID().replace(/-/g, "")).slice(0, 12);
+  const random = (seed?.random ?? globalThis.crypto.randomUUID().replace(/-/g, "")).slice(0, 12);
   return `${RUN_ID_PREFIX}_${now.toISOString().replace(/[:.]/g, "").toLowerCase()}_${random}`;
 }
 
