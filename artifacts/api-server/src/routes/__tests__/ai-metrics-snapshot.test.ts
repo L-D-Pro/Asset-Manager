@@ -40,6 +40,35 @@ describe("ai metrics snapshot (v1)", () => {
 
     expect(snapshot.aggregates.evaluationCount).toBe(2);
     expect(snapshot.aggregates.approvalOutcomeCounts).toEqual({ approved: 1, rejected: 1 });
+
+    expect(snapshot.aggregates.byPromptVersion).toEqual({
+      unknown: {
+        evaluationCount: 2,
+        approvalOutcomeCounts: { approved: 1, rejected: 1 },
+        avgEditDistance: null,
+        avgRubricScores: {
+          truthfulnessScore: null,
+          relevanceScore: null,
+          formattingScore: null,
+          attributionScore: null,
+        },
+      },
+    });
+
+    expect(snapshot.series).toEqual([
+      {
+        bucketStartInclusive: "2026-04-18T10:00:00.000Z",
+        evaluationCount: 2,
+        approvalOutcomeCounts: { approved: 1, rejected: 1 },
+        avgEditDistance: null,
+        avgRubricScores: {
+          truthfulnessScore: null,
+          relevanceScore: null,
+          formattingScore: null,
+          attributionScore: null,
+        },
+      },
+    ]);
   });
 
   it("returns degraded status with reasons when integrity issues are detected", () => {
@@ -86,5 +115,55 @@ describe("ai metrics snapshot (v1)", () => {
 
     // Still computes aggregates over eligible rows only.
     expect(snapshot.aggregates.evaluationCount).toBe(0);
+    expect(snapshot.series).toEqual([]);
+    expect(snapshot.aggregates.byPromptVersion).toEqual({});
+  });
+
+  it("groups series by bucket deterministically regardless of input order", () => {
+    const baseRows: AiRunEvaluationRowLite[] = [
+      {
+        runId: "run_2026_04_18_bucket_1",
+        taskScope: "resume_review",
+        eventLogId: 1,
+        createdAt: new Date("2026-04-18T10:15:00.000Z"),
+        approvalOutcome: "approved",
+      },
+      {
+        runId: "run_2026_04_18_bucket_2",
+        taskScope: "resume_review",
+        eventLogId: 2,
+        createdAt: new Date("2026-04-18T10:45:00.000Z"),
+        approvalOutcome: "rejected",
+      },
+      {
+        runId: "run_2026_04_18_bucket_3",
+        taskScope: "resume_review",
+        eventLogId: 3,
+        createdAt: new Date("2026-04-18T11:05:00.000Z"),
+        approvalOutcome: "approved",
+      },
+    ];
+
+    const snapshotA = buildAiMetricsSnapshotV1({
+      metricsVersion: "v1",
+      taskScope: "resume_review",
+      windowStart: new Date("2026-04-18T10:00:00.000Z"),
+      windowEnd: new Date("2026-04-18T12:00:00.000Z"),
+      rows: baseRows,
+    });
+
+    const snapshotB = buildAiMetricsSnapshotV1({
+      metricsVersion: "v1",
+      taskScope: "resume_review",
+      windowStart: new Date("2026-04-18T10:00:00.000Z"),
+      windowEnd: new Date("2026-04-18T12:00:00.000Z"),
+      rows: [...baseRows].reverse(),
+    });
+
+    expect(snapshotA.series).toEqual(snapshotB.series);
+    expect(snapshotA.series.map((b) => b.bucketStartInclusive)).toEqual([
+      "2026-04-18T10:00:00.000Z",
+      "2026-04-18T11:00:00.000Z",
+    ]);
   });
 });

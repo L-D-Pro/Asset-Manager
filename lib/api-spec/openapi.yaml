@@ -2956,9 +2956,58 @@ components:
               type: object
               additionalProperties:
                 type: integer
+            byPromptVersion:
+              type: object
+              additionalProperties:
+                type: object
+                properties:
+                  evaluationCount:
+                    type: integer
+                  approvalOutcomeCounts:
+                    type: object
+                    additionalProperties:
+                      type: integer
+                  avgEditDistance:
+                    type: ["number", "null"]
+                  avgRubricScores:
+                    type: object
+                    additionalProperties:
+                      type: ["number", "null"]
+                required:
+                  - evaluationCount
+                  - approvalOutcomeCounts
+                  - avgEditDistance
+                  - avgRubricScores
           required:
             - evaluationCount
             - approvalOutcomeCounts
+            - byPromptVersion
+        series:
+          type: array
+          items:
+            type: object
+            properties:
+              bucketStartInclusive:
+                type: string
+                format: date-time
+              evaluationCount:
+                type: integer
+              approvalOutcomeCounts:
+                type: object
+                additionalProperties:
+                  type: integer
+              avgEditDistance:
+                type: ["number", "null"]
+              avgRubricScores:
+                type: object
+                additionalProperties:
+                  type: ["number", "null"]
+            required:
+              - bucketStartInclusive
+              - evaluationCount
+              - approvalOutcomeCounts
+              - avgEditDistance
+              - avgRubricScores
       required:
         - metricsVersion
         - window
@@ -2967,6 +3016,7 @@ components:
         - degradedReasons
         - lastKnownGoodSnapshot
         - aggregates
+        - series
 
     AiTrainingExample:
       type: object

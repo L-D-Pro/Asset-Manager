@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
-import { and, eq, gte, lt } from "drizzle-orm";
+import { and, eq, gte, inArray, lt } from "drizzle-orm";
 import { z } from "zod";
-import { db, aiRunEvaluationsTable } from "@workspace/db";
+import { aiRunEvaluationsTable, db, eventLogsTable } from "@workspace/db";
 import { defineSnapshotWindow, type MetricsContractVersion } from "../lib/metrics-contract";
 import { buildAiMetricsSnapshotV1, type AiRunEvaluationRowLite } from "../lib/ai-metrics-snapshot";
 
@@ -45,9 +45,37 @@ aiMetricsSnapshotRouter.get("/ai-metrics-snapshot", async (req, res): Promise<vo
       eventLogId: aiRunEvaluationsTable.eventLogId,
       createdAt: aiRunEvaluationsTable.createdAt,
       approvalOutcome: aiRunEvaluationsTable.approvalOutcome,
+      promptVersionId: aiRunEvaluationsTable.promptVersionId,
+      editDistance: aiRunEvaluationsTable.editDistance,
+      truthfulnessScore: aiRunEvaluationsTable.truthfulnessScore,
+      relevanceScore: aiRunEvaluationsTable.relevanceScore,
+      formattingScore: aiRunEvaluationsTable.formattingScore,
+      attributionScore: aiRunEvaluationsTable.attributionScore,
     })
     .from(aiRunEvaluationsTable)
     .where(and(...where))) as AiRunEvaluationRowLite[];
+
+  const runIds = Array.from(
+    new Set(rows.map((r) => r.runId).filter((id): id is string => typeof id === "string" && id.length > 0)),
+  );
+
+  const hasRootAiEventByRunId: Record<string, boolean> = {};
+  if (runIds.length > 0) {
+    const rootAiEvents = await db
+      .select({
+        runId: eventLogsTable.runId,
+      })
+      .from(eventLogsTable)
+      .where(and(eq(eventLogsTable.entityType, "ai_call"), inArray(eventLogsTable.runId, runIds)));
+
+    for (const row of rootAiEvents) {
+      if (row.runId) hasRootAiEventByRunId[row.runId] = true;
+    }
+
+    for (const runId of runIds) {
+      hasRootAiEventByRunId[runId] ??= false;
+    }
+  }
 
   const response = buildAiMetricsSnapshotV1({
     metricsVersion: parsed.data.metricsVersion,
@@ -55,6 +83,7 @@ aiMetricsSnapshotRouter.get("/ai-metrics-snapshot", async (req, res): Promise<vo
     windowStart,
     windowEnd,
     rows,
+    hasRootAiEventByRunId,
   });
 
   res.json(response);
