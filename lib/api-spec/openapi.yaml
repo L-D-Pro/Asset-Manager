@@ -617,6 +617,12 @@ paths:
       summary: Approve a resume version
       parameters:
         - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApprovalEvaluationBody"
       responses:
         "200":
           description: Approved resume version
@@ -634,6 +640,12 @@ paths:
       summary: Reject a resume version
       parameters:
         - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApprovalEvaluationBody"
       responses:
         "200":
           description: Rejected resume version
@@ -725,6 +737,12 @@ paths:
       summary: Approve a cover letter version
       parameters:
         - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApprovalEvaluationBody"
       responses:
         "200":
           description: Approved cover letter version
@@ -742,6 +760,12 @@ paths:
       summary: Reject a cover letter version
       parameters:
         - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApprovalEvaluationBody"
       responses:
         "200":
           description: Rejected cover letter version
@@ -2839,6 +2863,8 @@ components:
           type: ["integer", "null"]
         promptVersionId:
           type: ["integer", "null"]
+        runId:
+          type: string
         taskScope:
           type: string
         entityType:
@@ -2866,7 +2892,27 @@ components:
         metadata:
           type: object
       required:
+        - runId
         - taskScope
+
+    ApprovalEvaluationBody:
+      type: object
+      properties:
+        rubric:
+          type: ["object", "null"]
+          properties:
+            truthfulnessScore:
+              type: ["integer", "null"]
+            relevanceScore:
+              type: ["integer", "null"]
+            formattingScore:
+              type: ["integer", "null"]
+            attributionScore:
+              type: ["integer", "null"]
+        editDistance:
+          type: ["integer", "null"]
+        notes:
+          type: ["string", "null"]
 
     AiMetricsSnapshotResponse:
       type: object

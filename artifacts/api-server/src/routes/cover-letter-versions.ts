@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and } from "drizzle-orm";
-import { db, coverLetterVersionsTable, eventLogsTable } from "@workspace/db";
+import { db, coverLetterVersionsTable, eventLogsTable, aiRunEvaluationsTable } from "@workspace/db";
 import {
   ListCoverLetterVersionsQueryParams,
   ListCoverLetterVersionsResponse,
@@ -11,8 +11,10 @@ import {
   UpdateCoverLetterVersionResponse,
   DeleteCoverLetterVersionParams,
   ApproveCoverLetterVersionParams,
+  ApproveCoverLetterVersionBody,
   ApproveCoverLetterVersionResponse,
   RejectCoverLetterVersionParams,
+  RejectCoverLetterVersionBody,
   RejectCoverLetterVersionResponse,
 } from "@workspace/api-zod";
 import { validateLineage } from "../lib/lineage";
@@ -108,6 +110,13 @@ router.post("/cover-letter-versions/:id/approve", async (req, res): Promise<void
     return;
   }
 
+  const parsedBody = ApproveCoverLetterVersionBody.safeParse(req.body);
+  if (!parsedBody.success) {
+    req.log.warn({ error: parsedBody.error.message }, "Invalid approve cover letter body");
+    res.status(400).json({ error: parsedBody.error.message });
+    return;
+  }
+
   const existing = await db
     .select()
     .from(coverLetterVersionsTable)
@@ -155,18 +164,62 @@ router.post("/cover-letter-versions/:id/approve", async (req, res): Promise<void
       .set({ status: "approved" })
       .where(eq(coverLetterVersionsTable.id, params.data.id))
       .returning();
-    await tx.insert(eventLogsTable).values({
-      entityType: "cover_letter_version",
-      entityId: params.data.id,
-      jobId: existing[0]!.jobId ?? null,
-      applicationId: null,
-      eventType: "approval",
-      previousState: previousStatus,
-      nextState: "approved",
-      actorType: "user",
-      runId: coverLetterVersion.runId,
-      metadata: { coverLetterVersionId: params.data.id },
-    });
+
+    const [eventLog] = await tx
+      .insert(eventLogsTable)
+      .values({
+        entityType: "cover_letter_version",
+        entityId: params.data.id,
+        jobId: existing[0]!.jobId ?? null,
+        applicationId: null,
+        eventType: "approval",
+        previousState: previousStatus,
+        nextState: "approved",
+        actorType: "user",
+        runId: coverLetterVersion.runId,
+        metadata: { coverLetterVersionId: params.data.id },
+      })
+      .returning({ id: eventLogsTable.id });
+
+    await tx
+      .insert(aiRunEvaluationsTable)
+      .values({
+        runId: coverLetterVersion.runId,
+        taskScope: "cover_letter_review",
+        entityType: "cover_letter_version",
+        entityId: coverLetterVersion.id,
+        eventLogId: eventLog?.id ?? null,
+        evaluatorType: "user",
+        approvalOutcome: "approved",
+        truthfulnessScore: parsedBody.data.rubric?.truthfulnessScore ?? null,
+        relevanceScore: parsedBody.data.rubric?.relevanceScore ?? null,
+        formattingScore: parsedBody.data.rubric?.formattingScore ?? null,
+        attributionScore: parsedBody.data.rubric?.attributionScore ?? null,
+        editDistance: parsedBody.data.editDistance ?? null,
+        notes: parsedBody.data.notes ?? null,
+        metadata: {},
+      })
+      .onConflictDoUpdate({
+        target: [
+          aiRunEvaluationsTable.runId,
+          aiRunEvaluationsTable.taskScope,
+          aiRunEvaluationsTable.entityType,
+          aiRunEvaluationsTable.entityId,
+        ],
+        set: {
+          eventLogId: eventLog?.id ?? null,
+          evaluatorType: "user",
+          approvalOutcome: "approved",
+          truthfulnessScore: parsedBody.data.rubric?.truthfulnessScore ?? null,
+          relevanceScore: parsedBody.data.rubric?.relevanceScore ?? null,
+          formattingScore: parsedBody.data.rubric?.formattingScore ?? null,
+          attributionScore: parsedBody.data.rubric?.attributionScore ?? null,
+          editDistance: parsedBody.data.editDistance ?? null,
+          notes: parsedBody.data.notes ?? null,
+          metadata: {},
+        },
+      });
+
     return updated!;
   });
 
@@ -178,6 +231,13 @@ router.post("/cover-letter-versions/:id/reject", async (req, res): Promise<void>
   const params = RejectCoverLetterVersionParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const parsedBody = RejectCoverLetterVersionBody.safeParse(req.body);
+  if (!parsedBody.success) {
+    req.log.warn({ error: parsedBody.error.message }, "Invalid reject cover letter body");
+    res.status(400).json({ error: parsedBody.error.message });
     return;
   }
 
@@ -228,18 +288,62 @@ router.post("/cover-letter-versions/:id/reject", async (req, res): Promise<void>
       .set({ status: "rejected" })
       .where(eq(coverLetterVersionsTable.id, params.data.id))
       .returning();
-    await tx.insert(eventLogsTable).values({
-      entityType: "cover_letter_version",
-      entityId: params.data.id,
-      jobId: existing[0]!.jobId ?? null,
-      applicationId: null,
-      eventType: "rejection",
-      previousState: previousStatus,
-      nextState: "rejected",
-      actorType: "user",
-      runId: coverLetterVersion.runId,
-      metadata: { coverLetterVersionId: params.data.id },
-    });
+
+    const [eventLog] = await tx
+      .insert(eventLogsTable)
+      .values({
+        entityType: "cover_letter_version",
+        entityId: params.data.id,
+        jobId: existing[0]!.jobId ?? null,
+        applicationId: null,
+        eventType: "rejection",
+        previousState: previousStatus,
+        nextState: "rejected",
+        actorType: "user",
+        runId: coverLetterVersion.runId,
+        metadata: { coverLetterVersionId: params.data.id },
+      })
+      .returning({ id: eventLogsTable.id });
+
+    await tx
+      .insert(aiRunEvaluationsTable)
+      .values({
+        runId: coverLetterVersion.runId,
+        taskScope: "cover_letter_review",
+        entityType: "cover_letter_version",
+        entityId: coverLetterVersion.id,
+        eventLogId: eventLog?.id ?? null,
+        evaluatorType: "user",
+        approvalOutcome: "rejected",
+        truthfulnessScore: parsedBody.data.rubric?.truthfulnessScore ?? null,
+        relevanceScore: parsedBody.data.rubric?.relevanceScore ?? null,
+        formattingScore: parsedBody.data.rubric?.formattingScore ?? null,
+        attributionScore: parsedBody.data.rubric?.attributionScore ?? null,
+        editDistance: parsedBody.data.editDistance ?? null,
+        notes: parsedBody.data.notes ?? null,
+        metadata: {},
+      })
+      .onConflictDoUpdate({
+        target: [
+          aiRunEvaluationsTable.runId,
+          aiRunEvaluationsTable.taskScope,
+          aiRunEvaluationsTable.entityType,
+          aiRunEvaluationsTable.entityId,
+        ],
+        set: {
+          eventLogId: eventLog?.id ?? null,
+          evaluatorType: "user",
+          approvalOutcome: "rejected",
+          truthfulnessScore: parsedBody.data.rubric?.truthfulnessScore ?? null,
+          relevanceScore: parsedBody.data.rubric?.relevanceScore ?? null,
+          formattingScore: parsedBody.data.rubric?.formattingScore ?? null,
+          attributionScore: parsedBody.data.rubric?.attributionScore ?? null,
+          editDistance: parsedBody.data.editDistance ?? null,
+          notes: parsedBody.data.notes ?? null,
+          metadata: {},
+        },
+      });
+
     return updated!;
   });
 

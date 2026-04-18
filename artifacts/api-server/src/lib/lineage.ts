@@ -13,9 +13,9 @@ import {
   type FeedbackSignal,
 } from "@workspace/db";
 
-import { isCanonicalRunId, mintRunId, normalizeRunId, RUN_ID_PREFIX } from "./lineage-shared";
+import { isCanonicalRunId, RUN_ID_PREFIX } from "./lineage-shared";
 
-export { isCanonicalRunId, mintRunId, normalizeRunId, RUN_ID_PREFIX };
+export { isCanonicalRunId, RUN_ID_PREFIX };
 
 export const lineageTableKinds = [
   "event_logs",
@@ -89,10 +89,6 @@ export function mintRunId(seed?: { now?: Date; random?: string }): string {
   const now = seed?.now ?? new Date();
   const random = (seed?.random ?? globalThis.crypto.randomUUID().replace(/-/g, "")).slice(0, 12);
   return `${RUN_ID_PREFIX}_${now.toISOString().replace(/[:.]/g, "").toLowerCase()}_${random}`;
-}
-
-export function isCanonicalRunId(value: unknown): value is string {
-  return typeof value === "string" && /^run_[a-z0-9_-]{16,}$/i.test(value.trim());
 }
 
 export function normalizeRunId(value: unknown): string | null {

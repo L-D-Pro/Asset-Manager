@@ -691,6 +691,7 @@ export interface CreateAiRunEvaluationBody {
   eventLogId?: number | null;
   /** @nullable */
   promptVersionId?: number | null;
+  runId: string;
   taskScope: string;
   /** @nullable */
   entityType?: string | null;
@@ -714,6 +715,82 @@ export interface CreateAiRunEvaluationBody {
   /** @nullable */
   notes?: string | null;
   metadata?: CreateAiRunEvaluationBodyMetadata;
+}
+
+/**
+ * @nullable
+ */
+export type ApprovalEvaluationBodyRubric = {
+  /** @nullable */
+  truthfulnessScore?: number | null;
+  /** @nullable */
+  relevanceScore?: number | null;
+  /** @nullable */
+  formattingScore?: number | null;
+  /** @nullable */
+  attributionScore?: number | null;
+} | null;
+
+export interface ApprovalEvaluationBody {
+  /** @nullable */
+  rubric?: ApprovalEvaluationBodyRubric;
+  /** @nullable */
+  editDistance?: number | null;
+  /** @nullable */
+  notes?: string | null;
+}
+
+export type AiMetricsSnapshotResponseMetricsVersion =
+  (typeof AiMetricsSnapshotResponseMetricsVersion)[keyof typeof AiMetricsSnapshotResponseMetricsVersion];
+
+export const AiMetricsSnapshotResponseMetricsVersion = {
+  v1: "v1",
+} as const;
+
+export type AiMetricsSnapshotResponseWindow = {
+  startInclusive: string;
+  endExclusive: string;
+  granularityMs: number;
+};
+
+export type AiMetricsSnapshotResponseStatus =
+  (typeof AiMetricsSnapshotResponseStatus)[keyof typeof AiMetricsSnapshotResponseStatus];
+
+export const AiMetricsSnapshotResponseStatus = {
+  ok: "ok",
+  degraded: "degraded",
+} as const;
+
+/**
+ * Reserved for future persisted snapshots; currently null.
+ * @nullable
+ */
+export type AiMetricsSnapshotResponseLastKnownGoodSnapshot = {
+  [key: string]: unknown;
+} | null;
+
+export type AiMetricsSnapshotResponseAggregatesApprovalOutcomeCounts = {
+  [key: string]: number;
+};
+
+export type AiMetricsSnapshotResponseAggregates = {
+  evaluationCount: number;
+  approvalOutcomeCounts: AiMetricsSnapshotResponseAggregatesApprovalOutcomeCounts;
+};
+
+export interface AiMetricsSnapshotResponse {
+  metricsVersion: AiMetricsSnapshotResponseMetricsVersion;
+  window: AiMetricsSnapshotResponseWindow;
+  /** @nullable */
+  taskScope: string | null;
+  status: AiMetricsSnapshotResponseStatus;
+  degradedReasons: string[];
+  /**
+   * Reserved for future persisted snapshots; currently null.
+   * @nullable
+   */
+  lastKnownGoodSnapshot: AiMetricsSnapshotResponseLastKnownGoodSnapshot;
+  aggregates: AiMetricsSnapshotResponseAggregates;
 }
 
 export type CreateAiTrainingExampleBodyInputSnapshot = {
@@ -1279,6 +1356,20 @@ export type ListAiPromptVersionsParams = {
 export type ListAiRunEvaluationsParams = {
   taskScope?: string;
 };
+
+export type GetAiMetricsSnapshotParams = {
+  metricsVersion: GetAiMetricsSnapshotMetricsVersion;
+  windowStart: string;
+  windowEnd: string;
+  taskScope?: string;
+};
+
+export type GetAiMetricsSnapshotMetricsVersion =
+  (typeof GetAiMetricsSnapshotMetricsVersion)[keyof typeof GetAiMetricsSnapshotMetricsVersion];
+
+export const GetAiMetricsSnapshotMetricsVersion = {
+  v1: "v1",
+} as const;
 
 export type ListAiTrainingExamplesParams = {
   taskScope?: string;

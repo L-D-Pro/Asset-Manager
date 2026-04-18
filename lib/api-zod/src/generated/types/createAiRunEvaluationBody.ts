@@ -12,6 +12,7 @@ export interface CreateAiRunEvaluationBody {
   eventLogId?: number | null;
   /** @nullable */
   promptVersionId?: number | null;
+  runId: string;
   taskScope: string;
   /** @nullable */
   entityType?: string | null;

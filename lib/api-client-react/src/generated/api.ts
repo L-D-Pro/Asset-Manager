@@ -17,6 +17,7 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  AiMetricsSnapshotResponse,
   AiModelConfig,
   AiPromptVersion,
   AiReviewOverview,
@@ -28,6 +29,7 @@ import type {
   ApplicationSession,
   ApplicationSessionDetail,
   ApplicationStats,
+  ApprovalEvaluationBody,
   BadRequestResponse,
   BaseResumeVersion,
   Claim,
@@ -63,6 +65,7 @@ import type {
   FeedbackSignal,
   FreelanceProfile,
   FreelanceProject,
+  GetAiMetricsSnapshotParams,
   HealthStatus,
   ImportBaseResumeBody,
   Job,
@@ -2787,11 +2790,14 @@ export const getApproveResumeVersionUrl = (id: number) => {
 
 export const approveResumeVersion = async (
   id: number,
+  approvalEvaluationBody?: ApprovalEvaluationBody,
   options?: RequestInit,
 ): Promise<ResumeVersion> => {
   return customFetch<ResumeVersion>(getApproveResumeVersionUrl(id), {
     ...options,
     method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(approvalEvaluationBody),
   });
 };
 
@@ -2802,14 +2808,14 @@ export const getApproveResumeVersionMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof approveResumeVersion>>,
     TError,
-    { id: number },
+    { id: number; data: BodyType<ApprovalEvaluationBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof approveResumeVersion>>,
   TError,
-  { id: number },
+  { id: number; data: BodyType<ApprovalEvaluationBody> },
   TContext
 > => {
   const mutationKey = ["approveResumeVersion"];
@@ -2823,11 +2829,11 @@ export const getApproveResumeVersionMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof approveResumeVersion>>,
-    { id: number }
+    { id: number; data: BodyType<ApprovalEvaluationBody> }
   > = (props) => {
-    const { id } = props ?? {};
+    const { id, data } = props ?? {};
 
-    return approveResumeVersion(id, requestOptions);
+    return approveResumeVersion(id, data, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
@@ -2836,7 +2842,7 @@ export const getApproveResumeVersionMutationOptions = <
 export type ApproveResumeVersionMutationResult = NonNullable<
   Awaited<ReturnType<typeof approveResumeVersion>>
 >;
-
+export type ApproveResumeVersionMutationBody = BodyType<ApprovalEvaluationBody>;
 export type ApproveResumeVersionMutationError = ErrorType<NotFoundResponse>;
 
 /**
@@ -2849,14 +2855,14 @@ export const useApproveResumeVersion = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof approveResumeVersion>>,
     TError,
-    { id: number },
+    { id: number; data: BodyType<ApprovalEvaluationBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof approveResumeVersion>>,
   TError,
-  { id: number },
+  { id: number; data: BodyType<ApprovalEvaluationBody> },
   TContext
 > => {
   return useMutation(getApproveResumeVersionMutationOptions(options));
@@ -2871,11 +2877,14 @@ export const getRejectResumeVersionUrl = (id: number) => {
 
 export const rejectResumeVersion = async (
   id: number,
+  approvalEvaluationBody?: ApprovalEvaluationBody,
   options?: RequestInit,
 ): Promise<ResumeVersion> => {
   return customFetch<ResumeVersion>(getRejectResumeVersionUrl(id), {
     ...options,
     method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(approvalEvaluationBody),
   });
 };
 
@@ -2886,14 +2895,14 @@ export const getRejectResumeVersionMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof rejectResumeVersion>>,
     TError,
-    { id: number },
+    { id: number; data: BodyType<ApprovalEvaluationBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof rejectResumeVersion>>,
   TError,
-  { id: number },
+  { id: number; data: BodyType<ApprovalEvaluationBody> },
   TContext
 > => {
   const mutationKey = ["rejectResumeVersion"];
@@ -2907,11 +2916,11 @@ export const getRejectResumeVersionMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof rejectResumeVersion>>,
-    { id: number }
+    { id: number; data: BodyType<ApprovalEvaluationBody> }
   > = (props) => {
-    const { id } = props ?? {};
+    const { id, data } = props ?? {};
 
-    return rejectResumeVersion(id, requestOptions);
+    return rejectResumeVersion(id, data, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
@@ -2920,7 +2929,7 @@ export const getRejectResumeVersionMutationOptions = <
 export type RejectResumeVersionMutationResult = NonNullable<
   Awaited<ReturnType<typeof rejectResumeVersion>>
 >;
-
+export type RejectResumeVersionMutationBody = BodyType<ApprovalEvaluationBody>;
 export type RejectResumeVersionMutationError = ErrorType<NotFoundResponse>;
 
 /**
@@ -2933,14 +2942,14 @@ export const useRejectResumeVersion = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof rejectResumeVersion>>,
     TError,
-    { id: number },
+    { id: number; data: BodyType<ApprovalEvaluationBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof rejectResumeVersion>>,
   TError,
-  { id: number },
+  { id: number; data: BodyType<ApprovalEvaluationBody> },
   TContext
 > => {
   return useMutation(getRejectResumeVersionMutationOptions(options));
@@ -3318,11 +3327,14 @@ export const getApproveCoverLetterVersionUrl = (id: number) => {
 
 export const approveCoverLetterVersion = async (
   id: number,
+  approvalEvaluationBody?: ApprovalEvaluationBody,
   options?: RequestInit,
 ): Promise<CoverLetterVersion> => {
   return customFetch<CoverLetterVersion>(getApproveCoverLetterVersionUrl(id), {
     ...options,
     method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(approvalEvaluationBody),
   });
 };
 
@@ -3333,14 +3345,14 @@ export const getApproveCoverLetterVersionMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof approveCoverLetterVersion>>,
     TError,
-    { id: number },
+    { id: number; data: BodyType<ApprovalEvaluationBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof approveCoverLetterVersion>>,
   TError,
-  { id: number },
+  { id: number; data: BodyType<ApprovalEvaluationBody> },
   TContext
 > => {
   const mutationKey = ["approveCoverLetterVersion"];
@@ -3354,11 +3366,11 @@ export const getApproveCoverLetterVersionMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof approveCoverLetterVersion>>,
-    { id: number }
+    { id: number; data: BodyType<ApprovalEvaluationBody> }
   > = (props) => {
-    const { id } = props ?? {};
+    const { id, data } = props ?? {};
 
-    return approveCoverLetterVersion(id, requestOptions);
+    return approveCoverLetterVersion(id, data, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
@@ -3367,7 +3379,8 @@ export const getApproveCoverLetterVersionMutationOptions = <
 export type ApproveCoverLetterVersionMutationResult = NonNullable<
   Awaited<ReturnType<typeof approveCoverLetterVersion>>
 >;
-
+export type ApproveCoverLetterVersionMutationBody =
+  BodyType<ApprovalEvaluationBody>;
 export type ApproveCoverLetterVersionMutationError =
   ErrorType<NotFoundResponse>;
 
@@ -3381,14 +3394,14 @@ export const useApproveCoverLetterVersion = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof approveCoverLetterVersion>>,
     TError,
-    { id: number },
+    { id: number; data: BodyType<ApprovalEvaluationBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof approveCoverLetterVersion>>,
   TError,
-  { id: number },
+  { id: number; data: BodyType<ApprovalEvaluationBody> },
   TContext
 > => {
   return useMutation(getApproveCoverLetterVersionMutationOptions(options));
@@ -3403,11 +3416,14 @@ export const getRejectCoverLetterVersionUrl = (id: number) => {
 
 export const rejectCoverLetterVersion = async (
   id: number,
+  approvalEvaluationBody?: ApprovalEvaluationBody,
   options?: RequestInit,
 ): Promise<CoverLetterVersion> => {
   return customFetch<CoverLetterVersion>(getRejectCoverLetterVersionUrl(id), {
     ...options,
     method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(approvalEvaluationBody),
   });
 };
 
@@ -3418,14 +3434,14 @@ export const getRejectCoverLetterVersionMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof rejectCoverLetterVersion>>,
     TError,
-    { id: number },
+    { id: number; data: BodyType<ApprovalEvaluationBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof rejectCoverLetterVersion>>,
   TError,
-  { id: number },
+  { id: number; data: BodyType<ApprovalEvaluationBody> },
   TContext
 > => {
   const mutationKey = ["rejectCoverLetterVersion"];
@@ -3439,11 +3455,11 @@ export const getRejectCoverLetterVersionMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof rejectCoverLetterVersion>>,
-    { id: number }
+    { id: number; data: BodyType<ApprovalEvaluationBody> }
   > = (props) => {
-    const { id } = props ?? {};
+    const { id, data } = props ?? {};
 
-    return rejectCoverLetterVersion(id, requestOptions);
+    return rejectCoverLetterVersion(id, data, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
@@ -3452,7 +3468,8 @@ export const getRejectCoverLetterVersionMutationOptions = <
 export type RejectCoverLetterVersionMutationResult = NonNullable<
   Awaited<ReturnType<typeof rejectCoverLetterVersion>>
 >;
-
+export type RejectCoverLetterVersionMutationBody =
+  BodyType<ApprovalEvaluationBody>;
 export type RejectCoverLetterVersionMutationError = ErrorType<NotFoundResponse>;
 
 /**
@@ -3465,14 +3482,14 @@ export const useRejectCoverLetterVersion = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof rejectCoverLetterVersion>>,
     TError,
-    { id: number },
+    { id: number; data: BodyType<ApprovalEvaluationBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof rejectCoverLetterVersion>>,
   TError,
-  { id: number },
+  { id: number; data: BodyType<ApprovalEvaluationBody> },
   TContext
 > => {
   return useMutation(getRejectCoverLetterVersionMutationOptions(options));
@@ -5685,6 +5702,113 @@ export const useCreateAiRunEvaluation = <
 > => {
   return useMutation(getCreateAiRunEvaluationMutationOptions(options));
 };
+
+/**
+ * Computes deterministic aggregates over AI run evaluations for a requested scope and explicit window.
+
+The server normalizes the requested window to the metrics contract bucket boundaries.
+If integrity issues are detected in the underlying rows, the response returns status=degraded with reasons.
+ * @summary Get reproducible AI metrics snapshot
+ */
+export const getGetAiMetricsSnapshotUrl = (
+  params: GetAiMetricsSnapshotParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/ai-metrics-snapshot?${stringifiedParams}`
+    : `/api/ai-metrics-snapshot`;
+};
+
+export const getAiMetricsSnapshot = async (
+  params: GetAiMetricsSnapshotParams,
+  options?: RequestInit,
+): Promise<AiMetricsSnapshotResponse> => {
+  return customFetch<AiMetricsSnapshotResponse>(
+    getGetAiMetricsSnapshotUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetAiMetricsSnapshotQueryKey = (
+  params?: GetAiMetricsSnapshotParams,
+) => {
+  return [`/api/ai-metrics-snapshot`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetAiMetricsSnapshotQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAiMetricsSnapshot>>,
+  TError = ErrorType<BadRequestResponse>,
+>(
+  params: GetAiMetricsSnapshotParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAiMetricsSnapshot>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetAiMetricsSnapshotQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getAiMetricsSnapshot>>
+  > = ({ signal }) =>
+    getAiMetricsSnapshot(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAiMetricsSnapshot>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetAiMetricsSnapshotQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAiMetricsSnapshot>>
+>;
+export type GetAiMetricsSnapshotQueryError = ErrorType<BadRequestResponse>;
+
+/**
+ * @summary Get reproducible AI metrics snapshot
+ */
+
+export function useGetAiMetricsSnapshot<
+  TData = Awaited<ReturnType<typeof getAiMetricsSnapshot>>,
+  TError = ErrorType<BadRequestResponse>,
+>(
+  params: GetAiMetricsSnapshotParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAiMetricsSnapshot>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAiMetricsSnapshotQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary List AI training examples

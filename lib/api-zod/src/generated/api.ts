@@ -672,6 +672,19 @@ export const ApproveResumeVersionParams = zod.object({
   id: zod.coerce.number(),
 });
 
+export const ApproveResumeVersionBody = zod.object({
+  rubric: zod
+    .object({
+      truthfulnessScore: zod.number().nullish(),
+      relevanceScore: zod.number().nullish(),
+      formattingScore: zod.number().nullish(),
+      attributionScore: zod.number().nullish(),
+    })
+    .nullish(),
+  editDistance: zod.number().nullish(),
+  notes: zod.string().nullish(),
+});
+
 export const ApproveResumeVersionResponse = zod.object({
   id: zod.number(),
   jobId: zod.number().nullish(),
@@ -700,6 +713,19 @@ export const ApproveResumeVersionResponse = zod.object({
  */
 export const RejectResumeVersionParams = zod.object({
   id: zod.coerce.number(),
+});
+
+export const RejectResumeVersionBody = zod.object({
+  rubric: zod
+    .object({
+      truthfulnessScore: zod.number().nullish(),
+      relevanceScore: zod.number().nullish(),
+      formattingScore: zod.number().nullish(),
+      attributionScore: zod.number().nullish(),
+    })
+    .nullish(),
+  editDistance: zod.number().nullish(),
+  notes: zod.string().nullish(),
 });
 
 export const RejectResumeVersionResponse = zod.object({
@@ -819,6 +845,19 @@ export const ApproveCoverLetterVersionParams = zod.object({
   id: zod.coerce.number(),
 });
 
+export const ApproveCoverLetterVersionBody = zod.object({
+  rubric: zod
+    .object({
+      truthfulnessScore: zod.number().nullish(),
+      relevanceScore: zod.number().nullish(),
+      formattingScore: zod.number().nullish(),
+      attributionScore: zod.number().nullish(),
+    })
+    .nullish(),
+  editDistance: zod.number().nullish(),
+  notes: zod.string().nullish(),
+});
+
 export const ApproveCoverLetterVersionResponse = zod.object({
   id: zod.number(),
   jobId: zod.number().nullish(),
@@ -840,6 +879,19 @@ export const ApproveCoverLetterVersionResponse = zod.object({
  */
 export const RejectCoverLetterVersionParams = zod.object({
   id: zod.coerce.number(),
+});
+
+export const RejectCoverLetterVersionBody = zod.object({
+  rubric: zod
+    .object({
+      truthfulnessScore: zod.number().nullish(),
+      relevanceScore: zod.number().nullish(),
+      formattingScore: zod.number().nullish(),
+      attributionScore: zod.number().nullish(),
+    })
+    .nullish(),
+  editDistance: zod.number().nullish(),
+  notes: zod.string().nullish(),
 });
 
 export const RejectCoverLetterVersionResponse = zod.object({
@@ -1441,6 +1493,7 @@ export const ListAiRunEvaluationsResponse = zod.array(
 export const CreateAiRunEvaluationBody = zod.object({
   eventLogId: zod.number().nullish(),
   promptVersionId: zod.number().nullish(),
+  runId: zod.string(),
   taskScope: zod.string(),
   entityType: zod.string().nullish(),
   entityId: zod.number().nullish(),
@@ -1454,6 +1507,41 @@ export const CreateAiRunEvaluationBody = zod.object({
   evaluatorType: zod.string().optional(),
   notes: zod.string().nullish(),
   metadata: zod.object({}).passthrough().optional(),
+});
+
+/**
+ * Computes deterministic aggregates over AI run evaluations for a requested scope and explicit window.
+
+The server normalizes the requested window to the metrics contract bucket boundaries.
+If integrity issues are detected in the underlying rows, the response returns status=degraded with reasons.
+ * @summary Get reproducible AI metrics snapshot
+ */
+export const GetAiMetricsSnapshotQueryParams = zod.object({
+  metricsVersion: zod.enum(["v1"]),
+  windowStart: zod.date(),
+  windowEnd: zod.date(),
+  taskScope: zod.coerce.string().optional(),
+});
+
+export const GetAiMetricsSnapshotResponse = zod.object({
+  metricsVersion: zod.enum(["v1"]),
+  window: zod.object({
+    startInclusive: zod.coerce.date(),
+    endExclusive: zod.coerce.date(),
+    granularityMs: zod.number(),
+  }),
+  taskScope: zod.string().nullable(),
+  status: zod.enum(["ok", "degraded"]),
+  degradedReasons: zod.array(zod.string()),
+  lastKnownGoodSnapshot: zod
+    .object({})
+    .passthrough()
+    .nullable()
+    .describe("Reserved for future persisted snapshots; currently null."),
+  aggregates: zod.object({
+    evaluationCount: zod.number(),
+    approvalOutcomeCounts: zod.record(zod.string(), zod.number()),
+  }),
 });
 
 /**

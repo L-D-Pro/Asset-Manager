@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and } from "drizzle-orm";
-import { db, resumeVersionsTable, eventLogsTable } from "@workspace/db";
+import { db, resumeVersionsTable, eventLogsTable, aiRunEvaluationsTable } from "@workspace/db";
 import {
   ListResumeVersionsQueryParams,
   ListResumeVersionsResponse,
@@ -11,8 +11,10 @@ import {
   UpdateResumeVersionResponse,
   DeleteResumeVersionParams,
   ApproveResumeVersionParams,
+  ApproveResumeVersionBody,
   ApproveResumeVersionResponse,
   RejectResumeVersionParams,
+  RejectResumeVersionBody,
   RejectResumeVersionResponse,
 } from "@workspace/api-zod";
 import { validateLineage } from "../lib/lineage";
@@ -108,6 +110,13 @@ router.post("/resume-versions/:id/approve", async (req, res): Promise<void> => {
     return;
   }
 
+  const parsedBody = ApproveResumeVersionBody.safeParse(req.body);
+  if (!parsedBody.success) {
+    req.log.warn({ error: parsedBody.error.message }, "Invalid approve resume version body");
+    res.status(400).json({ error: parsedBody.error.message });
+    return;
+  }
+
   const existing = await db
     .select()
     .from(resumeVersionsTable)
@@ -155,18 +164,62 @@ router.post("/resume-versions/:id/approve", async (req, res): Promise<void> => {
       .set({ status: "approved" })
       .where(eq(resumeVersionsTable.id, params.data.id))
       .returning();
-    await tx.insert(eventLogsTable).values({
-      entityType: "resume_version",
-      entityId: params.data.id,
-      jobId: existing[0]!.jobId ?? null,
-      applicationId: null,
-      eventType: "approval",
-      previousState: previousStatus,
-      nextState: "approved",
-      actorType: "user",
-      runId: resumeVersion.runId,
-      metadata: { resumeVersionId: params.data.id },
-    });
+
+    const [eventLog] = await tx
+      .insert(eventLogsTable)
+      .values({
+        entityType: "resume_version",
+        entityId: params.data.id,
+        jobId: existing[0]!.jobId ?? null,
+        applicationId: null,
+        eventType: "approval",
+        previousState: previousStatus,
+        nextState: "approved",
+        actorType: "user",
+        runId: resumeVersion.runId,
+        metadata: { resumeVersionId: params.data.id },
+      })
+      .returning({ id: eventLogsTable.id });
+
+    await tx
+      .insert(aiRunEvaluationsTable)
+      .values({
+        runId: resumeVersion.runId,
+        taskScope: "resume_review",
+        entityType: "resume_version",
+        entityId: resumeVersion.id,
+        eventLogId: eventLog?.id ?? null,
+        evaluatorType: "user",
+        approvalOutcome: "approved",
+        truthfulnessScore: parsedBody.data.rubric?.truthfulnessScore ?? null,
+        relevanceScore: parsedBody.data.rubric?.relevanceScore ?? null,
+        formattingScore: parsedBody.data.rubric?.formattingScore ?? null,
+        attributionScore: parsedBody.data.rubric?.attributionScore ?? null,
+        editDistance: parsedBody.data.editDistance ?? null,
+        notes: parsedBody.data.notes ?? null,
+        metadata: {},
+      })
+      .onConflictDoUpdate({
+        target: [
+          aiRunEvaluationsTable.runId,
+          aiRunEvaluationsTable.taskScope,
+          aiRunEvaluationsTable.entityType,
+          aiRunEvaluationsTable.entityId,
+        ],
+        set: {
+          eventLogId: eventLog?.id ?? null,
+          evaluatorType: "user",
+          approvalOutcome: "approved",
+          truthfulnessScore: parsedBody.data.rubric?.truthfulnessScore ?? null,
+          relevanceScore: parsedBody.data.rubric?.relevanceScore ?? null,
+          formattingScore: parsedBody.data.rubric?.formattingScore ?? null,
+          attributionScore: parsedBody.data.rubric?.attributionScore ?? null,
+          editDistance: parsedBody.data.editDistance ?? null,
+          notes: parsedBody.data.notes ?? null,
+          metadata: {},
+        },
+      });
+
     return updated!;
   });
 
@@ -178,6 +231,13 @@ router.post("/resume-versions/:id/reject", async (req, res): Promise<void> => {
   const params = RejectResumeVersionParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const parsedBody = RejectResumeVersionBody.safeParse(req.body);
+  if (!parsedBody.success) {
+    req.log.warn({ error: parsedBody.error.message }, "Invalid reject resume version body");
+    res.status(400).json({ error: parsedBody.error.message });
     return;
   }
 
@@ -228,18 +288,62 @@ router.post("/resume-versions/:id/reject", async (req, res): Promise<void> => {
       .set({ status: "rejected" })
       .where(eq(resumeVersionsTable.id, params.data.id))
       .returning();
-    await tx.insert(eventLogsTable).values({
-      entityType: "resume_version",
-      entityId: params.data.id,
-      jobId: existing[0]!.jobId ?? null,
-      applicationId: null,
-      eventType: "rejection",
-      previousState: previousStatus,
-      nextState: "rejected",
-      actorType: "user",
-      runId: resumeVersion.runId,
-      metadata: { resumeVersionId: params.data.id },
-    });
+
+    const [eventLog] = await tx
+      .insert(eventLogsTable)
+      .values({
+        entityType: "resume_version",
+        entityId: params.data.id,
+        jobId: existing[0]!.jobId ?? null,
+        applicationId: null,
+        eventType: "rejection",
+        previousState: previousStatus,
+        nextState: "rejected",
+        actorType: "user",
+        runId: resumeVersion.runId,
+        metadata: { resumeVersionId: params.data.id },
+      })
+      .returning({ id: eventLogsTable.id });
+
+    await tx
+      .insert(aiRunEvaluationsTable)
+      .values({
+        runId: resumeVersion.runId,
+        taskScope: "resume_review",
+        entityType: "resume_version",
+        entityId: resumeVersion.id,
+        eventLogId: eventLog?.id ?? null,
+        evaluatorType: "user",
+        approvalOutcome: "rejected",
+        truthfulnessScore: parsedBody.data.rubric?.truthfulnessScore ?? null,
+        relevanceScore: parsedBody.data.rubric?.relevanceScore ?? null,
+        formattingScore: parsedBody.data.rubric?.formattingScore ?? null,
+        attributionScore: parsedBody.data.rubric?.attributionScore ?? null,
+        editDistance: parsedBody.data.editDistance ?? null,
+        notes: parsedBody.data.notes ?? null,
+        metadata: {},
+      })
+      .onConflictDoUpdate({
+        target: [
+          aiRunEvaluationsTable.runId,
+          aiRunEvaluationsTable.taskScope,
+          aiRunEvaluationsTable.entityType,
+          aiRunEvaluationsTable.entityId,
+        ],
+        set: {
+          eventLogId: eventLog?.id ?? null,
+          evaluatorType: "user",
+          approvalOutcome: "rejected",
+          truthfulnessScore: parsedBody.data.rubric?.truthfulnessScore ?? null,
+          relevanceScore: parsedBody.data.rubric?.relevanceScore ?? null,
+          formattingScore: parsedBody.data.rubric?.formattingScore ?? null,
+          attributionScore: parsedBody.data.rubric?.attributionScore ?? null,
+          editDistance: parsedBody.data.editDistance ?? null,
+          notes: parsedBody.data.notes ?? null,
+          metadata: {},
+        },
+      });
+
     return updated!;
   });
 
