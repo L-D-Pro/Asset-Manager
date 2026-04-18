@@ -136,6 +136,8 @@ router.patch("/ai-prompt-versions/:id", async (req, res): Promise<void> => {
   res.json(row);
 });
 
+import { validateLineage, isCanonicalRunId } from "../lib/lineage";
+
 router.get("/ai-run-evaluations", async (req, res): Promise<void> => {
   const query = z.object({ taskScope: z.string().optional() }).safeParse(req.query);
   if (!query.success) {
@@ -154,8 +156,6 @@ router.get("/ai-run-evaluations", async (req, res): Promise<void> => {
   res.json(rows);
 });
 
-import { validateLineage, isCanonicalRunId } from "../lib/lineage";
-
 router.post("/ai-run-evaluations", async (req, res): Promise<void> => {
   const parsed = insertAiRunEvaluationSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -163,7 +163,6 @@ router.post("/ai-run-evaluations", async (req, res): Promise<void> => {
     return;
   }
 
-  // Require either runId or a way to derive lineage
   const { runId, eventLogId, entityType, entityId } = parsed.data;
 
   if (!isCanonicalRunId(runId)) {
@@ -176,7 +175,6 @@ router.post("/ai-run-evaluations", async (req, res): Promise<void> => {
     return;
   }
 
-  // Validate lineage before inserting the evaluation
   const lineageValidation = await validateLineage({
     table: "ai_run_evaluations",
     runId,
@@ -196,7 +194,6 @@ router.post("/ai-run-evaluations", async (req, res): Promise<void> => {
     return;
   }
 
-  // Insert the AI run evaluation if lineage validation passes
   const [row] = await db.insert(aiRunEvaluationsTable).values(parsed.data).returning();
   res.status(201).json(row);
 });
