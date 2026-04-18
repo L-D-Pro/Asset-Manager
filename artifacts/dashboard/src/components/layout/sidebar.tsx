@@ -19,6 +19,7 @@ export function Sidebar() {
     { name: "Feedback Signals", href: "/feedback", icon: Activity },
     { name: "Role Profiles", href: "/role-profiles", icon: UserCircle },
     { name: "AI Review", href: "/ai-review", icon: Brain },
+    { name: "AI Metrics", href: "/ai-metrics", icon: Activity },
     { name: "AI Config", href: "/ai-config", icon: Settings },
     { name: "Guide", href: "/guide", icon: BookOpen },
   ];

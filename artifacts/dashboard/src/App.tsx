@@ -17,6 +17,7 @@ import CoverLettersPage from "@/pages/cover-letters";
 import ApplicationsPage from "@/pages/applications";
 import AiConfigPage from "@/pages/ai-config";
 import AiReviewPage from "@/pages/ai-review";
+import AiMetricsPage from "@/pages/ai-metrics";
 import AssistedApplyPage from "@/pages/assisted-apply";
 import FreelancePage from "@/pages/freelance";
 import RoleProfilesPage from "@/pages/role-profiles";
@@ -96,6 +97,7 @@ function ProtectedRoutes() {
         <Route path="/assisted-apply" element={<AssistedApplyPage />} />
         <Route path="/freelance" element={<FreelancePage />} />
         <Route path="/ai-review" element={<AiReviewPage />} />
+        <Route path="/ai-metrics" element={<AiMetricsPage />} />
         <Route path="/ai-config" element={<AiConfigPage />} />
         <Route path="/role-profiles" element={<RoleProfilesPage />} />
         <Route path="/feedback" element={<FeedbackPage />} />

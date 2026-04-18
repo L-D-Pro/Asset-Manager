@@ -273,7 +273,7 @@ export default function ResumeVersionsPage() {
       return;
     }
     const doApprove = () => {
-      approve.mutate({ id }, {
+      approve.mutate({ id, data: {} }, {
         onSuccess: () => {
           toast({ title: total > 0 ? "Resume version approved with change decisions recorded" : "Resume version approved" });
           queryClient.invalidateQueries({ queryKey: getListResumeVersionsQueryKey() });
@@ -298,7 +298,7 @@ export default function ResumeVersionsPage() {
   };
 
   const handleReject = (id: number) => {
-    reject.mutate({ id }, {
+    reject.mutate({ id, data: {} }, {
       onSuccess: () => {
         toast({ title: "Resume version rejected" });
         queryClient.invalidateQueries({ queryKey: getListResumeVersionsQueryKey() });

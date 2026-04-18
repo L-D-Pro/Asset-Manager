@@ -48,7 +48,7 @@ export default function CoverLettersPage() {
 
   const handleApprove = (id: number) => {
     approve.mutate(
-      { id },
+      { id, data: {} },
       {
         onSuccess: () => {
           toast({ title: "Cover letter approved" });
@@ -67,7 +67,7 @@ export default function CoverLettersPage() {
   const handleReject = (id: number, note?: string) => {
     const doReject = () => {
       reject.mutate(
-        { id },
+        { id, data: {} },
         {
           onSuccess: () => {
             toast({ title: note ? `Rejected with note: "${note.slice(0, 40)}"` : "Cover letter rejected" });
