@@ -20,6 +20,7 @@ import { getErrorMessage } from "@/lib/api-errors";
 
 const signalSchema = z.object({
   applicationId: z.coerce.number().min(1, "App ID is required"),
+  resumeVersionId: z.coerce.number().min(1, "Resume version ID is required"),
   signalType: z.string().min(1, "Signal type is required"),
   outcome: z.string().min(1, "Outcome is required"),
   notes: z.string().optional(),
@@ -41,7 +42,13 @@ export default function FeedbackPage() {
 
   const form = useForm<z.infer<typeof signalSchema>>({
     resolver: zodResolver(signalSchema),
-    defaultValues: { applicationId: 0, signalType: "response", outcome: "positive", notes: "" },
+    defaultValues: {
+      applicationId: 0,
+      resumeVersionId: 0,
+      signalType: "response",
+      outcome: "positive",
+      notes: "",
+    },
   });
 
   const onSubmit = (data: z.infer<typeof signalSchema>) => {
@@ -49,7 +56,7 @@ export default function FeedbackPage() {
       onSuccess: () => {
         toast({ title: "Feedback logged" });
         setIsDialogOpen(false);
-        form.reset();
+        form.reset({ applicationId: 0, resumeVersionId: 0, signalType: "response", outcome: "positive", notes: "" });
         queryClient.invalidateQueries({ queryKey: getListFeedbackSignalsQueryKey() });
       },
       onError: (error) =>
@@ -81,6 +88,13 @@ export default function FeedbackPage() {
                   <FormItem>
                     <FormLabel>Application ID</FormLabel>
                     <FormControl><Input type="number" {...field} data-testid="input-signal-appid"/></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}/>
+                <FormField control={form.control} name="resumeVersionId" render={({field}) => (
+                  <FormItem>
+                    <FormLabel>Resume Version ID</FormLabel>
+                    <FormControl><Input type="number" {...field} data-testid="input-signal-resume-version"/></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}/>
