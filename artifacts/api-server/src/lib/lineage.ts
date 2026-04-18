@@ -13,7 +13,9 @@ import {
   type FeedbackSignal,
 } from "@workspace/db";
 
-export const RUN_ID_PREFIX = "run";
+import { isCanonicalRunId, mintRunId, normalizeRunId, RUN_ID_PREFIX } from "./lineage-shared";
+
+export { isCanonicalRunId, mintRunId, normalizeRunId, RUN_ID_PREFIX };
 
 export const lineageTableKinds = [
   "event_logs",
