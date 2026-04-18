@@ -1,0 +1,20 @@
+{
+  "_placeholder": true,
+  "note": "Replace this file by running node scripts/ai-prompt-iteration/snapshot.ts against a real API server.",
+  "requestUrl": "http://localhost:3001/ai-metrics-snapshot?metricsVersion=v1&taskScope=(fill)&windowStart=2026-01-01T00:00:00.000Z&windowEnd=2026-01-08T00:00:00.000Z",
+  "status": "degraded",
+  "degradedReasons": ["placeholder-artifact"],
+  "normalizedWindow": {
+    "windowStart": "2026-01-01T00:00:00.000Z",
+    "windowEnd": "2026-01-08T00:00:00.000Z"
+  },
+  "promptVersion": {
+    "id": "(fill)",
+    "label": "B"
+  },
+  "metrics": {
+    "approvalRate": null,
+    "avgEditDistance": null,
+    "rubricMeans": {}
+  }
+}
