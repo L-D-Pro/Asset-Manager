@@ -12,12 +12,16 @@ import {
   insertAiTrainingExampleSchema,
 } from "@workspace/db";
 
+import { aiMetricsSnapshotRouter } from "./ai-metrics-snapshot";
+
 const router: IRouter = Router();
 const IdParams = z.object({ id: z.coerce.number().int().positive() });
 const ListQuery = z.object({
   taskScope: z.string().optional(),
   isActive: z.coerce.boolean().optional(),
 });
+
+router.use(aiMetricsSnapshotRouter);
 
 router.get("/ai-review/overview", async (_req, res): Promise<void> => {
   const [recentAiEvents, evaluations, promptVersions, trainingExamples] =

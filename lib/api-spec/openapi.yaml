@@ -1219,6 +1219,50 @@ paths:
               schema:
                 $ref: "#/components/schemas/AiRunEvaluation"
 
+  /ai-metrics-snapshot:
+    get:
+      operationId: getAiMetricsSnapshot
+      tags: [ai-learning]
+      summary: Get reproducible AI metrics snapshot
+      description: |-
+        Computes deterministic aggregates over AI run evaluations for a requested scope and explicit window.
+
+        The server normalizes the requested window to the metrics contract bucket boundaries.
+        If integrity issues are detected in the underlying rows, the response returns status=degraded with reasons.
+      parameters:
+        - name: metricsVersion
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [v1]
+        - name: windowStart
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: windowEnd
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: taskScope
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Metrics snapshot response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiMetricsSnapshotResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
   /ai-training-examples:
     get:
       operationId: listAiTrainingExamples
@@ -2823,6 +2867,60 @@ components:
           type: object
       required:
         - taskScope
+
+    AiMetricsSnapshotResponse:
+      type: object
+      properties:
+        metricsVersion:
+          type: string
+          enum: [v1]
+        window:
+          type: object
+          properties:
+            startInclusive:
+              type: string
+              format: date-time
+            endExclusive:
+              type: string
+              format: date-time
+            granularityMs:
+              type: integer
+          required:
+            - startInclusive
+            - endExclusive
+            - granularityMs
+        taskScope:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [ok, degraded]
+        degradedReasons:
+          type: array
+          items:
+            type: string
+        lastKnownGoodSnapshot:
+          type: ["object", "null"]
+          description: Reserved for future persisted snapshots; currently null.
+        aggregates:
+          type: object
+          properties:
+            evaluationCount:
+              type: integer
+            approvalOutcomeCounts:
+              type: object
+              additionalProperties:
+                type: integer
+          required:
+            - evaluationCount
+            - approvalOutcomeCounts
+      required:
+        - metricsVersion
+        - window
+        - taskScope
+        - status
+        - degradedReasons
+        - lastKnownGoodSnapshot
+        - aggregates
 
     AiTrainingExample:
       type: object
