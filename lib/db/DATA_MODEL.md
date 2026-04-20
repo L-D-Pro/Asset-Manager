@@ -1,6 +1,6 @@
 # Data Model
 
-Last updated: April 16, 2026
+Last updated: April 17, 2026 (M002 S01 lineage contract added)
 
 Job Ops uses PostgreSQL with Drizzle ORM. Most primary keys are serial integers. The schema is grouped by operational domain.
 
@@ -26,6 +26,95 @@ The following tables are in scope for the canonical contract in M002:
 - Supporting joins may use both `run_id` and `event_log_id`, but `run_id` is the canonical cross-table lineage key.
 - `run_id` is indexed on every in-scope table to keep future lineage validation and reporting queries performant.
 
+### Lineage validation (fail-closed)
+
+The system validates lineage before sensitive operations. Validation can return these statuses:
+
+| Status | Meaning | HTTP Response |
+|--------|---------|---------------|
+| `valid` | Lineage chain is complete and correct | 200/201 |
+| `legacy_missing_run_id` | Row has no `run_id` (pre-M002 data) | 422 |
+| `invalid_run_id_format` | `run_id` doesn't match canonical format | 422 |
+| `missing_root_run` | No root `event_logs` row found for `run_id` | 422 |
+| `missing_root_ai_event` | Root event is not an AI call | 422 |
+| `missing_child_linkage` | Child record lacks `event_log_id` | 422 |
+| `mismatched_run_id` | Linked records have different `run_id` | 422 |
+| `mismatched_event_linkage` | `event_log_id` points to wrong event | 422 |
+
+Operations that validate lineage:
+- Resume version approve/reject
+- Cover letter version approve/reject
+- AI run evaluation creation
+- Feedback signal creation
+
+### API usage
+
+**Mint a run ID (typically done by `callAI`):**
+```typescript
+import { mintRunId } from "@workspace/api-server/lib/lineage";
+const runId = mintRunId(); // "run_20260417t230145123z_a1b2c3d4e5f6"
+```
+
+**Validate lineage before write:**
+```typescript
+import { validateLineage } from "@workspace/api-server/lib/lineage";
+const result = await validateLineage({
+  table: "resume_versions",
+  id: versionId,
+  runId: version.runId,
+  eventLogId: version.eventLogId,
+  jobId: version.jobId,
+});
+if (!result.ok) {
+  // Return 422 with diagnostics
+}
+```
+
+**Inspect any record's lineage:**
+```typescript
+import { inspectLineage } from "@workspace/api-server/lib/lineage";
+const diagnostics = await inspectLineage("resume_versions", 42);
+```
+
+### Example lineage chain
+
+A complete AI resume tailoring flow:
+
+```sql
+-- 1. AI call creates root event
+INSERT INTO event_logs (entity_type, entity_id, run_id, event_type, metadata)
+VALUES ('ai_call', 1, 'run_20260417t230145123z_abc123', 'ai_call', '{"taskType": "resume_tailoring"}');
+-- Returns: id = 1001
+
+-- 2. Generated artifact carries same run_id
+INSERT INTO resume_versions (job_id, run_id, event_log_id, status, tailored_document_text)
+VALUES (5, 'run_20260417t230145123z_abc123', 1001, 'pending_approval', '...');
+-- Returns: id = 2001
+
+-- 3. Approval event logs with same run_id
+INSERT INTO event_logs (entity_type, entity_id, run_id, event_type, previous_state, next_state)
+VALUES ('resume_version', 2001, 'run_20260417t230145123z_abc123', 'approval', 'pending_approval', 'approved');
+
+-- 4. Evaluation links to same run
+INSERT INTO ai_run_evaluations (run_id, event_log_id, task_scope, approval_outcome, edit_distance)
+VALUES ('run_20260417t230145123z_abc123', 1001, 'resume_review', 'approved', 15);
+```
+
+Query to verify end-to-end joinability:
+```sql
+SELECT 
+  el.run_id,
+  rv.id as resume_version_id,
+  el2.event_type as approval_event,
+  are.edit_distance
+FROM event_logs el
+LEFT JOIN resume_versions rv ON rv.run_id = el.run_id
+LEFT JOIN event_logs el2 ON el2.run_id = el.run_id AND el2.event_type = 'approval'
+LEFT JOIN ai_run_evaluations are ON are.run_id = el.run_id
+WHERE el.entity_type = 'ai_call'
+  AND el.run_id = 'run_20260417t230145123z_abc123';
+```
+
 ### Legacy and malformed rows
 
 This rollout is nullable-first. Historical rows may not have trustworthy lineage.
@@ -34,6 +123,7 @@ This rollout is nullable-first. Historical rows may not have trustworthy lineage
 - Rows with null or malformed `run_id` are **not** considered valid lineage.
 - Helpers must fail closed for lineage-sensitive behavior instead of inventing or inferring lineage for old rows.
 - Broken lineage should remain inspectable through helper diagnostics such as missing root run, missing child linkage, invalid `run_id` format, or mismatched joins.
+- Legacy rows are excluded from metrics that require trusted lineage.
 
 ## Job Search Core
 

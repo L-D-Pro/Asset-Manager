@@ -1,6 +1,6 @@
 # Architecture
 
-Last updated: April 16, 2026
+Last updated: April 20, 2026
 
 ## Workspace Layout
 
@@ -164,3 +164,17 @@ The intended production shape remains:
 - PostgreSQL database, currently compatible with Neon or DigitalOcean Managed PostgreSQL
 
 The dashboard calls relative `/api/*`, so production ingress must route `/api` to the API service with the prefix preserved.
+
+## Schema Evolution Safety
+
+When `drizzle-kit push` fails due to schema drift (common after M002 lineage enforcement), use:
+
+```powershell
+corepack pnpm --filter @workspace/db run compat
+```
+
+This executes `lib/db/runtime-compat.sql` - a consolidated compatibility patch that creates missing tables/columns for:
+- M002 lineage columns (`run_id`, `event_log_id`)
+- `ai_prompt_versions` and `ai_run_evaluations` tables
+- Assisted Apply tables (`site_adapters`, `application_sessions`, etc.)
+- Freelance Copilot tables (`freelance_profiles`, `proposal_versions`, etc.)

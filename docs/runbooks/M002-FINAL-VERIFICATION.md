@@ -19,6 +19,16 @@ It is designed to be usable in two modes:
 - **Degraded-state signaling:** snapshot responses can return `status: "degraded"` and `degradedReasons: string[]` (S02/S03). Degraded means **some rows were excluded** due to lineage/reproducibility guarantees failing.
 - **Evidence trail:** `scripts/m002-final-verification/out/*` (S05). This is the canonical on-disk evidence for final milestone verification.
 
+## Prerequisites
+
+Before running live verification, ensure the database has the required schema. If `drizzle-kit push` fails due to drift, apply the runtime compatibility patch:
+
+```powershell
+corepack pnpm --filter @workspace/db run compat
+```
+
+This creates the `ai_run_evaluations` table and M002 lineage columns required for metrics capture.
+
 ---
 
 ## 1) CI / secretless checks (must pass in this repo)

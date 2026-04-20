@@ -6,6 +6,7 @@ import {
   integer,
   jsonb,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -59,6 +60,12 @@ export const aiRunEvaluationsTable = pgTable(
     index("ai_run_evaluations_task_scope_idx").on(table.taskScope),
     index("ai_run_evaluations_event_log_id_idx").on(table.eventLogId),
     index("ai_run_evaluations_run_id_idx").on(table.runId),
+    uniqueIndex("ai_run_evaluations_run_scope_entity_uidx").on(
+      table.runId,
+      table.taskScope,
+      table.entityType,
+      table.entityId,
+    ),
     index("ai_run_evaluations_entity_idx").on(table.entityType, table.entityId),
   ],
 );

@@ -364,7 +364,11 @@ function toPromptRows(snapshot?: any): PromptAggRow[] {
 }
 
 function toBucketRows(snapshot?: any): BucketRow[] {
-  const series = (snapshot as unknown as { series?: Array<any> }).series as
+  if (!snapshot || typeof snapshot !== "object") {
+    return [];
+  }
+
+  const series = (snapshot as { series?: Array<any> }).series as
     | Array<{
         bucketStartInclusive: string;
         evaluationCount: number;

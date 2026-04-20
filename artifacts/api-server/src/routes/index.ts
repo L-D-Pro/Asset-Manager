@@ -13,6 +13,7 @@ import eventLogsRouter from "./event-logs";
 import feedbackSignalsRouter from "./feedback-signals";
 import aiModelConfigsRouter from "./ai-model-configs";
 import aiLearningRouter from "./ai-learning";
+import { aiMetricsSnapshotRouter } from "./ai-metrics-snapshot";
 import assistedApplyRouter from "./assisted-apply";
 import freelanceRouter from "./freelance";
 
@@ -55,6 +56,7 @@ router.use(eventLogsRouter);
 router.use(feedbackSignalsRouter);
 router.use(aiModelConfigsRouter);
 router.use(aiLearningRouter);
+router.use(aiMetricsSnapshotRouter);
 router.use(assistedApplyRouter);
 router.use(freelanceRouter);
 

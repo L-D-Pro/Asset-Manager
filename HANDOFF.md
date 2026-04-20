@@ -92,6 +92,7 @@ Assisted Apply and Freelance Copilot are assist-only unless an official API or w
 | Document | Location | What it covers |
 | --- | --- | --- |
 | `docs/USER_GUIDE.md` | `/docs` | User-facing dashboard guide |
+| `docs/CHANGELOG.md` | `/docs` | Version history and release notes |
 | `ARCHITECTURE.md` | `/` | Package graph, runtime flow, design boundaries |
 | `lib/db/DATA_MODEL.md` | `/lib/db` | Current schema domains and tables |
 | `AI_PIPELINE.md` | `/` | OpenRouter, prompt routing, pipelines, truth-lock |
@@ -106,6 +107,12 @@ Run:
 
 ```powershell
 corepack pnpm --filter @workspace/db run push
+```
+
+Alternative if push fails due to drift:
+
+```powershell
+corepack pnpm --filter @workspace/db run compat
 ```
 
 Without this, new pages such as AI Review, Assisted Apply, Freelance Copilot, and new base-resume/claim-drafting features may fail with missing-table errors.

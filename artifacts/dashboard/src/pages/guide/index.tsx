@@ -90,7 +90,8 @@ const TOC_ITEMS = [
   { id: "safe-apply", label: "6. Assisted Apply Policy" },
   { id: "testing", label: "7. Smoke Test" },
   { id: "troubleshooting", label: "8. Troubleshooting" },
-  { id: "roadmap", label: "9. Roadmap" },
+  { id: "changelog", label: "9. Changelog" },
+  { id: "roadmap", label: "10. Roadmap" },
 ];
 
 export default function GuidePage() {
@@ -367,7 +368,7 @@ curl http://localhost:8080/api/healthz`}</CodeBlock>
         <Section id="troubleshooting" title="8. Troubleshooting">
           <div className="grid gap-4">
             {[
-              ["Missing tables or 500s on new pages", "Run pnpm --filter @workspace/db run push against the configured database."],
+              ["Missing tables or 500s on new pages", "Run pnpm --filter @workspace/db run push. If that fails due to drift, use pnpm --filter @workspace/db run compat."],
               ["AI calls fail", "Check AI_INTEGRATIONS_OPENROUTER_API_KEY, base URL, model config, and OpenRouter account limits."],
               ["Tailor Resume returns 400", "Save or import a current base resume first."],
               ["Imported PDF is empty", "The PDF is probably scanned/image-only. V1 does not perform OCR; paste text or upload text-based PDF/DOCX."],
@@ -388,12 +389,43 @@ curl http://localhost:8080/api/healthz`}</CodeBlock>
           </div>
         </Section>
 
-        <Section id="roadmap" title="9. Roadmap">
+        <Section id="changelog" title="9. Changelog">
+          <div className="space-y-6">
+            <div className="rounded-lg border-l-4 border-primary bg-muted/30 p-4">
+              <h3 className="mb-2 text-lg font-semibold">Version 0.2 (April 20, 2026)</h3>
+              <p className="mb-3 text-sm text-muted-foreground">
+                M002 Regression Audit &amp; Stabilization. Fixed database schema drift affecting multiple app pages.
+              </p>
+              <Table
+                headers={["Category", "Changes"]}
+                rows={[
+                  ["Database", "Created runtime-compat.sql patch covering all missing tables/columns for M002, Assisted Apply, Freelance Copilot, and AI Metrics."],
+                  ["API", "Mounted aiMetricsSnapshotRouter (was defined but not wired). Added missing unique index for ai_run_evaluations upserts."],
+                  ["Dashboard", "Hardened AI Metrics page against undefined snapshot data - prevents crash on backend errors."],
+                  ["Tooling", "Added 'pnpm --filter @workspace/db run compat' command for reliable schema reconciliation."],
+                ]}
+              />
+              <p className="mt-3 text-xs text-muted-foreground">
+                See <Code>docs/CHANGELOG.md</Code> for full details.
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-muted p-4">
+              <h3 className="mb-2 text-base font-semibold text-muted-foreground">Version 0.1 (April 16, 2026)</h3>
+              <p className="text-sm text-muted-foreground">
+                Initial release. Core platform with auth, job pipeline, resume tailoring, cover letters, Claims Ledger, AI Review foundation, Assisted Apply scaffolding, and Freelance Copilot scaffolding.
+              </p>
+            </div>
+          </div>
+        </Section>
+
+        <Section id="roadmap" title="10. Roadmap">
           <Table
             headers={["Priority", "Work"]}
             rows={[
-              ["P0", "Run DB push, test new schema in Neon, and commit/deploy after smoke test."],
-              ["P1", "Replace remaining raw dashboard fetches with generated hooks where helpful; add richer AI evaluation forms."],
+              ["P0 (Done)", "M002 Regression Audit: runtime-compat.sql created, code-side fixes applied."],
+              ["P0", "Apply runtime-compat.sql to production database and browser-test all pages."],
+              ["P1", "Add richer AI evaluation forms and training-example promotion UI."],
               ["P1", "Build browser extension MVP for user-opened page capture."],
               ["P2", "Build Playwright apply-worker only for whitelisted, permitted ATS/company workflows."],
               ["P2", "Add export/copy/PDF for approved resumes, cover letters, and proposals."],
@@ -404,7 +436,7 @@ curl http://localhost:8080/api/healthz`}</CodeBlock>
 
         <Separator />
         <p className="text-center text-xs text-muted-foreground">
-          Job Ops Founder Guide - Last updated April 16, 2026 - Also available in <Code>docs/USER_GUIDE.md</Code>
+          Job Ops Founder Guide - Last updated April 20, 2026 - Also available in <Code>docs/USER_GUIDE.md</Code>
         </p>
       </div>
     </div>

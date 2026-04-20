@@ -2,7 +2,7 @@
 
 > Internal/private tool only. Job Ops is a single-user, human-in-the-loop job application operations platform. It is not a mass auto-apply bot. Every AI output must be reviewed before use.
 
-Last updated: April 16, 2026
+Last updated: April 20, 2026
 
 ## 1. What Job Ops Does
 
@@ -46,6 +46,12 @@ Run the schema sync before testing new pages:
 
 ```powershell
 corepack pnpm --filter @workspace/db run push
+```
+
+If `push` fails due to schema drift, use the compatibility patch:
+
+```powershell
+corepack pnpm --filter @workspace/db run compat
 ```
 
 ## 3. Quick Start
@@ -307,6 +313,14 @@ Run:
 corepack pnpm --filter @workspace/db run push
 ```
 
+If that fails, apply the runtime compatibility patch:
+
+```powershell
+corepack pnpm --filter @workspace/db run compat
+```
+
+This executes `lib/db/runtime-compat.sql` which creates missing tables/columns required by Assisted Apply, Freelance Copilot, and M002 lineage features.
+
 ### AI calls fail
 
 Check:
@@ -329,11 +343,22 @@ The PDF is likely scanned/image-only. V1 does not do OCR. Paste text manually or
 
 Configure `proposal_drafting` or `default` in AI Config and ensure the project has a linked freelance profile.
 
-## 9. Roadmap
+## 9. Changelog
+
+See `docs/CHANGELOG.md` for detailed version history.
+
+### Version 0.2 (April 20, 2026)
+- M002 Regression Audit: Fixed database schema drift affecting Assisted Apply, Freelance Copilot, and AI Metrics
+- Added `runtime-compat.sql` for reliable schema reconciliation
+- Fixed AI Metrics backend route mounting and frontend crash resilience
+- Added `pnpm --filter @workspace/db run compat` command
+
+## 10. Roadmap
 
 Near-term:
 
-- Smoke test latest schema against Neon.
+- Apply runtime compatibility patch to production database.
+- Browser validation of Assisted Apply, Freelance Copilot, AI Metrics pages.
 - Add richer AI evaluation UI.
 - Add export/copy/PDF for approved resumes, cover letters, and proposals.
 - Add browser extension MVP for user-opened page capture.
@@ -341,6 +366,6 @@ Near-term:
 Later:
 
 - Playwright apply worker for permitted/whitelisted ATS flows.
-- Outcome analytics correlating claims, prompts, models, and documents with interviews/offers.
+- Outcome analytics correlating claims, prompts, models, and interviews/offers.
 - Official API integrations where allowed.
 - Fine-tuning only after enough approved examples exist.

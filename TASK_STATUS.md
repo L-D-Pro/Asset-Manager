@@ -1,6 +1,6 @@
 # Task Status
 
-Last updated: April 16, 2026
+Last updated: April 20, 2026
 
 ## Completed Core Platform
 
@@ -82,6 +82,21 @@ Last updated: April 16, 2026
 
 Current learning strategy is supervised prompt/eval/outcome learning, not fine-tuning.
 
+## Completed M002 Regression Audit & Stabilization (April 20, 2026)
+
+- Identified root cause: database schema drift between runtime code expectations and actual DB state.
+- Created `lib/db/runtime-compat.sql` - consolidated compatibility patch for:
+  - M002 lineage columns: `event_logs.run_id`, `resume_versions.run_id/event_log_id`, `cover_letter_versions.run_id/event_log_id`, `feedback_signals` runtime columns
+  - `ai_prompt_versions` and `ai_run_evaluations` tables with indexes
+  - Assisted Apply tables: `site_adapters`, `application_sessions`, `application_form_fields`, `application_actions`
+  - Freelance Copilot tables: `freelance_profiles`, `project_sources`, `freelance_projects`, `proposal_versions`, `proposal_outcomes`, `client_message_templates`
+- Fixed migration helper (`apply-migration.mjs`) to use pg Pool.query for reliable multi-statement SQL execution.
+- Added `compat` npm script to `@workspace/db` package.
+- Added missing unique index `ai_run_evaluations_run_scope_entity_uidx` required by approval/rejection upserts.
+- Mounted `aiMetricsSnapshotRouter` in main API router (was defined but not wired).
+- Hardened AI Metrics frontend (`toBucketRows`) against undefined snapshot data - prevents page crash on backend errors.
+- Verification: full workspace typecheck passes, 5 targeted tests pass across 3 test files.
+
 ## Completed Assisted Apply Foundation
 
 - `site_adapters`
@@ -143,6 +158,12 @@ Push schema to the configured database:
 corepack pnpm --filter @workspace/db run push
 ```
 
+Or if schema drift causes push to fail:
+
+```powershell
+corepack pnpm --filter @workspace/db run compat
+```
+
 Then smoke test:
 
 - login/session
@@ -156,10 +177,12 @@ Then smoke test:
 
 ## Next Engineering Priorities
 
-1. Run schema push and local/Neon smoke test.
-2. Commit/push latest feature set.
-3. Add richer AI evaluation forms and training-example promotion UI.
-4. Add export/copy/PDF for approved documents/proposals.
-5. Build browser extension MVP for user-opened page capture.
-6. Build Playwright apply-worker only for whitelisted/permitted ATS flows.
-7. Add outcome analytics correlating claims, prompt versions, models, and applications/proposals.
+1. ~~Run schema push and local/Neon smoke test.~~ ✓ Completed
+2. ~~Commit/push latest feature set.~~ ✓ Completed - M002 regression audit fixes applied
+3. ~~Apply `runtime-compat.sql` to production database~~ ✓ Completed - applied via SQL editor
+4. ~~Browser test: Assisted Apply, Freelance Copilot, Resume Queue, AI Metrics pages~~ ✓ Completed - no console errors
+5. Add richer AI evaluation forms and training-example promotion UI.
+6. Add export/copy/PDF for approved documents/proposals.
+7. Build browser extension MVP for user-opened page capture.
+8. Build Playwright apply-worker only for whitelisted/permitted ATS flows.
+9. Add outcome analytics correlating claims, prompt versions, models, and applications/proposals.
