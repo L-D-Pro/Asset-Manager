@@ -1,12 +1,15 @@
 import { Sidebar as SidebarComponent, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, Briefcase, FileText, CheckSquare, MessageSquare, Settings, UserCircle, Activity, FileCode, BookOpen, LogOut, User, ScrollText, Brain, MousePointerClick, Handshake } from "lucide-react";
+import { LayoutDashboard, Briefcase, FileText, CheckSquare, MessageSquare, Settings, UserCircle, Activity, FileCode, BookOpen, LogOut, User, ScrollText, Brain, MousePointerClick, Handshake, Sparkles } from "lucide-react";
 import { useAuth } from "@/context/auth";
+
+const ENABLE_APPLY_WIZARD = import.meta.env.VITE_ENABLE_APPLY_WIZARD === "true";
 
 export function Sidebar() {
   const { user, logout } = useAuth();
 
   const navigation = [
+    ...(ENABLE_APPLY_WIZARD ? [{ name: "Wizard", href: "/apply-wizard", icon: Sparkles }] : []),
     { name: "Dashboard", href: "/", icon: LayoutDashboard, exact: true },
     { name: "Jobs Pipeline", href: "/jobs", icon: Briefcase },
     { name: "Applications", href: "/applications", icon: Activity },

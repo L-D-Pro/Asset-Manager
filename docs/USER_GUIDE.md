@@ -2,7 +2,7 @@
 
 > Internal/private tool only. Job Ops is a single-user, human-in-the-loop job application operations platform. It is not a mass auto-apply bot. Every AI output must be reviewed before use.
 
-Last updated: April 20, 2026
+Last updated: April 22, 2026
 
 ## 1. What Job Ops Does
 
@@ -143,6 +143,33 @@ Job detail supports:
 
 Resume tailoring requires a current base resume. If no base resume exists, `/jobs/:id/tailor` returns a clear `400` error.
 
+### Apply Wizard
+
+Path: `/apply-wizard` (feature-flagged via `VITE_ENABLE_APPLY_WIZARD=true`)
+
+The wizard is a guided single-job flow: Intake -> Parse -> Role + Claims -> Tailor -> Approve -> Assisted Apply.
+
+Tailor step supports two modes:
+
+- **System defaults**
+  - Generates one resume + one cover letter from AI Config routing.
+  - Uses:
+    - `POST /jobs/:id/tailor`
+    - `POST /jobs/:id/cover-letter`
+- **Custom model comparison (up to 3 per artifact)**
+  - Resume and cover letter are compared independently.
+  - Uses hybrid model picker backed by `GET /ai-model-catalog`:
+    - searches full OpenRouter model catalog
+    - marks configured/default models from AI Config
+  - Compare endpoints:
+    - `POST /jobs/:id/compare/resume`
+    - `POST /jobs/:id/compare/cover-letter`
+  - Promote winner endpoints:
+    - `POST /jobs/:id/compare/promote-resume`
+    - `POST /jobs/:id/compare/promote-cover-letter`
+
+Comparison runs log metadata for auditability in `event_logs`. Only promoted winners are persisted as normal queue versions.
+
 ### Resume Queue
 
 Path: `/resume-versions`
@@ -184,6 +211,12 @@ Feedback now has fields to connect outcomes back to jobs, role profiles, base re
 Path: `/ai-config`
 
 Configures model routing by task scope. The API selects the active config with the lowest priority value and can follow fallback chains.
+
+Wizard-specific behavior:
+
+- System-default wizard generation uses normal task-scope routing (`resume_tailoring`, `cover_letter`) and fallback chains.
+- Custom wizard comparison uses per-call `modelOverride` so experiments do not change global AI Config defaults.
+- The model picker uses `GET /ai-model-catalog`, which is OpenRouter-backed and briefly cached server-side.
 
 Important task scopes:
 
@@ -302,6 +335,83 @@ After pulling changes and pushing schema:
 16. Capture freelance project.
 17. Score freelance project.
 18. Draft proposal.
+
+### GSD A/B Prompt Verification (No Existing Data)
+
+Use this when GSD asks for:
+- `taskScope`
+- `windowStart` / `windowEnd` (ISO)
+- Prompt Version A ID
+- Prompt Version B ID
+
+#### Step 1: Prepare baseline app data
+
+1. Go to `Base Resume` and save a resume.
+2. Go to `Claims Ledger` and create at least 3-5 claims.
+3. Go to `Jobs Pipeline` and ingest at least 2 jobs with full JD text.
+4. Parse each JD.
+
+#### Step 2: Create Prompt Version A (baseline)
+
+1. Go to `AI Review`.
+2. In **Create Prompt Version**, fill:
+   - Task Scope: `resume_tailoring`
+   - Label: `baseline-v1`
+   - Version Number: `1`
+   - System Prompt: simple baseline prompt (example: `You are a resume writer.`)
+   - User Prompt Template: keep `{{userPrompt}}`
+   - Check **Make active for this task**
+3. Click **Save Prompt Version**.
+
+#### Step 3: Generate runs for Version A
+
+1. Return to `Jobs Pipeline`.
+2. For 1-2 jobs, click **Tailor Resume**.
+3. Open `Resumes (Queue)` and approve or reject each generated resume.
+
+#### Step 4: Create Prompt Version B (improved)
+
+1. Go back to `AI Review`.
+2. Create a second prompt version:
+   - Task Scope: `resume_tailoring`
+   - Label: `improved-v2`
+   - Version Number: `2`
+   - System Prompt: your stronger truth-locked prompt
+   - User Prompt Template: `{{userPrompt}}`
+   - Check **Make active for this task**
+3. Save.
+
+#### Step 5: Generate runs for Version B
+
+1. In `Jobs Pipeline`, tailor resumes for 1-2 jobs (same style of jobs if possible).
+2. In `Resumes (Queue)`, approve/reject those outputs.
+
+#### Step 6: Capture values for GSD
+
+In `AI Review`, copy these values:
+- `taskScope`: `resume_tailoring`
+- Prompt Version A ID: the row with `baseline-v1`
+- Prompt Version B ID: the row with `improved-v2`
+
+Use a time window that covers both test rounds, for example:
+- `windowStart`: start time before Step 3
+- `windowEnd`: end time after Step 5
+
+ISO example:
+- `windowStart`: `2026-04-21T00:00:00Z`
+- `windowEnd`: `2026-04-22T23:59:59Z`
+
+#### Step 7: Send to GSD
+
+Provide exactly:
+
+```text
+taskScope: resume_tailoring
+windowStart: <ISO>
+windowEnd: <ISO>
+promptVersionAId: <baseline-v1 id>
+promptVersionBId: <improved-v2 id>
+```
 
 ## 8. Troubleshooting
 

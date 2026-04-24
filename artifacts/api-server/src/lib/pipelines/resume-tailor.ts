@@ -76,6 +76,12 @@ export async function runResumeTailorPipeline(
   job: Job,
   allClaims: Claim[],
   claimIds?: number[],
+  options?: {
+    modelOverride?: {
+      provider?: string;
+      modelName: string;
+    };
+  },
 ): Promise<typeof resumeVersionsTable.$inferSelect> {
   logger.info({ jobId: job.id, claimIds }, "Starting resume tailor pipeline");
 
@@ -138,6 +144,7 @@ Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed
       `Base Resume (current source of truth):\n${baseResumeVersion.contentText}\n\n` +
       `${jobContext}\n\nAvailable claims (use ONLY these):\n${claimsContext}`,
     jobId: job.id,
+    modelOverride: options?.modelOverride,
   });
 
   const parsed = parseJsonResponse<TailoringResult>(result.content);

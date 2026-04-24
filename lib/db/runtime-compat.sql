@@ -393,3 +393,25 @@ ALTER TABLE client_message_templates ADD COLUMN IF NOT EXISTS created_at TIMESTA
 ALTER TABLE client_message_templates ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 CREATE INDEX IF NOT EXISTS client_message_templates_use_case_idx ON client_message_templates(use_case);
 CREATE INDEX IF NOT EXISTS client_message_templates_active_idx ON client_message_templates(is_active);
+
+-- AI Training Examples table (needed for AI Review page)
+CREATE TABLE IF NOT EXISTS ai_training_examples (
+    id SERIAL PRIMARY KEY,
+    task_scope TEXT NOT NULL,
+    source_entity_type TEXT,
+    source_entity_id INTEGER,
+    evaluation_id INTEGER,
+    input_snapshot JSONB NOT NULL DEFAULT '{}'::jsonb,
+    approved_output TEXT NOT NULL,
+    rejected_output TEXT,
+    notes TEXT,
+    quality_score INTEGER,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS ai_training_examples_task_scope_idx ON ai_training_examples(task_scope);
+CREATE INDEX IF NOT EXISTS ai_training_examples_source_idx ON ai_training_examples(source_entity_type, source_entity_id);
+CREATE INDEX IF NOT EXISTS ai_training_examples_active_idx ON ai_training_examples(task_scope, is_active);

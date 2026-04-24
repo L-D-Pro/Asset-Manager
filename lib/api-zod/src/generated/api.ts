@@ -415,6 +415,12 @@ export const TailorJobResumeParams = zod.object({
 
 export const TailorJobResumeBody = zod.object({
   claimIds: zod.array(zod.number()).optional(),
+  modelOverride: zod
+    .object({
+      provider: zod.string().optional(),
+      modelName: zod.string(),
+    })
+    .optional(),
 });
 
 /**
@@ -426,6 +432,12 @@ export const DraftCoverLetterParams = zod.object({
 
 export const DraftCoverLetterBody = zod.object({
   claimIds: zod.array(zod.number()).optional(),
+  modelOverride: zod
+    .object({
+      provider: zod.string().optional(),
+      modelName: zod.string(),
+    })
+    .optional(),
 });
 
 /**
@@ -1541,7 +1553,25 @@ export const GetAiMetricsSnapshotResponse = zod.object({
   aggregates: zod.object({
     evaluationCount: zod.number(),
     approvalOutcomeCounts: zod.record(zod.string(), zod.number()),
+    byPromptVersion: zod.record(
+      zod.string(),
+      zod.object({
+        evaluationCount: zod.number(),
+        approvalOutcomeCounts: zod.record(zod.string(), zod.number()),
+        avgEditDistance: zod.number().nullable(),
+        avgRubricScores: zod.record(zod.string(), zod.number().nullable()),
+      }),
+    ),
   }),
+  series: zod.array(
+    zod.object({
+      bucketStartInclusive: zod.coerce.date(),
+      evaluationCount: zod.number(),
+      approvalOutcomeCounts: zod.record(zod.string(), zod.number()),
+      avgEditDistance: zod.number().nullable(),
+      avgRubricScores: zod.record(zod.string(), zod.number().nullable()),
+    }),
+  ),
 });
 
 /**

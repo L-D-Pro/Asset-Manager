@@ -3,8 +3,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { useNavigate } from "react-router-dom";
-import { Plus, Briefcase, MapPin, Building, ExternalLink } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Plus, Briefcase, MapPin, Building, ExternalLink, Sparkles } from "lucide-react";
+
 import { format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -26,6 +27,8 @@ const createJobSchema = z.object({
   sourceUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   rawJdText: z.string().optional(),
 });
+
+const ENABLE_APPLY_WIZARD = import.meta.env.VITE_ENABLE_APPLY_WIZARD === "true";
 
 function JobScoreChip({ jobId, roleProfileId, profileName }: { jobId: number; roleProfileId?: number; profileName?: string }) {
   if (!roleProfileId) {
@@ -141,28 +144,65 @@ export default function JobsPage() {
           <p className="text-muted-foreground mt-1">Manage and parse your job opportunities.</p>
         </div>
         
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button data-testid="btn-add-job">
-              <Plus className="mr-2 h-4 w-4" />
-              Ingest Job
+        <div className="flex items-center gap-2">
+          {ENABLE_APPLY_WIZARD ? (
+            <Button variant="outline" asChild>
+              <Link to="/apply-wizard">
+                <Sparkles className="mr-2 h-4 w-4" />
+                Open Wizard
+              </Link>
             </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px]">
-            <DialogHeader>
-              <DialogTitle>Ingest New Job</DialogTitle>
-            </DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+          ) : null}
+
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button data-testid="btn-add-job">
+                <Plus className="mr-2 h-4 w-4" />
+                Ingest Job
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[600px]">
+              <DialogHeader>
+                <DialogTitle>Ingest New Job</DialogTitle>
+              </DialogHeader>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="title"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Job Title</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Software Engineer" {...field} data-testid="input-job-title" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="company"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Company</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Acme Corp" {...field} data-testid="input-job-company" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                   <FormField
                     control={form.control}
-                    name="title"
+                    name="location"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Job Title</FormLabel>
+                        <FormLabel>Location / Remote</FormLabel>
                         <FormControl>
-                          <Input placeholder="Software Engineer" {...field} data-testid="input-job-title" />
+                          <Input placeholder="San Francisco, CA or Remote" {...field} data-testid="input-job-location" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -170,71 +210,45 @@ export default function JobsPage() {
                   />
                   <FormField
                     control={form.control}
-                    name="company"
+                    name="sourceUrl"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Company</FormLabel>
+                        <FormLabel>URL</FormLabel>
                         <FormControl>
-                          <Input placeholder="Acme Corp" {...field} data-testid="input-job-company" />
+                          <Input placeholder="https://..." {...field} data-testid="input-job-url" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                </div>
-                <FormField
-                  control={form.control}
-                  name="location"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Location / Remote</FormLabel>
-                      <FormControl>
-                        <Input placeholder="San Francisco, CA or Remote" {...field} data-testid="input-job-location" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="sourceUrl"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>URL</FormLabel>
-                      <FormControl>
-                        <Input placeholder="https://..." {...field} data-testid="input-job-url" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="rawJdText"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Raw Job Description</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Paste the full job description here..." 
-                          className="h-32" 
-                          {...field} 
-                          data-testid="input-job-jd"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <div className="flex justify-end pt-4">
-                  <Button type="submit" disabled={createJob.isPending} data-testid="btn-submit-job">
-                    {createJob.isPending ? "Ingesting..." : "Ingest Job"}
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
+                  <FormField
+                    control={form.control}
+                    name="rawJdText"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Raw Job Description</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Paste the full job description here..." 
+                            className="h-32" 
+                            {...field} 
+                            data-testid="input-job-jd"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="flex justify-end pt-4">
+                    <Button type="submit" disabled={createJob.isPending} data-testid="btn-submit-job">
+                      {createJob.isPending ? "Ingesting..." : "Ingest Job"}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="grid gap-4">

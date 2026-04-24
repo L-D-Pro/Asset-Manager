@@ -15,6 +15,98 @@ import {
 
 const router: IRouter = Router();
 
+let modelCatalogCache: {
+  expiresAt: number;
+  items: Array<Record<string, unknown>>;
+} | null = null;
+
+router.get("/ai-model-catalog", async (req, res): Promise<void> => {
+  const now = Date.now();
+  if (modelCatalogCache && modelCatalogCache.expiresAt > now) {
+    res.json({ source: "cache", models: modelCatalogCache.items });
+    return;
+  }
+
+  const baseUrl = process.env.AI_INTEGRATIONS_OPENROUTER_BASE_URL;
+  const apiKey = process.env.AI_INTEGRATIONS_OPENROUTER_API_KEY;
+
+  if (!baseUrl || !apiKey) {
+    res.status(503).json({ error: "OpenRouter integration env is not configured" });
+    return;
+  }
+
+  const [configs, resumeDefault, coverDefault] = await Promise.all([
+    db.select().from(aiModelConfigsTable),
+    db
+      .select()
+      .from(aiModelConfigsTable)
+      .where(and(eq(aiModelConfigsTable.taskScope, "resume_tailoring"), eq(aiModelConfigsTable.isActive, true)))
+      .orderBy(aiModelConfigsTable.priority)
+      .limit(1),
+    db
+      .select()
+      .from(aiModelConfigsTable)
+      .where(and(eq(aiModelConfigsTable.taskScope, "cover_letter"), eq(aiModelConfigsTable.isActive, true)))
+      .orderBy(aiModelConfigsTable.priority)
+      .limit(1),
+  ]);
+
+  const configuredByModel = new Map<string, typeof configs>();
+  for (const row of configs) {
+    const current = configuredByModel.get(row.modelName) ?? [];
+    current.push(row);
+    configuredByModel.set(row.modelName, current);
+  }
+
+  try {
+    const response = await fetch(`${baseUrl.replace(/\/$/, "")}/models`, {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+    });
+
+    if (!response.ok) {
+      res.status(502).json({ error: `OpenRouter catalog request failed (${response.status})` });
+      return;
+    }
+
+    const payload = (await response.json()) as {
+      data?: Array<Record<string, unknown>>;
+    };
+
+    const models = (payload.data ?? []).map((item) => {
+      const modelId = typeof item.id === "string" ? item.id : "";
+      const configured = configuredByModel.get(modelId) ?? [];
+      return {
+        id: modelId,
+        name: typeof item.name === "string" ? item.name : modelId,
+        contextLength:
+          typeof item.context_length === "number" ? item.context_length : null,
+        pricing: item.pricing ?? null,
+        supportedParameters: Array.isArray(item.supported_parameters)
+          ? item.supported_parameters
+          : [],
+        isConfigured: configured.length > 0,
+        configuredScopes: [...new Set(configured.map((c) => c.taskScope))],
+        isDefaultForResumeTailoring:
+          resumeDefault[0]?.modelName != null && resumeDefault[0].modelName === modelId,
+        isDefaultForCoverLetter:
+          coverDefault[0]?.modelName != null && coverDefault[0].modelName === modelId,
+      };
+    });
+
+    modelCatalogCache = {
+      expiresAt: now + 5 * 60 * 1000,
+      items: models,
+    };
+
+    res.json({ source: "openrouter", models });
+  } catch (error) {
+    req.log.error({ error }, "Failed to fetch OpenRouter model catalog");
+    res.status(502).json({ error: "Failed to fetch OpenRouter model catalog" });
+  }
+});
+
 router.get("/ai-model-configs", async (req, res): Promise<void> => {
   req.log.info("Listing AI model configs");
   const query = ListAiModelConfigsQueryParams.safeParse(req.query);

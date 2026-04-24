@@ -2,6 +2,24 @@
 
 All notable changes to the Job Ops platform.
 
+## Version 0.3 (April 22, 2026)
+
+### Apply Wizard Model Comparison
+
+- Added wizard-tailor custom comparison mode with up to 3 OpenRouter models per artifact (resume and cover letter compared independently).
+- Added hybrid model picker support via `GET /ai-model-catalog`:
+  - searches full OpenRouter catalog
+  - marks configured models and current resume/cover defaults from AI Config
+- Added compare endpoints:
+  - `POST /jobs/:id/compare/resume`
+  - `POST /jobs/:id/compare/cover-letter`
+- Added winner-promotion endpoints:
+  - `POST /jobs/:id/compare/promote-resume`
+  - `POST /jobs/:id/compare/promote-cover-letter`
+- Added per-call model override support so wizard comparison does not mutate global AI routing defaults.
+- Comparison metadata is now logged to `event_logs` for auditability; only promoted winners remain in normal resume/cover queues.
+- Apply Wizard route behavior updated so `/apply-wizard` remains registered and shows a disabled notice card when the feature flag is off.
+
 ## Version 0.2 (April 20, 2026)
 
 ### M002 Regression Audit & Stabilization

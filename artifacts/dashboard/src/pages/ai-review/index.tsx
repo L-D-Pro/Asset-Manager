@@ -75,45 +75,65 @@ export default function AiReviewPage() {
             Active versions override the built-in prompt for a task. Use {"{{userPrompt}}"} inside the template to preserve runtime context.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid gap-3 md:grid-cols-3">
-            <Input
-              value={promptForm.taskScope}
-              onChange={(event) => setPromptForm({ ...promptForm, taskScope: event.target.value })}
-              placeholder="task scope"
-            />
-            <Input
-              value={promptForm.label}
-              onChange={(event) => setPromptForm({ ...promptForm, label: event.target.value })}
-              placeholder="label"
-            />
-            <Input
-              type="number"
-              value={promptForm.version}
-              onChange={(event) => setPromptForm({ ...promptForm, version: Number(event.target.value) })}
-              placeholder="version"
-            />
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Task Scope</label>
+              <Input
+                value={promptForm.taskScope}
+                onChange={(event) => setPromptForm({ ...promptForm, taskScope: event.target.value })}
+                placeholder="e.g., resume_tailoring, cover_letter"
+              />
+              <p className="text-xs text-muted-foreground">The AI pipeline task this prompt overrides</p>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Label</label>
+              <Input
+                value={promptForm.label}
+                onChange={(event) => setPromptForm({ ...promptForm, label: event.target.value })}
+                placeholder="e.g., baseline-v1, improved-v2"
+              />
+              <p className="text-xs text-muted-foreground">Human-readable name for this version</p>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Version Number</label>
+              <Input
+                type="number"
+                value={promptForm.version}
+                onChange={(event) => setPromptForm({ ...promptForm, version: Number(event.target.value) })}
+                placeholder="1, 2, 3..."
+              />
+              <p className="text-xs text-muted-foreground">Numeric version within this task scope</p>
+            </div>
           </div>
-          <Textarea
-            value={promptForm.systemPrompt}
-            onChange={(event) => setPromptForm({ ...promptForm, systemPrompt: event.target.value })}
-            placeholder="System prompt"
-            className="min-h-28"
-          />
-          <Textarea
-            value={promptForm.userPromptTemplate}
-            onChange={(event) => setPromptForm({ ...promptForm, userPromptTemplate: event.target.value })}
-            placeholder="User prompt template"
-            className="min-h-20"
-          />
-          <div className="flex items-center justify-between gap-3">
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">System Prompt</label>
+            <Textarea
+              value={promptForm.systemPrompt}
+              onChange={(event) => setPromptForm({ ...promptForm, systemPrompt: event.target.value })}
+              placeholder="Instructions for the AI (e.g., 'You are a professional resume writer...')"
+              className="min-h-28"
+            />
+            <p className="text-xs text-muted-foreground">The system message sent to the AI model</p>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">User Prompt Template</label>
+            <Textarea
+              value={promptForm.userPromptTemplate}
+              onChange={(event) => setPromptForm({ ...promptForm, userPromptTemplate: event.target.value })}
+              placeholder="Template with {{userPrompt}} placeholder for runtime context"
+              className="min-h-20"
+            />
+            <p className="text-xs text-muted-foreground">Use {'{{userPrompt}}'} where runtime content should be inserted</p>
+          </div>
+          <div className="flex items-center justify-between gap-3 pt-2">
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
                 checked={promptForm.isActive}
                 onChange={(event) => setPromptForm({ ...promptForm, isActive: event.target.checked })}
               />
-              Make active for this task
+              <span className="font-medium">Make active for this task</span>
             </label>
             <Button
               onClick={() => createPrompt.mutate({ data: promptForm })}

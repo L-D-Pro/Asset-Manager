@@ -20,11 +20,14 @@ import AiReviewPage from "@/pages/ai-review";
 import AiMetricsPage from "@/pages/ai-metrics";
 import AssistedApplyPage from "@/pages/assisted-apply";
 import FreelancePage from "@/pages/freelance";
+import ApplyWizardPage from "@/pages/apply-wizard";
 import RoleProfilesPage from "@/pages/role-profiles";
 import FeedbackPage from "@/pages/feedback";
 import GuidePage from "@/pages/guide";
 import AccountPage from "@/pages/account";
 import NotFound from "@/pages/not-found";
+
+const ENABLE_APPLY_WIZARD = import.meta.env.VITE_ENABLE_APPLY_WIZARD === "true";
 
 const queryClient = new QueryClient({
   queryCache: new QueryCache({
@@ -89,6 +92,7 @@ function ProtectedRoutes() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/jobs" element={<JobsList />} />
         <Route path="/jobs/:id" element={<JobDetail />} />
+        <Route path="/apply-wizard" element={<ApplyWizardPage />} />
         <Route path="/claims" element={<ClaimsPage />} />
         <Route path="/base-resume" element={<BaseResumePage />} />
         <Route path="/resume-versions" element={<ResumeVersionsPage />} />

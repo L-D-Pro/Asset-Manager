@@ -8,6 +8,7 @@
 import type { AiMetricsSnapshotResponseAggregates } from "./aiMetricsSnapshotResponseAggregates";
 import type { AiMetricsSnapshotResponseLastKnownGoodSnapshot } from "./aiMetricsSnapshotResponseLastKnownGoodSnapshot";
 import type { AiMetricsSnapshotResponseMetricsVersion } from "./aiMetricsSnapshotResponseMetricsVersion";
+import type { AiMetricsSnapshotResponseSeriesItem } from "./aiMetricsSnapshotResponseSeriesItem";
 import type { AiMetricsSnapshotResponseStatus } from "./aiMetricsSnapshotResponseStatus";
 import type { AiMetricsSnapshotResponseWindow } from "./aiMetricsSnapshotResponseWindow";
 
@@ -24,4 +25,5 @@ export interface AiMetricsSnapshotResponse {
    */
   lastKnownGoodSnapshot: AiMetricsSnapshotResponseLastKnownGoodSnapshot;
   aggregates: AiMetricsSnapshotResponseAggregates;
+  series: AiMetricsSnapshotResponseSeriesItem[];
 }

@@ -6,8 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AiMetricsSnapshotResponseAggregatesApprovalOutcomeCounts } from "./aiMetricsSnapshotResponseAggregatesApprovalOutcomeCounts";
+import type { AiMetricsSnapshotResponseAggregatesByPromptVersion } from "./aiMetricsSnapshotResponseAggregatesByPromptVersion";
 
 export type AiMetricsSnapshotResponseAggregates = {
   evaluationCount: number;
   approvalOutcomeCounts: AiMetricsSnapshotResponseAggregatesApprovalOutcomeCounts;
+  byPromptVersion: AiMetricsSnapshotResponseAggregatesByPromptVersion;
 };

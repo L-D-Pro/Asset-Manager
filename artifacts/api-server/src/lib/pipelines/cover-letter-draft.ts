@@ -53,6 +53,12 @@ export async function runCoverLetterPipeline(
   roleProfile: RoleProfile | null,
   allClaims: Claim[],
   claimIds?: number[],
+  options?: {
+    modelOverride?: {
+      provider?: string;
+      modelName: string;
+    };
+  },
 ): Promise<typeof coverLetterVersionsTable.$inferSelect> {
   logger.info({ jobId: job.id, claimIds }, "Starting cover letter draft pipeline");
 
@@ -106,6 +112,7 @@ Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed
     systemPrompt: SYSTEM_PROMPT,
     userPrompt: `Draft a cover letter for this job:\n\n${jobContext}\n\nAvailable claims (use ONLY these IDs):\n${claimsContext}`,
     jobId: job.id,
+    modelOverride: options?.modelOverride,
   });
 
   const parsed = parseJsonResponse<CoverLetterResult>(result.content);

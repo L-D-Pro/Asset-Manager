@@ -773,9 +773,43 @@ export type AiMetricsSnapshotResponseAggregatesApprovalOutcomeCounts = {
   [key: string]: number;
 };
 
+export type AiMetricsSnapshotResponseAggregatesByPromptVersionApprovalOutcomeCounts =
+  { [key: string]: number };
+
+export type AiMetricsSnapshotResponseAggregatesByPromptVersionAvgRubricScores =
+  { [key: string]: number | null };
+
+export type AiMetricsSnapshotResponseAggregatesByPromptVersion = {
+  [key: string]: {
+    evaluationCount: number;
+    approvalOutcomeCounts: AiMetricsSnapshotResponseAggregatesByPromptVersionApprovalOutcomeCounts;
+    /** @nullable */
+    avgEditDistance: number | null;
+    avgRubricScores: AiMetricsSnapshotResponseAggregatesByPromptVersionAvgRubricScores;
+  };
+};
+
 export type AiMetricsSnapshotResponseAggregates = {
   evaluationCount: number;
   approvalOutcomeCounts: AiMetricsSnapshotResponseAggregatesApprovalOutcomeCounts;
+  byPromptVersion: AiMetricsSnapshotResponseAggregatesByPromptVersion;
+};
+
+export type AiMetricsSnapshotResponseSeriesItemApprovalOutcomeCounts = {
+  [key: string]: number;
+};
+
+export type AiMetricsSnapshotResponseSeriesItemAvgRubricScores = {
+  [key: string]: number | null;
+};
+
+export type AiMetricsSnapshotResponseSeriesItem = {
+  bucketStartInclusive: string;
+  evaluationCount: number;
+  approvalOutcomeCounts: AiMetricsSnapshotResponseSeriesItemApprovalOutcomeCounts;
+  /** @nullable */
+  avgEditDistance: number | null;
+  avgRubricScores: AiMetricsSnapshotResponseSeriesItemAvgRubricScores;
 };
 
 export interface AiMetricsSnapshotResponse {
@@ -791,6 +825,7 @@ export interface AiMetricsSnapshotResponse {
    */
   lastKnownGoodSnapshot: AiMetricsSnapshotResponseLastKnownGoodSnapshot;
   aggregates: AiMetricsSnapshotResponseAggregates;
+  series: AiMetricsSnapshotResponseSeriesItem[];
 }
 
 export type CreateAiTrainingExampleBodyInputSnapshot = {

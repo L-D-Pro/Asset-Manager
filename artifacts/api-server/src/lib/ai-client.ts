@@ -25,6 +25,11 @@ export interface AiCallOptions {
   applicationId?: number;
   /** Optional pre-minted canonical lineage ID. If omitted, callAI mints one once and reuses it across retries. */
   runId?: string;
+  /** Optional one-off model override used for comparison flows. */
+  modelOverride?: {
+    provider?: string;
+    modelName: string;
+  };
 }
 
 /**
@@ -68,7 +73,7 @@ export interface AiCallResult {
  * reads these automatically.
  */
 export async function callAI(opts: AiCallOptions): Promise<AiCallResult> {
-  const { taskType, systemPrompt, userPrompt, jobId, applicationId } = opts;
+  const { taskType, systemPrompt, userPrompt, jobId, applicationId, modelOverride } = opts;
   const runId = opts.runId ?? mintRunId();
   const resolvedPrompt = await resolvePromptForTask(
     taskType,
@@ -76,12 +81,7 @@ export async function callAI(opts: AiCallOptions): Promise<AiCallResult> {
     userPrompt,
   );
 
-  const primaryModel = await selectModelForTask(taskType);
-  if (!primaryModel) {
-    throw new Error(`No active AI model configured for task type: ${taskType}`);
-  }
-
-  const modelChain = await resolveModelChain(primaryModel);
+  const modelChain = await resolveModelChainForCall(taskType, modelOverride);
   const attemptErrors: Array<{ modelName: string; error: string }> = [];
   let lastError: unknown;
 
@@ -135,6 +135,7 @@ export async function callAI(opts: AiCallOptions): Promise<AiCallResult> {
           promptLabel: resolvedPrompt.promptLabel,
           modelName: model.modelName,
           provider: model.provider,
+          modelOverride: modelOverride ?? null,
           promptTokens,
           completionTokens,
           estimatedCostUsd: totalCost,
@@ -183,6 +184,7 @@ export async function callAI(opts: AiCallOptions): Promise<AiCallResult> {
         taskType,
         promptVersionId: resolvedPrompt.promptVersionId,
         promptLabel: resolvedPrompt.promptLabel,
+        modelOverride: modelOverride ?? null,
         succeeded: false,
         modelsAttempted: modelChain.length,
         attemptErrors,
@@ -210,6 +212,66 @@ export async function callAI(opts: AiCallOptions): Promise<AiCallResult> {
   throw new Error(
     `AI call failed for task ${taskType} after exhausting all ${modelChain.length} model(s) in fallback chain: ${String(lastError)}`,
   );
+}
+
+async function resolveModelChainForCall(
+  taskType: string,
+  modelOverride?: { provider?: string; modelName: string },
+): Promise<SelectedModel[]> {
+  if (modelOverride?.modelName) {
+    const provider = modelOverride.provider?.trim() || "openrouter";
+    if (provider !== "openrouter") {
+      throw new Error(`Unsupported provider override: ${provider}`);
+    }
+
+    const [configured] = await db
+      .select()
+      .from(aiModelConfigsTable)
+      .where(
+        and(
+          eq(aiModelConfigsTable.provider, provider),
+          eq(aiModelConfigsTable.modelName, modelOverride.modelName),
+          eq(aiModelConfigsTable.isActive, true),
+        ),
+      )
+      .orderBy(aiModelConfigsTable.priority)
+      .limit(1);
+
+    if (configured) {
+      return [
+        {
+          id: configured.id,
+          provider: configured.provider,
+          modelName: configured.modelName,
+          taskScope: configured.taskScope,
+          maxTokens: configured.maxTokens,
+          costPerInputToken: configured.costPerInputToken,
+          costPerOutputToken: configured.costPerOutputToken,
+          extraConfig: (configured.extraConfig as Record<string, unknown>) ?? {},
+        },
+      ];
+    }
+
+    return [
+      {
+        id: -1,
+        provider,
+        modelName: modelOverride.modelName,
+        taskScope: taskType,
+        maxTokens: null,
+        costPerInputToken: null,
+        costPerOutputToken: null,
+        extraConfig: {},
+      },
+    ];
+  }
+
+  const primaryModel = await selectModelForTask(taskType);
+  if (!primaryModel) {
+    throw new Error(`No active AI model configured for task type: ${taskType}`);
+  }
+
+  return resolveModelChain(primaryModel);
 }
 
 /**

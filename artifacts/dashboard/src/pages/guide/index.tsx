@@ -179,7 +179,8 @@ export default function GuidePage() {
               ["5. Build claims", "Use Claims Ledger manually or AI Draft Claims. Review every draft before creating claims."],
               ["6. Configure models", "Go to AI Config. Add default plus task-specific configs: jd_parsing, claim_generation, resume_tailoring, cover_letter, proposal_drafting."],
               ["7. Ingest jobs", "Paste job descriptions in Jobs Pipeline, parse them, score them, tailor resume, and draft cover letter."],
-              ["8. Review queues", "Approve/reject resume and cover letter drafts before using them externally."],
+              ["8. Run wizard compare", "Open /apply-wizard and in Tailor step optionally compare up to 3 models per artifact, choose winners, then promote winners to queues."],
+              ["9. Review queues", "Approve/reject resume and cover letter drafts before using them externally."],
             ].map(([title, text]) => (
               <Card key={title}>
                 <CardHeader className="pb-2">
@@ -215,6 +216,28 @@ curl http://localhost:8080/api/healthz`}</CodeBlock>
                 ["Restore history", "Clones an older version into a fresh current version instead of mutating history."],
               ]}
             />
+          </SubSection>
+
+          <SubSection id="mod-wizard" title="Apply Wizard (/apply-wizard)">
+            <p className="text-sm text-muted-foreground">
+              Guided flow: Intake - Parse - Role + Claims - Tailor - Approve - Assisted Apply. Route is feature-flagged by <Code>VITE_ENABLE_APPLY_WIZARD</Code>.
+            </p>
+            <Table
+              headers={["Tailor mode", "Behavior"]}
+              rows={[
+                [
+                  "System defaults",
+                  "Generates one resume + one cover letter through normal AI Config task routing (resume_tailoring, cover_letter).",
+                ],
+                [
+                  "Custom model comparison",
+                  "Compares up to 3 models for resume and up to 3 for cover letter independently. Uses hybrid model picker from /ai-model-catalog, then promotes selected winners into normal queues.",
+                ],
+              ]}
+            />
+            <p className="text-sm text-muted-foreground">
+              Comparison runs write audit metadata to event logs. Only promoted winners remain in standard approval queues.
+            </p>
           </SubSection>
 
           <SubSection id="mod-claims" title="Claims Ledger (/claims)">
@@ -290,6 +313,9 @@ curl http://localhost:8080/api/healthz`}</CodeBlock>
                 ["proposal_drafting", "Freelance proposal drafts."],
               ]}
             />
+            <p className="mt-3 text-sm text-muted-foreground">
+              Wizard comparison uses per-call model overrides, so testing custom models does not alter your default AI routing configuration.
+            </p>
           </SubSection>
         </Section>
 
@@ -357,12 +383,37 @@ curl http://localhost:8080/api/healthz`}</CodeBlock>
               ["Base Resume", "Paste text, save, import DOCX/PDF, restore old version."],
               ["Claims", "Create manual claim; use AI Draft Claims from pasted text; create selected draft."],
               ["Jobs", "Ingest job, parse JD, score, view claim matches."],
-              ["AI Pipeline", "Tailor resume and draft cover letter; approve/reject each queue item."],
+              ["AI Pipeline", "Tailor resume and draft cover letter; optionally run wizard model comparison and promote winners; approve/reject each queue item."],
               ["AI Review", "Create inactive prompt version; create active version only when intentionally overriding a task."],
               ["Assisted Apply", "Create a session record and verify it appears in the session log."],
               ["Freelance", "Create profile, capture project, score project, draft proposal."],
             ]}
           />
+
+          <div className="mt-6 rounded-lg border p-4">
+            <h3 className="text-base font-semibold">GSD A/B Prompt Verification (No Existing Data)</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Use this when GSD asks for <Code>taskScope</Code>, <Code>windowStart/windowEnd</Code>, and Prompt Version A/B IDs.
+            </p>
+            <Table
+              headers={["Step", "Action"]}
+              rows={[
+                ["1. Prepare data", "Base Resume: save a resume. Claims Ledger: create 3-5 claims. Jobs Pipeline: ingest and parse at least 2 jobs."],
+                ["2. Create Version A", "AI Review -> Create Prompt Version: taskScope=resume_tailoring, label=baseline-v1, version=1, keep {{userPrompt}}, set active, save."],
+                ["3. Generate A runs", "Jobs Pipeline: Tailor Resume for 1-2 jobs. Resumes Queue: approve/reject outputs."],
+                ["4. Create Version B", "AI Review -> Create Prompt Version: taskScope=resume_tailoring, label=improved-v2, version=2, improved system prompt, set active, save."],
+                ["5. Generate B runs", "Tailor Resume for 1-2 jobs again, then approve/reject in Resumes Queue."],
+                ["6. Collect values", "From AI Review copy Prompt Version A ID, Prompt Version B ID, and use one ISO time window covering both rounds."],
+                ["7. Send to GSD", "Provide taskScope, windowStart, windowEnd, promptVersionAId, promptVersionBId."],
+              ]}
+            />
+
+            <CodeBlock>{`taskScope: resume_tailoring
+windowStart: <ISO>
+windowEnd: <ISO>
+promptVersionAId: <baseline-v1 id>
+promptVersionBId: <improved-v2 id>`}</CodeBlock>
+          </div>
         </Section>
 
         <Section id="troubleshooting" title="8. Troubleshooting">
@@ -391,6 +442,22 @@ curl http://localhost:8080/api/healthz`}</CodeBlock>
 
         <Section id="changelog" title="9. Changelog">
           <div className="space-y-6">
+            <div className="rounded-lg border-l-4 border-primary bg-muted/30 p-4">
+              <h3 className="mb-2 text-lg font-semibold">Version 0.3 (April 22, 2026)</h3>
+              <p className="mb-3 text-sm text-muted-foreground">
+                Apply Wizard model comparison release: hybrid OpenRouter catalog picker, compare endpoints, and winner-promotion flow into standard queues.
+              </p>
+              <Table
+                headers={["Category", "Changes"]}
+                rows={[
+                  ["Wizard UI", "Added system-default vs custom comparison mode in Tailor step, with up to 3 model selections per artifact and per-artifact winner picking."],
+                  ["Model Catalog", "Added hybrid picker source from /ai-model-catalog that marks configured/default models while searching full OpenRouter catalog."],
+                  ["API", "Added compare and promote endpoints for resume and cover letter plus per-call modelOverride support."],
+                  ["Audit + Queues", "Comparison metadata is logged; only promoted winners are persisted in normal approval queues."],
+                ]}
+              />
+            </div>
+
             <div className="rounded-lg border-l-4 border-primary bg-muted/30 p-4">
               <h3 className="mb-2 text-lg font-semibold">Version 0.2 (April 20, 2026)</h3>
               <p className="mb-3 text-sm text-muted-foreground">
@@ -436,7 +503,7 @@ curl http://localhost:8080/api/healthz`}</CodeBlock>
 
         <Separator />
         <p className="text-center text-xs text-muted-foreground">
-          Job Ops Founder Guide - Last updated April 20, 2026 - Also available in <Code>docs/USER_GUIDE.md</Code>
+          Job Ops Founder Guide - Last updated April 22, 2026 - Also available in <Code>docs/USER_GUIDE.md</Code>
         </p>
       </div>
     </div>

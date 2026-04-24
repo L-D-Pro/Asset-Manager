@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { eq, and } from "drizzle-orm";
 import {
   db,
+  eventLogsTable,
   jobsTable,
   roleProfilesTable,
   claimsTable,
@@ -40,8 +41,25 @@ import {
   MissingBaseResumeError,
 } from "../lib/pipelines/resume-tailor";
 import { runCoverLetterPipeline } from "../lib/pipelines/cover-letter-draft";
+import { mintRunId } from "../lib/lineage";
+import { z } from "zod/v4";
 
 const router: IRouter = Router();
+
+const modelOverrideSchema = z.object({
+  provider: z.string().optional(),
+  modelName: z.string().min(1),
+});
+
+const compareBodySchema = z.object({
+  claimIds: z.array(z.number()).optional(),
+  models: z.array(modelOverrideSchema).min(1).max(3),
+});
+
+const promoteBodySchema = z.object({
+  claimIds: z.array(z.number()).optional(),
+  model: modelOverrideSchema,
+});
 
 router.get("/jobs", async (req, res): Promise<void> => {
   req.log.info("Listing jobs");
@@ -253,6 +271,9 @@ router.post("/jobs/:id/tailor", async (req, res): Promise<void> => {
     res.status(400).json({ error: body.error.message });
     return;
   }
+  const requestedModelOverride = modelOverrideSchema.optional().safeParse(
+    (req.body as { modelOverride?: unknown }).modelOverride,
+  );
 
   const [job] = await db
     .select()
@@ -275,6 +296,7 @@ router.post("/jobs/:id/tailor", async (req, res): Promise<void> => {
       job,
       allClaims,
       body.data.claimIds,
+      { modelOverride: requestedModelOverride.success ? requestedModelOverride.data : undefined },
     );
 
     res.status(201).json(GetResumeVersionResponse.parse(resumeVersion));
@@ -298,6 +320,9 @@ router.post("/jobs/:id/cover-letter", async (req, res): Promise<void> => {
     res.status(400).json({ error: body.error.message });
     return;
   }
+  const requestedModelOverride = modelOverrideSchema.optional().safeParse(
+    (req.body as { modelOverride?: unknown }).modelOverride,
+  );
 
   const [job] = await db
     .select()
@@ -329,9 +354,304 @@ router.post("/jobs/:id/cover-letter", async (req, res): Promise<void> => {
     roleProfile,
     allClaims,
     body.data.claimIds,
+    { modelOverride: requestedModelOverride.success ? requestedModelOverride.data : undefined },
   );
 
   res.status(201).json(GetCoverLetterVersionResponse.parse(coverLetterVersion));
+});
+
+router.post("/jobs/:id/compare/resume", async (req, res): Promise<void> => {
+  const params = TailorJobResumeParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const body = compareBodySchema.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  const [job] = await db
+    .select()
+    .from(jobsTable)
+    .where(eq(jobsTable.id, params.data.id));
+  if (!job) {
+    res.status(404).json({ error: "Job not found" });
+    return;
+  }
+
+  const allClaims = await db
+    .select()
+    .from(claimsTable)
+    .where(eq(claimsTable.isActive, true));
+
+  const comparisonRunId = mintRunId();
+  const candidates: Array<Record<string, unknown>> = [];
+
+  for (const model of body.data.models) {
+    try {
+      const version = await runResumeTailorPipeline(
+        job,
+        allClaims,
+        body.data.claimIds,
+        { modelOverride: model },
+      );
+
+      candidates.push({
+        modelName: model.modelName,
+        provider: model.provider ?? "openrouter",
+        status: "succeeded",
+        preview: version.tailoredDocumentText ?? version.rawContent ?? "",
+        notes: version.notes ?? "",
+        runId: version.runId ?? null,
+        eventLogId: version.eventLogId ?? null,
+      });
+
+      await db.delete(resumeVersionsTable).where(eq(resumeVersionsTable.id, version.id));
+    } catch (error) {
+      candidates.push({
+        modelName: model.modelName,
+        provider: model.provider ?? "openrouter",
+        status: "failed",
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  await db.insert(eventLogsTable).values({
+    entityType: "job",
+    entityId: job.id,
+    jobId: job.id,
+    runId: comparisonRunId,
+    eventType: "wizard_compare_resume",
+    previousState: null,
+    nextState: "resume_compared",
+    actorType: "user",
+    metadata: {
+      claimIds: body.data.claimIds ?? [],
+      models: body.data.models,
+      candidates,
+    },
+  });
+
+  res.json({ comparisonRunId, candidates });
+});
+
+router.post("/jobs/:id/compare/cover-letter", async (req, res): Promise<void> => {
+  const params = DraftCoverLetterParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const body = compareBodySchema.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  const [job] = await db
+    .select()
+    .from(jobsTable)
+    .where(eq(jobsTable.id, params.data.id));
+  if (!job) {
+    res.status(404).json({ error: "Job not found" });
+    return;
+  }
+
+  const allClaims = await db
+    .select()
+    .from(claimsTable)
+    .where(eq(claimsTable.isActive, true));
+
+  let roleProfile = null;
+  if (job.roleProfileId) {
+    const [rp] = await db
+      .select()
+      .from(roleProfilesTable)
+      .where(eq(roleProfilesTable.id, job.roleProfileId));
+    roleProfile = rp ?? null;
+  }
+
+  const comparisonRunId = mintRunId();
+  const candidates: Array<Record<string, unknown>> = [];
+
+  for (const model of body.data.models) {
+    try {
+      const version = await runCoverLetterPipeline(
+        job,
+        roleProfile,
+        allClaims,
+        body.data.claimIds,
+        { modelOverride: model },
+      );
+
+      candidates.push({
+        modelName: model.modelName,
+        provider: model.provider ?? "openrouter",
+        status: "succeeded",
+        preview: version.draftContent ?? "",
+        notes: version.notes ?? "",
+        runId: version.runId ?? null,
+        eventLogId: version.eventLogId ?? null,
+      });
+
+      await db.delete(coverLetterVersionsTable).where(eq(coverLetterVersionsTable.id, version.id));
+    } catch (error) {
+      candidates.push({
+        modelName: model.modelName,
+        provider: model.provider ?? "openrouter",
+        status: "failed",
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  await db.insert(eventLogsTable).values({
+    entityType: "job",
+    entityId: job.id,
+    jobId: job.id,
+    runId: comparisonRunId,
+    eventType: "wizard_compare_cover_letter",
+    previousState: null,
+    nextState: "cover_letter_compared",
+    actorType: "user",
+    metadata: {
+      claimIds: body.data.claimIds ?? [],
+      models: body.data.models,
+      candidates,
+    },
+  });
+
+  res.json({ comparisonRunId, candidates });
+});
+
+router.post("/jobs/:id/compare/promote-resume", async (req, res): Promise<void> => {
+  const params = TailorJobResumeParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const body = promoteBodySchema.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  const [job] = await db
+    .select()
+    .from(jobsTable)
+    .where(eq(jobsTable.id, params.data.id));
+  if (!job) {
+    res.status(404).json({ error: "Job not found" });
+    return;
+  }
+
+  const allClaims = await db
+    .select()
+    .from(claimsTable)
+    .where(eq(claimsTable.isActive, true));
+
+  try {
+    const version = await runResumeTailorPipeline(
+      job,
+      allClaims,
+      body.data.claimIds,
+      { modelOverride: body.data.model },
+    );
+
+    await db.insert(eventLogsTable).values({
+      entityType: "resume_version",
+      entityId: version.id,
+      jobId: job.id,
+      runId: version.runId ?? null,
+      eventType: "wizard_compare_promote_resume",
+      previousState: null,
+      nextState: "pending_approval",
+      actorType: "user",
+      metadata: {
+        model: body.data.model,
+        claimIds: body.data.claimIds ?? [],
+        resumeVersionId: version.id,
+        eventLogId: version.eventLogId ?? null,
+      },
+    });
+
+    res.status(201).json(GetResumeVersionResponse.parse(version));
+  } catch (error) {
+    if (error instanceof MissingBaseResumeError) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
+    throw error;
+  }
+});
+
+router.post("/jobs/:id/compare/promote-cover-letter", async (req, res): Promise<void> => {
+  const params = DraftCoverLetterParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const body = promoteBodySchema.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  const [job] = await db
+    .select()
+    .from(jobsTable)
+    .where(eq(jobsTable.id, params.data.id));
+  if (!job) {
+    res.status(404).json({ error: "Job not found" });
+    return;
+  }
+
+  const allClaims = await db
+    .select()
+    .from(claimsTable)
+    .where(eq(claimsTable.isActive, true));
+
+  let roleProfile = null;
+  if (job.roleProfileId) {
+    const [rp] = await db
+      .select()
+      .from(roleProfilesTable)
+      .where(eq(roleProfilesTable.id, job.roleProfileId));
+    roleProfile = rp ?? null;
+  }
+
+  const version = await runCoverLetterPipeline(
+    job,
+    roleProfile,
+    allClaims,
+    body.data.claimIds,
+    { modelOverride: body.data.model },
+  );
+
+  await db.insert(eventLogsTable).values({
+    entityType: "cover_letter_version",
+    entityId: version.id,
+    jobId: job.id,
+    runId: version.runId ?? null,
+    eventType: "wizard_compare_promote_cover_letter",
+    previousState: null,
+    nextState: "pending_approval",
+    actorType: "user",
+    metadata: {
+      model: body.data.model,
+      claimIds: body.data.claimIds ?? [],
+      coverLetterVersionId: version.id,
+      eventLogId: version.eventLogId ?? null,
+    },
+  });
+
+  res.status(201).json(GetCoverLetterVersionResponse.parse(version));
 });
 
 export default router;

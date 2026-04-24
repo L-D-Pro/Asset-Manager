@@ -35,6 +35,12 @@ type AiMetricsSnapshotResponseV1 = {
   promptVersionAggregates: unknown;
 };
 
+type LoginResponse = {
+  ok?: boolean;
+  totpRequired?: boolean;
+  error?: string;
+};
+
 const CONFIG_PATH = path.join(process.cwd(), "scripts/ai-prompt-iteration/experiment-config.json");
 const CONFIG_EXAMPLE_PATH = path.join(
   process.cwd(),
@@ -77,6 +83,56 @@ function requireApiBaseUrl(): string {
   return apiBaseUrl.replace(/\/$/, "");
 }
 
+function getLoginPayload(): { username: string; password: string } | null {
+  const username = process.env.ADMIN_USERNAME;
+  const password = process.env.ADMIN_PASSWORD;
+  if (!username || !password) {
+    return null;
+  }
+  return { username, password };
+}
+
+async function createAuthenticatedCookieJar(apiBaseUrl: string): Promise<string | null> {
+  const loginPayload = getLoginPayload();
+  if (!loginPayload) {
+    console.error("[auth] ADMIN_USERNAME/ADMIN_PASSWORD not set; cannot authenticate.");
+    return null;
+  }
+
+  const loginUrl = new URL(`${apiBaseUrl}/auth/login`);
+  const res = await fetch(loginUrl.toString(), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(loginPayload),
+  });
+
+  const text = await res.text();
+  if (!res.ok) {
+    console.error(`[auth] HTTP ${res.status} ${res.statusText} for POST ${loginUrl.toString()}\n${formatHttpErrorBody(text)}`);
+    return null;
+  }
+
+  const json = JSON.parse(text) as LoginResponse;
+  if (json.totpRequired) {
+    console.error("[auth] TOTP required for this admin account; complete /auth/login/totp before running snapshot.");
+    return null;
+  }
+
+  if (!json.ok) {
+    console.error("[auth] Login did not return ok:true; cannot proceed.");
+    return null;
+  }
+
+  const rawCookie = res.headers.get("set-cookie");
+  if (!rawCookie) {
+    console.error("[auth] No set-cookie header returned from login; cannot authenticate.");
+    return null;
+  }
+
+  const cookie = rawCookie.split(";")[0];
+  return cookie;
+}
+
 function formatHttpErrorBody(bodyText: string): string {
   const trimmed = bodyText.trim();
   if (!trimmed) return "<empty body>";
@@ -105,7 +161,16 @@ async function main(): Promise<void> {
 
   await mkdir(OUT_DIR, { recursive: true });
 
-  const res = await fetch(url.toString(), { method: "GET" });
+  const cookie = await createAuthenticatedCookieJar(apiBaseUrl);
+  if (!cookie) {
+    process.exitCode = 1;
+    return;
+  }
+
+  const res = await fetch(url.toString(), {
+    method: "GET",
+    headers: { cookie },
+  });
   const text = await res.text();
   if (!res.ok) {
     console.error(`HTTP ${res.status} ${res.statusText} for GET ${url.toString()}\n${formatHttpErrorBody(text)}`);
