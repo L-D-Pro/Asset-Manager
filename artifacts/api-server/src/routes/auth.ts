@@ -38,9 +38,11 @@ const APP_NAME = "JobOps";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-async function getAdmin() {
-  const users = await db.select().from(adminUsersTable).limit(1);
-  return users[0] ?? null;
+async function getUserByUsername(username: string) {
+  const user = await db.query.adminUsersTable.findFirst({
+    where: eq(adminUsersTable.username, username.toLowerCase().trim()),
+  });
+  return user ?? null;
 }
 
 /** Hashes a password with bcrypt. */
@@ -80,14 +82,14 @@ authRouter.post("/auth/login", async (req: JobOpsRequest, res): Promise<void> =>
     return;
   }
 
-  const admin = await getAdmin();
+  const user = await getUserByUsername(username);
 
   // Always run bcrypt to prevent timing attacks even if user doesn't exist
   const fakeHash = "$2a$12$fakehashfakehashfakehashfakehashfakehasXXXXXXXXXXXXXXX";
-  const hash = admin?.passwordHash ?? fakeHash;
+  const hash = user?.passwordHash ?? fakeHash;
   const passwordOk = await verifyPassword(password, hash);
 
-  if (!admin || !passwordOk || admin.username !== username.toLowerCase().trim()) {
+  if (!user || !passwordOk) {
     logger.warn({ username }, "Failed login attempt");
     res.status(401).json({ error: "Invalid username or password" });
     return;
@@ -101,17 +103,17 @@ authRouter.post("/auth/login", async (req: JobOpsRequest, res): Promise<void> =>
       return;
     }
 
-    req.session.adminId = admin.id;
+    req.session.adminId = user.id;
 
-    if (admin.totpEnabled) {
+    if (user.totpEnabled) {
       // Signal that TOTP is still required — protect all other routes until done.
       req.session.totpVerified = false;
-      logger.info({ adminId: admin.id }, "Login: password OK, TOTP required");
+      logger.info({ adminId: user.id }, "Login: password OK, TOTP required");
       res.json({ totpRequired: true });
     } else {
       // No 2FA — fully authenticated.
       req.session.totpVerified = true;
-      logger.info({ adminId: admin.id }, "Login successful (no 2FA)");
+      logger.info({ adminId: user.id }, "Login successful (no 2FA)");
       res.json({ ok: true });
     }
   });
@@ -208,17 +210,17 @@ authRouter.get("/auth/me", async (req: JobOpsRequest, res): Promise<void> => {
     return;
   }
 
-  const admin = await db.query.adminUsersTable.findFirst({
+  const user = await db.query.adminUsersTable.findFirst({
     where: eq(adminUsersTable.id, req.session.adminId),
     columns: { passwordHash: false, totpSecret: false, totpRecoveryCodes: false },
   });
 
-  if (!admin) {
+  if (!user) {
     res.status(401).json({ error: "User not found" });
     return;
   }
 
-  res.json(admin);
+  res.json(user);
 });
 
 // ─── PUT /api/auth/password ─────────────────────────────────────────────────

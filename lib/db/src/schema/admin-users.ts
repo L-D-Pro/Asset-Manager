@@ -1,9 +1,11 @@
 import { pgTable, text, serial, timestamp, boolean } from "drizzle-orm/pg-core";
 
 /**
- * Admin users table — stores the single founder/admin account credentials.
+ * Users table — stores all account credentials.
  *
- * This is a private single-user tool. There is exactly one record in this table.
+ * Originally designed for a single admin, now supports multiple users
+ * with role-based access. The bootstrap admin gets role='admin';
+ * additional users get role='user'.
  *
  * Security notes:
  * - `passwordHash` stores a bcryptjs hash (cost factor 12). Never store plaintext.
@@ -14,14 +16,23 @@ import { pgTable, text, serial, timestamp, boolean } from "drizzle-orm/pg-core";
  * - `totpRecoveryCodes` holds a JSON array of single-use recovery codes (hashed).
  */
 export const adminUsersTable = pgTable("admin_users", {
-  /** Auto-incrementing primary key (only one row expected). */
+  /** Auto-incrementing primary key. */
   id: serial("id").primaryKey(),
 
   /** Username used for login. Lowercase, alphanumeric. */
   username: text("username").notNull().unique(),
 
+  /** First name for display purposes. */
+  firstName: text("first_name"),
+
+  /** Last name for display purposes. */
+  lastName: text("last_name"),
+
   /** Contact email — not used for login, only for account management display. */
   email: text("email").notNull(),
+
+  /** User role: 'admin' or 'user'. */
+  role: text("role").notNull().default("user"),
 
   /** bcryptjs hash of the user's password (cost factor 12). */
   passwordHash: text("password_hash").notNull(),

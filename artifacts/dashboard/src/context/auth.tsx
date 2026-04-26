@@ -3,7 +3,10 @@ import { createContext, useContext, useState, useEffect, useCallback, type React
 export interface AuthUser {
   id: number;
   username: string;
+  firstName: string | null;
+  lastName: string | null;
   email: string;
+  role: string;
   totpEnabled: boolean;
   createdAt: string;
   updatedAt: string;

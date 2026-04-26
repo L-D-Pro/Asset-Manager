@@ -16,6 +16,7 @@ import aiLearningRouter from "./ai-learning";
 import { aiMetricsSnapshotRouter } from "./ai-metrics-snapshot";
 import assistedApplyRouter from "./assisted-apply";
 import freelanceRouter from "./freelance";
+import usersRouter from "./users";
 
 /**
  * Root API router. Aggregates all entity-specific sub-routers and mounts them
@@ -59,5 +60,6 @@ router.use(aiLearningRouter);
 router.use(aiMetricsSnapshotRouter);
 router.use(assistedApplyRouter);
 router.use(freelanceRouter);
+router.use(usersRouter);
 
 export default router;

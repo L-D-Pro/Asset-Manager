@@ -1,12 +1,13 @@
-import { Sidebar as SidebarComponent, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
+import { Sidebar as SidebarComponent, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupLabel, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem } from "@/components/ui/sidebar";
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, Briefcase, FileText, CheckSquare, MessageSquare, Settings, UserCircle, Activity, FileCode, BookOpen, LogOut, User, ScrollText, Brain, MousePointerClick, Handshake, Sparkles } from "lucide-react";
+import { LayoutDashboard, Briefcase, FileText, CheckSquare, MessageSquare, Settings, UserCircle, Activity, FileCode, BookOpen, LogOut, User, ScrollText, Brain, MousePointerClick, Handshake, Sparkles, Shield } from "lucide-react";
 import { useAuth } from "@/context/auth";
 
 const ENABLE_APPLY_WIZARD = import.meta.env.VITE_ENABLE_APPLY_WIZARD === "true";
 
 export function Sidebar() {
   const { user, logout } = useAuth();
+  const isAdmin = user?.role === "admin";
 
   const navigation = [
     ...(ENABLE_APPLY_WIZARD ? [{ name: "Wizard", href: "/apply-wizard", icon: Sparkles }] : []),
@@ -44,10 +45,7 @@ export function Sidebar() {
         <SidebarMenu>
           {navigation.map((item) => (
             <SidebarMenuItem key={item.name}>
-              <NavLink
-                to={item.href}
-                className="contents"
-              >
+              <NavLink to={item.href} className="contents">
                 {({ isActive }) => (
                   <SidebarMenuButton isActive={isActive} tooltip={item.name} asChild>
                     <span className="flex items-center gap-3 cursor-pointer">
@@ -60,6 +58,26 @@ export function Sidebar() {
             </SidebarMenuItem>
           ))}
         </SidebarMenu>
+
+        {isAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Admin</SidebarGroupLabel>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <NavLink to="/admin/users" className="contents">
+                  {({ isActive }) => (
+                    <SidebarMenuButton isActive={isActive} tooltip="User Management" asChild>
+                      <span className="flex items-center gap-3 cursor-pointer">
+                        <Shield className="h-4 w-4" />
+                        <span>User Management</span>
+                      </span>
+                    </SidebarMenuButton>
+                  )}
+                </NavLink>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroup>
+        )}
       </SidebarContent>
       <SidebarFooter className="border-t p-2">
         <SidebarMenu>
