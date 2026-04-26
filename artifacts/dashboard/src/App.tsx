@@ -3,9 +3,11 @@ import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@ta
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { MainLayout } from "@/components/layout/main-layout";
+import { PageTransition } from "@/components/motion/page-transition";
 import { toast } from "@/hooks/use-toast";
 import { getErrorMessage, hasHttpStatus } from "@/lib/api-errors";
 import { AuthProvider, useAuth } from "@/context/auth";
+import LandingPage from "@/pages/landing";
 import LoginPage from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import JobsList from "@/pages/jobs";
@@ -88,38 +90,52 @@ function ProtectedRoutes() {
 
   return (
     <MainLayout>
-      <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/jobs" element={<JobsList />} />
-        <Route path="/jobs/:id" element={<JobDetail />} />
-        <Route path="/apply-wizard" element={<ApplyWizardPage />} />
-        <Route path="/claims" element={<ClaimsPage />} />
-        <Route path="/base-resume" element={<BaseResumePage />} />
-        <Route path="/resume-versions" element={<ResumeVersionsPage />} />
-        <Route path="/cover-letters" element={<CoverLettersPage />} />
-        <Route path="/applications" element={<ApplicationsPage />} />
-        <Route path="/assisted-apply" element={<AssistedApplyPage />} />
-        <Route path="/freelance" element={<FreelancePage />} />
-        <Route path="/ai-review" element={<AiReviewPage />} />
-        <Route path="/ai-metrics" element={<AiMetricsPage />} />
-        <Route path="/ai-config" element={<AiConfigPage />} />
-        <Route path="/role-profiles" element={<RoleProfilesPage />} />
-        <Route path="/feedback" element={<FeedbackPage />} />
-        <Route path="/guide" element={<GuidePage />} />
-        <Route path="/account" element={<AccountPage />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+      <PageTransition>
+        <Routes>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/jobs" element={<JobsList />} />
+          <Route path="/jobs/:id" element={<JobDetail />} />
+          <Route path="/apply-wizard" element={<ApplyWizardPage />} />
+          <Route path="/claims" element={<ClaimsPage />} />
+          <Route path="/base-resume" element={<BaseResumePage />} />
+          <Route path="/resume-versions" element={<ResumeVersionsPage />} />
+          <Route path="/cover-letters" element={<CoverLettersPage />} />
+          <Route path="/applications" element={<ApplicationsPage />} />
+          <Route path="/assisted-apply" element={<AssistedApplyPage />} />
+          <Route path="/freelance" element={<FreelancePage />} />
+          <Route path="/ai-review" element={<AiReviewPage />} />
+          <Route path="/ai-metrics" element={<AiMetricsPage />} />
+          <Route path="/ai-config" element={<AiConfigPage />} />
+          <Route path="/role-profiles" element={<RoleProfilesPage />} />
+          <Route path="/feedback" element={<FeedbackPage />} />
+          <Route path="/guide" element={<GuidePage />} />
+          <Route path="/account" element={<AccountPage />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </PageTransition>
     </MainLayout>
   );
 }
 
 function AppRoutes() {
   const { user } = useAuth();
+
+  if (user === undefined) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  const isAuthed = user !== null;
+
   return (
     <Routes>
+      <Route path="/" element={isAuthed ? <Navigate to="/dashboard" replace /> : <LandingPage />} />
       <Route
         path="/login"
-        element={user && user !== undefined ? <Navigate to="/" replace /> : <LoginPage />}
+        element={isAuthed ? <Navigate to="/dashboard" replace /> : <LoginPage />}
       />
       <Route path="/*" element={<ProtectedRoutes />} />
     </Routes>

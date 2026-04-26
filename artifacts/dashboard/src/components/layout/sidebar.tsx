@@ -10,7 +10,7 @@ export function Sidebar() {
 
   const navigation = [
     ...(ENABLE_APPLY_WIZARD ? [{ name: "Wizard", href: "/apply-wizard", icon: Sparkles }] : []),
-    { name: "Dashboard", href: "/", icon: LayoutDashboard, exact: true },
+    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "Jobs Pipeline", href: "/jobs", icon: Briefcase },
     { name: "Applications", href: "/applications", icon: Activity },
     { name: "Assisted Apply", href: "/assisted-apply", icon: MousePointerClick },
@@ -46,7 +46,6 @@ export function Sidebar() {
             <SidebarMenuItem key={item.name}>
               <NavLink
                 to={item.href}
-                end={item.exact}
                 className="contents"
               >
                 {({ isActive }) => (

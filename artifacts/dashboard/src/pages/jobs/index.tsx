@@ -5,9 +5,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Link, useNavigate } from "react-router-dom";
 import { Plus, Briefcase, MapPin, Building, ExternalLink, Sparkles } from "lucide-react";
+import { AnimatedCard } from "@/components/motion/animated-card";
+import { StaggerContainer, StaggerItem } from "@/components/motion/stagger-container";
+import { FadeIn } from "@/components/motion/fade-in";
 
 import { format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { motion } from "framer-motion";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -251,7 +255,7 @@ export default function JobsPage() {
         </div>
       </div>
 
-      <div className="grid gap-4">
+      <StaggerContainer className="grid gap-4">
         {isLoading ? (
           <>
             <Skeleton className="h-32 w-full" />
@@ -259,76 +263,87 @@ export default function JobsPage() {
             <Skeleton className="h-32 w-full" />
           </>
         ) : jobs?.length === 0 ? (
-          <Card className="flex flex-col items-center justify-center p-12 text-center border-dashed">
-            <Briefcase className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
-            <h3 className="text-lg font-medium">No jobs yet</h3>
-            <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-              Ingest your first job description to start the parsing and tailoring pipeline.
-            </p>
-          </Card>
-        ) : (
-          jobs?.map((job) => (
-            <Card
-              key={job.id}
-              className="hover:border-primary/50 transition-colors cursor-pointer"
-              data-testid={`card-job-${job.id}`}
-              role="link"
-              tabIndex={0}
-              onClick={() => navigate(`/jobs/${job.id}`)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  navigate(`/jobs/${job.id}`);
-                }
-              }}
-            >
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-2 flex-wrap">
-                        <h3 className="font-semibold text-lg" data-testid={`text-job-title-${job.id}`}>{job.title}</h3>
-                        {getStatusBadge(job.status)}
-                        <JobScoreChips jobId={job.id} profiles={roleProfiles} />
-                      </div>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
-                        <div className="flex items-center gap-1">
-                          <Building className="h-4 w-4" />
-                          <span data-testid={`text-job-company-${job.id}`}>{job.company}</span>
-                        </div>
-                        {job.location && (
-                          <div className="flex items-center gap-1">
-                            <MapPin className="h-4 w-4" />
-                            <span data-testid={`text-job-location-${job.id}`}>{job.location}</span>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-1">
-                          <span>Added {format(new Date(job.createdAt), "MMM d, yyyy")}</span>
-                        </div>
-                        {job.parsedRequiredSkills && job.parsedRequiredSkills.length > 0 && (
-                          <span className="text-xs">{job.parsedRequiredSkills.length} required skills</span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-end gap-2 shrink-0 ml-4">
-                      {job.sourceUrl && (
-                        <a 
-                          href={job.sourceUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          className="text-xs flex items-center gap-1 text-primary hover:underline"
-                          onClick={(e) => e.stopPropagation()}
-                          data-testid={`link-job-source-${job.id}`}
-                        >
-                          Original Post <ExternalLink className="h-3 w-3" />
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
+          <FadeIn>
+            <Card className="flex flex-col items-center justify-center p-12 text-center border-dashed">
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 200, damping: 15 }}
+              >
+                <Briefcase className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
+              </motion.div>
+              <h3 className="text-lg font-medium">No jobs yet</h3>
+              <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+                Ingest your first job description to start the parsing and tailoring pipeline.
+              </p>
             </Card>
+          </FadeIn>
+        ) : (
+          jobs?.map((job, index) => (
+            <StaggerItem key={job.id}>
+              <div
+                className="cursor-pointer"
+                data-testid={`card-job-${job.id}`}
+                role="link"
+                tabIndex={0}
+                onClick={() => navigate(`/jobs/${job.id}`)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    navigate(`/jobs/${job.id}`);
+                  }
+                }}
+              >
+                <AnimatedCard index={index}>
+                  <CardContent className="p-6">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3 mb-2 flex-wrap">
+                          <h3 className="font-semibold text-lg" data-testid={`text-job-title-${job.id}`}>{job.title}</h3>
+                          {getStatusBadge(job.status)}
+                          <JobScoreChips jobId={job.id} profiles={roleProfiles} />
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
+                          <div className="flex items-center gap-1">
+                            <Building className="h-4 w-4" />
+                            <span data-testid={`text-job-company-${job.id}`}>{job.company}</span>
+                          </div>
+                          {job.location && (
+                            <div className="flex items-center gap-1">
+                              <MapPin className="h-4 w-4" />
+                              <span data-testid={`text-job-location-${job.id}`}>{job.location}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-1">
+                            <span>Added {format(new Date(job.createdAt), "MMM d, yyyy")}</span>
+                          </div>
+                          {job.parsedRequiredSkills && job.parsedRequiredSkills.length > 0 && (
+                            <span className="text-xs">{job.parsedRequiredSkills.length} required skills</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-2 shrink-0 ml-4">
+                        {job.sourceUrl && (
+                          <a 
+                            href={job.sourceUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="text-xs flex items-center gap-1 text-primary hover:underline"
+                            onClick={(e) => e.stopPropagation()}
+                            data-testid={`link-job-source-${job.id}`}
+                          >
+                            Original Post <ExternalLink className="h-3 w-3" />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </AnimatedCard>
+              </div>
+            </StaggerItem>
           ))
         )}
-      </div>
+      </StaggerContainer>
     </div>
   );
 }

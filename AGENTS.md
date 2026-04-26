@@ -242,3 +242,13 @@ If behavior changed, update docs in the same PR/commit set (`docs/USER_GUIDE.md`
 - Explain changes briefly with file paths.
 - Prefer safe, reversible operations.
 - If unexpected workspace changes appear, stop and ask before proceeding.
+
+## Tooling reliability: large-file write strategy
+
+When creating or overwriting files with **> ~500 lines** of content, the `Write` or `Edit` tool may abort during the "preparing write" phase or fail to complete. When this happens, use this reliable two-step pattern:
+
+1. **Write a temporary JS wrapper** to a temp file (e.g. `temp-write-<name>.js`) using the `Write` tool. Inside it, place the actual target content as a JavaScript template literal assigned to a variable.
+2. **Extract and write the real file** by running a short Python command via `Bash`. The Python script reads the temp JS file, extracts the content between the backtick delimiters, and writes it to the final destination.
+3. **Clean up** by deleting the temp file via `Bash`.
+
+This avoids template-literal escaping issues in shell `node -e` and bypasses the write-tool abort entirely. After extraction, verify the file was written correctly with a quick `Read`.
