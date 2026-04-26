@@ -18,6 +18,7 @@ import {
   RejectResumeVersionResponse,
 } from "@workspace/api-zod";
 import { validateLineage } from "../lib/lineage";
+import { generateResumeDocx } from "../lib/docx-export";
 
 const router: IRouter = Router();
 
@@ -349,6 +350,35 @@ router.post("/resume-versions/:id/reject", async (req, res): Promise<void> => {
 
   req.log.info({ id: params.data.id }, "Resume version rejected");
   res.json(RejectResumeVersionResponse.parse(row));
+});
+
+router.get("/resume-versions/:id/export", async (req, res): Promise<void> => {
+  const params = GetResumeVersionParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  
+  const [row] = await db
+    .select()
+    .from(resumeVersionsTable)
+    .where(eq(resumeVersionsTable.id, params.data.id));
+    
+  if (!row) {
+    res.status(404).json({ error: "Resume version not found" });
+    return;
+  }
+
+  try {
+    const buffer = await generateResumeDocx(row);
+    
+    res.setHeader("Content-Disposition", `attachment; filename="resume_${row.id}.docx"`);
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+    res.send(buffer);
+  } catch (error) {
+    req.log.error({ error }, "Failed to export resume DOCX");
+    res.status(500).json({ error: "Failed to generate DOCX file" });
+  }
 });
 
 export default router;

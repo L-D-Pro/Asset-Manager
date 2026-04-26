@@ -355,6 +355,24 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /jobs/{id}/research:
+    post:
+      operationId: researchJob
+      tags: [jobs]
+      summary: Research job and company with AI web search
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Updated job with research data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
   /jobs/{id}/claim-matches:
     get:
       operationId: getJobClaimMatches
@@ -1948,6 +1966,8 @@ components:
         parsedSenioritySignal:
           type: ["string", "null"]
         parsedStructuredData:
+          nullable: true
+        researchData:
           nullable: true
         status:
           type: string

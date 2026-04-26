@@ -8,7 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Building, MapPin, ExternalLink, ArrowLeft, Wand2, AlertCircle, Tag } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { getErrorMessage } from "@/lib/api-errors";
 import { AiProgressButton } from "@/components/ai/ai-progress-button";
 
@@ -30,6 +30,50 @@ export default function JobDetail() {
   const draftCoverLetter = useDraftCoverLetter();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const researchJob = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/jobs/${jobId}/research`, { method: "POST" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to research job");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Job research complete" });
+      queryClient.invalidateQueries({ queryKey: getGetJobQueryKey(jobId) });
+    },
+    onError: (error) =>
+      toast({
+        title: "Failed to research job",
+        description: error.message,
+        variant: "destructive",
+      })
+  });
+
+  const gapAnalysis = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/jobs/${jobId}/gap-analysis`, { method: "POST" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to run gap analysis");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({ title: "Gap analysis complete" });
+      // We would ideally store this in state to show the interactive chat
+      console.log("Gap Analysis Data:", data);
+    },
+    onError: (error) =>
+      toast({
+        title: "Failed to run gap analysis",
+        description: error.message,
+        variant: "destructive",
+      })
+  });
+
 
   if (isLoading) {
     return <div className="space-y-4"><Skeleton className="h-12 w-1/3" /><Skeleton className="h-64 w-full" /></div>;
@@ -143,6 +187,19 @@ export default function JobDetail() {
               />
               <AiProgressButton
                 variant="secondary"
+                onClick={() => researchJob.mutate()}
+                isPending={researchJob.isPending}
+                idleLabel="Research Strategy"
+              />
+              <AiProgressButton
+                variant="secondary"
+                onClick={() => gapAnalysis.mutate()}
+                isPending={gapAnalysis.isPending}
+                disabled={!job.parsedRequiredSkills || job.parsedRequiredSkills.length === 0}
+                idleLabel="Gap Analysis"
+              />
+              <AiProgressButton
+                variant="secondary"
                 onClick={handleTailor}
                 isPending={tailorResume.isPending}
                 disabled={!job.parsedRequiredSkills}
@@ -164,6 +221,7 @@ export default function JobDetail() {
             <TabsList>
               <TabsTrigger value="jd">Job Description</TabsTrigger>
               <TabsTrigger value="parsed">Parsed Data</TabsTrigger>
+              <TabsTrigger value="research">Research & Strategy</TabsTrigger>
               <TabsTrigger value="claims">Claim Matches</TabsTrigger>
             </TabsList>
             <TabsContent value="jd" className="mt-4">
@@ -214,6 +272,41 @@ export default function JobDetail() {
                       Run the parser to extract skills and requirements.
                     </div>
                   )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+            <TabsContent value="research" className="mt-4">
+              <Card>
+                <CardContent className="pt-6 space-y-6">
+                  {(() => {
+                    const rd = job.researchData as Record<string, unknown> | null;
+                    return rd ? (
+                      <div className="space-y-6 text-sm">
+                        {typeof rd.companyOverview === "string" && (
+                          <div>
+                            <h4 className="font-semibold text-lg mb-1 text-primary">Company Overview</h4>
+                            <p className="text-muted-foreground leading-relaxed">{rd.companyOverview}</p>
+                          </div>
+                        )}
+                        {typeof rd.recentNewsOrProjects === "string" && (
+                          <div>
+                            <h4 className="font-semibold text-lg mb-1 text-primary">Recent News</h4>
+                            <p className="text-muted-foreground leading-relaxed">{rd.recentNewsOrProjects}</p>
+                          </div>
+                        )}
+                        {typeof rd.interviewStrategy === "string" && (
+                          <div>
+                            <h4 className="font-semibold text-lg mb-1 text-primary">Interview Strategy</h4>
+                            <p className="text-muted-foreground leading-relaxed">{rd.interviewStrategy}</p>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-muted-foreground">
+                        Click 'Research Strategy' to gather real-world intelligence on this role.
+                      </div>
+                    );
+                  })()}
                 </CardContent>
               </Card>
             </TabsContent>

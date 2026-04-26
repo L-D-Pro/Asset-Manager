@@ -399,6 +399,13 @@ export default function ResumeVersionsPage() {
                           </Button>
                         </>
                       )}
+                      {version.status === "approved" && (
+                        <Button variant="secondary" size="sm" asChild>
+                          <a href={`/api/resume-versions/${version.id}/export`} target="_blank" rel="noopener noreferrer">
+                            Export DOCX <ExternalLink className="ml-1 h-3 w-3" />
+                          </a>
+                        </Button>
+                      )}
                       {version.fileUrl && (
                         <Button variant="secondary" size="sm" asChild>
                           <a href={version.fileUrl} target="_blank" rel="noopener noreferrer">

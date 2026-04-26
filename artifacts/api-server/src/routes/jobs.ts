@@ -41,6 +41,8 @@ import {
   MissingBaseResumeError,
 } from "../lib/pipelines/resume-tailor";
 import { runCoverLetterPipeline } from "../lib/pipelines/cover-letter-draft";
+import { runJobResearchPipeline } from "../lib/pipelines/job-research";
+import { runGapAnalysisPipeline } from "../lib/pipelines/gap-analysis";
 import { mintRunId } from "../lib/lineage";
 import { z } from "zod/v4";
 
@@ -230,6 +232,75 @@ router.post("/jobs/:id/parse", async (req, res): Promise<void> => {
   const updated = await runJdParsePipeline(job, rawJdText);
 
   res.json(ParseJobDescriptionResponse.parse(updated));
+});
+
+router.post("/jobs/:id/research", async (req, res): Promise<void> => {
+  const params = GetJobParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const [job] = await db
+    .select()
+    .from(jobsTable)
+    .where(eq(jobsTable.id, params.data.id));
+  if (!job) {
+    res.status(404).json({ error: "Job not found" });
+    return;
+  }
+
+  if (!job.rawJdText) {
+    res.status(400).json({ error: "rawJdText is required — please parse or store JD first" });
+    return;
+  }
+
+  req.log.info({ jobId: job.id }, "Starting job research pipeline");
+
+  try {
+    const researchResult = await runJobResearchPipeline(job.title, job.company, job.rawJdText, job.id);
+    
+    const [updated] = await db
+      .update(jobsTable)
+      .set({ researchData: researchResult })
+      .where(eq(jobsTable.id, job.id))
+      .returning();
+
+    res.json(updated);
+  } catch (error) {
+    req.log.error({ error }, "Job research pipeline failed");
+    res.status(500).json({ error: error instanceof Error ? error.message : "Job research failed" });
+  }
+});
+
+router.post("/jobs/:id/gap-analysis", async (req, res): Promise<void> => {
+  const params = GetJobParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const [job] = await db
+    .select()
+    .from(jobsTable)
+    .where(eq(jobsTable.id, params.data.id));
+  if (!job) {
+    res.status(404).json({ error: "Job not found" });
+    return;
+  }
+
+  const allClaims = await db
+    .select()
+    .from(claimsTable)
+    .where(eq(claimsTable.isActive, true));
+
+  try {
+    const result = await runGapAnalysisPipeline(job, allClaims);
+    res.json(result);
+  } catch (error) {
+    req.log.error({ error }, "Gap analysis failed");
+    res.status(500).json({ error: error instanceof Error ? error.message : "Gap analysis failed" });
+  }
 });
 
 router.get("/jobs/:id/claim-matches", async (req, res): Promise<void> => {

@@ -41,6 +41,7 @@ export interface Job {
   /** @nullable */
   parsedSenioritySignal?: string | null;
   parsedStructuredData?: unknown | null;
+  researchData?: unknown | null;
   status: string;
   /** @nullable */
   deduplicationHash?: string | null;

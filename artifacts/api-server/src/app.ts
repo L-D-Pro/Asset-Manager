@@ -129,4 +129,110 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
 
+// --- Diagnostic Dashboard ---
+app.get("/", async (req, res) => {
+  const maskKey = (key?: string) => {
+    if (!key) return "Not Configured ❌";
+    if (key.length <= 8) return "Invalid Key Length ❌";
+    return `${key.slice(0, 4)}...${key.slice(-4)} ✅`;
+  };
+
+  // 1. Check Database
+  let dbStatus = "Checking...";
+  let dbColor = "gray";
+  try {
+    await pool.query('SELECT 1');
+    dbStatus = "Connected ✅";
+    dbColor = "green";
+  } catch (err) {
+    dbStatus = `Failed ❌ (${(err as Error).message})`;
+    dbColor = "red";
+  }
+
+  // 2. Check OpenRouter
+  const orKey = process.env.AI_INTEGRATIONS_OPENROUTER_API_KEY;
+  let orStatus = "Checking...";
+  let orColor = "gray";
+  if (!orKey) {
+    orStatus = "Not Configured ❌";
+    orColor = "red";
+  } else {
+    try {
+      const orRes = await fetch("https://openrouter.ai/api/v1/auth/key", {
+        headers: { Authorization: `Bearer ${orKey}` }
+      });
+      if (orRes.ok) {
+        orStatus = "Authenticated ✅";
+        orColor = "green";
+      } else {
+        orStatus = `Auth Failed ❌ (${orRes.status})`;
+        orColor = "red";
+      }
+    } catch (err) {
+      orStatus = "Network Error ❌";
+      orColor = "red";
+    }
+  }
+
+  // 3. Check Not Diamond
+  // Removed
+
+  const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <title>Job Ops Diagnostic Dashboard</title>
+      <style>
+        body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #f8fafc; padding: 2rem; max-width: 800px; margin: 0 auto; }
+        h1 { border-bottom: 1px solid #334155; padding-bottom: 0.5rem; }
+        .card { background: #1e293b; border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem; border: 1px solid #334155; }
+        .row { display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #334155; }
+        .row:last-child { border-bottom: none; }
+        .label { font-weight: bold; color: #cbd5e1; }
+        .status-green { color: #4ade80; font-weight: bold; }
+        .status-red { color: #f87171; font-weight: bold; }
+        .status-gray { color: #94a3b8; }
+        .code { font-family: monospace; background: #0f172a; padding: 0.2rem 0.4rem; border-radius: 4px; color: #93c5fd; }
+      </style>
+    </head>
+    <body>
+      <h1>🚀 Job Ops Diagnostic Dashboard</h1>
+      <p>System status and API connectivity checks.</p>
+      
+      <div class="card">
+        <h2>Infrastructure</h2>
+        <div class="row">
+          <span class="label">PostgreSQL Database</span>
+          <span class="status-${dbColor}">${dbStatus}</span>
+        </div>
+        <div class="row">
+          <span class="label">Session Secret</span>
+          <span class="code">${maskKey(SESSION_SECRET)}</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>API Integrations</h2>
+        
+        <div class="row">
+          <span class="label">OpenRouter</span>
+          <div>
+            <span class="code" style="margin-right: 1rem;">${maskKey(orKey)}</span>
+            <span class="status-${orColor}">${orStatus}</span>
+          </div>
+        </div>
+
+      </div>
+      
+      <p style="text-align: center; color: #64748b; font-size: 0.875rem;">
+        API server is running locally on port ${process.env.PORT || 5000}. UI runs on port 5173.
+      </p>
+    </body>
+    </html>
+  `;
+
+  res.send(html);
+});
+
 export default app;

@@ -1632,6 +1632,90 @@ export const useParseJobDescription = <
 };
 
 /**
+ * @summary Research job and company with AI web search
+ */
+export const getResearchJobUrl = (id: number) => {
+  return `/api/jobs/${id}/research`;
+};
+
+export const researchJob = async (
+  id: number,
+  options?: RequestInit,
+): Promise<Job> => {
+  return customFetch<Job>(getResearchJobUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getResearchJobMutationOptions = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof researchJob>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof researchJob>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["researchJob"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof researchJob>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return researchJob(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ResearchJobMutationResult = NonNullable<
+  Awaited<ReturnType<typeof researchJob>>
+>;
+
+export type ResearchJobMutationError = ErrorType<NotFoundResponse>;
+
+/**
+ * @summary Research job and company with AI web search
+ */
+export const useResearchJob = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof researchJob>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof researchJob>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getResearchJobMutationOptions(options));
+};
+
+/**
  * @summary Get claims ranked by relevance to a job
  */
 export const getGetJobClaimMatchesUrl = (id: number) => {

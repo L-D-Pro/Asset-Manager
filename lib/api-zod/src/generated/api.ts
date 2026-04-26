@@ -198,6 +198,7 @@ export const ListJobsResponseItem = zod.object({
   parsedKeywords: zod.array(zod.string()).nullish(),
   parsedSenioritySignal: zod.string().nullish(),
   parsedStructuredData: zod.unknown().nullish(),
+  researchData: zod.unknown().nullish(),
   status: zod.string(),
   deduplicationHash: zod.string().nullish(),
   createdAt: zod.coerce.date(),
@@ -251,6 +252,7 @@ export const GetJobResponse = zod.object({
   parsedKeywords: zod.array(zod.string()).nullish(),
   parsedSenioritySignal: zod.string().nullish(),
   parsedStructuredData: zod.unknown().nullish(),
+  researchData: zod.unknown().nullish(),
   status: zod.string(),
   deduplicationHash: zod.string().nullish(),
   createdAt: zod.coerce.date(),
@@ -300,6 +302,7 @@ export const UpdateJobResponse = zod.object({
   parsedKeywords: zod.array(zod.string()).nullish(),
   parsedSenioritySignal: zod.string().nullish(),
   parsedStructuredData: zod.unknown().nullish(),
+  researchData: zod.unknown().nullish(),
   status: zod.string(),
   deduplicationHash: zod.string().nullish(),
   createdAt: zod.coerce.date(),
@@ -371,6 +374,41 @@ export const ParseJobDescriptionResponse = zod.object({
   parsedKeywords: zod.array(zod.string()).nullish(),
   parsedSenioritySignal: zod.string().nullish(),
   parsedStructuredData: zod.unknown().nullish(),
+  researchData: zod.unknown().nullish(),
+  status: zod.string(),
+  deduplicationHash: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Research job and company with AI web search
+ */
+export const ResearchJobParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ResearchJobResponse = zod.object({
+  id: zod.number(),
+  roleProfileId: zod.number().nullish(),
+  title: zod.string(),
+  company: zod.string(),
+  location: zod.string().nullish(),
+  remoteType: zod.string().nullish(),
+  salaryMin: zod.number().nullish(),
+  salaryMax: zod.number().nullish(),
+  salaryCurrency: zod.string().nullish(),
+  visaSponsorship: zod.string().nullish(),
+  sourceUrl: zod.string().nullish(),
+  sourcePlatform: zod.string().nullish(),
+  rawJdText: zod.string().nullish(),
+  parsedResponsibilities: zod.array(zod.string()).nullish(),
+  parsedRequiredSkills: zod.array(zod.string()).nullish(),
+  parsedNiceToHaveSkills: zod.array(zod.string()).nullish(),
+  parsedKeywords: zod.array(zod.string()).nullish(),
+  parsedSenioritySignal: zod.string().nullish(),
+  parsedStructuredData: zod.unknown().nullish(),
+  researchData: zod.unknown().nullish(),
   status: zod.string(),
   deduplicationHash: zod.string().nullish(),
   createdAt: zod.coerce.date(),
@@ -415,12 +453,6 @@ export const TailorJobResumeParams = zod.object({
 
 export const TailorJobResumeBody = zod.object({
   claimIds: zod.array(zod.number()).optional(),
-  modelOverride: zod
-    .object({
-      provider: zod.string().optional(),
-      modelName: zod.string(),
-    })
-    .optional(),
 });
 
 /**
@@ -432,12 +464,6 @@ export const DraftCoverLetterParams = zod.object({
 
 export const DraftCoverLetterBody = zod.object({
   claimIds: zod.array(zod.number()).optional(),
-  modelOverride: zod
-    .object({
-      provider: zod.string().optional(),
-      modelName: zod.string(),
-    })
-    .optional(),
 });
 
 /**

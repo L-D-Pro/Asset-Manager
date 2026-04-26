@@ -20,6 +20,7 @@ import {
   UploadValidationError,
 } from "../lib/document-text";
 import { draftClaimsFromSource } from "../lib/pipelines/claim-generation";
+import { extractClaimsFromChatPipeline } from "../lib/pipelines/gap-analysis";
 
 const router: IRouter = Router();
 
@@ -96,6 +97,24 @@ router.post("/claims/draft", async (req, res): Promise<void> => {
     req.log.error({ err }, "Failed to draft claims");
     res.status(500).json({
       error: err instanceof Error ? err.message : "Failed to draft claims",
+    });
+  }
+});
+
+router.post("/claims/extract-from-chat", async (req, res): Promise<void> => {
+  try {
+    const { question, answer, jobId } = req.body;
+    if (!question || !answer) {
+      res.status(400).json({ error: "question and answer are required" });
+      return;
+    }
+    const result = await extractClaimsFromChatPipeline(question, answer, jobId);
+    // Since DraftClaimsResponse expects `draftClaims`, the pipeline returns the correct shape
+    res.json(result);
+  } catch (err) {
+    req.log.error({ err }, "Failed to extract claims from chat");
+    res.status(500).json({
+      error: err instanceof Error ? err.message : "Failed to extract claims from chat",
     });
   }
 });

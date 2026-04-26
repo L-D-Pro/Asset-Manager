@@ -89,6 +89,9 @@ export const jobsTable = pgTable(
     /** Full structured JSON response from the JD parse AI call. Stored for debugging. */
     parsedStructuredData: jsonb("parsed_structured_data"),
 
+    /** Data extracted via the AI Job Research pipeline. */
+    researchData: jsonb("research_data"),
+
     /**
      * Current status. Lifecycle: `new` → `scored` (after JD parse) → `applied`.
      * Special states: `parse_failed` (AI returned unparseable output).

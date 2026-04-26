@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { MessageSquare, Check, X, Tag, RotateCcw } from "lucide-react";
+import { MessageSquare, Check, X, Tag, RotateCcw, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -174,6 +174,15 @@ export default function CoverLettersPage() {
                           data-testid={`btn-approve-cl-${version.id}`}
                         >
                           <Check className="mr-1 h-4 w-4" /> Approve
+                        </Button>
+                      </div>
+                    )}
+                    {version.status === "approved" && (
+                      <div className="flex items-center gap-2">
+                        <Button variant="secondary" size="sm" asChild>
+                          <a href={`/api/cover-letter-versions/${version.id}/export`} target="_blank" rel="noopener noreferrer">
+                            Export DOCX <ExternalLink className="ml-1 h-3 w-3" />
+                          </a>
                         </Button>
                       </div>
                     )}

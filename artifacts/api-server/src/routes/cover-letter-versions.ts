@@ -18,6 +18,7 @@ import {
   RejectCoverLetterVersionResponse,
 } from "@workspace/api-zod";
 import { validateLineage } from "../lib/lineage";
+import { generateCoverLetterDocx } from "../lib/docx-export";
 
 const router: IRouter = Router();
 
@@ -349,6 +350,35 @@ router.post("/cover-letter-versions/:id/reject", async (req, res): Promise<void>
 
   req.log.info({ id: params.data.id }, "Cover letter version rejected");
   res.json(RejectCoverLetterVersionResponse.parse(row));
+});
+
+router.get("/cover-letter-versions/:id/export", async (req, res): Promise<void> => {
+  const params = GetCoverLetterVersionParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  
+  const [row] = await db
+    .select()
+    .from(coverLetterVersionsTable)
+    .where(eq(coverLetterVersionsTable.id, params.data.id));
+    
+  if (!row) {
+    res.status(404).json({ error: "Cover letter version not found" });
+    return;
+  }
+
+  try {
+    const buffer = await generateCoverLetterDocx(row);
+    
+    res.setHeader("Content-Disposition", `attachment; filename="cover_letter_${row.id}.docx"`);
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+    res.send(buffer);
+  } catch (error) {
+    req.log.error({ error }, "Failed to export cover letter DOCX");
+    res.status(500).json({ error: "Failed to generate DOCX file" });
+  }
 });
 
 export default router;

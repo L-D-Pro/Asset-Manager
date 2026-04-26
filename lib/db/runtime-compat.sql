@@ -370,6 +370,8 @@ ALTER TABLE proposal_outcomes ADD COLUMN IF NOT EXISTS notes TEXT;
 ALTER TABLE proposal_outcomes ADD COLUMN IF NOT EXISTS metadata JSONB NOT NULL DEFAULT '{}'::jsonb;
 ALTER TABLE proposal_outcomes ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 ALTER TABLE proposal_outcomes ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS research_data JSONB;
+
 CREATE INDEX IF NOT EXISTS proposal_outcomes_project_id_idx ON proposal_outcomes(project_id);
 CREATE INDEX IF NOT EXISTS proposal_outcomes_outcome_idx ON proposal_outcomes(outcome);
 
