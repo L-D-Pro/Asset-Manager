@@ -3,6 +3,7 @@ import {
   BookOpen,
   CheckCircle,
   ClipboardCheck,
+  Info,
   MousePointerClick,
   ShieldCheck,
   Sparkles,
@@ -162,7 +163,9 @@ export default function GuidePage() {
               ["Resume tailoring", <StatusBadge status="pass" />, "Uses current base resume version, selected claims, full draft text, and truth-lock validation."],
               ["Cover letters", <StatusBadge status="pass" />, "Claim-attributed paragraphs with approval/rejection state machine."],
               ["AI Review", <StatusBadge status="partial" />, "Prompt versions, run evaluations, training examples, and review overview are scaffolded."],
-              ["Assisted Apply", <StatusBadge status="partial" />, "Safe session/action scaffolding exists. Browser worker and extension are not built yet."],
+              ["Assisted Apply", <StatusBadge status="partial" />, "Safe session/action scaffolding exists. Browser extension is next."],
+              ["AI Learning", <StatusBadge status="pass" />, "Bayesian auto-optimizer learns from outcomes to improve prompts/model configs."],
+              ["User Management", <StatusBadge status="pass" />, "Admin-only user CRUD with role-based visibility and secure password generation."],
               ["Freelance Copilot", <StatusBadge status="partial" />, "Profiles, projects, fit scoring, proposal drafts, and outcomes are scaffolded."],
               ["External site auto-submit", <StatusBadge status="planned" />, "Not implemented by design. Future work must remain human-approved and terms-aware."],
             ]}
@@ -200,7 +203,7 @@ curl http://localhost:8080/api/healthz`}</CodeBlock>
         </Section>
 
         <Section id="modules" title="4. Module Walkthroughs">
-          <SubSection id="mod-dashboard" title="Dashboard (/)">
+          <SubSection id="mod-dashboard" title="Dashboard (/dashboard)">
             <p className="text-sm text-muted-foreground">Shows application stats and recent job activity. Stats update as applications and feedback signals change.</p>
           </SubSection>
 
@@ -287,6 +290,35 @@ curl http://localhost:8080/api/healthz`}</CodeBlock>
             </p>
           </SubSection>
 
+          <SubSection id="mod-ai-learning" title="AI Learning (/ai-learning)">
+            <p className="text-sm text-muted-foreground">
+              Bayesian auto-optimizer that improves prompt versions and model configs by learning from your application outcomes (offer, hired, rejected, ghosted).
+            </p>
+            <Table
+              headers={["Mode", "Behavior"]}
+              rows={[
+                ["Suggest", "Shows promotion suggestions with confidence scores. You manually click to promote winning prompt variants."],
+                ["Auto-Promote", "System automatically promotes winners when confidence exceeds the threshold. Every auto-promotion is revertable."],
+                ["Recompute", "Aggregates feedback signals, compares variant pairs using Monte Carlo Bayesian inference, and produces comparison records."],
+              ]}
+            />
+          </SubSection>
+
+          <SubSection id="mod-users" title="User Management (/admin/users)">
+            <p className="text-sm text-muted-foreground">
+              Admin-only page for managing authorized users. The initial bootstrap admin must be promoted to <Code>role=admin</Code> in the database after first deploy.
+            </p>
+            <Table
+              headers={["Feature", "Behavior"]}
+              rows={[
+                ["Add User", "Generates a cryptographically secure random password. Stores username, email, first name, last name."],
+                ["Edit User", "Update name, email, or role. Password is never shown — use Reset Password to issue a new one."],
+                ["Reset Password", "Issues a new secure random password. Displays it once for copy-paste."],
+                ["Delete User", "Admins cannot delete themselves or the last remaining admin."],
+              ]}
+            />
+          </SubSection>
+
           <SubSection id="mod-assisted" title="Assisted Apply (/assisted-apply)">
             <p className="text-sm text-muted-foreground">
               Creates audit records for guided application sessions. It does not log into sites, bypass MFA/CAPTCHA, or submit applications. Use it to track future extension/worker-assisted sessions.
@@ -324,7 +356,7 @@ curl http://localhost:8080/api/healthz`}</CodeBlock>
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <ShieldCheck className="h-4 w-4" />
+                  <ShieldCheck className="h-4 w-4 text-green-600" />
                   V1: Grounding
                 </CardTitle>
               </CardHeader>
@@ -335,12 +367,12 @@ curl http://localhost:8080/api/healthz`}</CodeBlock>
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <Sparkles className="h-4 w-4" />
-                  V2: Supervised Learning
+                  <Sparkles className="h-4 w-4 text-green-600" />
+                  V2: Bayesian Learning
                 </CardTitle>
               </CardHeader>
               <CardContent className="text-sm text-muted-foreground">
-                Prompt versions, run evaluations, training examples, and feedback signals create a reviewable learning loop without fine-tuning yet.
+                Prompt versions and model configs are compared via Bayesian inference using your application outcomes. Winners are promoted automatically or with one click.
               </CardContent>
             </Card>
             <Card>
@@ -416,7 +448,29 @@ promptVersionBId: <improved-v2 id>`}</CodeBlock>
           </div>
         </Section>
 
-        <Section id="troubleshooting" title="8. Troubleshooting">
+        <Section id="deployment" title="8. Deployment">
+          <p className="text-sm text-muted-foreground">
+            Deploy via DigitalOcean App Platform or any Node 24 host with a PostgreSQL database. See <Code>docs/DEPLOY_DIGITALOCEAN.md</Code> for the full guide.
+          </p>
+          <Table
+            headers={["Step", "Action"]}
+            rows={[
+              ["1. Environment", "Set DATABASE_URL, SESSION_SECRET, AI_INTEGRATIONS_OPENROUTER_API_KEY, ADMIN_* vars as env vars in production."],
+              ["2. Schema", "Run pnpm --filter @workspace/db run push (or compat if drift). For non-interactive setup, use a manual SQL migration script."],
+              ["3. Dashboard build", "Set VITE_ENABLE_APPLY_WIZARD=true during the dashboard build step if you want the wizard route enabled."],
+              ["4. Admin role", "After first deploy, run UPDATE admin_users SET role = 'admin' WHERE id = 1; to enable User Management."],
+              ["5. Landing page", "Set VITE_PUBLIC_APP_URL to your production domain for proper OGP tag resolution."],
+            ]}
+          />
+          <div className="flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4 mt-4">
+            <Info className="mt-0.5 h-5 w-5 shrink-0 text-blue-700" />
+            <div className="text-sm text-blue-900">
+              <strong>Two-PC workflow:</strong> See <Code>docs/HANDOFF.md</Code> for the cross-PC session transition checklist. Always commit, push, and run DB migrations before switching machines.
+            </div>
+          </div>
+        </Section>
+
+        <Section id="troubleshooting" title="9. Troubleshooting">
           <div className="grid gap-4">
             {[
               ["Missing tables or 500s on new pages", "Run pnpm --filter @workspace/db run push. If that fails due to drift, use pnpm --filter @workspace/db run compat."],
@@ -440,8 +494,24 @@ promptVersionBId: <improved-v2 id>`}</CodeBlock>
           </div>
         </Section>
 
-        <Section id="changelog" title="9. Changelog">
+        <Section id="changelog" title="10. Changelog">
           <div className="space-y-6">
+            <div className="rounded-lg border-l-4 border-primary bg-muted/30 p-4">
+              <h3 className="mb-2 text-lg font-semibold">Version 0.4 (April 27, 2026)</h3>
+              <p className="mb-3 text-sm text-muted-foreground">
+                AI Self-Learning Loop, User Management, Landing Page, and global motion design overhaul.
+              </p>
+              <Table
+                headers={["Category", "Changes"]}
+                rows={[
+                  ["AI Learning", "Bayesian auto-optimizer that compares prompt versions and model configs using application outcomes. Suggest mode with manual promotion, auto-promote mode with one-click revert, and nightly cron scheduler."],
+                  ["User Management", "Admin-only user CRUD (/admin/users) with secure password generation, role-based visibility, self/last-admin deletion protection, and rate-limited auth endpoints."],
+                  ["Landing Page", "Public marketing page at / (unauthenticated). Authenticated users redirect to /dashboard. Full-page sections with Framer Motion animations."],
+                  ["Motion Design", "Global motion system: page transitions via AnimatePresence, scroll-triggered fade-in components, card hover/tap micro-interactions, Bento-grid dashboard, and glassmorphism utilities."],
+                ]}
+              />
+            </div>
+
             <div className="rounded-lg border-l-4 border-primary bg-muted/30 p-4">
               <h3 className="mb-2 text-lg font-semibold">Version 0.3 (April 22, 2026)</h3>
               <p className="mb-3 text-sm text-muted-foreground">
@@ -486,24 +556,23 @@ promptVersionBId: <improved-v2 id>`}</CodeBlock>
           </div>
         </Section>
 
-        <Section id="roadmap" title="10. Roadmap">
+        <Section id="roadmap" title="11. Roadmap">
           <Table
             headers={["Priority", "Work"]}
             rows={[
-              ["P0 (Done)", "M002 Regression Audit: runtime-compat.sql created, code-side fixes applied."],
-              ["P0", "Apply runtime-compat.sql to production database and browser-test all pages."],
+              ["P1", "Build browser extension MVP: page capture, Easy Apply auto-fill, autonomous job discovery + application bot with keyword/score filtering (LinkedIn, Indeed, ZipRecruiter)."],
               ["P1", "Add richer AI evaluation forms and training-example promotion UI."],
-              ["P1", "Build browser extension MVP for user-opened page capture."],
-              ["P2", "Build Playwright apply-worker only for whitelisted, permitted ATS/company workflows."],
+              ["P2", "Outcome analytics: correlate interviews/offers with claims, prompt versions, models, and proposals."],
               ["P2", "Add export/copy/PDF for approved resumes, cover letters, and proposals."],
-              ["P3", "Outcome analytics: correlate interviews/offers with claims, prompt versions, models, and proposals."],
+              ["P3", "Add 2FA admin controls in User Management."],
+              ["P3", "Fine-tuning pipeline: train on human-approved examples when dataset is large enough."],
             ]}
           />
         </Section>
 
         <Separator />
         <p className="text-center text-xs text-muted-foreground">
-          Job Ops Founder Guide - Last updated April 22, 2026 - Also available in <Code>docs/USER_GUIDE.md</Code>
+          Job Ops Founder Guide - Last updated April 27, 2026 - Also available in <Code>docs/USER_GUIDE.md</Code>
         </p>
       </div>
     </div>

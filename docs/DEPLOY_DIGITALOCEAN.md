@@ -46,10 +46,22 @@ Before using it:
    - `/api` preserves the path prefix when forwarded
 7. Review the managed PostgreSQL database component, attach an existing DigitalOcean cluster, or use an external Neon `DATABASE_URL`.
 8. Deploy.
-9. After first deploy, push the latest schema to the production database before testing new AI Review, Assisted Apply, Freelance, base-resume import, and AI claim drafting features:
+  9. After first deploy, push the latest schema to the production database before testing new AI Review, Assisted Apply, Freelance, base-resume import, AI claim drafting, AI Learning, and User Management features:
 
 ```bash
 corepack pnpm --filter @workspace/db run push
+```
+
+If `push` fails due to schema drift, use the compat recovery path:
+
+```bash
+corepack pnpm --filter @workspace/db run compat
+```
+
+10. If deploying the User Management system for the first time, run this SQL against the production database to give the bootstrap admin elevated privileges:
+
+```sql
+UPDATE admin_users SET role = 'admin' WHERE id = 1;
 ```
 
 ## Required Environment Variables
@@ -65,6 +77,12 @@ The API service must have:
 - `ADMIN_PASSWORD`
 - `ADMIN_EMAIL`
 - `ALLOWED_ORIGINS=https://<your-dashboard-domain>`
+
+The dashboard build can optionally set:
+
+- `VITE_ENABLE_APPLY_WIZARD=true` (enables the `/apply-wizard` route otherwise gated)
+
+If the root `.env.example` does not include a variable you need, check `artifacts/dashboard/.env.example` for dashboard-specific Vite-prefixed vars. Copy it to `artifacts/dashboard/.env` if you need local overrides.
 
 Notes:
 
@@ -134,6 +152,8 @@ Manual checks after the script:
 - Base Resume: save text, import DOCX/PDF, restore history
 - Claims Ledger: create a claim and run AI Draft Claims
 - AI Review: create a prompt version
+- **AI Learning**: visit `/ai-learning` and confirm the page loads (requires 10+ applications with outcomes to show data)
+- **User Management**: visit `/admin/users` (admin-only) and confirm the user table loads
 - Assisted Apply: create a safe session record
 - Freelance Copilot: create profile, capture project, score project, draft proposal
 
@@ -143,3 +163,6 @@ Manual checks after the script:
 - Upwork/freelance support drafts proposals for review; it does not scrape Upwork, auto-bid, or message clients automatically.
 - Secure session cookies require proxy awareness; the API now sets `trust proxy` in production for App Platform.
 - The dashboard expects same-origin `/api/*` routing in production, so the ingress rule is not optional.
+- **Landing page**: Unauthenticated visitors see the public marketing landing page at `/`. Authenticated users are redirected to `/dashboard`. The route is served client-side via React Router.
+- **AI Learning** (`/api/ai-learning/*`): The auto-promotion scheduler runs `node-cron` inside the API process. The default schedule is daily at 2 AM. Auto-promotion only activates when `autoPromoteEnabled` is toggled on via the dashboard or DB config.
+- **User Management** (`/api/auth/users/*`): Admin-only endpoints. The initial bootstrap admin must have `role = 'admin'` set in the DB. Rate limiting is applied to auth endpoints (5/15min for login).

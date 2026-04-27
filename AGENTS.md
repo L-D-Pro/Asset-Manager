@@ -26,6 +26,9 @@ This file is the canonical operating guide for agents working in this repository
 
 ### Current high-impact features
 
+- **Public landing page**: Unauthenticated visitors at `/` see a marketing page. Authenticated users redirect to `/dashboard`.
+- **AI Learning loop** (`/ai-learning`): Bayesian auto-optimizer that learns from application outcomes to improve prompt versions and model configs. Supports suggest mode (manual promote) and auto-promote mode (with revert).
+- **User Management** (`/admin/users`): Admin-only user CRUD with admin middleware, secure password generation, self-deletion/last-admin protection, rate-limited auth endpoints.
 - Apply Wizard route: `/apply-wizard` (feature flag `VITE_ENABLE_APPLY_WIZARD=true`).
 - Wizard tailor step supports:
   - system-default generation
@@ -170,6 +173,22 @@ git rebase --continue
 
 (Unless explicitly requested by the user in-session.)
 
+### End-of-session DB note
+
+When schema changes have been committed, push the migration to the running database before handing off:
+
+```powershell
+corepack pnpm --filter @workspace/db run push
+```
+
+If that fails (schema drift), fall back to:
+
+```powershell
+corepack pnpm --filter @workspace/db run compat
+```
+
+Note: `drizzle-kit push` is TUI-interactive and cannot be automated via stdin on Windows. When scripting, use a manual SQL migration script with `CREATE TABLE IF NOT EXISTS` and `CREATE INDEX IF NOT EXISTS` statements, executed via `pg` alone.
+
 ## Change rules for agents
 
 - Follow spec-first API workflow when endpoints change:
@@ -211,8 +230,10 @@ If behavior changed, update docs in the same PR/commit set (`docs/USER_GUIDE.md`
 
 - Route `/apply-wizard` may render a disabled notice when flag is off; this can be expected behavior.
 - Generated code under `lib/api-zod` and `lib/api-client-react` should be regenerated, not hand-edited unless explicitly required.
-- `lib/db/runtime-compat.sql` is the recovery path for DB drift after schema changes.
+- `lib/db/runtime-compat.sql` is the recovery path for DB schema drift after schema changes.
 - Never hardcode secrets in code/docs.
+- After first deploy with User Management, the bootstrap admin must be promoted to admin role manually: `UPDATE admin_users SET role = 'admin' WHERE id = 1;`.
+- `drizzle-kit push` is TUI-interactive on Windows; use manual SQL migration scripts for CI/automation (see End-of-session DB note above).
 
 ## High-signal file map
 
@@ -223,6 +244,11 @@ If behavior changed, update docs in the same PR/commit set (`docs/USER_GUIDE.md`
   - `docs/USER_GUIDE.md`
   - `docs/APPLY_WIZARD_MVP.md`
   - `docs/CHANGELOG.md`
+  - `docs/DEPLOY_DIGITALOCEAN.md`
+  - `docs/HANDOFF.md` (cross-PC session transition checklist)
+- Spec/plan docs:
+  - `docs/superpowers/specs/` (design specs)
+  - `docs/superpowers/plans/` (implementation plans)
 - API hotspots:
   - `artifacts/api-server/src/routes/jobs.ts`
   - `artifacts/api-server/src/routes/ai-model-configs.ts`
