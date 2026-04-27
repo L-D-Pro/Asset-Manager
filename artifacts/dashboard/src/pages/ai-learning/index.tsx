@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Brain, RefreshCw, TrendingUp, Trophy, AlertCircle, CheckCircle } from "lucide-react";
+import { Brain, RefreshCw, TrendingUp, Trophy, AlertCircle, CheckCircle, Undo2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -131,6 +131,27 @@ export default function AiLearningPage() {
     onError: (err) => {
       toast({
         title: "Promotion failed",
+        description: String(err),
+        variant: "destructive",
+      });
+    },
+  });
+
+  const revertMutation = useMutation({
+    mutationFn: (id: number) =>
+      fetch(`${API_BASE}/comparisons/${id}/revert`, { method: "POST" }).then(
+        (r) => r.json(),
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["ai-learning-comparisons"],
+      });
+      queryClient.invalidateQueries({ queryKey: ["ai-learning-stats"] });
+      toast({ title: "Variant reverted" });
+    },
+    onError: (err) => {
+      toast({
+        title: "Revert failed",
         description: String(err),
         variant: "destructive",
       });
@@ -403,6 +424,92 @@ export default function AiLearningPage() {
                           disabled={promoteMutation.isPending}
                         >
                           Promote Variant #{comp.variantAId}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          )}
+
+          {autoComparisons.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                  Auto-Promoted
+                </CardTitle>
+                <CardDescription>
+                  System promoted — review and revert if needed
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {autoComparisons.map((comp) => {
+                  const confPct = confidencePercent(comp.confidence);
+                  return (
+                    <Card
+                      key={comp.id}
+                      className="border-green-500/30"
+                    >
+                      <CardContent className="pt-6">
+                        <div className="flex items-center justify-between mb-4">
+                          <div>
+                            <h4 className="font-semibold">
+                              {comp.variantAType} #{comp.variantAId} vs #
+                              {comp.variantBId}
+                            </h4>
+                            <p className="text-xs text-muted-foreground">
+                              {comp.taskScope}
+                            </p>
+                          </div>
+                          <Badge variant="default" className="bg-green-500">
+                            Promoted
+                          </Badge>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                          <div>
+                            <p className="text-xs text-muted-foreground">
+                              Promoted (A)
+                            </p>
+                            <p className="text-lg font-bold text-green-600">
+                              {confidencePercent(comp.successRateA)}%
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              N={comp.sampleSizeA}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">
+                              Replaced (B)
+                            </p>
+                            <p className="text-lg font-bold text-muted-foreground">
+                              {confidencePercent(comp.successRateB)}%
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              N={comp.sampleSizeB}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-2 mb-4">
+                          <div
+                            className="bg-green-500 h-2 rounded-full transition-all"
+                            style={{ width: `${confPct}%` }}
+                          />
+                        </div>
+                        {comp.promotedAt && (
+                          <p className="text-xs text-muted-foreground mb-4">
+                            Promoted: {new Date(comp.promotedAt).toLocaleString()}
+                          </p>
+                        )}
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => revertMutation.mutate(comp.id)}
+                          disabled={revertMutation.isPending}
+                        >
+                          <Undo2 className="h-4 w-4 mr-2" />
+                          Revert Promotion
                         </Button>
                       </CardContent>
                     </Card>

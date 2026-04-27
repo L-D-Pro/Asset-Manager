@@ -65,9 +65,11 @@ const fadeIn = {
 
 function generatePassword(length = 16): string {
   const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*-_+=";
+  const buf = new Uint32Array(length);
+  crypto.getRandomValues(buf);
   let password = "";
   for (let i = 0; i < length; i++) {
-    password += charset.charAt(Math.floor(Math.random() * charset.length));
+    password += charset.charAt(buf[i]! % charset.length);
   }
   return password;
 }

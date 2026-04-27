@@ -45,7 +45,7 @@ async function bootstrapAdminUser() {
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
-  await db.insert(adminUsersTable).values({ username, email, passwordHash });
+  await db.insert(adminUsersTable).values({ username, email, passwordHash, role: "admin" });
   logger.info({ username, email }, "Admin user created from environment variables.");
   logger.warn(
     "Remove ADMIN_USERNAME and ADMIN_PASSWORD from environment after first login for security."

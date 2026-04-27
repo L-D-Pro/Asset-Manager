@@ -335,11 +335,13 @@ router.post("/ai-learning/recompute", async (_req, res): Promise<void> => {
             const aWins = isWinner(a, b, thresholds);
             const bWins = isWinner(b, a, thresholds);
 
-            let status = "pending";
+            let status: string;
             if (aWins || bWins) {
               status = config?.autoPromoteEnabled
                 ? "auto_promoted"
                 : "suggested";
+            } else {
+              status = "pending";
             }
 
             const [variantAId, variantABig, variantAType, rateABig, sampleSizeABig] =
@@ -354,7 +356,7 @@ router.post("/ai-learning/recompute", async (_req, res): Promise<void> => {
             const normalizedProbA =
               statA.variantId < statB.variantId ? probA : 1 - probA;
 
-            await tx.insert(aiVariantComparisonsTable).values({
+            const [inserted] = await tx.insert(aiVariantComparisonsTable).values({
               taskScope: scope,
               variantAId,
               variantAType,
@@ -367,7 +369,40 @@ router.post("/ai-learning/recompute", async (_req, res): Promise<void> => {
               sampleSizeA: sampleSizeABig,
               sampleSizeB: sampleSizeBBig,
               status,
-            });
+            }).returning();
+
+            if (status === "auto_promoted" && inserted) {
+              const probWinner = parseFloat(inserted.probabilityA);
+              const winnerId = probWinner >= 0.5 ? inserted.variantAId : inserted.variantBId;
+              const winnerType = probWinner >= 0.5 ? inserted.variantAType : inserted.variantBType;
+
+              if (winnerType === "prompt") {
+                await tx
+                  .update(aiPromptVersionsTable)
+                  .set({ isActive: false })
+                  .where(eq(aiPromptVersionsTable.taskScope, scope));
+
+                await tx
+                  .update(aiPromptVersionsTable)
+                  .set({ isActive: true })
+                  .where(eq(aiPromptVersionsTable.id, winnerId));
+              }
+
+              await tx.insert(eventLogsTable).values({
+                entityType: "ai_variant_comparison",
+                entityId: inserted.id,
+                eventType: "variant_promoted",
+                previousState: "pending",
+                nextState: "auto_promoted",
+                metadata: {
+                  winnerId,
+                  winnerType,
+                  taskScope: scope,
+                  probabilityA: inserted.probabilityA,
+                },
+                actorType: "system",
+              });
+            }
           }
         }
       }
@@ -473,6 +508,51 @@ router.get("/ai-learning/comparisons", async (req, res): Promise<void> => {
   res.json(rows);
 });
 
+async function promoteWinner(
+  comparison: typeof aiVariantComparisonsTable.$inferSelect,
+  actorType: "user" | "system",
+): Promise<void> {
+  await db.transaction(async (tx) => {
+    const probA = parseFloat(comparison.probabilityA);
+    const winnerId =
+      probA >= 0.5 ? comparison.variantAId : comparison.variantBId;
+    const winnerType =
+      probA >= 0.5 ? comparison.variantAType : comparison.variantBType;
+
+    if (winnerType === "prompt") {
+      await tx
+        .update(aiPromptVersionsTable)
+        .set({ isActive: false })
+        .where(eq(aiPromptVersionsTable.taskScope, comparison.taskScope));
+
+      await tx
+        .update(aiPromptVersionsTable)
+        .set({ isActive: true })
+        .where(eq(aiPromptVersionsTable.id, winnerId));
+    }
+
+    await tx
+      .update(aiVariantComparisonsTable)
+      .set({ status: "promoted", promotedAt: new Date() })
+      .where(eq(aiVariantComparisonsTable.id, comparison.id));
+
+    await tx.insert(eventLogsTable).values({
+      entityType: "ai_variant_comparison",
+      entityId: comparison.id,
+      eventType: "variant_promoted",
+      previousState: comparison.status,
+      nextState: "promoted",
+      metadata: {
+        winnerId,
+        winnerType,
+        taskScope: comparison.taskScope,
+        probabilityA: comparison.probabilityA,
+      },
+      actorType,
+    });
+  });
+}
+
 router.post(
   "/ai-learning/comparisons/:id/promote",
   async (req, res): Promise<void> => {
@@ -499,14 +579,49 @@ router.post(
       return;
     }
 
-    await db.transaction(async (tx) => {
-      const probA = parseFloat(comparison.probabilityA);
-      const winnerId =
-        probA >= 0.5 ? comparison.variantAId : comparison.variantBId;
-      const winnerType =
-        probA >= 0.5 ? comparison.variantAType : comparison.variantBType;
+    await promoteWinner(comparison, "user");
 
-      if (winnerType === "prompt") {
+    res.json({ ok: true });
+  },
+);
+
+router.post(
+  "/ai-learning/comparisons/:id/revert",
+  async (req, res): Promise<void> => {
+    const params = IdParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
+
+    const [comparison] = await db
+      .select()
+      .from(aiVariantComparisonsTable)
+      .where(eq(aiVariantComparisonsTable.id, params.data.id));
+
+    if (!comparison) {
+      res.status(404).json({ error: "Comparison not found" });
+      return;
+    }
+
+    if (comparison.status !== "auto_promoted") {
+      res
+        .status(409)
+        .json({ error: "Only auto-promoted comparisons can be reverted" });
+      return;
+    }
+
+    await db.transaction(async (tx) => {
+      const loserId =
+        parseFloat(comparison.probabilityA) >= 0.5
+          ? comparison.variantBId
+          : comparison.variantAId;
+      const loserType =
+        parseFloat(comparison.probabilityA) >= 0.5
+          ? comparison.variantBType
+          : comparison.variantAType;
+
+      if (loserType === "prompt") {
         await tx
           .update(aiPromptVersionsTable)
           .set({ isActive: false })
@@ -515,27 +630,25 @@ router.post(
         await tx
           .update(aiPromptVersionsTable)
           .set({ isActive: true })
-          .where(eq(aiPromptVersionsTable.id, winnerId));
+          .where(eq(aiPromptVersionsTable.id, loserId));
       }
 
       await tx
         .update(aiVariantComparisonsTable)
-        .set({ status: "promoted", promotedAt: new Date() })
+        .set({ status: "reverted", revertedAt: new Date() })
         .where(eq(aiVariantComparisonsTable.id, comparison.id));
 
       await tx.insert(eventLogsTable).values({
         entityType: "ai_variant_comparison",
         entityId: comparison.id,
-        eventType: "variant_promoted",
-        previousState: "suggested",
-        nextState: "promoted",
+        eventType: "variant_reverted",
+        previousState: "auto_promoted",
+        nextState: "reverted",
         metadata: {
-          winnerId,
-          winnerType,
           taskScope: comparison.taskScope,
-          probabilityA: comparison.probabilityA,
+          comparisonId: comparison.id,
         },
-        actorType: "system",
+        actorType: "user",
       });
     });
 

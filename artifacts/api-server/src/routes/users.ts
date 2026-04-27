@@ -1,5 +1,6 @@
 import { Router, type Response, type NextFunction } from "express";
 import bcrypt from "bcryptjs";
+import { randomInt } from "crypto";
 import { db } from "@workspace/db";
 import { adminUsersTable } from "@workspace/db";
 import { eq, count } from "drizzle-orm";
@@ -10,12 +11,12 @@ import type { JobOpsRequest } from "../lib/http-types";
 const usersRouter = Router();
 const BCRYPT_ROUNDS = 12;
 
-/** Generate a strong random password. */
+/** Generate a strong random password using a CSPRNG. */
 function generatePassword(length = 16): string {
   const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*-_+=";
   let password = "";
   for (let i = 0; i < length; i++) {
-    password += charset.charAt(Math.floor(Math.random() * charset.length));
+    password += charset.charAt(randomInt(0, charset.length));
   }
   return password;
 }

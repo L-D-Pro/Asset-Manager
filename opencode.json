@@ -5,6 +5,7 @@
     "prune": true,
     "reserved": 10000
   },
+  "plugin": ["superpowers@git+https://github.com/obra/superpowers.git"],
   "provider": {
     "chutes": {
       "npm": "@ai-sdk/openai-compatible",

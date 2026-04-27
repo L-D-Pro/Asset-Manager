@@ -6,6 +6,8 @@ import ConnectPgSimple from "connect-pg-simple";
 import { pool } from "@workspace/db";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { loginRateLimit, totpRateLimit, logoutRateLimit } from "./middlewares/rate-limit";
+import { startLearningScheduler } from "./lib/learning-scheduler";
 import type { SessionMiddlewareFactory } from "./lib/http-types";
 
 /**
@@ -127,15 +129,52 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Rate limiting for auth endpoints — must be mounted BEFORE the router
+app.use("/api/auth/login", loginRateLimit);
+app.use("/api/auth/login/totp", totpRateLimit);
+app.use("/api/auth/logout", logoutRateLimit);
+
 app.use("/api", router);
 
 // --- Diagnostic Dashboard ---
-app.get("/", async (req, res) => {
-  const maskKey = (key?: string) => {
-    if (!key) return "Not Configured ❌";
-    if (key.length <= 8) return "Invalid Key Length ❌";
-    return `${key.slice(0, 4)}...${key.slice(-4)} ✅`;
-  };
+
+/** Cached OpenRouter health check to avoid hammering their API on every request. */
+let orCache: { status: string; color: string; at: number } | null = null;
+const OR_CACHE_TTL_MS = 60_000;
+
+async function checkOpenRouter(): Promise<{ status: string; color: string }> {
+  const now = Date.now();
+  if (orCache && now - orCache.at < OR_CACHE_TTL_MS) {
+    return { status: orCache.status, color: orCache.color };
+  }
+
+  const orKey = process.env.AI_INTEGRATIONS_OPENROUTER_API_KEY;
+  if (!orKey) {
+    orCache = { status: "Not Configured ❌", color: "red", at: now };
+    return { status: orCache.status, color: orCache.color };
+  }
+
+  try {
+    const ctrl = new AbortController();
+    const timeout = setTimeout(() => ctrl.abort(), 5_000);
+    const orRes = await fetch("https://openrouter.ai/api/v1/auth/key", {
+      headers: { Authorization: `Bearer ${orKey}` },
+      signal: ctrl.signal,
+    });
+    clearTimeout(timeout);
+    if (orRes.ok) {
+      orCache = { status: "Authenticated ✅", color: "green", at: now };
+    } else {
+      orCache = { status: `Auth Failed ❌ (${orRes.status})`, color: "red", at: now };
+    }
+  } catch {
+    orCache = { status: "Network Error ❌", color: "red", at: now };
+  }
+  return { status: orCache.status, color: orCache.color };
+}
+
+app.get("/", async (_req, res) => {
+  const secretOk = !!SESSION_SECRET && SESSION_SECRET.length > 8;
 
   // 1. Check Database
   let dbStatus = "Checking...";
@@ -149,33 +188,10 @@ app.get("/", async (req, res) => {
     dbColor = "red";
   }
 
-  // 2. Check OpenRouter
+  // 2. Check OpenRouter (cached + timeout)
   const orKey = process.env.AI_INTEGRATIONS_OPENROUTER_API_KEY;
-  let orStatus = "Checking...";
-  let orColor = "gray";
-  if (!orKey) {
-    orStatus = "Not Configured ❌";
-    orColor = "red";
-  } else {
-    try {
-      const orRes = await fetch("https://openrouter.ai/api/v1/auth/key", {
-        headers: { Authorization: `Bearer ${orKey}` }
-      });
-      if (orRes.ok) {
-        orStatus = "Authenticated ✅";
-        orColor = "green";
-      } else {
-        orStatus = `Auth Failed ❌ (${orRes.status})`;
-        orColor = "red";
-      }
-    } catch (err) {
-      orStatus = "Network Error ❌";
-      orColor = "red";
-    }
-  }
-
-  // 3. Check Not Diamond
-  // Removed
+  const orKeyOk = !!orKey && orKey.length > 8;
+  const { status: orStatus, color: orColor } = await checkOpenRouter();
 
   const html = `
     <!DOCTYPE html>
@@ -208,7 +224,7 @@ app.get("/", async (req, res) => {
         </div>
         <div class="row">
           <span class="label">Session Secret</span>
-          <span class="code">${maskKey(SESSION_SECRET)}</span>
+          <span class="code">${secretOk ? "Configured ✅" : "Not Configured ❌"}</span>
         </div>
       </div>
 
@@ -218,7 +234,7 @@ app.get("/", async (req, res) => {
         <div class="row">
           <span class="label">OpenRouter</span>
           <div>
-            <span class="code" style="margin-right: 1rem;">${maskKey(orKey)}</span>
+            <span class="code" style="margin-right: 1rem;">${orKeyOk ? "Key Present ✅" : "Not Configured ❌"}</span>
             <span class="status-${orColor}">${orStatus}</span>
           </div>
         </div>
@@ -233,6 +249,10 @@ app.get("/", async (req, res) => {
   `;
 
   res.send(html);
+});
+
+startLearningScheduler().catch((err) => {
+  logger.error({ error: String(err) }, "Failed to start learning scheduler");
 });
 
 export default app;

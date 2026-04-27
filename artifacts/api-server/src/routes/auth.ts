@@ -1,5 +1,6 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
+import { randomBytes } from "crypto";
 import speakeasy from "speakeasy";
 import qrcode from "qrcode";
 import { db } from "@workspace/db";
@@ -55,13 +56,11 @@ async function verifyPassword(password: string, hash: string): Promise<boolean> 
   return bcrypt.compare(password, hash);
 }
 
-/** Generates 8 single-use recovery codes (10-char hex each). */
+/** Generates 8 single-use recovery codes (10-char hex each) using a CSPRNG. */
 function generateRecoveryCodes(): string[] {
   const codes: string[] = [];
   for (let i = 0; i < 8; i++) {
-    codes.push(
-      Array.from({ length: 10 }, () => Math.floor(Math.random() * 16).toString(16)).join("")
-    );
+    codes.push(randomBytes(5).toString("hex"));
   }
   return codes;
 }
@@ -271,7 +270,8 @@ authRouter.put("/auth/password", requireAuth, async (req: JobOpsRequest, res): P
 authRouter.put("/auth/email", requireAuth, async (req: JobOpsRequest, res): Promise<void> => {
   const { email } = req.body as { email?: string };
 
-  if (!email || !email.includes("@")) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!email || !emailRegex.test(email)) {
     res.status(400).json({ error: "Valid email is required" });
     return;
   }
