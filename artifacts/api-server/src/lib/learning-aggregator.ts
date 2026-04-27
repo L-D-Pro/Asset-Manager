@@ -6,7 +6,6 @@ interface RawSignal {
 interface AggregatedStat {
   variantType: "prompt";
   variantId: number;
-  taskScope: string;
   successes: number;
   failures: number;
   pending: number;
@@ -27,7 +26,6 @@ export function aggregateVariantStats(signals: RawSignal[]): AggregatedStat[] {
       entry = {
         variantType: "prompt",
         variantId: signal.promptVersionId,
-        taskScope: "",
         successes: 0,
         failures: 0,
         pending: 0,
