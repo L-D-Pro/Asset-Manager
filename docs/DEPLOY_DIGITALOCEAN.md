@@ -1,168 +1,282 @@
-# DigitalOcean Deployment Guide
+# DigitalOcean Deployment Guide — `jops.ldpro.io`
 
-This repo is ready to deploy as a private human-in-the-loop system on DigitalOcean App Platform. The deployment serves:
-
-- a Node/Express API at `/api/*`
-- a static React dashboard at `/`
-- a managed PostgreSQL database
+This guide deploys Job Ops as a **separate App Platform app** under your existing L&D Pro project, accessible at `https://jops.ldpro.io`. The database stays on Neon — nothing is provisioned on DigitalOcean besides compute.
 
 It does **not** automate job-site logins, bypass MFA/CAPTCHA, scrape prohibited platforms, auto-bid on Upwork, or submit applications/proposals on external platforms.
 
-## Before You Start
+---
 
-1. Push the repo to GitHub with `pnpm-lock.yaml` committed.
-2. Make sure the root `package.json` changes are present:
-   - `packageManager: pnpm@10.33.0`
-   - `engines.node: 24.x`
-3. Decide whether you want to use the default `*.ondigitalocean.app` domain first or attach a custom domain immediately.
+## Architecture
 
-## App Spec Path
+```
+Browser ──► https://jops.ldpro.io
+               │
+         DigitalOcean App Platform (sfo3)
+               │
+     ┌─────────┴─────────┐
+     │                    │
+  /api/*              /* (static)
+     │                    │
+  api service         dashboard
+  (Node/Express)      (React SPA)
+     │
+     ▼
+  Neon PostgreSQL
+  (external, us-west-2)
+```
 
-The repo includes a DigitalOcean App Platform template at [app.yaml](/c:/Users/uberc/Asset%20Manager%20Project/Asset-Manager/.do/app.yaml).
+- **api** — Node/Express service, listens on port 8080, handles all `/api/*` routes
+- **dashboard** — Static Vite-built React SPA, serves the UI at `/`
+- **database** — Neon-hosted PostgreSQL (external to DigitalOcean)
 
-Before using it:
+---
 
-1. Replace `REPLACE_WITH_YOUR_GITHUB_OWNER/REPLACE_WITH_YOUR_REPO`.
-2. Replace `REPLACE_WITH_YOUR_DOMAIN`.
-3. Replace the bootstrap admin values.
-4. Replace the OpenRouter key and session secret placeholders.
+## Prerequisites
 
-## Recommended Deploy Flow
+1. ✅ The repo is pushed to GitHub at `L-D-Pro/Asset-Manager` with `pnpm-lock.yaml` committed.
+2. ✅ Root `package.json` has `packageManager: pnpm@10.33.0`.
+3. ✅ You have a Neon database with a connection string ready.
+4. ✅ You have access to the L&D Pro project on DigitalOcean.
+5. ✅ You manage DNS for `ldpro.io` (visible in your DO dashboard).
 
-1. In DigitalOcean, create a new App Platform app from GitHub.
-2. Import or paste the `.do/app.yaml` spec.
-3. Keep the app in a single region for all components.
-4. Confirm the API service uses:
-   - build command: `./scripts/do-build.sh api`
-   - run command: `node --enable-source-maps artifacts/api-server/dist/index.mjs`
-   - internal port: `8080`
-   - health check: `/api/healthz`
-5. Confirm the dashboard static site uses:
-   - build command: `./scripts/do-build.sh dashboard`
-   - output directory: `artifacts/dashboard/dist/public`
-6. Confirm ingress rules:
-   - `/api` routes to the `api` service
-   - `/` routes to the `dashboard` static site
-   - `/api` preserves the path prefix when forwarded
-7. Review the managed PostgreSQL database component, attach an existing DigitalOcean cluster, or use an external Neon `DATABASE_URL`.
-8. Deploy.
-  9. After first deploy, push the latest schema to the production database before testing new AI Review, Assisted Apply, Freelance, base-resume import, AI claim drafting, AI Learning, and User Management features:
+---
 
-```bash
+## Step 1: Add DNS Record
+
+Go to **DigitalOcean → Networking → Domains → ldpro.io**:
+
+1. Click **Add Record** → **CNAME**
+2. Fill in:
+   - **Hostname**: `jops`
+   - **Value**: `<your-new-app>.ondigitalocean.app.` (you'll get this after creating the app, but you can add it now as a placeholder or add it after Step 2)
+   - **TTL**: 3600
+3. Save.
+
+> **Note**: You can also set this up after creating the app. DO will show you the exact CNAME target in the app's **Settings → Domains** section.
+
+---
+
+## Step 2: Create the App
+
+### Option A: Import from App Spec (Recommended)
+
+1. Go to **DigitalOcean → Apps → Create App**
+2. Choose **"Import from App Spec"** or paste the spec manually
+3. The file is at [`.do/app.yaml`](/.do/app.yaml) in the repo
+4. **Before importing**, replace these placeholder values in the YAML:
+
+| Placeholder | Replace with |
+|-------------|-------------|
+| `REPLACE_WITH_YOUR_NEON_DATABASE_URL` | Your Neon connection string (the `postgresql://...` URL from your `.env`) |
+| `REPLACE_WITH_A_LONG_RANDOM_SECRET` | A new random 64-char hex string for production (do NOT reuse your local dev one) |
+| `REPLACE_WITH_YOUR_OPENROUTER_KEY` | Your OpenRouter API key |
+| `REPLACE_WITH_YOUR_CHUTES_KEY` | Your Chutes API key |
+| `REPLACE_WITH_A_STRONG_BOOTSTRAP_PASSWORD` | A strong password (12+ chars) for the initial admin account |
+| `REPLACE_WITH_YOUR_ADMIN_EMAIL` | Your email address |
+
+5. Click **Create Resources**
+
+### Option B: Manual Setup via UI
+
+1. Go to **DigitalOcean → Apps → Create App**
+2. Choose **GitHub** as the source → Select `L-D-Pro/Asset-Manager`, branch `main`
+3. DO will auto-detect components. You need exactly **two**:
+
+#### Component 1: `api` (Web Service)
+| Setting | Value |
+|---------|-------|
+| Name | `api` |
+| Type | Web Service |
+| Source | `L-D-Pro/Asset-Manager` (branch: `main`) |
+| Source Directory | `/` |
+| Build Command | `./scripts/do-build.sh api` |
+| Run Command | `node --enable-source-maps artifacts/api-server/dist/index.mjs` |
+| HTTP Port | `8080` |
+| Instance Size | Basic ($5/mo — 1 vCPU, 0.5 GB RAM) |
+| Health Check Path | `/api/healthz` |
+
+#### Component 2: `dashboard` (Static Site)
+| Setting | Value |
+|---------|-------|
+| Name | `dashboard` |
+| Type | Static Site |
+| Source | `L-D-Pro/Asset-Manager` (branch: `main`) |
+| Source Directory | `/` |
+| Build Command | `./scripts/do-build.sh dashboard` |
+| Output Directory | `artifacts/dashboard/dist/public` |
+| Catchall Document | `index.html` |
+
+4. Under **Settings → Domains**, add `jops.ldpro.io` as the primary domain.
+
+---
+
+## Step 3: Configure Environment Variables
+
+In the DO dashboard, go to **App → Settings → api component → Environment Variables**:
+
+| Variable | Value | Scope | Type |
+|----------|-------|-------|------|
+| `NODE_ENV` | `production` | Run Time | General |
+| `PORT` | `8080` | Run Time | General |
+| `DATABASE_URL` | `postgresql://neondb_owner:...` | Run Time | **Secret** |
+| `SESSION_SECRET` | *(new random 64-char hex)* | Run Time | **Secret** |
+| `AI_INTEGRATIONS_OPENROUTER_API_KEY` | `sk-or-v1-...` | Run Time | **Secret** |
+| `AI_INTEGRATIONS_OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` | Run Time | General |
+| `CHUTES_API_KEY` | `cpk_...` | Run Time | **Secret** |
+| `ADMIN_USERNAME` | `admin` | Run Time | General |
+| `ADMIN_PASSWORD` | *(strong, 12+ chars)* | Run Time | **Secret** |
+| `ADMIN_EMAIL` | Your email | Run Time | General |
+| `ALLOWED_ORIGINS` | `https://jops.ldpro.io` | Run Time | General |
+
+For the **dashboard** component, add one build-time variable:
+
+| Variable | Value | Scope | Type |
+|----------|-------|-------|------|
+| `BASE_PATH` | `/` | Build Time | General |
+
+> **Generate a production SESSION_SECRET** — never reuse your local dev one. Run this in PowerShell:
+> ```powershell
+> node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+> ```
+
+---
+
+## Step 4: Configure Ingress Routes
+
+In the DO dashboard, go to **App → Settings → Routing Rules** (or this may already be set from the app spec):
+
+| Route | Component | Preserve Path Prefix |
+|-------|-----------|---------------------|
+| `/api` | `api` | ✅ Yes |
+| `/` | `dashboard` | — |
+
+The order matters — `/api` must come **before** `/` so API requests hit the service, not the static site.
+
+---
+
+## Step 5: Deploy
+
+1. Click **Deploy** (or it will auto-deploy if `deploy_on_push: true` was set).
+2. Watch the build logs. The build takes ~2–4 minutes per component.
+3. Common build issues:
+   - If corepack/pnpm fails: make sure `pnpm-lock.yaml` is committed and pushed
+   - If codegen fails: make sure `lib/api-spec/openapi.yaml` is valid
+
+---
+
+## Step 6: Push Schema to Production Database
+
+After the first successful deploy, push the Drizzle schema to your Neon production database. Run this from your **local machine** with your `.env` pointing to the production Neon URL:
+
+```powershell
 corepack pnpm --filter @workspace/db run push
 ```
 
-If `push` fails due to schema drift, use the compat recovery path:
+If `push` fails due to schema drift:
 
-```bash
+```powershell
 corepack pnpm --filter @workspace/db run compat
 ```
 
-10. If deploying the User Management system for the first time, run this SQL against the production database to give the bootstrap admin elevated privileges:
+> **Important**: `drizzle-kit push` is TUI-interactive on Windows. If it prompts for confirmation, follow the prompts manually.
+
+---
+
+## Step 7: First Boot Verification
+
+### 7a. Health Check
+Open in your browser:
+```
+https://jops.ldpro.io/api/healthz
+```
+You should see: `{"status":"ok"}`
+
+### 7b. Dashboard
+Open:
+```
+https://jops.ldpro.io
+```
+You should see the **public landing page**. Click "Log In".
+
+### 7c. Admin Login
+Log in with the `ADMIN_USERNAME` and `ADMIN_PASSWORD` you configured.
+
+### 7d. Promote Admin Role
+Run this SQL against your Neon database (via Neon console or `psql`):
 
 ```sql
 UPDATE admin_users SET role = 'admin' WHERE id = 1;
 ```
 
-## Required Environment Variables
+### 7e. Remove Bootstrap Credentials
+After confirming login works:
+1. Go to **App → Settings → api → Environment Variables**
+2. **Delete** `ADMIN_USERNAME`, `ADMIN_PASSWORD`, and `ADMIN_EMAIL`
+3. Click **Save** → this triggers a redeploy
+4. Re-test login to confirm it still works
 
-The API service must have:
+---
 
-- `NODE_ENV=production`
-- `DATABASE_URL`
-- `SESSION_SECRET`
-- `AI_INTEGRATIONS_OPENROUTER_API_KEY`
-- `AI_INTEGRATIONS_OPENROUTER_BASE_URL=https://openrouter.ai/api/v1`
-- `ADMIN_USERNAME`
-- `ADMIN_PASSWORD`
-- `ADMIN_EMAIL`
-- `ALLOWED_ORIGINS=https://<your-dashboard-domain>`
+## Step 8: Smoke Test
 
-The dashboard build can optionally set:
+From your local machine:
 
-- `VITE_ENABLE_APPLY_WIZARD=true` (enables the `/apply-wizard` route otherwise gated)
-
-If the root `.env.example` does not include a variable you need, check `artifacts/dashboard/.env.example` for dashboard-specific Vite-prefixed vars. Copy it to `artifacts/dashboard/.env` if you need local overrides.
-
-Notes:
-
-- `PORT` is injected automatically by App Platform from `http_port`.
-- `ADMIN_*` vars are first-run bootstrap only. Remove them after the first successful login and redeploy.
-- `ALLOWED_ORIGINS` should match the final dashboard origin exactly.
-
-## Why The DO Build Script Exists
-
-DigitalOcean App Platform builds on Linux, and this monorepo has already shown the usual platform-sensitive native package issues around `esbuild` and Rollup optional binaries when the install state is stale or was produced on another OS.
-
-The DigitalOcean build script in [do-build.sh](/c:/Users/uberc/Asset%20Manager%20Project/Asset-Manager/scripts/do-build.sh):
-
-- removes `package-lock.json` and `yarn.lock` if they exist
-- removes all `node_modules` directories
-- performs a fresh Linux-side `pnpm install --frozen-lockfile`
-- runs the right codegen/build steps for the selected component
-
-Important:
-
-- it does **not** delete `pnpm-lock.yaml`
-- it is intended for the App Platform build environment, not your normal local development flow
-
-## First Boot Checklist
-
-1. Open `https://<your-domain>/api/healthz` and confirm `{"status":"ok"}`.
-2. Open the dashboard and log in with the bootstrap admin account.
-3. Confirm the admin user is created.
-4. Remove `ADMIN_USERNAME`, `ADMIN_PASSWORD`, and `ADMIN_EMAIL` from the app config.
-5. Redeploy once more.
-6. Re-test login.
-
-## Post-Deploy Smoke Test
-
-Run the script in [smoke-test.ts](/c:/Users/uberc/Asset%20Manager%20Project/Asset-Manager/scripts/src/smoke-test.ts):
-
-```bash
-JOB_OPS_BASE_URL=https://your-domain \
-JOB_OPS_USERNAME=admin \
-JOB_OPS_PASSWORD='your-password' \
-pnpm smoke:test
-```
-
-If the account has 2FA enabled:
-
-```bash
-JOB_OPS_BASE_URL=https://your-domain \
-JOB_OPS_USERNAME=admin \
-JOB_OPS_PASSWORD='your-password' \
-JOB_OPS_TOTP_TOKEN=123456 \
-pnpm smoke:test
-```
-
-To include the AI endpoints for a known job:
-
-```bash
-JOB_OPS_BASE_URL=https://your-domain \
-JOB_OPS_USERNAME=admin \
-JOB_OPS_PASSWORD='your-password' \
-JOB_OPS_JOB_ID=123 \
-JOB_OPS_RUN_AI=true \
-pnpm smoke:test
+```powershell
+$env:JOB_OPS_BASE_URL = "https://jops.ldpro.io"
+$env:JOB_OPS_USERNAME = "admin"
+$env:JOB_OPS_PASSWORD = "your-production-password"
+corepack pnpm smoke:test
 ```
 
 Manual checks after the script:
-
 - Base Resume: save text, import DOCX/PDF, restore history
 - Claims Ledger: create a claim and run AI Draft Claims
 - AI Review: create a prompt version
-- **AI Learning**: visit `/ai-learning` and confirm the page loads (requires 10+ applications with outcomes to show data)
-- **User Management**: visit `/admin/users` (admin-only) and confirm the user table loads
+- AI Learning: visit `/ai-learning`
+- User Management: visit `/admin/users`
 - Assisted Apply: create a safe session record
-- Freelance Copilot: create profile, capture project, score project, draft proposal
+- Freelance Copilot: create profile, capture project
+
+---
+
+## Step 9: Update DNS CNAME (if you haven't already)
+
+After the app is created, DigitalOcean will show you the app's default URL (e.g., `job-ops-xxxxx.ondigitalocean.app`).
+
+Go to **DigitalOcean → Networking → Domains → ldpro.io** and update the CNAME:
+
+| Type | Hostname | Value |
+|------|----------|-------|
+| CNAME | `jops` | `job-ops-xxxxx.ondigitalocean.app.` |
+
+Wait for DNS propagation (usually 1–5 minutes, up to 48 hours).
+
+DigitalOcean will automatically provision a Let's Encrypt SSL certificate for `jops.ldpro.io`.
+
+---
+
+## Cost Estimate
+
+| Resource | Monthly Cost |
+|----------|-------------|
+| API service (Basic, 0.5 GB) | $5.00 |
+| Dashboard (Static Site) | $0.00 (included) |
+| Database (Neon) | $0.00 (your existing Neon plan) |
+| **Total** | **~$5.00/mo** |
+
+---
 
 ## Known Production Constraints
 
-- The app is still human-in-the-loop. It has assisted-apply scaffolding, but it does not log into LinkedIn, Indeed, ZipRecruiter, Greenhouse, Lever, Workday, Upwork, or company career sites.
-- Upwork/freelance support drafts proposals for review; it does not scrape Upwork, auto-bid, or message clients automatically.
-- Secure session cookies require proxy awareness; the API now sets `trust proxy` in production for App Platform.
-- The dashboard expects same-origin `/api/*` routing in production, so the ingress rule is not optional.
-- **Landing page**: Unauthenticated visitors see the public marketing landing page at `/`. Authenticated users are redirected to `/dashboard`. The route is served client-side via React Router.
-- **AI Learning** (`/api/ai-learning/*`): The auto-promotion scheduler runs `node-cron` inside the API process. The default schedule is daily at 2 AM. Auto-promotion only activates when `autoPromoteEnabled` is toggled on via the dashboard or DB config.
-- **User Management** (`/api/auth/users/*`): Admin-only endpoints. The initial bootstrap admin must have `role = 'admin'` set in the DB. Rate limiting is applied to auth endpoints (5/15min for login).
+- The app is human-in-the-loop. It does not log into job sites or submit applications automatically.
+- Secure session cookies require proxy awareness; the API sets `trust proxy` in production.
+- The dashboard expects same-origin `/api/*` routing — the ingress rule is mandatory.
+- Landing page: Unauthenticated visitors see the public marketing page at `/`. Authenticated users redirect to `/dashboard`.
+- AI Learning auto-promotion scheduler runs `node-cron` inside the API process (daily at 2 AM by default).
+- User Management admin endpoints require `role = 'admin'` in the DB.
+
+---
+
+## Continuous Deployment
+
+With `deploy_on_push: true`, every push to `main` on GitHub will automatically trigger a rebuild and redeploy of both the API and dashboard. No manual action needed after the initial setup.

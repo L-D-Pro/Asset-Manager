@@ -1,11 +1,15 @@
 name: job-ops
-region: nyc
+region: sfo3
 features:
   - buildpack-stack=ubuntu-22
 
 alerts:
   - rule: DEPLOYMENT_FAILED
   - rule: DOMAIN_FAILED
+
+domains:
+  - domain: jops.ldpro.io
+    type: PRIMARY
 
 ingress:
   rules:
@@ -25,12 +29,12 @@ services:
   - name: api
     environment_slug: node-js
     github:
-      repo: REPLACE_WITH_YOUR_GITHUB_OWNER/REPLACE_WITH_YOUR_REPO
+      repo: L-D-Pro/Asset-Manager
       branch: main
       deploy_on_push: true
     source_dir: /
     instance_count: 1
-    instance_size_slug: apps-s-1vcpu-1gb
+    instance_size_slug: apps-s-1vcpu-0.5gb
     http_port: 8080
     build_command: ./scripts/do-build.sh api
     run_command: node --enable-source-maps artifacts/api-server/dist/index.mjs
@@ -46,10 +50,14 @@ services:
         value: production
         scope: RUN_TIME
         type: GENERAL
-      - key: DATABASE_URL
-        value: ${jobops-db.DATABASE_URL}
+      - key: PORT
+        value: "8080"
         scope: RUN_TIME
         type: GENERAL
+      - key: DATABASE_URL
+        value: REPLACE_WITH_YOUR_NEON_DATABASE_URL
+        scope: RUN_TIME
+        type: SECRET
       - key: SESSION_SECRET
         value: REPLACE_WITH_A_LONG_RANDOM_SECRET
         scope: RUN_TIME
@@ -62,6 +70,10 @@ services:
         value: https://openrouter.ai/api/v1
         scope: RUN_TIME
         type: GENERAL
+      - key: CHUTES_API_KEY
+        value: REPLACE_WITH_YOUR_CHUTES_KEY
+        scope: RUN_TIME
+        type: SECRET
       - key: ADMIN_USERNAME
         value: admin
         scope: RUN_TIME
@@ -75,7 +87,7 @@ services:
         scope: RUN_TIME
         type: GENERAL
       - key: ALLOWED_ORIGINS
-        value: https://REPLACE_WITH_YOUR_DOMAIN
+        value: https://jops.ldpro.io
         scope: RUN_TIME
         type: GENERAL
 
@@ -83,23 +95,15 @@ static_sites:
   - name: dashboard
     environment_slug: node-js
     github:
-      repo: REPLACE_WITH_YOUR_GITHUB_OWNER/REPLACE_WITH_YOUR_REPO
+      repo: L-D-Pro/Asset-Manager
       branch: main
       deploy_on_push: true
     source_dir: /
     build_command: ./scripts/do-build.sh dashboard
     output_dir: artifacts/dashboard/dist/public
+    catchall_document: index.html
     envs:
       - key: BASE_PATH
         value: /
         scope: BUILD_TIME
         type: GENERAL
-
-databases:
-  - name: jobops-db
-    engine: PG
-    version: "16"
-    production: true
-    cluster_name: jobops-db
-    db_name: jobops
-    db_user: jobops
