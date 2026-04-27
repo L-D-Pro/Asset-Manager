@@ -17,4 +17,5 @@ export * from "./conversations";
 export * from "./messages";
 export * from "./relations";
 export * from "./ai-variant-comparisons";
+export * from "./ai-learning-config";
 export * from "./admin-users";
