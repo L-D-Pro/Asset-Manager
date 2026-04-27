@@ -53,6 +53,15 @@ Thumbs.db
 .env.local
 .env.*.local
 
+# ── Generated experiment outputs ──
+scripts/ai-prompt-iteration/out/*
+!scripts/ai-prompt-iteration/out/.gitkeep
+scripts/m002-final-verification/out/*
+!scripts/m002-final-verification/out/.gitkeep
+
+# ── Dashboard env overrides ──
+artifacts/dashboard/.env
+
 # ── GSD baseline (auto-generated) ──
 .gsd
 .gsd-id
