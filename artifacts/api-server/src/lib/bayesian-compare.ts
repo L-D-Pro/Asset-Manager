@@ -81,6 +81,10 @@ export function isWinner(
     minImprovementMargin: number;
   },
 ): boolean {
+  if (a.successes < 0 || a.failures < 0 || b.successes < 0 || b.failures < 0) {
+    return false;
+  }
+
   if (
     a.successes + a.failures < thresholds.minSampleSize ||
     b.successes + b.failures < thresholds.minSampleSize
