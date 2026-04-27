@@ -16,4 +16,5 @@ export * from "./freelance";
 export * from "./conversations";
 export * from "./messages";
 export * from "./relations";
+export * from "./ai-variant-comparisons";
 export * from "./admin-users";
