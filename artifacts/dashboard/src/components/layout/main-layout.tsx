@@ -15,6 +15,14 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
               {children}
             </div>
           </main>
+          <footer className="border-t border-border/50 py-4 text-center text-xs text-muted-foreground space-y-1">
+            <p>&copy; 2026 Cyrus Sepasi. All rights reserved. Portfolio Studio&trade; is a product of L&amp;D PRO.</p>
+            <p className="space-x-3">
+              <span className="hover:text-foreground transition-colors cursor-pointer">Terms of Service</span>
+              <span className="text-border">|</span>
+              <span className="hover:text-foreground transition-colors cursor-pointer">Privacy Policy</span>
+            </p>
+          </footer>
         </div>
       </div>
     </SidebarProvider>

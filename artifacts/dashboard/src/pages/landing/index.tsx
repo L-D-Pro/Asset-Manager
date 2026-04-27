@@ -888,8 +888,13 @@ function Footer() {
             </ul>
           </div>
         </div>
-        <div className="mt-10 pt-6 border-t border-border/30 text-center text-xs text-muted-foreground">
-          &copy; {new Date().getFullYear()} L&D Pro — Job Ops. All rights reserved.
+        <div className="mt-10 pt-6 border-t border-border/30 text-center text-xs text-muted-foreground space-y-2">
+          <p>&copy; 2026 Cyrus Sepasi. All rights reserved. Portfolio Studio&trade; is a product of L&amp;D PRO.</p>
+          <p className="space-x-3">
+            <span className="hover:text-foreground transition-colors cursor-pointer">Terms of Service</span>
+            <span className="text-border">|</span>
+            <span className="hover:text-foreground transition-colors cursor-pointer">Privacy Policy</span>
+          </p>
         </div>
       </div>
     </footer>

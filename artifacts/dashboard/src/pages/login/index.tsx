@@ -248,14 +248,19 @@ export default function LoginPage() {
           </AnimatePresence>
         </Card>
 
-        <motion.p
-          className="text-center text-xs text-muted-foreground mt-6"
+        <motion.div
+          className="text-center text-xs text-muted-foreground mt-6 space-y-2"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
         >
-          Private tool — not for public access
-        </motion.p>
+          <p>&copy; 2026 Cyrus Sepasi. All rights reserved. Portfolio Studio&trade; is a product of L&amp;D PRO.</p>
+          <p className="space-x-3">
+            <span className="hover:text-foreground transition-colors cursor-pointer">Terms of Service</span>
+            <span className="text-border">|</span>
+            <span className="hover:text-foreground transition-colors cursor-pointer">Privacy Policy</span>
+          </p>
+        </motion.div>
       </motion.div>
     </div>
   );
