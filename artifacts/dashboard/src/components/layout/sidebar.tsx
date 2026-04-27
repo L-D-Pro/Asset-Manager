@@ -62,7 +62,7 @@ export function Sidebar() {
 
         {isAdmin && (
           <SidebarGroup>
-            <SidebarGroupLabel>Admin</SidebarGroupLabel>
+            <SidebarGroupLabel>Account</SidebarGroupLabel>
             <SidebarMenu>
               <SidebarMenuItem>
                 <NavLink to="/admin/users" className="contents">
@@ -88,7 +88,7 @@ export function Sidebar() {
                 <SidebarMenuButton isActive={isActive} tooltip="Account" asChild>
                   <span className="flex items-center gap-3 cursor-pointer">
                     <User className="h-4 w-4" />
-                    <span className="flex-1 text-sm">{user?.username ?? "Account"}</span>
+                    <span className="flex-1 text-sm">Account</span>
                   </span>
                 </SidebarMenuButton>
               )}

@@ -90,9 +90,10 @@ const TOC_ITEMS = [
   { id: "ai-strategy", label: "5. AI Strategy" },
   { id: "safe-apply", label: "6. Assisted Apply Policy" },
   { id: "testing", label: "7. Smoke Test" },
-  { id: "troubleshooting", label: "8. Troubleshooting" },
-  { id: "changelog", label: "9. Changelog" },
-  { id: "roadmap", label: "10. Roadmap" },
+  { id: "deployment", label: "8. Deployment" },
+  { id: "troubleshooting", label: "9. Troubleshooting" },
+  { id: "changelog", label: "10. Changelog" },
+  { id: "roadmap", label: "11. Roadmap" },
 ];
 
 export default function GuidePage() {
