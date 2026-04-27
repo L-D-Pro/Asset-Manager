@@ -58,29 +58,11 @@ Go to **DigitalOcean → Networking → Domains → ldpro.io**:
 
 ## Step 2: Create the App
 
-### Option A: Import from App Spec (Recommended)
-
 1. Go to **DigitalOcean → Apps → Create App**
-2. Choose **"Import from App Spec"** or paste the spec manually
-3. The file is at [`.do/app.yaml`](/.do/app.yaml) in the repo
-4. **Before importing**, replace these placeholder values in the YAML:
-
-| Placeholder | Replace with |
-|-------------|-------------|
-| `REPLACE_WITH_YOUR_NEON_DATABASE_URL` | Your Neon connection string (the `postgresql://...` URL from your `.env`) |
-| `REPLACE_WITH_A_LONG_RANDOM_SECRET` | A new random 64-char hex string for production (do NOT reuse your local dev one) |
-| `REPLACE_WITH_YOUR_OPENROUTER_KEY` | Your OpenRouter API key |
-| `REPLACE_WITH_YOUR_CHUTES_KEY` | Your Chutes API key |
-| `REPLACE_WITH_A_STRONG_BOOTSTRAP_PASSWORD` | A strong password (12+ chars) for the initial admin account |
-| `REPLACE_WITH_YOUR_ADMIN_EMAIL` | Your email address |
-
-5. Click **Create Resources**
-
-### Option B: Manual Setup via UI
-
-1. Go to **DigitalOcean → Apps → Create App**
-2. Choose **GitHub** as the source → Select `L-D-Pro/Asset-Manager`, branch `main`
-3. DO will auto-detect components. You need exactly **two**:
+2. Under **Git repository**, select **GitHub** as the provider
+3. From the **Repository** dropdown, select `L-D-Pro/Asset-Manager`
+4. Click **Next**
+5. DO will auto-detect components from your repo. You need exactly **two**:
 
 #### Component 1: `api` (Web Service)
 | Setting | Value |

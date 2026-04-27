@@ -4,11 +4,11 @@
   "license": "MIT",
   "packageManager": "pnpm@10.33.0",
   "engines": {
-    "node": ">=24.x",
-    "pnpm": "10.x"
+    "node": "24.x"
   },
   "scripts": {
     "preinstall": "node -e \"const fs=require('fs'); for (const f of ['package-lock.json','yarn.lock']) if (fs.existsSync(f)) fs.rmSync(f); if (!(process.env.npm_config_user_agent || '').startsWith('pnpm/')) { console.error('Use pnpm instead'); process.exit(1); }\"",
+    "start": "node --enable-source-maps artifacts/api-server/dist/index.mjs",
     "dev": "corepack pnpm -r --parallel --filter @workspace/api-server --filter @workspace/dashboard run dev",
     "build": "corepack pnpm run typecheck && corepack pnpm --filter @workspace/api-server run build && corepack pnpm --filter @workspace/dashboard run build && corepack pnpm --filter @workspace/mockup-sandbox run build",
     "typecheck:libs": "tsc --build",
