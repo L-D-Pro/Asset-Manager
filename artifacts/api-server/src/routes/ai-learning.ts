@@ -321,7 +321,7 @@ router.post("/ai-learning/recompute", async (_req, res): Promise<void> => {
             const b = { successes: statB.successes, failures: statB.failures };
 
             const probA = compareVariants(a, b, 10000);
-            const conf = confidence(a, b);
+            const conf = Math.max(probA, 1 - probA);
 
             const rateA =
               a.successes + a.failures > 0
@@ -547,17 +547,7 @@ router.get("/ai-learning/config", async (_req, res): Promise<void> => {
   const [config] = await db.select().from(aiLearningConfigTable).limit(1);
 
   if (!config) {
-    const [inserted] = await db
-      .insert(aiLearningConfigTable)
-      .values({
-        autoPromoteEnabled: false,
-        confidenceThreshold: "0.95",
-        minSampleSize: 10,
-        minImprovementMargin: "0.05",
-        recomputeScheduleCron: "0 2 * * *",
-      })
-      .returning();
-    res.json(inserted);
+    res.json(null);
     return;
   }
 
