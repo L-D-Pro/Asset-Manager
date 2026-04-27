@@ -28,6 +28,7 @@ import FeedbackPage from "@/pages/feedback";
 import GuidePage from "@/pages/guide";
 import AccountPage from "@/pages/account";
 import AdminUsersPage from "@/pages/admin/users";
+import AiLearningPage from "@/pages/ai-learning";
 import NotFound from "@/pages/not-found";
 
 const ENABLE_APPLY_WIZARD = import.meta.env.VITE_ENABLE_APPLY_WIZARD === "true";
@@ -112,6 +113,7 @@ function ProtectedRoutes() {
           <Route path="/guide" element={<GuidePage />} />
           <Route path="/account" element={<AccountPage />} />
           <Route path="/admin/users" element={<AdminUsersPage />} />
+          <Route path="/ai-learning" element={<AiLearningPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </PageTransition>

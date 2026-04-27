@@ -25,6 +25,7 @@ export function Sidebar() {
     { name: "AI Review", href: "/ai-review", icon: Brain },
     { name: "AI Metrics", href: "/ai-metrics", icon: Activity },
     { name: "AI Config", href: "/ai-config", icon: Settings },
+    { name: "AI Learning", href: "/ai-learning", icon: Brain },
     { name: "Guide", href: "/guide", icon: BookOpen },
   ];
 
