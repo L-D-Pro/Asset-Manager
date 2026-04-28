@@ -22,24 +22,25 @@ echo "Preparing DigitalOcean build for target: $TARGET"
 # Keep pnpm as the source of truth, but remove conflicting lockfiles if they exist.
 rm -f package-lock.json yarn.lock
 
-# Clean platform-sensitive install state so App Platform rebuilds dependencies on Linux.
+# DO's buildpack already ran pnpm install, but the node_modules may have
+# platform-sensitive binaries from a cached layer. Wipe and reinstall to be safe.
 rm -rf node_modules
 find . -type d -name node_modules -prune -exec rm -rf {} +
 
-corepack enable
-corepack prepare pnpm@10.33.0 --activate
-corepack pnpm install --frozen-lockfile
+# DO's buildpack installs pnpm from the packageManager field in package.json.
+# corepack is NOT available in the DO build environment, so use pnpm directly.
+pnpm install --frozen-lockfile
 
 case "$TARGET" in
   api)
-    corepack pnpm --filter @workspace/api-spec run codegen
-    corepack pnpm --filter @workspace/api-server run build
+    pnpm --filter @workspace/api-spec run codegen
+    pnpm --filter @workspace/api-server run build
     ;;
   dashboard)
-    corepack pnpm --filter @workspace/api-spec run codegen
-    corepack pnpm --filter @workspace/dashboard run build
+    pnpm --filter @workspace/api-spec run codegen
+    pnpm --filter @workspace/dashboard run build
     ;;
   mockup-sandbox)
-    corepack pnpm --filter @workspace/mockup-sandbox run build
+    pnpm --filter @workspace/mockup-sandbox run build
     ;;
 esac
