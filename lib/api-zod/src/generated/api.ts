@@ -2250,32 +2250,28 @@ export const ListJobBoardListingsQueryParams = zod.object({
 });
 
 export const ListJobBoardListingsResponse = zod.object({
-  jobs: zod
-    .array(
-      zod.object({
-        id: zod.number(),
-        sourceId: zod.number(),
-        sourceKey: zod.string(),
-        sourceItemId: zod.string(),
-        sourceUrl: zod.string(),
-        title: zod.string(),
-        company: zod.string(),
-        location: zod.string().optional(),
-        summary: zod.string().optional(),
-        tags: zod.array(zod.string()).optional(),
-        jobType: zod.string().optional(),
-        workplaceType: zod.string().optional(),
-        publishedAt: zod.coerce.date().optional(),
-        isActive: zod.boolean().optional(),
-      }),
-    )
-    .optional(),
-  meta: zod
-    .object({
-      sourceCount: zod.number().optional(),
-      listingCount: zod.number().optional(),
-    })
-    .optional(),
+  jobs: zod.array(
+    zod.object({
+      id: zod.number(),
+      sourceId: zod.number(),
+      sourceKey: zod.string(),
+      sourceItemId: zod.string(),
+      sourceUrl: zod.string(),
+      title: zod.string(),
+      company: zod.string(),
+      location: zod.string().optional(),
+      summary: zod.string().optional(),
+      tags: zod.array(zod.string()).optional(),
+      jobType: zod.string().optional(),
+      workplaceType: zod.string().optional(),
+      publishedAt: zod.coerce.date().optional(),
+      isActive: zod.boolean().optional(),
+    }),
+  ),
+  meta: zod.object({
+    sourceCount: zod.number(),
+    listingCount: zod.number(),
+  }),
 });
 
 /**

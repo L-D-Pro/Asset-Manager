@@ -69,6 +69,7 @@ import type {
   HealthStatus,
   ImportBaseResumeBody,
   Job,
+  JobBoardListingsResponse,
   JobBoardSource,
   JobScoreResult,
   ListAiModelConfigsParams,
@@ -80,7 +81,6 @@ import type {
   ListCoverLetterVersionsParams,
   ListEventLogsParams,
   ListFeedbackSignalsParams,
-  ListJobBoardListings200,
   ListJobBoardListingsParams,
   ListJobsParams,
   ListResumeVersionsParams,
@@ -8198,8 +8198,8 @@ export const getListJobBoardListingsUrl = (
 export const listJobBoardListings = async (
   params?: ListJobBoardListingsParams,
   options?: RequestInit,
-): Promise<ListJobBoardListings200> => {
-  return customFetch<ListJobBoardListings200>(
+): Promise<JobBoardListingsResponse> => {
+  return customFetch<JobBoardListingsResponse>(
     getListJobBoardListingsUrl(params),
     {
       ...options,

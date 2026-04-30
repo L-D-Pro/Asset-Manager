@@ -1481,6 +1481,16 @@ export interface JobBoardSource {
   lastError?: string;
 }
 
+export interface JobBoardListingsMeta {
+  sourceCount: number;
+  listingCount: number;
+}
+
+export interface JobBoardListingsResponse {
+  jobs: JobBoardListing[];
+  meta: JobBoardListingsMeta;
+}
+
 /**
  * Bad request
  */
@@ -1575,14 +1585,4 @@ export type ListJobBoardListingsParams = {
   limit?: number;
   search?: string;
   location?: string;
-};
-
-export type ListJobBoardListings200Meta = {
-  sourceCount?: number;
-  listingCount?: number;
-};
-
-export type ListJobBoardListings200 = {
-  jobs?: JobBoardListing[];
-  meta?: ListJobBoardListings200Meta;
 };

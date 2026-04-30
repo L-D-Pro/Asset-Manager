@@ -6,7 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type ListJobBoardListings200Meta = {
-  sourceCount?: number;
-  listingCount?: number;
-};
+export interface JobBoardListingsMeta {
+  sourceCount: number;
+  listingCount: number;
+}

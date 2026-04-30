@@ -1795,19 +1795,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  jobs:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/JobBoardListing"
-                  meta:
-                    type: object
-                    properties:
-                      sourceCount:
-                        type: integer
-                      listingCount:
-                        type: integer
+                $ref: "#/components/schemas/JobBoardListingsResponse"
 
   /job-board/sources:
     get:
@@ -3943,7 +3931,6 @@ components:
 
     ResearchTrendsBody:
       type: object
-      required: [jobTitle]
       properties:
         jobTitle:
           type: string
@@ -3954,10 +3941,11 @@ components:
           enum: [entry, mid, senior, executive]
         salaryTarget:
           type: integer
+      required:
+        - jobTitle
 
     ResearchTrendsResponse:
       type: object
-      required: [analysis, jobMatches, cached]
       properties:
         analysis:
           $ref: "#/components/schemas/MarketAnalysis"
@@ -3967,14 +3955,16 @@ components:
             $ref: "#/components/schemas/JobBoardListing"
         cached:
           type: boolean
+      required:
+        - analysis
+        - jobMatches
+        - cached
 
     MarketAnalysis:
       type: object
-      required: [marketOverview, requiredSkills, certifications, trends, actionPlan, salaryInsights]
       properties:
         marketOverview:
           type: object
-          required: [demandLevel, competition, salaryAlignment, summary]
           properties:
             demandLevel:
               type: string
@@ -3987,11 +3977,15 @@ components:
               enum: [above, at, below-market]
             summary:
               type: string
+          required:
+            - demandLevel
+            - competition
+            - salaryAlignment
+            - summary
         requiredSkills:
           type: array
           items:
             type: object
-            required: [skill, frequency, category]
             properties:
               skill:
                 type: string
@@ -4001,11 +3995,14 @@ components:
               category:
                 type: string
                 enum: [technical, soft, domain]
+            required:
+              - skill
+              - frequency
+              - category
         certifications:
           type: array
           items:
             type: object
-            required: [name, demand, estimatedValue, provider]
             properties:
               name:
                 type: string
@@ -4016,9 +4013,13 @@ components:
                 type: string
               provider:
                 type: string
+            required:
+              - name
+              - demand
+              - estimatedValue
+              - provider
         trends:
           type: object
-          required: [emerging, declining, industryShifts]
           properties:
             emerging:
               type: array
@@ -4032,9 +4033,12 @@ components:
               type: array
               items:
                 type: string
+          required:
+            - emerging
+            - declining
+            - industryShifts
         actionPlan:
           type: object
-          required: [immediate, shortTerm, longTerm]
           properties:
             immediate:
               type: array
@@ -4048,9 +4052,12 @@ components:
               type: array
               items:
                 type: string
+          required:
+            - immediate
+            - shortTerm
+            - longTerm
         salaryInsights:
           type: object
-          required: [rangeLow, rangeHigh, median, factors]
           properties:
             rangeLow:
               type: integer
@@ -4062,10 +4069,21 @@ components:
               type: array
               items:
                 type: string
+          required:
+            - rangeLow
+            - rangeHigh
+            - median
+            - factors
+      required:
+        - marketOverview
+        - requiredSkills
+        - certifications
+        - trends
+        - actionPlan
+        - salaryInsights
 
     JobBoardListing:
       type: object
-      required: [id, sourceId, sourceKey, sourceItemId, sourceUrl, title, company]
       properties:
         id:
           type: integer
@@ -4098,10 +4116,17 @@ components:
           format: date-time
         isActive:
           type: boolean
+      required:
+        - id
+        - sourceId
+        - sourceKey
+        - sourceItemId
+        - sourceUrl
+        - title
+        - company
 
     JobBoardSource:
       type: object
-      required: [id, key, name, feedUrl, sourceType]
       properties:
         id:
           type: integer
@@ -4129,3 +4154,33 @@ components:
           format: date-time
         lastError:
           type: string
+      required:
+        - id
+        - key
+        - name
+        - feedUrl
+        - sourceType
+
+    JobBoardListingsMeta:
+      type: object
+      properties:
+        sourceCount:
+          type: integer
+        listingCount:
+          type: integer
+      required:
+        - sourceCount
+        - listingCount
+
+    JobBoardListingsResponse:
+      type: object
+      properties:
+        jobs:
+          type: array
+          items:
+            $ref: "#/components/schemas/JobBoardListing"
+        meta:
+          $ref: "#/components/schemas/JobBoardListingsMeta"
+      required:
+        - jobs
+        - meta

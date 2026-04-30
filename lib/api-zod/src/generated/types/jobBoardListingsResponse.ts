@@ -6,9 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { JobBoardListing } from "./jobBoardListing";
-import type { ListJobBoardListings200Meta } from "./listJobBoardListings200Meta";
+import type { JobBoardListingsMeta } from "./jobBoardListingsMeta";
 
-export type ListJobBoardListings200 = {
-  jobs?: JobBoardListing[];
-  meta?: ListJobBoardListings200Meta;
-};
+export interface JobBoardListingsResponse {
+  jobs: JobBoardListing[];
+  meta: JobBoardListingsMeta;
+}
