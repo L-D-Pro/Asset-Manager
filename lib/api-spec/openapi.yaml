@@ -36,6 +36,10 @@ tags:
     description: Human-approved assisted apply session scaffolding
   - name: freelance
     description: Freelance project and proposal copilot
+  - name: trends
+    description: Market research and trend analysis
+  - name: job-board
+    description: Aggregated job board listings
 
 paths:
   /healthz:
@@ -1741,6 +1745,84 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ClientMessageTemplate"
+
+  # ── Trends ─────────────────────────────────────────────────────────────────
+  /trends/research:
+    post:
+      operationId: researchTrends
+      tags: [trends]
+      summary: Research market trends for a job title
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResearchTrendsBody"
+      responses:
+        "200":
+          description: Market analysis and matching job listings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResearchTrendsResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  # ── Job Board ──────────────────────────────────────────────────────────────
+  /job-board/listings:
+    get:
+      operationId: listJobBoardListings
+      tags: [job-board]
+      summary: List aggregated job board listings
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+            maximum: 50
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: location
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of job listings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobs:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/JobBoardListing"
+                  meta:
+                    type: object
+                    properties:
+                      sourceCount:
+                        type: integer
+                      listingCount:
+                        type: integer
+
+  /job-board/sources:
+    get:
+      operationId: listJobBoardSources
+      tags: [job-board]
+      summary: List configured job board sources
+      responses:
+        "200":
+          description: List of sources
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/JobBoardSource"
 
 components:
   parameters:
@@ -3858,3 +3940,192 @@ components:
       required:
         - name
         - templateText
+
+    ResearchTrendsBody:
+      type: object
+      required: [jobTitle]
+      properties:
+        jobTitle:
+          type: string
+        location:
+          type: string
+        experienceLevel:
+          type: string
+          enum: [entry, mid, senior, executive]
+        salaryTarget:
+          type: integer
+
+    ResearchTrendsResponse:
+      type: object
+      required: [analysis, jobMatches, cached]
+      properties:
+        analysis:
+          $ref: "#/components/schemas/MarketAnalysis"
+        jobMatches:
+          type: array
+          items:
+            $ref: "#/components/schemas/JobBoardListing"
+        cached:
+          type: boolean
+
+    MarketAnalysis:
+      type: object
+      required: [marketOverview, requiredSkills, certifications, trends, actionPlan, salaryInsights]
+      properties:
+        marketOverview:
+          type: object
+          required: [demandLevel, competition, salaryAlignment, summary]
+          properties:
+            demandLevel:
+              type: string
+              enum: [high, medium, low]
+            competition:
+              type: string
+              enum: [high, medium, low]
+            salaryAlignment:
+              type: string
+              enum: [above, at, below-market]
+            summary:
+              type: string
+        requiredSkills:
+          type: array
+          items:
+            type: object
+            required: [skill, frequency, category]
+            properties:
+              skill:
+                type: string
+              frequency:
+                type: string
+                enum: [required, common, nice-to-have]
+              category:
+                type: string
+                enum: [technical, soft, domain]
+        certifications:
+          type: array
+          items:
+            type: object
+            required: [name, demand, estimatedValue, provider]
+            properties:
+              name:
+                type: string
+              demand:
+                type: string
+                enum: [high, medium, low]
+              estimatedValue:
+                type: string
+              provider:
+                type: string
+        trends:
+          type: object
+          required: [emerging, declining, industryShifts]
+          properties:
+            emerging:
+              type: array
+              items:
+                type: string
+            declining:
+              type: array
+              items:
+                type: string
+            industryShifts:
+              type: array
+              items:
+                type: string
+        actionPlan:
+          type: object
+          required: [immediate, shortTerm, longTerm]
+          properties:
+            immediate:
+              type: array
+              items:
+                type: string
+            shortTerm:
+              type: array
+              items:
+                type: string
+            longTerm:
+              type: array
+              items:
+                type: string
+        salaryInsights:
+          type: object
+          required: [rangeLow, rangeHigh, median, factors]
+          properties:
+            rangeLow:
+              type: integer
+            rangeHigh:
+              type: integer
+            median:
+              type: integer
+            factors:
+              type: array
+              items:
+                type: string
+
+    JobBoardListing:
+      type: object
+      required: [id, sourceId, sourceKey, sourceItemId, sourceUrl, title, company]
+      properties:
+        id:
+          type: integer
+        sourceId:
+          type: integer
+        sourceKey:
+          type: string
+        sourceItemId:
+          type: string
+        sourceUrl:
+          type: string
+        title:
+          type: string
+        company:
+          type: string
+        location:
+          type: string
+        summary:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        jobType:
+          type: string
+        workplaceType:
+          type: string
+        publishedAt:
+          type: string
+          format: date-time
+        isActive:
+          type: boolean
+
+    JobBoardSource:
+      type: object
+      required: [id, key, name, feedUrl, sourceType]
+      properties:
+        id:
+          type: integer
+        key:
+          type: string
+        name:
+          type: string
+        feedUrl:
+          type: string
+        sourceType:
+          type: string
+        category:
+          type: string
+        keywords:
+          type: array
+          items:
+            type: string
+        isActive:
+          type: boolean
+        lastFetchedAt:
+          type: string
+          format: date-time
+        lastSuccessAt:
+          type: string
+          format: date-time
+        lastError:
+          type: string

@@ -2162,3 +2162,138 @@ export const CreateClientMessageTemplateBody = zod.object({
   isActive: zod.boolean().optional(),
   metadata: zod.object({}).passthrough().optional(),
 });
+
+/**
+ * @summary Research market trends for a job title
+ */
+export const ResearchTrendsBody = zod.object({
+  jobTitle: zod.string(),
+  location: zod.string().optional(),
+  experienceLevel: zod.enum(["entry", "mid", "senior", "executive"]).optional(),
+  salaryTarget: zod.number().optional(),
+});
+
+export const ResearchTrendsResponse = zod.object({
+  analysis: zod.object({
+    marketOverview: zod.object({
+      demandLevel: zod.enum(["high", "medium", "low"]),
+      competition: zod.enum(["high", "medium", "low"]),
+      salaryAlignment: zod.enum(["above", "at", "below-market"]),
+      summary: zod.string(),
+    }),
+    requiredSkills: zod.array(
+      zod.object({
+        skill: zod.string(),
+        frequency: zod.enum(["required", "common", "nice-to-have"]),
+        category: zod.enum(["technical", "soft", "domain"]),
+      }),
+    ),
+    certifications: zod.array(
+      zod.object({
+        name: zod.string(),
+        demand: zod.enum(["high", "medium", "low"]),
+        estimatedValue: zod.string(),
+        provider: zod.string(),
+      }),
+    ),
+    trends: zod.object({
+      emerging: zod.array(zod.string()),
+      declining: zod.array(zod.string()),
+      industryShifts: zod.array(zod.string()),
+    }),
+    actionPlan: zod.object({
+      immediate: zod.array(zod.string()),
+      shortTerm: zod.array(zod.string()),
+      longTerm: zod.array(zod.string()),
+    }),
+    salaryInsights: zod.object({
+      rangeLow: zod.number(),
+      rangeHigh: zod.number(),
+      median: zod.number(),
+      factors: zod.array(zod.string()),
+    }),
+  }),
+  jobMatches: zod.array(
+    zod.object({
+      id: zod.number(),
+      sourceId: zod.number(),
+      sourceKey: zod.string(),
+      sourceItemId: zod.string(),
+      sourceUrl: zod.string(),
+      title: zod.string(),
+      company: zod.string(),
+      location: zod.string().optional(),
+      summary: zod.string().optional(),
+      tags: zod.array(zod.string()).optional(),
+      jobType: zod.string().optional(),
+      workplaceType: zod.string().optional(),
+      publishedAt: zod.coerce.date().optional(),
+      isActive: zod.boolean().optional(),
+    }),
+  ),
+  cached: zod.boolean(),
+});
+
+/**
+ * @summary List aggregated job board listings
+ */
+export const listJobBoardListingsQueryLimitDefault = 10;
+export const listJobBoardListingsQueryLimitMax = 50;
+
+export const ListJobBoardListingsQueryParams = zod.object({
+  limit: zod.coerce
+    .number()
+    .max(listJobBoardListingsQueryLimitMax)
+    .default(listJobBoardListingsQueryLimitDefault),
+  search: zod.coerce.string().optional(),
+  location: zod.coerce.string().optional(),
+});
+
+export const ListJobBoardListingsResponse = zod.object({
+  jobs: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        sourceId: zod.number(),
+        sourceKey: zod.string(),
+        sourceItemId: zod.string(),
+        sourceUrl: zod.string(),
+        title: zod.string(),
+        company: zod.string(),
+        location: zod.string().optional(),
+        summary: zod.string().optional(),
+        tags: zod.array(zod.string()).optional(),
+        jobType: zod.string().optional(),
+        workplaceType: zod.string().optional(),
+        publishedAt: zod.coerce.date().optional(),
+        isActive: zod.boolean().optional(),
+      }),
+    )
+    .optional(),
+  meta: zod
+    .object({
+      sourceCount: zod.number().optional(),
+      listingCount: zod.number().optional(),
+    })
+    .optional(),
+});
+
+/**
+ * @summary List configured job board sources
+ */
+export const ListJobBoardSourcesResponseItem = zod.object({
+  id: zod.number(),
+  key: zod.string(),
+  name: zod.string(),
+  feedUrl: zod.string(),
+  sourceType: zod.string(),
+  category: zod.string().optional(),
+  keywords: zod.array(zod.string()).optional(),
+  isActive: zod.boolean().optional(),
+  lastFetchedAt: zod.coerce.date().optional(),
+  lastSuccessAt: zod.coerce.date().optional(),
+  lastError: zod.string().optional(),
+});
+export const ListJobBoardSourcesResponse = zod.array(
+  ListJobBoardSourcesResponseItem,
+);

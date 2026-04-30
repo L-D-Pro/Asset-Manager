@@ -1325,6 +1325,162 @@ export interface CreateClientMessageTemplateBody {
   metadata?: CreateClientMessageTemplateBodyMetadata;
 }
 
+export type ResearchTrendsBodyExperienceLevel =
+  (typeof ResearchTrendsBodyExperienceLevel)[keyof typeof ResearchTrendsBodyExperienceLevel];
+
+export const ResearchTrendsBodyExperienceLevel = {
+  entry: "entry",
+  mid: "mid",
+  senior: "senior",
+  executive: "executive",
+} as const;
+
+export interface ResearchTrendsBody {
+  jobTitle: string;
+  location?: string;
+  experienceLevel?: ResearchTrendsBodyExperienceLevel;
+  salaryTarget?: number;
+}
+
+export type MarketAnalysisMarketOverviewDemandLevel =
+  (typeof MarketAnalysisMarketOverviewDemandLevel)[keyof typeof MarketAnalysisMarketOverviewDemandLevel];
+
+export const MarketAnalysisMarketOverviewDemandLevel = {
+  high: "high",
+  medium: "medium",
+  low: "low",
+} as const;
+
+export type MarketAnalysisMarketOverviewCompetition =
+  (typeof MarketAnalysisMarketOverviewCompetition)[keyof typeof MarketAnalysisMarketOverviewCompetition];
+
+export const MarketAnalysisMarketOverviewCompetition = {
+  high: "high",
+  medium: "medium",
+  low: "low",
+} as const;
+
+export type MarketAnalysisMarketOverviewSalaryAlignment =
+  (typeof MarketAnalysisMarketOverviewSalaryAlignment)[keyof typeof MarketAnalysisMarketOverviewSalaryAlignment];
+
+export const MarketAnalysisMarketOverviewSalaryAlignment = {
+  above: "above",
+  at: "at",
+  "below-market": "below-market",
+} as const;
+
+export type MarketAnalysisRequiredSkillsItemFrequency =
+  (typeof MarketAnalysisRequiredSkillsItemFrequency)[keyof typeof MarketAnalysisRequiredSkillsItemFrequency];
+
+export const MarketAnalysisRequiredSkillsItemFrequency = {
+  required: "required",
+  common: "common",
+  "nice-to-have": "nice-to-have",
+} as const;
+
+export type MarketAnalysisRequiredSkillsItemCategory =
+  (typeof MarketAnalysisRequiredSkillsItemCategory)[keyof typeof MarketAnalysisRequiredSkillsItemCategory];
+
+export const MarketAnalysisRequiredSkillsItemCategory = {
+  technical: "technical",
+  soft: "soft",
+  domain: "domain",
+} as const;
+
+export type MarketAnalysisCertificationsItemDemand =
+  (typeof MarketAnalysisCertificationsItemDemand)[keyof typeof MarketAnalysisCertificationsItemDemand];
+
+export const MarketAnalysisCertificationsItemDemand = {
+  high: "high",
+  medium: "medium",
+  low: "low",
+} as const;
+
+export type MarketAnalysisMarketOverview = {
+  demandLevel: MarketAnalysisMarketOverviewDemandLevel;
+  competition: MarketAnalysisMarketOverviewCompetition;
+  salaryAlignment: MarketAnalysisMarketOverviewSalaryAlignment;
+  summary: string;
+};
+
+export type MarketAnalysisRequiredSkillsItem = {
+  skill: string;
+  frequency: MarketAnalysisRequiredSkillsItemFrequency;
+  category: MarketAnalysisRequiredSkillsItemCategory;
+};
+
+export type MarketAnalysisCertificationsItem = {
+  name: string;
+  demand: MarketAnalysisCertificationsItemDemand;
+  estimatedValue: string;
+  provider: string;
+};
+
+export type MarketAnalysisTrends = {
+  emerging: string[];
+  declining: string[];
+  industryShifts: string[];
+};
+
+export type MarketAnalysisActionPlan = {
+  immediate: string[];
+  shortTerm: string[];
+  longTerm: string[];
+};
+
+export type MarketAnalysisSalaryInsights = {
+  rangeLow: number;
+  rangeHigh: number;
+  median: number;
+  factors: string[];
+};
+
+export interface MarketAnalysis {
+  marketOverview: MarketAnalysisMarketOverview;
+  requiredSkills: MarketAnalysisRequiredSkillsItem[];
+  certifications: MarketAnalysisCertificationsItem[];
+  trends: MarketAnalysisTrends;
+  actionPlan: MarketAnalysisActionPlan;
+  salaryInsights: MarketAnalysisSalaryInsights;
+}
+
+export interface JobBoardListing {
+  id: number;
+  sourceId: number;
+  sourceKey: string;
+  sourceItemId: string;
+  sourceUrl: string;
+  title: string;
+  company: string;
+  location?: string;
+  summary?: string;
+  tags?: string[];
+  jobType?: string;
+  workplaceType?: string;
+  publishedAt?: string;
+  isActive?: boolean;
+}
+
+export interface ResearchTrendsResponse {
+  analysis: MarketAnalysis;
+  jobMatches: JobBoardListing[];
+  cached: boolean;
+}
+
+export interface JobBoardSource {
+  id: number;
+  key: string;
+  name: string;
+  feedUrl: string;
+  sourceType: string;
+  category?: string;
+  keywords?: string[];
+  isActive?: boolean;
+  lastFetchedAt?: string;
+  lastSuccessAt?: string;
+  lastError?: string;
+}
+
 /**
  * Bad request
  */
@@ -1410,4 +1566,23 @@ export const GetAiMetricsSnapshotMetricsVersion = {
 export type ListAiTrainingExamplesParams = {
   taskScope?: string;
   isActive?: boolean;
+};
+
+export type ListJobBoardListingsParams = {
+  /**
+   * @maximum 50
+   */
+  limit?: number;
+  search?: string;
+  location?: string;
+};
+
+export type ListJobBoardListings200Meta = {
+  sourceCount?: number;
+  listingCount?: number;
+};
+
+export type ListJobBoardListings200 = {
+  jobs?: JobBoardListing[];
+  meta?: ListJobBoardListings200Meta;
 };

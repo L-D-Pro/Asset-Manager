@@ -69,6 +69,7 @@ import type {
   HealthStatus,
   ImportBaseResumeBody,
   Job,
+  JobBoardSource,
   JobScoreResult,
   ListAiModelConfigsParams,
   ListAiPromptVersionsParams,
@@ -79,6 +80,8 @@ import type {
   ListCoverLetterVersionsParams,
   ListEventLogsParams,
   ListFeedbackSignalsParams,
+  ListJobBoardListings200,
+  ListJobBoardListingsParams,
   ListJobsParams,
   ListResumeVersionsParams,
   NotFoundResponse,
@@ -86,6 +89,8 @@ import type {
   ProjectSource,
   ProposalOutcome,
   ProposalVersion,
+  ResearchTrendsBody,
+  ResearchTrendsResponse,
   ResumeVersion,
   RoleProfile,
   ScoreJobParams,
@@ -8082,3 +8087,267 @@ export const useCreateClientMessageTemplate = <
 > => {
   return useMutation(getCreateClientMessageTemplateMutationOptions(options));
 };
+
+/**
+ * @summary Research market trends for a job title
+ */
+export const getResearchTrendsUrl = () => {
+  return `/api/trends/research`;
+};
+
+export const researchTrends = async (
+  researchTrendsBody: ResearchTrendsBody,
+  options?: RequestInit,
+): Promise<ResearchTrendsResponse> => {
+  return customFetch<ResearchTrendsResponse>(getResearchTrendsUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(researchTrendsBody),
+  });
+};
+
+export const getResearchTrendsMutationOptions = <
+  TError = ErrorType<BadRequestResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof researchTrends>>,
+    TError,
+    { data: BodyType<ResearchTrendsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof researchTrends>>,
+  TError,
+  { data: BodyType<ResearchTrendsBody> },
+  TContext
+> => {
+  const mutationKey = ["researchTrends"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof researchTrends>>,
+    { data: BodyType<ResearchTrendsBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return researchTrends(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ResearchTrendsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof researchTrends>>
+>;
+export type ResearchTrendsMutationBody = BodyType<ResearchTrendsBody>;
+export type ResearchTrendsMutationError = ErrorType<BadRequestResponse>;
+
+/**
+ * @summary Research market trends for a job title
+ */
+export const useResearchTrends = <
+  TError = ErrorType<BadRequestResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof researchTrends>>,
+    TError,
+    { data: BodyType<ResearchTrendsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof researchTrends>>,
+  TError,
+  { data: BodyType<ResearchTrendsBody> },
+  TContext
+> => {
+  return useMutation(getResearchTrendsMutationOptions(options));
+};
+
+/**
+ * @summary List aggregated job board listings
+ */
+export const getListJobBoardListingsUrl = (
+  params?: ListJobBoardListingsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/job-board/listings?${stringifiedParams}`
+    : `/api/job-board/listings`;
+};
+
+export const listJobBoardListings = async (
+  params?: ListJobBoardListingsParams,
+  options?: RequestInit,
+): Promise<ListJobBoardListings200> => {
+  return customFetch<ListJobBoardListings200>(
+    getListJobBoardListingsUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListJobBoardListingsQueryKey = (
+  params?: ListJobBoardListingsParams,
+) => {
+  return [`/api/job-board/listings`, ...(params ? [params] : [])] as const;
+};
+
+export const getListJobBoardListingsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listJobBoardListings>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListJobBoardListingsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listJobBoardListings>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListJobBoardListingsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listJobBoardListings>>
+  > = ({ signal }) =>
+    listJobBoardListings(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listJobBoardListings>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListJobBoardListingsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listJobBoardListings>>
+>;
+export type ListJobBoardListingsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List aggregated job board listings
+ */
+
+export function useListJobBoardListings<
+  TData = Awaited<ReturnType<typeof listJobBoardListings>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListJobBoardListingsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listJobBoardListings>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListJobBoardListingsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List configured job board sources
+ */
+export const getListJobBoardSourcesUrl = () => {
+  return `/api/job-board/sources`;
+};
+
+export const listJobBoardSources = async (
+  options?: RequestInit,
+): Promise<JobBoardSource[]> => {
+  return customFetch<JobBoardSource[]>(getListJobBoardSourcesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListJobBoardSourcesQueryKey = () => {
+  return [`/api/job-board/sources`] as const;
+};
+
+export const getListJobBoardSourcesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listJobBoardSources>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listJobBoardSources>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListJobBoardSourcesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listJobBoardSources>>
+  > = ({ signal }) => listJobBoardSources({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listJobBoardSources>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListJobBoardSourcesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listJobBoardSources>>
+>;
+export type ListJobBoardSourcesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List configured job board sources
+ */
+
+export function useListJobBoardSources<
+  TData = Awaited<ReturnType<typeof listJobBoardSources>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listJobBoardSources>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListJobBoardSourcesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
