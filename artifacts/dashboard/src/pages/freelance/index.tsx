@@ -150,7 +150,7 @@ export default function FreelancePage() {
   return (
     <div className="space-y-8">
       <PageHeader
-        title="Freelance Copilot"
+        title="Freelance Assist"
         subtitle="Manage your freelance pipeline — from proposals to retainer tracking."
         gradient="from-amber-500 via-amber-400 to-orange-400"
       />

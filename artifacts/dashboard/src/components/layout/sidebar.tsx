@@ -72,7 +72,7 @@ export function Sidebar() {
         { name: "Jobs Pipeline", href: "/jobs", icon: Briefcase },
         { name: "Applications", href: "/applications", icon: CheckSquare },
         { name: "Assisted Apply", href: "/assisted-apply", icon: MousePointerClick },
-        { name: "Trends", href: "/trends", icon: TrendingUp },
+        { name: "Role Profiles", href: "/role-profiles", icon: UserCircle },
       ],
     },
     {
@@ -95,6 +95,7 @@ export function Sidebar() {
         { name: "AI Metrics", href: "/ai-metrics", icon: Activity },
         { name: "AI Config", href: "/ai-config", icon: Activity },
         { name: "AI Learning", href: "/ai-learning", icon: Brain },
+        { name: "Feedback Signals", href: "/feedback", icon: Activity },
       ],
     },
     {
@@ -102,9 +103,7 @@ export function Sidebar() {
       icon: Handshake,
       accent: "text-amber-400",
       items: [
-        { name: "Freelance Copilot", href: "/freelance", icon: Handshake },
-        { name: "Role Profiles", href: "/role-profiles", icon: UserCircle },
-        { name: "Feedback Signals", href: "/feedback", icon: Activity },
+        { name: "Freelance Assist", href: "/freelance", icon: Handshake },
       ],
     },
     {
@@ -114,7 +113,6 @@ export function Sidebar() {
       items: [
         { name: "Account", href: "/account", icon: User },
         { name: "Help & Tips", href: "/guide", icon: BookOpen },
-        { name: "Resources", href: "/resources", icon: Heart },
       ],
     },
   ];
@@ -136,32 +134,94 @@ export function Sidebar() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu>
-          {ENABLE_APPLY_WIZARD && (
-            <SidebarMenuItem>
+          {/* Featured cards with glass-morphism hover effect */}
+          <div className="px-3 space-y-2">
+            {ENABLE_APPLY_WIZARD && (
               <NavLink to="/apply-wizard" className="contents">
                 {({ isActive }) => (
-                  <SidebarMenuButton tooltip="Apply Wizard" asChild>
-                    <span
-                      className={cn(
-                        "flex items-center gap-3 cursor-pointer px-3 py-1.5 rounded-lg transition-all duration-200",
-                        isActive
-                          ? "text-white bg-indigo-500/15 font-medium"
-                          : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
-                      )}
-                    >
-                      <Sparkles
-                        className={cn(
-                          "h-4 w-4",
-                          isActive ? "text-indigo-400" : "text-slate-500"
-                        )}
-                      />
-                      <span>Wizard</span>
-                    </span>
-                  </SidebarMenuButton>
+                  <div
+                    className={cn(
+                      "group relative overflow-hidden rounded-xl border transition-all duration-300 cursor-pointer",
+                      isActive
+                        ? "bg-indigo-500/15 border-indigo-500/50 shadow-lg shadow-indigo-500/10"
+                        : "bg-white/5 backdrop-blur-sm border-white/10 hover:border-white/20 hover:bg-white/10 hover:shadow-lg hover:shadow-indigo-500/5"
+                    )}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/[0.08] to-violet-500/[0.08] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <div className="relative flex items-center gap-3 px-3 py-2.5">
+                      <div className={cn(
+                        "flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-300",
+                        isActive ? "bg-indigo-500/30" : "bg-indigo-500/15 group-hover:bg-indigo-500/25"
+                      )}>
+                        <Sparkles className={cn("h-4 w-4", isActive ? "text-indigo-300" : "text-indigo-400")} />
+                      </div>
+                      <div>
+                        <span className={cn("font-semibold text-sm", isActive ? "text-white" : "text-slate-200")}>Wizard</span>
+                        <p className="text-[10px] text-slate-500 leading-tight">AI-powered apply</p>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </NavLink>
-            </SidebarMenuItem>
-          )}
+            )}
+            <NavLink to="/trends" className="contents">
+              {({ isActive }) => (
+                <div
+                  className={cn(
+                    "group relative overflow-hidden rounded-xl border transition-all duration-300 cursor-pointer",
+                    isActive
+                      ? "bg-blue-500/15 border-blue-500/50 shadow-lg shadow-blue-500/10"
+                      : "bg-white/5 backdrop-blur-sm border-white/10 hover:border-white/20 hover:bg-white/10 hover:shadow-lg hover:shadow-blue-500/5"
+                  )}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500/[0.08] to-teal-500/[0.08] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <div className="relative flex items-center gap-3 px-3 py-2.5">
+                    <div className={cn(
+                      "flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-300",
+                      isActive ? "bg-blue-500/30" : "bg-blue-500/15 group-hover:bg-blue-500/25"
+                    )}>
+                      <TrendingUp className={cn("h-4 w-4", isActive ? "text-blue-300" : "text-blue-400")} />
+                    </div>
+                    <div>
+                      <span className={cn("font-semibold text-sm", isActive ? "text-white" : "text-slate-200")}>Trends</span>
+                      <p className="text-[10px] text-slate-500 leading-tight">Market insights</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </NavLink>
+            <NavLink to="/resources" className="contents">
+              {({ isActive }) => (
+                <div
+                  className={cn(
+                    "group relative overflow-hidden rounded-xl border transition-all duration-300 cursor-pointer",
+                    isActive
+                      ? "bg-emerald-500/15 border-emerald-500/50 shadow-lg shadow-emerald-500/10"
+                      : "bg-white/5 backdrop-blur-sm border-white/10 hover:border-white/20 hover:bg-white/10 hover:shadow-lg hover:shadow-emerald-500/5"
+                  )}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/[0.08] to-teal-500/[0.08] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <div className="relative flex items-center gap-3 px-3 py-2.5">
+                    <div className={cn(
+                      "flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-300",
+                      isActive ? "bg-emerald-500/30" : "bg-emerald-500/15 group-hover:bg-emerald-500/25"
+                    )}>
+                      <Heart className={cn("h-4 w-4", isActive ? "text-emerald-300" : "text-emerald-400")} />
+                    </div>
+                    <div>
+                      <span className={cn("font-semibold text-sm", isActive ? "text-white" : "text-slate-200")}>Resources</span>
+                      <p className="text-[10px] text-slate-500 leading-tight">Free tools & support</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </NavLink>
+          </div>
+
+          {/* Divider after featured cards */}
+          <div className="px-3 pt-2 pb-1">
+            <div className="h-px bg-slate-800" />
+          </div>
 
           <SidebarMenuItem>
             <NavLink to="/dashboard" className="contents">

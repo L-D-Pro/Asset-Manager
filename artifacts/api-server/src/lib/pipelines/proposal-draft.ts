@@ -17,7 +17,7 @@ interface ProposalAiResult {
   riskNotes?: unknown;
 }
 
-const SYSTEM_PROMPT = `You draft Upwork-style freelance proposals as a human-approved copilot.
+const SYSTEM_PROMPT = `You draft Upwork-style freelance proposals as a human-approved assistant.
 CRITICAL RULES:
 1. Use only the provided contractor profile, portfolio, skills, proof links, and project text.
 2. Do not claim availability, certifications, outcomes, earnings, or platform history unless provided.
