@@ -2,7 +2,7 @@
 
 > Internal/private tool only. Job Ops is a single-user, human-in-the-loop job application operations platform. It is not a mass auto-apply bot. Every AI output must be reviewed before use.
 
-Last updated: April 22, 2026
+Last updated: April 29, 2026
 
 ## 1. What Job Ops Does
 
@@ -40,6 +40,7 @@ The app is ready for private testing after the latest schema is pushed to the co
 | AI Review | Foundation ready | Prompt versions, evaluations, training examples, overview |
 | Assisted Apply | Foundation ready | Safe session/action scaffolding only; no browser worker yet |
 | Freelance Copilot | Foundation ready | Profiles, projects, scoring, proposal draft queue |
+| Trends & Market Research | Ready | AI market analysis, skills/certs/trends, job board aggregation |
 | External site auto-submit | Not implemented | Intentionally deferred and restricted |
 
 Run the schema sync before testing new pages:
@@ -277,6 +278,42 @@ Supports Upwork-style project/proposal operations in an assist-only way:
 - Store proposal outcomes.
 
 The app does not scrape Upwork, auto-refresh feeds, auto-bid, or send messages automatically.
+
+### Trends & Market Research
+
+Path: `/trends`
+
+Research job market conditions with AI-generated analysis:
+
+- Enter a job title (required) and optionally a location, experience level, and target salary.
+- Click **Analyze Market** to generate analysis across five tabs:
+  - **Overview**: Demand level, competition, salary alignment vs market.
+  - **Skills**: In-demand technical, soft, and domain skills ranked by frequency.
+  - **Certifications**: Recommended certifications with demand ratings and value estimates.
+  - **Trends**: Emerging technologies, declining skills, and industry shifts.
+  - **Action Plan**: Prioritized checklist (immediate, short-term, long-term) to improve your candidacy.
+- View salary range insights (low, median, high) and key factors.
+- Browse matching job listings from aggregated RSS feeds below the analysis.
+- Results are cached for 24 hours to reduce AI costs; subsequent searches for the same job title return instantly.
+
+### Job Board Configuration
+
+Administrators configure RSS/Atom feed sources via the `JOB_SOURCE_CONFIG` environment variable (JSON array). Feeds refresh automatically every 30 minutes.
+
+Example:
+
+```json
+[
+  {
+    "key": "example-careers",
+    "name": "Example Careers",
+    "feedUrl": "https://example.com/careers/feed.xml",
+    "sourceType": "rss",
+    "category": "tech",
+    "keywords": ["software", "engineer"]
+  }
+]
+```
 
 ## 5. AI Strategy
 

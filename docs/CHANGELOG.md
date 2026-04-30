@@ -2,6 +2,14 @@
 
 All notable changes to the Job Ops platform.
 
+## Unreleased
+
+### Added
+- **Trends & Market Research Hub** (`/trends`): AI-powered market analysis for any job title, including skills demand, certifications, salary insights, and personalized action plans.
+- **Job Board Aggregation**: Background RSS/Atom feed aggregator that collects real job listings from configured sources. Configure via `JOB_SOURCE_CONFIG` env var.
+- **Trends Cache**: 24-hour caching of AI-generated market research to reduce API costs.
+- New sidebar navigation item: "Trends"
+
 ## Version 0.3 (April 22, 2026)
 
 ### Apply Wizard Model Comparison
