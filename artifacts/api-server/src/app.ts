@@ -8,6 +8,7 @@ import router from "./routes";
 import { logger } from "./lib/logger";
 import { loginRateLimit, totpRateLimit, logoutRateLimit } from "./middlewares/rate-limit";
 import { startLearningScheduler } from "./lib/learning-scheduler";
+import { jobsAggregator } from "./lib/jobs-aggregator";
 import type { SessionMiddlewareFactory } from "./lib/http-types";
 
 /**
@@ -254,5 +255,7 @@ app.get("/", async (_req, res) => {
 startLearningScheduler().catch((err) => {
   logger.error({ error: String(err) }, "Failed to start learning scheduler");
 });
+
+jobsAggregator.start();
 
 export default app;
