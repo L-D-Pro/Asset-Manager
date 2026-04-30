@@ -4,7 +4,9 @@ import {
   useCreateApplicationSession,
   useListApplicationSessions,
 } from "@workspace/api-client-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
+import { ContentCard } from "@/components/ui/content-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -63,18 +65,14 @@ export default function AssistedApplyPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-          <MousePointerClick className="h-7 w-7 text-primary" />
-          Assisted Apply
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Track human-approved browser assistance sessions. This does not store passwords, bypass MFA/CAPTCHA, or auto-submit applications.
-        </p>
-      </div>
+      <PageHeader
+        title="Assisted Apply"
+        subtitle="Let AI guide you through multi-step job applications."
+        gradient="from-amber-500 via-amber-400 to-orange-400"
+      />
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <Card>
+        <ContentCard>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <ShieldAlert className="h-4 w-4" />
@@ -86,9 +84,9 @@ export default function AssistedApplyPage() {
             <p>The user handles login, MFA, CAPTCHA, EEO, legal authorization, and final submit.</p>
             <p>Every browser action should be logged before we add any worker automation.</p>
           </CardContent>
-        </Card>
+        </ContentCard>
 
-        <Card className="lg:col-span-2">
+        <ContentCard className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Start Assisted Session</CardTitle>
             <CardDescription>Create an audit record before using guided copy/fill workflows.</CardDescription>
@@ -126,10 +124,10 @@ export default function AssistedApplyPage() {
               {createSession.isPending ? "Creating..." : "Create Session"}
             </Button>
           </CardContent>
-        </Card>
+        </ContentCard>
       </div>
 
-      <Card>
+      <ContentCard>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ClipboardCheck className="h-5 w-5" />
@@ -153,7 +151,7 @@ export default function AssistedApplyPage() {
             </div>
           ))}
         </CardContent>
-      </Card>
+      </ContentCard>
     </div>
   );
 }

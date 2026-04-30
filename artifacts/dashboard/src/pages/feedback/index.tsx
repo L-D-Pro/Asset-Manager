@@ -1,5 +1,7 @@
 import { useListFeedbackSignals, useCreateFeedbackSignal, getListFeedbackSignalsQueryKey } from "@workspace/api-client-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { CardContent } from "@/components/ui/card";
+import { ContentCard } from "@/components/ui/content-card";
+import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -69,16 +71,15 @@ export default function FeedbackPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Feedback Signals</h1>
-          <p className="text-muted-foreground mt-1">Log outcomes and notes to improve future matching and scoring.</p>
-        </div>
-        
+    <div className="space-y-8">
+      <PageHeader
+        title="Feedback Signals"
+        subtitle="Review and curate feedback used for AI learning."
+        gradient="from-indigo-600 via-indigo-500 to-violet-500"
+      >
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button data-testid="btn-add-signal"><Plus className="mr-2 h-4 w-4"/>Log Signal</Button>
+            <Button data-testid="btn-add-signal" className="bg-white/20 border-white/40 text-white hover:bg-white/30"><Plus className="mr-2 h-4 w-4"/>Log Signal</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Log Feedback Signal</DialogTitle></DialogHeader>
@@ -156,7 +157,7 @@ export default function FeedbackPage() {
             </Form>
           </DialogContent>
         </Dialog>
-      </div>
+      </PageHeader>
 
       {isLoading ? (
         <div className="space-y-2">
@@ -164,11 +165,11 @@ export default function FeedbackPage() {
           <Skeleton className="h-16 w-full" />
         </div>
       ) : signals?.length === 0 ? (
-        <Card className="flex flex-col items-center justify-center p-12 text-center border-dashed">
+        <ContentCard className="flex flex-col items-center justify-center p-12 text-center border-dashed">
           <Activity className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
           <h3 className="text-lg font-medium">No feedback signals yet</h3>
           <p className="text-sm text-muted-foreground mt-1 max-w-sm">Log your first application outcome to start building signal data.</p>
-        </Card>
+        </ContentCard>
       ) : (
         <div className="border rounded-md divide-y bg-card">
           {signals?.map(s => (

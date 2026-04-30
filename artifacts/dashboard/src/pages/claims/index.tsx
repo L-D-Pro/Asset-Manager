@@ -1,5 +1,7 @@
 import { useListClaims, useCreateClaim, useUpdateClaim, useDeleteClaim, useDraftClaims, getListClaimsQueryKey, type Claim, type CreateClaimBody } from "@workspace/api-client-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { CardContent } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
+import { ContentCard } from "@/components/ui/content-card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -264,13 +266,11 @@ export default function ClaimsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Claims Ledger</h1>
-          <p className="text-muted-foreground mt-1">Verified achievements that serve as ground truth for AI tailoring.</p>
-        </div>
-
-        <div className="flex items-center gap-2">
+      <PageHeader
+        title="Claims Ledger"
+        subtitle="Track skills, accomplishments, and quantifiable claims for your resume."
+        gradient="from-teal-500 via-teal-400 to-cyan-400"
+      >
           <Dialog open={isAiDialogOpen} onOpenChange={setIsAiDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" data-testid="btn-ai-draft-claims">
@@ -551,8 +551,7 @@ export default function ClaimsPage() {
             </Form>
           </DialogContent>
           </Dialog>
-        </div>
-      </div>
+      </PageHeader>
 
       <div className="flex flex-col sm:flex-row gap-3">
         <Tabs value={filter} onValueChange={(v) => setFilter(v as ClaimFilter)} data-testid="tabs-claims-filter">
@@ -586,16 +585,16 @@ export default function ClaimsPage() {
             <Skeleton className="h-24 w-full" />
           </>
         ) : claims?.length === 0 ? (
-          <Card className="flex flex-col items-center justify-center p-12 text-center border-dashed">
+          <ContentCard className="flex flex-col items-center justify-center p-12 text-center border-dashed">
             <CheckSquare className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
             <h3 className="text-lg font-medium">No claims</h3>
             <p className="text-sm text-muted-foreground mt-1 max-w-sm">
               {filter === "inactive" ? "No inactive claims." : filter === "all" ? "Add your first claim to get started." : "No active claims — all may be deactivated."}
             </p>
-          </Card>
+          </ContentCard>
         ) : (
           claims?.map((claim) => (
-            <Card key={claim.id} data-testid={`card-claim-${claim.id}`} className={!claim.isActive ? "opacity-60" : ""}>
+            <ContentCard key={claim.id} data-testid={`card-claim-${claim.id}`} className={!claim.isActive ? "opacity-60" : ""}>
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="space-y-2 flex-1 pr-4">
@@ -640,7 +639,7 @@ export default function ClaimsPage() {
                   </div>
                 </div>
               </CardContent>
-            </Card>
+            </ContentCard>
           ))
         )}
       </div>

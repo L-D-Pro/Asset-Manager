@@ -32,7 +32,9 @@ import {
   useTailorJobResume,
   useUpdateJob,
 } from "@workspace/api-client-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ContentCard } from "@/components/ui/content-card";
+import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -663,14 +665,14 @@ export default function ApplyWizardPage() {
 
   if (!ENABLE_WIZARD) {
     return (
-      <Card>
+      <ContentCard>
         <CardHeader>
           <CardTitle>Apply Wizard is disabled</CardTitle>
           <CardDescription>
             Set <code>VITE_ENABLE_APPLY_WIZARD=true</code> in dashboard env and restart dev server.
           </CardDescription>
         </CardHeader>
-      </Card>
+      </ContentCard>
     );
   }
 
@@ -1118,19 +1120,11 @@ export default function ApplyWizardPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-          <Sparkles className="h-7 w-7 text-primary" />
-          Apply Wizard
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Turn a job link into a ready application - step by step, with human review always in control.
-        </p>
-      </div>
+    <div className="space-y-8">
+      <PageHeader title="Apply Wizard" subtitle="Multi-step AI-powered job application assistant." gradient="from-indigo-600 via-indigo-500 to-violet-500" />
 
       {savedSessions.length > 0 ? (
-        <Card className="border-dashed">
+        <ContentCard className="border-dashed">
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               <Save className="h-4 w-4" />
@@ -1162,12 +1156,12 @@ export default function ApplyWizardPage() {
               </div>
             ))}
           </CardContent>
-        </Card>
+        </ContentCard>
       ) : null}
 
       <div className="grid gap-4 md:grid-cols-6">
         {STEP_ORDER.map((name, index) => (
-          <Card
+          <ContentCard
             key={name}
             className={
               index <= currentStepIndex
@@ -1182,7 +1176,7 @@ export default function ApplyWizardPage() {
                 <p className="text-[11px] text-muted-foreground mt-1">Locked</p>
               ) : null}
             </CardContent>
-          </Card>
+          </ContentCard>
         ))}
       </div>
 
@@ -1204,7 +1198,7 @@ export default function ApplyWizardPage() {
           transition={{ duration: 0.3, ease: easing.smooth }}
         >
           {step === "intake" ? (
-        <Card>
+        <ContentCard>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Link2 className="h-5 w-5" />
@@ -1363,11 +1357,11 @@ export default function ApplyWizardPage() {
               </>
             )}
           </CardContent>
-        </Card>
+        </ContentCard>
       ) : null}
 
       {step === "parse" ? (
-        <Card>
+        <ContentCard>
           <CardHeader>
             <CardTitle>2) Parse and Edit JD</CardTitle>
             <CardDescription>
@@ -1432,11 +1426,11 @@ export default function ApplyWizardPage() {
               Continue unlocks Role + Claims after saving and reparsing JD text.
             </p>
           </CardContent>
-        </Card>
+        </ContentCard>
       ) : null}
 
       {step === "role" ? (
-        <Card>
+        <ContentCard>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <UserCircle className="h-5 w-5" />
@@ -1557,11 +1551,11 @@ export default function ApplyWizardPage() {
               Continue requires an attached role profile and at least one selected claim.
             </p>
           </CardContent>
-        </Card>
+        </ContentCard>
       ) : null}
 
       {step === "tailor" ? (
-        <Card>
+        <ContentCard>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Wand2 className="h-5 w-5" />
@@ -1730,11 +1724,11 @@ export default function ApplyWizardPage() {
               Continue requires both draft artifacts: one resume version and one cover letter version.
             </p>
           </CardContent>
-        </Card>
+        </ContentCard>
       ) : null}
 
       {step === "approve" ? (
-        <Card>
+        <ContentCard>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ShieldCheck className="h-5 w-5" />
@@ -1746,7 +1740,7 @@ export default function ApplyWizardPage() {
                 : "Review and explicitly approve/reject drafts before application prep."}
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-8">
             {/* Resume Section */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -2018,11 +2012,11 @@ export default function ApplyWizardPage() {
               </Button>
             </div>
           </CardContent>
-        </Card>
+        </ContentCard>
       ) : null}
 
       {step === "assisted" ? (
-        <Card>
+        <ContentCard>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <MousePointerClick className="h-5 w-5" />
@@ -2083,12 +2077,12 @@ export default function ApplyWizardPage() {
               </div>
             </div>
           </CardContent>
-        </Card>
+        </ContentCard>
       ) : null}
       </motion.div>
       </AnimatePresence>
 
-      <Card>
+      <ContentCard>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ClipboardCheck className="h-5 w-5" />
@@ -2118,18 +2112,18 @@ export default function ApplyWizardPage() {
             {assistedSessionId ? <Link className="ml-2 text-primary underline" to="/assisted-apply">open</Link> : null}
           </p>
         </CardContent>
-      </Card>
+      </ContentCard>
     </div>
   );
 }
 
 function StatusCard({ title, ok }: { title: string; ok: boolean }) {
   return (
-    <Card>
+    <ContentCard>
       <CardContent className="p-3 flex items-center justify-between">
         <span className="text-sm font-medium">{title}</span>
         <Badge variant={ok ? "default" : "outline"}>{ok ? "Done" : "Pending"}</Badge>
       </CardContent>
-    </Card>
+    </ContentCard>
   );
 }

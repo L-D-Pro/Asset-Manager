@@ -1,13 +1,15 @@
 import { useState, type FormEvent } from "react";
 import { useAuth } from "@/context/auth";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ContentCard } from "@/components/ui/content-card";
+import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle2, AlertCircle, Shield, ShieldOff, KeyRound, Mail, Lock, RefreshCw } from "lucide-react";
+import { CheckCircle2, AlertCircle, Shield, ShieldOff, Mail, Lock, RefreshCw } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -68,7 +70,7 @@ function ChangePasswordSection() {
   };
 
   return (
-    <Card>
+    <ContentCard>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <Lock className="h-4 w-4" /> Change Password
@@ -99,7 +101,7 @@ function ChangePasswordSection() {
           </Button>
         </form>
       </CardContent>
-    </Card>
+    </ContentCard>
   );
 }
 
@@ -118,7 +120,7 @@ function ChangeEmailSection() {
   };
 
   return (
-    <Card>
+    <ContentCard>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <Mail className="h-4 w-4" /> Email Address
@@ -138,7 +140,7 @@ function ChangeEmailSection() {
           </Button>
         </form>
       </CardContent>
-    </Card>
+    </ContentCard>
   );
 }
 
@@ -225,7 +227,7 @@ function TwoFactorSection() {
   };
 
   return (
-    <Card>
+    <ContentCard>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <Shield className="h-4 w-4" />
@@ -406,7 +408,7 @@ function TwoFactorSection() {
           </div>
         )}
       </CardContent>
-    </Card>
+    </ContentCard>
   );
 }
 
@@ -423,19 +425,12 @@ export default function AccountPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Account</h1>
-          <p className="text-muted-foreground mt-1">
-            Signed in as <span className="font-mono font-medium">{user.username}</span>
-          </p>
-        </div>
-        <Button variant="outline" onClick={handleLogout}>
-          <KeyRound className="h-4 w-4 mr-2" />
+    <div className="max-w-2xl mx-auto space-y-8">
+      <PageHeader title="Account" subtitle="Manage your profile, security settings, and preferences." gradient="from-indigo-600 via-indigo-500 to-violet-500">
+        <Button variant="outline" onClick={handleLogout} className="bg-white/20 border-white/40 text-white hover:bg-white/30">
           Sign out
         </Button>
-      </div>
+      </PageHeader>
 
       <ChangePasswordSection />
       <ChangeEmailSection />

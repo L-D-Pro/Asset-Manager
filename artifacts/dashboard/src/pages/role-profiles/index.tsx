@@ -1,5 +1,7 @@
 import { useListRoleProfiles, useCreateRoleProfile, useUpdateRoleProfile, useDeleteRoleProfile, getListRoleProfilesQueryKey, type RoleProfile } from "@workspace/api-client-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
+import { ContentCard } from "@/components/ui/content-card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -217,12 +219,11 @@ export default function RoleProfilesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Role Profiles</h1>
-          <p className="text-muted-foreground mt-1">Define hard filters and soft skill weights for job scoring.</p>
-        </div>
-
+      <PageHeader
+        title="Role Profiles"
+        subtitle="Define target roles with skills, keywords, and preferences for AI tailoring."
+        gradient="from-teal-500 via-teal-400 to-cyan-400"
+      >
         <Dialog open={isDialogOpen} onOpenChange={(open) => { if(!open) handleClose(); else setIsDialogOpen(true); }}>
           <DialogTrigger asChild>
             <Button data-testid="btn-add-profile"><Plus className="mr-2 h-4 w-4"/>New Profile</Button>
@@ -325,21 +326,21 @@ export default function RoleProfilesPage() {
             </Form>
           </DialogContent>
         </Dialog>
-      </div>
+      </PageHeader>
 
       {isLoading ? <Skeleton className="h-40 w-full" /> : profiles?.length === 0 ? (
-        <Card className="flex flex-col items-center justify-center p-12 text-center border-dashed">
+        <ContentCard className="flex flex-col items-center justify-center p-12 text-center border-dashed">
           <UserCircle className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
           <h3 className="text-lg font-medium">No role profiles yet</h3>
           <p className="text-sm text-muted-foreground mt-1">Create a profile to define scoring criteria for your target roles.</p>
-        </Card>
+        </ContentCard>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {profiles?.map(p => {
             const hasHardFilters = !!(p.hardFilters && Object.keys(p.hardFilters).length);
             const hasSoftWeights = !!(p.softWeights && Object.keys(p.softWeights).length);
             return (
-              <Card key={p.id} data-testid={`card-profile-${p.id}`}>
+              <ContentCard key={p.id} data-testid={`card-profile-${p.id}`}>
                 <CardContent className="p-0">
                   <div className="p-5 flex justify-between items-start">
                     <div className="flex-1">
@@ -380,7 +381,7 @@ export default function RoleProfilesPage() {
                     </Accordion>
                   )}
                 </CardContent>
-              </Card>
+              </ContentCard>
             );
           })}
         </div>

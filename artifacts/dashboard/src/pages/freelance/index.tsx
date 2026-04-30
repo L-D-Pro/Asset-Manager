@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
+import { ContentCard } from "@/components/ui/content-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -146,19 +148,15 @@ export default function FreelancePage() {
   });
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-          <Handshake className="h-7 w-7 text-primary" />
-          Freelance Copilot
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Capture Upwork-style projects, score fit, and draft human-approved proposals without unauthorized scraping or auto-bidding.
-        </p>
-      </div>
+    <div className="space-y-8">
+      <PageHeader
+        title="Freelance Copilot"
+        subtitle="Manage your freelance pipeline — from proposals to retainer tracking."
+        gradient="from-amber-500 via-amber-400 to-orange-400"
+      />
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
+        <ContentCard>
           <CardHeader>
             <CardTitle>Contractor Profile</CardTitle>
             <CardDescription>Source-of-truth material used by proposal drafting.</CardDescription>
@@ -187,9 +185,9 @@ export default function FreelancePage() {
               Create Profile
             </Button>
           </CardContent>
-        </Card>
+        </ContentCard>
 
-        <Card>
+        <ContentCard>
           <CardHeader>
             <CardTitle>Capture Project</CardTitle>
             <CardDescription>Paste project text manually or from a user-opened page capture.</CardDescription>
@@ -229,10 +227,10 @@ export default function FreelancePage() {
               Capture Project
             </Button>
           </CardContent>
-        </Card>
+        </ContentCard>
       </div>
 
-      <Card>
+      <ContentCard>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Target className="h-5 w-5" />
@@ -269,9 +267,9 @@ export default function FreelancePage() {
             </div>
           ))}
         </CardContent>
-      </Card>
+      </ContentCard>
 
-      <Card>
+      <ContentCard>
         <CardHeader>
           <CardTitle>Proposal Queue</CardTitle>
           <CardDescription>Drafts stay pending until you review and manually submit outside the app.</CardDescription>
@@ -292,7 +290,7 @@ export default function FreelancePage() {
             </div>
           ))}
         </CardContent>
-      </Card>
+      </ContentCard>
     </div>
   );
 }
