@@ -1,6 +1,6 @@
 import { Sidebar as SidebarComponent, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupLabel, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem } from "@/components/ui/sidebar";
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, Briefcase, FileText, CheckSquare, MessageSquare, Settings, UserCircle, Activity, FileCode, BookOpen, LogOut, User, ScrollText, Brain, MousePointerClick, Handshake, Sparkles, Shield } from "lucide-react";
+import { LayoutDashboard, Briefcase, FileText, CheckSquare, MessageSquare, Settings, UserCircle, Activity, FileCode, BookOpen, LogOut, User, ScrollText, Brain, MousePointerClick, Handshake, Sparkles, Shield, Ticket, BarChart3, TrendingUp } from "lucide-react";
 import { useAuth } from "@/context/auth";
 
 const ENABLE_APPLY_WIZARD = import.meta.env.VITE_ENABLE_APPLY_WIZARD === "true";
@@ -26,6 +26,7 @@ export function Sidebar() {
     { name: "AI Metrics", href: "/ai-metrics", icon: Activity },
     { name: "AI Config", href: "/ai-config", icon: Settings },
     { name: "AI Learning", href: "/ai-learning", icon: Brain },
+    { name: "Trends", href: "/trends", icon: TrendingUp },
     { name: "Guide", href: "/guide", icon: BookOpen },
   ];
 
@@ -71,6 +72,42 @@ export function Sidebar() {
                       <span className="flex items-center gap-3 cursor-pointer">
                         <Shield className="h-4 w-4" />
                         <span>User Management</span>
+                      </span>
+                    </SidebarMenuButton>
+                  )}
+                </NavLink>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <NavLink to="/admin/invite-codes" className="contents">
+                  {({ isActive }) => (
+                    <SidebarMenuButton isActive={isActive} tooltip="Invite Codes" asChild>
+                      <span className="flex items-center gap-3 cursor-pointer">
+                        <Ticket className="h-4 w-4" />
+                        <span>Invite Codes</span>
+                      </span>
+                    </SidebarMenuButton>
+                  )}
+                </NavLink>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <NavLink to="/admin/usage-limits" className="contents">
+                  {({ isActive }) => (
+                    <SidebarMenuButton isActive={isActive} tooltip="Usage Limits" asChild>
+                      <span className="flex items-center gap-3 cursor-pointer">
+                        <BarChart3 className="h-4 w-4" />
+                        <span>Usage Limits</span>
+                      </span>
+                    </SidebarMenuButton>
+                  )}
+                </NavLink>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <NavLink to="/admin/docs" className="contents">
+                  {({ isActive }) => (
+                    <SidebarMenuButton isActive={isActive} tooltip="Admin Docs" asChild>
+                      <span className="flex items-center gap-3 cursor-pointer">
+                        <BookOpen className="h-4 w-4" />
+                        <span>Admin Docs</span>
                       </span>
                     </SidebarMenuButton>
                   )}

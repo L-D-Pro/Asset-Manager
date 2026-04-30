@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { useEffect } from "react";
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -23,12 +24,21 @@ import AiMetricsPage from "@/pages/ai-metrics";
 import AssistedApplyPage from "@/pages/assisted-apply";
 import FreelancePage from "@/pages/freelance";
 import ApplyWizardPage from "@/pages/apply-wizard";
+import RegisterPage from "@/pages/register";
+import VerifyEmailPage from "@/pages/verify-email";
+import ResetPasswordPage from "@/pages/reset-password";
+import TermsOfServicePage from "@/pages/terms";
+import PrivacyPolicyPage from "@/pages/privacy";
 import RoleProfilesPage from "@/pages/role-profiles";
 import FeedbackPage from "@/pages/feedback";
 import GuidePage from "@/pages/guide";
 import AccountPage from "@/pages/account";
 import AdminUsersPage from "@/pages/admin/users";
+import AdminInviteCodesPage from "@/pages/admin/invite-codes";
+import AdminUsageLimitsPage from "@/pages/admin/usage-limits";
+import AdminDocsPage from "@/pages/admin/docs";
 import AiLearningPage from "@/pages/ai-learning";
+import TrendsPage from "@/pages/trends";
 import NotFound from "@/pages/not-found";
 
 const ENABLE_APPLY_WIZARD = import.meta.env.VITE_ENABLE_APPLY_WIZARD === "true";
@@ -113,7 +123,11 @@ function ProtectedRoutes() {
           <Route path="/guide" element={<GuidePage />} />
           <Route path="/account" element={<AccountPage />} />
           <Route path="/admin/users" element={<AdminUsersPage />} />
+          <Route path="/admin/invite-codes" element={<AdminInviteCodesPage />} />
+          <Route path="/admin/usage-limits" element={<AdminUsageLimitsPage />} />
+          <Route path="/admin/docs" element={<AdminDocsPage />} />
           <Route path="/ai-learning" element={<AiLearningPage />} />
+          <Route path="/trends" element={<TrendsPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </PageTransition>
@@ -123,6 +137,23 @@ function ProtectedRoutes() {
 
 function AppRoutes() {
   const { user } = useAuth();
+
+  // Capture UTM parameters from URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const source = params.get("utm_source");
+    const medium = params.get("utm_medium");
+    const campaign = params.get("utm_campaign");
+    if (source || medium || campaign) {
+      const existing = localStorage.getItem("jobops_utm");
+      const prev = existing ? JSON.parse(existing) : {};
+      localStorage.setItem("jobops_utm", JSON.stringify({
+        source: source ?? prev.source ?? undefined,
+        medium: medium ?? prev.medium ?? undefined,
+        campaign: campaign ?? prev.campaign ?? undefined,
+      }));
+    }
+  }, []);
 
   if (user === undefined) {
     return (
@@ -141,6 +172,14 @@ function AppRoutes() {
         path="/login"
         element={isAuthed ? <Navigate to="/dashboard" replace /> : <LoginPage />}
       />
+      <Route
+        path="/register"
+        element={isAuthed ? <Navigate to="/dashboard" replace /> : <RegisterPage />}
+      />
+      <Route path="/verify-email/:token" element={<VerifyEmailPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/terms-of-service" element={<TermsOfServicePage />} />
+      <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
       <Route path="/*" element={<ProtectedRoutes />} />
     </Routes>
   );
