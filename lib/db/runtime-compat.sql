@@ -417,3 +417,173 @@ CREATE TABLE IF NOT EXISTS ai_training_examples (
 CREATE INDEX IF NOT EXISTS ai_training_examples_task_scope_idx ON ai_training_examples(task_scope);
 CREATE INDEX IF NOT EXISTS ai_training_examples_source_idx ON ai_training_examples(source_entity_type, source_entity_id);
 CREATE INDEX IF NOT EXISTS ai_training_examples_active_idx ON ai_training_examples(task_scope, is_active);
+
+-- Wizard Sessions (Apply Wizard save/resume)
+CREATE TABLE IF NOT EXISTS wizard_sessions (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES admin_users(id) ON DELETE CASCADE,
+    job_id INTEGER REFERENCES jobs(id) ON DELETE SET NULL,
+    current_step TEXT NOT NULL DEFAULT 'intake',
+    state JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS wizard_sessions_user_id_idx ON wizard_sessions(user_id);
+CREATE INDEX IF NOT EXISTS wizard_sessions_job_id_idx ON wizard_sessions(job_id);
+
+-- Phase 1: Auth & Registration Upgrade
+-- Extend admin_users with email verification, password reset, pilot, and UTM fields
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'admin_users' AND column_name = 'email_verified') THEN
+    ALTER TABLE admin_users ADD COLUMN email_verified BOOLEAN NOT NULL DEFAULT false;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'admin_users' AND column_name = 'email_confirmation_token') THEN
+    ALTER TABLE admin_users ADD COLUMN email_confirmation_token TEXT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'admin_users' AND column_name = 'email_confirmation_expires') THEN
+    ALTER TABLE admin_users ADD COLUMN email_confirmation_expires TIMESTAMPTZ;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'admin_users' AND column_name = 'password_reset_token') THEN
+    ALTER TABLE admin_users ADD COLUMN password_reset_token TEXT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'admin_users' AND column_name = 'password_reset_expires') THEN
+    ALTER TABLE admin_users ADD COLUMN password_reset_expires TIMESTAMPTZ;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'admin_users' AND column_name = 'is_pilot_participant') THEN
+    ALTER TABLE admin_users ADD COLUMN is_pilot_participant BOOLEAN NOT NULL DEFAULT false;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'admin_users' AND column_name = 'pilot_enrollment_type') THEN
+    ALTER TABLE admin_users ADD COLUMN pilot_enrollment_type TEXT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'admin_users' AND column_name = 'pilot_terms_accepted_at') THEN
+    ALTER TABLE admin_users ADD COLUMN pilot_terms_accepted_at TIMESTAMPTZ;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'admin_users' AND column_name = 'utm_source') THEN
+    ALTER TABLE admin_users ADD COLUMN utm_source TEXT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'admin_users' AND column_name = 'utm_medium') THEN
+    ALTER TABLE admin_users ADD COLUMN utm_medium TEXT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'admin_users' AND column_name = 'utm_campaign') THEN
+    ALTER TABLE admin_users ADD COLUMN utm_campaign TEXT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'admin_users' AND column_name = 'is_active') THEN
+    ALTER TABLE admin_users ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT true;
+  END IF;
+END $$;
+
+-- Invite Codes table
+CREATE TABLE IF NOT EXISTS invite_codes (
+    id SERIAL PRIMARY KEY,
+    code TEXT NOT NULL UNIQUE,
+    max_uses INTEGER NOT NULL DEFAULT 1,
+    used_count INTEGER NOT NULL DEFAULT 0,
+    expires_at TIMESTAMPTZ NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    created_by_admin_id INTEGER REFERENCES admin_users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS invite_codes_code_idx ON invite_codes(code);
+CREATE INDEX IF NOT EXISTS invite_codes_active_idx ON invite_codes(is_active);
+
+-- User Usage Limits table (weekly quota)
+CREATE TABLE IF NOT EXISTS user_usage_limits (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL UNIQUE REFERENCES admin_users(id) ON DELETE CASCADE,
+    weekly_limit INTEGER NOT NULL DEFAULT 5,
+    weekly_used INTEGER NOT NULL DEFAULT 0,
+    total_used INTEGER NOT NULL DEFAULT 0,
+    period_start TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS user_usage_limits_user_id_idx ON user_usage_limits(user_id);
+
+-- Waitlist table
+CREATE TABLE IF NOT EXISTS waitlist (
+    id SERIAL PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    full_name TEXT,
+    linkedin_url TEXT,
+    utm_source TEXT,
+    utm_medium TEXT,
+    utm_campaign TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Job Board tables (trends & market research)
+CREATE TABLE IF NOT EXISTS job_sources (
+    id SERIAL PRIMARY KEY,
+    key TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    feed_url TEXT NOT NULL,
+    source_type TEXT NOT NULL DEFAULT 'rss',
+    category TEXT DEFAULT 'general',
+    keywords TEXT[] DEFAULT '{}',
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    last_fetched_at TIMESTAMPTZ,
+    last_success_at TIMESTAMPTZ,
+    last_error TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS job_sources_category_idx ON job_sources(category);
+CREATE INDEX IF NOT EXISTS job_sources_active_idx ON job_sources(is_active);
+
+CREATE TABLE IF NOT EXISTS job_listings (
+    id SERIAL PRIMARY KEY,
+    source_id INTEGER NOT NULL REFERENCES job_sources(id) ON DELETE CASCADE,
+    source_key TEXT NOT NULL,
+    source_item_id TEXT NOT NULL,
+    source_url TEXT NOT NULL,
+    title TEXT NOT NULL,
+    company TEXT NOT NULL,
+    location TEXT,
+    summary TEXT,
+    tags TEXT[] DEFAULT '{}',
+    job_type TEXT,
+    workplace_type TEXT,
+    published_at TIMESTAMPTZ,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    fetched_at TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(source_key, source_item_id)
+);
+
+CREATE INDEX IF NOT EXISTS job_listings_source_id_idx ON job_listings(source_id);
+CREATE INDEX IF NOT EXISTS job_listings_active_idx ON job_listings(is_active);
+CREATE INDEX IF NOT EXISTS job_listings_published_idx ON job_listings(published_at);
+
+CREATE TABLE IF NOT EXISTS trends_cache (
+    id SERIAL PRIMARY KEY,
+    query_hash TEXT NOT NULL UNIQUE,
+    job_title TEXT NOT NULL,
+    location TEXT,
+    experience_level TEXT,
+    salary_target INTEGER,
+    analysis_json JSONB NOT NULL,
+    job_matches_count INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS trends_cache_job_title_idx ON trends_cache(job_title);
+CREATE INDEX IF NOT EXISTS trends_cache_expires_idx ON trends_cache(expires_at);
+
+-- Feedback table
+CREATE TABLE IF NOT EXISTS feedback (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES admin_users(id) ON DELETE SET NULL,
+    type TEXT NOT NULL,
+    message TEXT NOT NULL,
+    page_url TEXT,
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

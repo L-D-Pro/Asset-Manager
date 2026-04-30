@@ -36,6 +36,12 @@ tags:
     description: Human-approved assisted apply session scaffolding
   - name: freelance
     description: Freelance project and proposal copilot
+  - name: wizard-sessions
+    description: Apply wizard save/resume sessions
+  - name: trends
+    description: Market research and trend analysis
+  - name: job-board
+    description: Aggregated job board listings
 
 paths:
   /healthz:
@@ -1742,6 +1748,135 @@ paths:
               schema:
                 $ref: "#/components/schemas/ClientMessageTemplate"
 
+  # ── Wizard Sessions ──────────────────────────────────────────────────────
+  /wizard-sessions:
+    get:
+      operationId: listWizardSessions
+      tags: [wizard-sessions]
+      summary: List wizard sessions for current user
+      description: Returns up to 3 saved wizard sessions, newest first.
+      responses:
+        "200":
+          description: Wizard sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WizardSession"
+    post:
+      operationId: createWizardSession
+      tags: [wizard-sessions]
+      summary: Save a wizard session
+      description: Creates a new wizard session. Max 3 per user; oldest is auto-deleted if exceeded.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWizardSessionBody"
+      responses:
+        "201":
+          description: Created wizard session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WizardSession"
+
+  /wizard-sessions/{id}:
+    get:
+      operationId: getWizardSession
+      tags: [wizard-sessions]
+      summary: Get a wizard session
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Wizard session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WizardSession"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteWizardSession
+      tags: [wizard-sessions]
+      summary: Delete a wizard session
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── Trends ─────────────────────────────────────────────────────────────────
+  /trends/research:
+    post:
+      operationId: researchTrends
+      tags: [trends]
+      summary: Research market trends for a job title
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResearchTrendsBody"
+      responses:
+        "200":
+          description: Market analysis and matching job listings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResearchTrendsResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  # ── Job Board ──────────────────────────────────────────────────────────────
+  /job-board/listings:
+    get:
+      operationId: listJobBoardListings
+      tags: [job-board]
+      summary: List aggregated job board listings
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+            maximum: 50
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: location
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of job listings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobBoardListingsResponse"
+
+  /job-board/sources:
+    get:
+      operationId: listJobBoardSources
+      tags: [job-board]
+      summary: List configured job board sources
+      responses:
+        "200":
+          description: List of sources
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/JobBoardSource"
+
 components:
   parameters:
     Id:
@@ -2047,6 +2182,22 @@ components:
           type: ["string", "null"]
         rawJdText:
           type: ["string", "null"]
+        parsedRequiredSkills:
+          type: array
+          items:
+            type: string
+        parsedNiceToHaveSkills:
+          type: array
+          items:
+            type: string
+        parsedResponsibilities:
+          type: array
+          items:
+            type: string
+        parsedKeywords:
+          type: array
+          items:
+            type: string
         status:
           type: string
 
@@ -3858,3 +4009,302 @@ components:
       required:
         - name
         - templateText
+
+    # ── Wizard Sessions ──────────────────────────────────────────────────────
+    WizardSession:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        jobId:
+          type: ["integer", "null"]
+        currentStep:
+          type: string
+        state:
+          type: object
+          description: Full wizard UI state as JSON object
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - userId
+        - currentStep
+        - state
+        - createdAt
+        - updatedAt
+
+    CreateWizardSessionBody:
+      type: object
+      properties:
+        jobId:
+          type: ["integer", "null"]
+        currentStep:
+          type: string
+        state:
+          type: object
+      required:
+        - currentStep
+        - state
+
+    # ── Trends & Market Research ─────────────────────────────────────────────
+    ResearchTrendsBody:
+      type: object
+      properties:
+        jobTitle:
+          type: string
+        location:
+          type: string
+        experienceLevel:
+          type: string
+          enum: [entry, mid, senior, executive]
+        salaryTarget:
+          type: integer
+      required:
+        - jobTitle
+
+    ResearchTrendsResponse:
+      type: object
+      properties:
+        analysis:
+          $ref: "#/components/schemas/MarketAnalysis"
+        jobMatches:
+          type: array
+          items:
+            $ref: "#/components/schemas/JobBoardListing"
+        cached:
+          type: boolean
+      required:
+        - analysis
+        - jobMatches
+        - cached
+
+    MarketAnalysis:
+      type: object
+      properties:
+        marketOverview:
+          type: object
+          properties:
+            demandLevel:
+              type: string
+              enum: [high, medium, low]
+            competition:
+              type: string
+              enum: [high, medium, low]
+            salaryAlignment:
+              type: string
+              enum: [above, at, below-market]
+            summary:
+              type: string
+          required:
+            - demandLevel
+            - competition
+            - salaryAlignment
+            - summary
+        requiredSkills:
+          type: array
+          items:
+            type: object
+            properties:
+              skill:
+                type: string
+              frequency:
+                type: string
+                enum: [required, common, nice-to-have]
+              category:
+                type: string
+                enum: [technical, soft, domain]
+            required:
+              - skill
+              - frequency
+              - category
+        certifications:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              demand:
+                type: string
+                enum: [high, medium, low]
+              estimatedValue:
+                type: string
+              provider:
+                type: string
+            required:
+              - name
+              - demand
+              - estimatedValue
+              - provider
+        trends:
+          type: object
+          properties:
+            emerging:
+              type: array
+              items:
+                type: string
+            declining:
+              type: array
+              items:
+                type: string
+            industryShifts:
+              type: array
+              items:
+                type: string
+          required:
+            - emerging
+            - declining
+            - industryShifts
+        actionPlan:
+          type: object
+          properties:
+            immediate:
+              type: array
+              items:
+                type: string
+            shortTerm:
+              type: array
+              items:
+                type: string
+            longTerm:
+              type: array
+              items:
+                type: string
+          required:
+            - immediate
+            - shortTerm
+            - longTerm
+        salaryInsights:
+          type: object
+          properties:
+            rangeLow:
+              type: integer
+            rangeHigh:
+              type: integer
+            median:
+              type: integer
+            factors:
+              type: array
+              items:
+                type: string
+          required:
+            - rangeLow
+            - rangeHigh
+            - median
+            - factors
+      required:
+        - marketOverview
+        - requiredSkills
+        - certifications
+        - trends
+        - actionPlan
+        - salaryInsights
+
+    JobBoardListing:
+      type: object
+      properties:
+        id:
+          type: integer
+        sourceId:
+          type: integer
+        sourceKey:
+          type: string
+        sourceItemId:
+          type: string
+        sourceUrl:
+          type: string
+        title:
+          type: string
+        company:
+          type: string
+        location:
+          type: string
+        summary:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        jobType:
+          type: string
+        workplaceType:
+          type: string
+        publishedAt:
+          type: string
+          format: date-time
+        isActive:
+          type: boolean
+      required:
+        - id
+        - sourceId
+        - sourceKey
+        - sourceItemId
+        - sourceUrl
+        - title
+        - company
+
+    JobBoardListingsResponse:
+      type: object
+      properties:
+        jobs:
+          type: array
+          items:
+            $ref: "#/components/schemas/JobBoardListing"
+        meta:
+          $ref: "#/components/schemas/JobBoardListingsMeta"
+      required:
+        - jobs
+        - meta
+
+    JobBoardListingsMeta:
+      type: object
+      properties:
+        sourceCount:
+          type: integer
+        listingCount:
+          type: integer
+      required:
+        - sourceCount
+        - listingCount
+
+    JobBoardSource:
+      type: object
+      properties:
+        id:
+          type: integer
+        key:
+          type: string
+        name:
+          type: string
+        feedUrl:
+          type: string
+        sourceType:
+          type: string
+        category:
+          type: string
+        keywords:
+          type: array
+          items:
+            type: string
+        isActive:
+          type: boolean
+        lastFetchedAt:
+          type: string
+          format: date-time
+        lastSuccessAt:
+          type: string
+          format: date-time
+        lastError:
+          type: string
+      required:
+        - id
+        - key
+        - name
+        - feedUrl
+        - sourceType

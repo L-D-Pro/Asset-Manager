@@ -29,5 +29,9 @@ export interface UpdateJobBody {
   sourcePlatform?: string | null;
   /** @nullable */
   rawJdText?: string | null;
+  parsedRequiredSkills?: string[];
+  parsedNiceToHaveSkills?: string[];
+  parsedResponsibilities?: string[];
+  parsedKeywords?: string[];
   status?: string;
 }

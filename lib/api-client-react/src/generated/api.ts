@@ -57,6 +57,7 @@ import type {
   CreateProposalVersionBody,
   CreateRoleProfileBody,
   CreateSiteAdapterBody,
+  CreateWizardSessionBody,
   DraftClaimsBody,
   DraftClaimsResponse,
   DraftCoverLetterBody,
@@ -69,6 +70,8 @@ import type {
   HealthStatus,
   ImportBaseResumeBody,
   Job,
+  JobBoardListingsResponse,
+  JobBoardSource,
   JobScoreResult,
   ListAiModelConfigsParams,
   ListAiPromptVersionsParams,
@@ -79,6 +82,7 @@ import type {
   ListCoverLetterVersionsParams,
   ListEventLogsParams,
   ListFeedbackSignalsParams,
+  ListJobBoardListingsParams,
   ListJobsParams,
   ListResumeVersionsParams,
   NotFoundResponse,
@@ -86,6 +90,8 @@ import type {
   ProjectSource,
   ProposalOutcome,
   ProposalVersion,
+  ResearchTrendsBody,
+  ResearchTrendsResponse,
   ResumeVersion,
   RoleProfile,
   ScoreJobParams,
@@ -101,6 +107,7 @@ import type {
   UpdateJobBody,
   UpdateResumeVersionBody,
   UpdateRoleProfileBody,
+  WizardSession,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -8082,3 +8089,601 @@ export const useCreateClientMessageTemplate = <
 > => {
   return useMutation(getCreateClientMessageTemplateMutationOptions(options));
 };
+
+/**
+ * Returns up to 3 saved wizard sessions, newest first.
+ * @summary List wizard sessions for current user
+ */
+export const getListWizardSessionsUrl = () => {
+  return `/api/wizard-sessions`;
+};
+
+export const listWizardSessions = async (
+  options?: RequestInit,
+): Promise<WizardSession[]> => {
+  return customFetch<WizardSession[]>(getListWizardSessionsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListWizardSessionsQueryKey = () => {
+  return [`/api/wizard-sessions`] as const;
+};
+
+export const getListWizardSessionsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listWizardSessions>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listWizardSessions>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListWizardSessionsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listWizardSessions>>
+  > = ({ signal }) => listWizardSessions({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listWizardSessions>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListWizardSessionsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listWizardSessions>>
+>;
+export type ListWizardSessionsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List wizard sessions for current user
+ */
+
+export function useListWizardSessions<
+  TData = Awaited<ReturnType<typeof listWizardSessions>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listWizardSessions>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListWizardSessionsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Creates a new wizard session. Max 3 per user; oldest is auto-deleted if exceeded.
+ * @summary Save a wizard session
+ */
+export const getCreateWizardSessionUrl = () => {
+  return `/api/wizard-sessions`;
+};
+
+export const createWizardSession = async (
+  createWizardSessionBody: CreateWizardSessionBody,
+  options?: RequestInit,
+): Promise<WizardSession> => {
+  return customFetch<WizardSession>(getCreateWizardSessionUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createWizardSessionBody),
+  });
+};
+
+export const getCreateWizardSessionMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createWizardSession>>,
+    TError,
+    { data: BodyType<CreateWizardSessionBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createWizardSession>>,
+  TError,
+  { data: BodyType<CreateWizardSessionBody> },
+  TContext
+> => {
+  const mutationKey = ["createWizardSession"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createWizardSession>>,
+    { data: BodyType<CreateWizardSessionBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createWizardSession(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateWizardSessionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createWizardSession>>
+>;
+export type CreateWizardSessionMutationBody = BodyType<CreateWizardSessionBody>;
+export type CreateWizardSessionMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Save a wizard session
+ */
+export const useCreateWizardSession = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createWizardSession>>,
+    TError,
+    { data: BodyType<CreateWizardSessionBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createWizardSession>>,
+  TError,
+  { data: BodyType<CreateWizardSessionBody> },
+  TContext
+> => {
+  return useMutation(getCreateWizardSessionMutationOptions(options));
+};
+
+/**
+ * @summary Get a wizard session
+ */
+export const getGetWizardSessionUrl = (id: number) => {
+  return `/api/wizard-sessions/${id}`;
+};
+
+export const getWizardSession = async (
+  id: number,
+  options?: RequestInit,
+): Promise<WizardSession> => {
+  return customFetch<WizardSession>(getGetWizardSessionUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetWizardSessionQueryKey = (id: number) => {
+  return [`/api/wizard-sessions/${id}`] as const;
+};
+
+export const getGetWizardSessionQueryOptions = <
+  TData = Awaited<ReturnType<typeof getWizardSession>>,
+  TError = ErrorType<NotFoundResponse>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getWizardSession>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetWizardSessionQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getWizardSession>>
+  > = ({ signal }) => getWizardSession(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getWizardSession>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetWizardSessionQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getWizardSession>>
+>;
+export type GetWizardSessionQueryError = ErrorType<NotFoundResponse>;
+
+/**
+ * @summary Get a wizard session
+ */
+
+export function useGetWizardSession<
+  TData = Awaited<ReturnType<typeof getWizardSession>>,
+  TError = ErrorType<NotFoundResponse>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getWizardSession>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetWizardSessionQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Delete a wizard session
+ */
+export const getDeleteWizardSessionUrl = (id: number) => {
+  return `/api/wizard-sessions/${id}`;
+};
+
+export const deleteWizardSession = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteWizardSessionUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteWizardSessionMutationOptions = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteWizardSession>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteWizardSession>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteWizardSession"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteWizardSession>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteWizardSession(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteWizardSessionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteWizardSession>>
+>;
+
+export type DeleteWizardSessionMutationError = ErrorType<NotFoundResponse>;
+
+/**
+ * @summary Delete a wizard session
+ */
+export const useDeleteWizardSession = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteWizardSession>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteWizardSession>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteWizardSessionMutationOptions(options));
+};
+
+/**
+ * @summary Research market trends for a job title
+ */
+export const getResearchTrendsUrl = () => {
+  return `/api/trends/research`;
+};
+
+export const researchTrends = async (
+  researchTrendsBody: ResearchTrendsBody,
+  options?: RequestInit,
+): Promise<ResearchTrendsResponse> => {
+  return customFetch<ResearchTrendsResponse>(getResearchTrendsUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(researchTrendsBody),
+  });
+};
+
+export const getResearchTrendsMutationOptions = <
+  TError = ErrorType<BadRequestResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof researchTrends>>,
+    TError,
+    { data: BodyType<ResearchTrendsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof researchTrends>>,
+  TError,
+  { data: BodyType<ResearchTrendsBody> },
+  TContext
+> => {
+  const mutationKey = ["researchTrends"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof researchTrends>>,
+    { data: BodyType<ResearchTrendsBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return researchTrends(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ResearchTrendsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof researchTrends>>
+>;
+export type ResearchTrendsMutationBody = BodyType<ResearchTrendsBody>;
+export type ResearchTrendsMutationError = ErrorType<BadRequestResponse>;
+
+/**
+ * @summary Research market trends for a job title
+ */
+export const useResearchTrends = <
+  TError = ErrorType<BadRequestResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof researchTrends>>,
+    TError,
+    { data: BodyType<ResearchTrendsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof researchTrends>>,
+  TError,
+  { data: BodyType<ResearchTrendsBody> },
+  TContext
+> => {
+  return useMutation(getResearchTrendsMutationOptions(options));
+};
+
+/**
+ * @summary List aggregated job board listings
+ */
+export const getListJobBoardListingsUrl = (
+  params?: ListJobBoardListingsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/job-board/listings?${stringifiedParams}`
+    : `/api/job-board/listings`;
+};
+
+export const listJobBoardListings = async (
+  params?: ListJobBoardListingsParams,
+  options?: RequestInit,
+): Promise<JobBoardListingsResponse> => {
+  return customFetch<JobBoardListingsResponse>(
+    getListJobBoardListingsUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListJobBoardListingsQueryKey = (
+  params?: ListJobBoardListingsParams,
+) => {
+  return [`/api/job-board/listings`, ...(params ? [params] : [])] as const;
+};
+
+export const getListJobBoardListingsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listJobBoardListings>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListJobBoardListingsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listJobBoardListings>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListJobBoardListingsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listJobBoardListings>>
+  > = ({ signal }) =>
+    listJobBoardListings(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listJobBoardListings>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListJobBoardListingsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listJobBoardListings>>
+>;
+export type ListJobBoardListingsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List aggregated job board listings
+ */
+
+export function useListJobBoardListings<
+  TData = Awaited<ReturnType<typeof listJobBoardListings>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListJobBoardListingsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listJobBoardListings>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListJobBoardListingsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List configured job board sources
+ */
+export const getListJobBoardSourcesUrl = () => {
+  return `/api/job-board/sources`;
+};
+
+export const listJobBoardSources = async (
+  options?: RequestInit,
+): Promise<JobBoardSource[]> => {
+  return customFetch<JobBoardSource[]>(getListJobBoardSourcesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListJobBoardSourcesQueryKey = () => {
+  return [`/api/job-board/sources`] as const;
+};
+
+export const getListJobBoardSourcesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listJobBoardSources>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listJobBoardSources>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListJobBoardSourcesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listJobBoardSources>>
+  > = ({ signal }) => listJobBoardSources({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listJobBoardSources>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListJobBoardSourcesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listJobBoardSources>>
+>;
+export type ListJobBoardSourcesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List configured job board sources
+ */
+
+export function useListJobBoardSources<
+  TData = Awaited<ReturnType<typeof listJobBoardSources>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listJobBoardSources>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListJobBoardSourcesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
