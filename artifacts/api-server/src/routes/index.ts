@@ -17,6 +17,13 @@ import { aiMetricsSnapshotRouter } from "./ai-metrics-snapshot";
 import assistedApplyRouter from "./assisted-apply";
 import freelanceRouter from "./freelance";
 import usersRouter from "./users";
+import wizardSessionsRouter from "./wizard-sessions";
+import inviteCodesRouter from "./invite-codes";
+import usageLimitsRouter from "./usage-limits";
+import growthRouter from "./growth";
+import feedbackRouter from "./feedback";
+import trendsRouter from "./trends";
+import jobBoardRouter from "./job-board";
 
 /**
  * Root API router. Aggregates all entity-specific sub-routers and mounts them
@@ -43,6 +50,8 @@ const router: IRouter = Router();
 // Public routes — no auth required
 router.use(authRouter);
 router.use(healthRouter);
+router.use(inviteCodesRouter);
+router.use(growthRouter);
 
 // Protected routes — require a valid authenticated session
 router.use(requireAuth);
@@ -61,5 +70,10 @@ router.use(aiMetricsSnapshotRouter);
 router.use(assistedApplyRouter);
 router.use(freelanceRouter);
 router.use(usersRouter);
+router.use(wizardSessionsRouter);
+router.use(usageLimitsRouter);
+router.use(feedbackRouter);
+router.use(trendsRouter);
+router.use(jobBoardRouter);
 
 export default router;
