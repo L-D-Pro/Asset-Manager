@@ -1,9 +1,12 @@
 import { useMemo } from "react";
 import { useGetAiMetricsSnapshot } from "@workspace/api-client-react";
 import type { GetAiMetricsSnapshotMetricsVersion } from "@workspace/api-client-react";
+import { PageHeader } from "@/components/ui/page-header";
+import { ContentCard } from "@/components/ui/content-card";
+import { SectionHeader } from "@/components/ui/section-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getErrorMessage } from "@/lib/api-errors";
 import { cn } from "@/lib/utils";
@@ -36,15 +39,11 @@ export default function AiMetricsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-          <Brain className="h-7 w-7 text-primary" />
-          AI Metrics
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Decision-quality KPIs and trends for AI reviews. Shows degraded/stale state when lineage guarantees are compromised.
-        </p>
-      </div>
+      <PageHeader
+        title="AI Metrics"
+        subtitle="Track prompt version performance, success rates, and cost efficiency over time."
+        gradient="from-fuchsia-500 via-fuchsia-400 to-rose-400"
+      />
 
       <Tabs defaultValue={TASK_SCOPES[0]}>
         <TabsList>
@@ -116,7 +115,7 @@ function TaskScopePanel({ scope, windowStart, windowEnd }: { scope: TaskScope; w
         />
       </div>
 
-      <Card>
+      <ContentCard>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4" />
@@ -158,9 +157,9 @@ function TaskScopePanel({ scope, windowStart, windowEnd }: { scope: TaskScope; w
             </table>
           </div>
         </CardContent>
-      </Card>
+      </ContentCard>
 
-      <Card>
+      <ContentCard>
         <CardHeader>
           <CardTitle>Prompt-version comparison</CardTitle>
           <CardDescription>Grouped by promptVersionId ("unknown" means built-in / not captured).</CardDescription>
@@ -218,7 +217,7 @@ function TaskScopePanel({ scope, windowStart, windowEnd }: { scope: TaskScope; w
             </table>
           </div>
         </CardContent>
-      </Card>
+      </ContentCard>
     </div>
   );
 }
@@ -251,7 +250,7 @@ function DegradedBanner({ snapshot }: { snapshot: any }) {
 
 function MetricCard({ title, value, description }: { title: string; value: string | number; description?: string }) {
   return (
-    <Card>
+    <ContentCard>
       <CardContent className="p-4">
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <span>{title}</span>
@@ -259,7 +258,7 @@ function MetricCard({ title, value, description }: { title: string; value: strin
         <div className="mt-2 text-2xl font-bold">{value}</div>
         {description ? <div className="mt-1 text-xs text-muted-foreground">{description}</div> : null}
       </CardContent>
-    </Card>
+    </ContentCard>
   );
 }
 

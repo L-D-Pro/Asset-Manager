@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Brain, RefreshCw, TrendingUp, Trophy, AlertCircle, CheckCircle, Undo2 } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
+import { ContentCard } from "@/components/ui/content-card";
+import { SectionHeader } from "@/components/ui/section-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +11,6 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AnimatedCard } from "@/components/motion/animated-card";
 import { StaggerContainer } from "@/components/motion/stagger-container";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -192,16 +194,11 @@ export default function AiLearningPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <Brain className="h-7 w-7 text-primary" />
-            AI Learning
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Bayesian optimization loop that learns from application outcomes
-          </p>
-        </div>
+      <PageHeader
+        title="AI Learning"
+        subtitle="Bayesian auto-optimizer that learns from feedback signals to improve prompt versions over time."
+        gradient="from-fuchsia-500 via-fuchsia-400 to-rose-400"
+      >
         <Button
           onClick={() => recomputeMutation.mutate()}
           disabled={recomputeMutation.isPending}
@@ -214,7 +211,7 @@ export default function AiLearningPage() {
           />
           Recompute Now
         </Button>
-      </div>
+      </PageHeader>
 
       {stats?.some((s) => s.lastComputedAt) && (
         <p className="text-xs text-muted-foreground">
@@ -226,7 +223,7 @@ export default function AiLearningPage() {
       )}
 
       {!hasData && !statsLoading && (
-        <AnimatedCard>
+        <ContentCard>
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12 text-center">
               <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
@@ -242,13 +239,13 @@ export default function AiLearningPage() {
               </p>
             </CardContent>
           </Card>
-        </AnimatedCard>
+        </ContentCard>
       )}
 
       {hasData && (
         <>
           <StaggerContainer className="grid gap-4 md:grid-cols-3">
-            <AnimatedCard>
+            <ContentCard>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">
@@ -263,8 +260,8 @@ export default function AiLearningPage() {
                   </p>
                 </CardContent>
               </Card>
-            </AnimatedCard>
-            <AnimatedCard>
+            </ContentCard>
+            <ContentCard>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">
@@ -281,8 +278,8 @@ export default function AiLearningPage() {
                   </p>
                 </CardContent>
               </Card>
-            </AnimatedCard>
-            <AnimatedCard>
+            </ContentCard>
+            <ContentCard>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">
@@ -299,7 +296,7 @@ export default function AiLearningPage() {
                   </p>
                 </CardContent>
               </Card>
-            </AnimatedCard>
+            </ContentCard>
           </StaggerContainer>
 
           <Card>

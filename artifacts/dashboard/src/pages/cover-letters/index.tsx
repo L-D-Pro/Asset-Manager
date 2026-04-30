@@ -1,9 +1,11 @@
 import { useListCoverLetterVersions, useApproveCoverLetterVersion, useRejectCoverLetterVersion, useUpdateCoverLetterVersion, useListClaims, getListCoverLetterVersionsQueryKey, type CoverLetterVersion } from "@workspace/api-client-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { PageHeader } from "@/components/ui/page-header";
+import { ContentCard } from "@/components/ui/content-card";
 import { MessageSquare, Check, X, Tag, RotateCcw, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -100,31 +102,36 @@ export default function CoverLettersPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Cover Letter Queue</h1>
-        <p className="text-muted-foreground mt-1">Review AI-drafted cover letters with claim attribution before approving.</p>
-      </div>
+    <div className="space-y-8">
+      <PageHeader
+        title="Cover Letter Queue"
+        subtitle="Review AI-drafted cover letters with claim attribution before approving."
+        gradient="from-teal-500 via-teal-400 to-cyan-400"
+      />
 
       <div className="grid gap-4">
         {isLoading ? (
           <>
-            <Skeleton className="h-64 w-full" />
-            <Skeleton className="h-64 w-full" />
+            <Skeleton className="h-64 w-full rounded-2xl" />
+            <Skeleton className="h-64 w-full rounded-2xl" />
           </>
         ) : versions?.length === 0 ? (
-          <Card className="flex flex-col items-center justify-center p-12 text-center border-dashed">
-            <MessageSquare className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
-            <h3 className="text-lg font-medium">Queue empty</h3>
-            <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-              No cover letters pending review right now.
-            </p>
-          </Card>
+          <ContentCard>
+            <div className="flex flex-col items-center justify-center p-12 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 text-slate-300 mb-5">
+                <MessageSquare className="h-8 w-8" />
+              </div>
+              <h3 className="text-base font-semibold text-slate-900 mb-1.5">Queue empty</h3>
+              <p className="text-sm text-slate-500 max-w-sm">
+                No cover letters pending review right now.
+              </p>
+            </div>
+          </ContentCard>
         ) : (
           versions?.map((version) => {
             const annotations = parseAnnotations(version);
             return (
-              <Card key={version.id} data-testid={`card-cl-${version.id}`}>
+              <ContentCard key={version.id} data-testid={`card-cl-${version.id}`} className="p-0">
                 <CardHeader className="pb-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="space-y-1">
@@ -232,7 +239,7 @@ export default function CoverLettersPage() {
                     </div>
                   )}
                 </CardContent>
-              </Card>
+              </ContentCard>
             );
           })
         )}

@@ -1,5 +1,8 @@
 import { useListAiModelConfigs, useCreateAiModelConfig, useUpdateAiModelConfig, useDeleteAiModelConfig, getListAiModelConfigsQueryKey, type AiModelConfig } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
+import { ContentCard } from "@/components/ui/content-card";
+import { SectionHeader } from "@/components/ui/section-header";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -165,10 +168,11 @@ export default function AiConfigPage() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">AI Model Config</h1>
-          <p className="text-muted-foreground mt-1">Configure models, costs, priorities, and fallback chains for each pipeline task.</p>
-        </div>
+        <PageHeader
+          title="AI Config"
+          subtitle="Configure AI model defaults per task type, manage cost caps, and set fallback behavior."
+          gradient="from-fuchsia-500 via-fuchsia-400 to-rose-400"
+        />
 
         <Dialog open={isDialogOpen} onOpenChange={(open) => { if(!open) handleClose(); else setIsDialogOpen(true); }}>
           <DialogTrigger asChild>
@@ -312,17 +316,17 @@ export default function AiConfigPage() {
       </div>
 
       {isLoading ? <Skeleton className="h-64 w-full" /> : sortedConfigs.length === 0 ? (
-        <Card className="flex flex-col items-center justify-center p-12 text-center border-dashed">
+        <ContentCard className="flex flex-col items-center justify-center p-12 text-center border-dashed">
           <Settings className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
           <h3 className="text-lg font-medium">No AI configs yet</h3>
           <p className="text-sm text-muted-foreground mt-1">Create your first model config to enable AI pipelines.</p>
-        </Card>
+        </ContentCard>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {sortedConfigs.map(c => {
             const fallbackName = getFallbackName(c.fallbackModelId);
             return (
-              <Card key={c.id} data-testid={`card-config-${c.id}`} className={!c.isActive ? "opacity-70" : ""}>
+              <ContentCard key={c.id} data-testid={`card-config-${c.id}`} className={!c.isActive ? "opacity-70" : ""}>
                 <CardContent className="p-5 space-y-3">
                   <div className="flex justify-between items-start">
                     <div className="space-y-1 flex-1 min-w-0 pr-2">
@@ -354,7 +358,7 @@ export default function AiConfigPage() {
                     </div>
                   )}
                 </CardContent>
-              </Card>
+              </ContentCard>
             );
           })}
         </div>

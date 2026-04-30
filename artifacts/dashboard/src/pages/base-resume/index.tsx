@@ -9,7 +9,7 @@ import {
 } from "@workspace/api-client-react";
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,6 +17,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { PageHeader } from "@/components/ui/page-header";
+import { ContentCard } from "@/components/ui/content-card";
 import { FileText, RotateCcw, Save, AlertCircle, History, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -140,21 +142,22 @@ export default function BaseResumePage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Base Resume</h1>
-        <p className="text-muted-foreground mt-1">
-          Maintain the single source-of-truth resume that AI tailoring builds from.
-        </p>
-      </div>
+    <div className="space-y-8">
+      <PageHeader
+        title="Base Resume"
+        subtitle="Maintain the single source-of-truth resume that AI tailoring builds from."
+        gradient="from-teal-500 via-teal-400 to-cyan-400"
+      />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_360px]">
-        <Card>
+        <ContentCard>
           <CardHeader className="space-y-3">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-primary" />
+                <CardTitle className="flex items-center gap-2 text-slate-900">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-500/10">
+                    <FileText className="h-4 w-4 text-teal-500" />
+                  </div>
                   Current Resume Text
                 </CardTitle>
                 <CardDescription className="mt-1">
@@ -233,18 +236,21 @@ export default function BaseResumePage() {
                 onClick={handleSave}
                 disabled={saveDisabled}
                 data-testid="btn-save-base-resume"
+                className="bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 shadow-lg shadow-teal-500/25"
               >
                 <Save className="mr-2 h-4 w-4" />
                 {saveResume.isPending ? "Saving..." : hasCurrentResume ? "Save New Version" : "Save Base Resume"}
               </Button>
             </div>
           </CardContent>
-        </Card>
+        </ContentCard>
 
-        <Card>
+        <ContentCard>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <History className="h-5 w-5 text-primary" />
+            <CardTitle className="flex items-center gap-2 text-slate-900">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-500/10">
+                <History className="h-4 w-4 text-teal-500" />
+              </div>
               Version History
             </CardTitle>
             <CardDescription>
@@ -303,7 +309,7 @@ export default function BaseResumePage() {
               </ScrollArea>
             )}
           </CardContent>
-        </Card>
+        </ContentCard>
       </div>
     </div>
   );

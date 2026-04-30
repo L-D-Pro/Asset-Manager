@@ -4,11 +4,13 @@ import {
   useCreateAiPromptVersion,
   useGetAiReviewOverview,
 } from "@workspace/api-client-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { PageHeader } from "@/components/ui/page-header";
+import { ContentCard } from "@/components/ui/content-card";
 import { Brain, FlaskConical, History, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getErrorMessage } from "@/lib/api-errors";
@@ -50,16 +52,12 @@ export default function AiReviewPage() {
   const stats = data?.stats;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-          <Brain className="h-7 w-7 text-primary" />
-          AI Review
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Version prompts, inspect AI runs, and curate supervised learning signals without fine-tuning prematurely.
-        </p>
-      </div>
+    <div className="space-y-8">
+      <PageHeader
+        title="AI Review"
+        subtitle="Version prompts, inspect AI runs, and curate supervised learning signals without fine-tuning prematurely."
+        gradient="from-fuchsia-500 via-fuchsia-400 to-rose-400"
+      />
 
       <div className="grid gap-4 md:grid-cols-4">
         <Metric title="Recent AI Runs" value={stats?.recentAiEvents ?? 0} icon={<History className="h-4 w-4" />} />
@@ -68,7 +66,7 @@ export default function AiReviewPage() {
         <Metric title="Training Examples" value={stats?.trainingExamples ?? 0} icon={<FlaskConical className="h-4 w-4" />} />
       </div>
 
-      <Card>
+      <ContentCard>
         <CardHeader>
           <CardTitle>Create Prompt Version</CardTitle>
           <CardDescription>
@@ -143,10 +141,10 @@ export default function AiReviewPage() {
             </Button>
           </div>
         </CardContent>
-      </Card>
+      </ContentCard>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
+        <ContentCard>
           <CardHeader>
             <CardTitle>Recent AI Events</CardTitle>
             <CardDescription>Model, cost, prompt version, and fallback metadata are logged in event metadata.</CardDescription>
@@ -167,9 +165,9 @@ export default function AiReviewPage() {
               </div>
             ))}
           </CardContent>
-        </Card>
+        </ContentCard>
 
-        <Card>
+        <ContentCard>
           <CardHeader>
             <CardTitle>Prompt Versions</CardTitle>
             <CardDescription>Keep old versions immutable and activate only the prompt you want production calls to use.</CardDescription>
@@ -187,7 +185,7 @@ export default function AiReviewPage() {
               </div>
             ))}
           </CardContent>
-        </Card>
+        </ContentCard>
       </div>
     </div>
   );
@@ -195,7 +193,7 @@ export default function AiReviewPage() {
 
 function Metric({ title, value, icon }: { title: string; value: number; icon: React.ReactNode }) {
   return (
-    <Card>
+    <ContentCard>
       <CardContent className="p-4">
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <span>{title}</span>
@@ -203,7 +201,7 @@ function Metric({ title, value, icon }: { title: string; value: number; icon: Re
         </div>
         <div className="mt-2 text-2xl font-bold">{value}</div>
       </CardContent>
-    </Card>
+    </ContentCard>
   );
 }
 

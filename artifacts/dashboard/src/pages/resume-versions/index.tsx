@@ -5,12 +5,14 @@ import {
   useUpdateResumeVersion,
   getListResumeVersionsQueryKey,
 } from "@workspace/api-client-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { PageHeader } from "@/components/ui/page-header";
+import { ContentCard } from "@/components/ui/content-card";
 import { FileText, Check, X, ExternalLink, Plus, Minus, ArrowLeftRight, ThumbsUp, ThumbsDown, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -313,22 +315,27 @@ export default function ResumeVersionsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Resume Queue</h1>
-        <p className="text-muted-foreground mt-1">Review each individual change before approving. Accepted/rejected bullet decisions are recorded on the version before approval.</p>
-      </div>
+    <div className="space-y-8">
+      <PageHeader
+        title="Resume Queue"
+        subtitle="Review each individual change before approving. Accepted/rejected bullet decisions are recorded on the version record before approval."
+        gradient="from-teal-500 via-teal-400 to-cyan-400"
+      />
       <div className="grid gap-4">
         {isLoading ? (
-          <><Skeleton className="h-32 w-full" /><Skeleton className="h-32 w-full" /></>
+          <><Skeleton className="h-32 w-full rounded-2xl" /><Skeleton className="h-32 w-full rounded-2xl" /></>
         ) : versions?.length === 0 ? (
-          <Card className="flex flex-col items-center justify-center p-12 text-center border-dashed">
-            <FileText className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
-            <h3 className="text-lg font-medium">Queue empty</h3>
-            <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-              No resume versions pending review. Trigger "Tailor Resume" from a job detail page to generate one.
-            </p>
-          </Card>
+          <ContentCard>
+            <div className="flex flex-col items-center justify-center p-12 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 text-slate-300 mb-5">
+                <FileText className="h-8 w-8" />
+              </div>
+              <h3 className="text-base font-semibold text-slate-900 mb-1.5">Queue empty</h3>
+              <p className="text-sm text-slate-500 max-w-sm">
+                No resume versions pending review. Trigger "Tailor Resume" from a job detail page to generate one.
+              </p>
+            </div>
+          </ContentCard>
         ) : (
           versions?.map((version) => {
             const diffData = version.diffData as DiffData | null | undefined;
@@ -341,7 +348,7 @@ export default function ResumeVersionsPage() {
             const hasPending = pendingCount > 0;
 
             return (
-              <Card key={version.id} data-testid={`card-resume-${version.id}`}>
+              <ContentCard key={version.id} data-testid={`card-resume-${version.id}`} className="p-0">
                 <CardHeader className="pb-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="space-y-1">
@@ -448,7 +455,7 @@ export default function ResumeVersionsPage() {
                     </CardContent>
                   </>
                 )}
-              </Card>
+              </ContentCard>
             );
           })
         )}
