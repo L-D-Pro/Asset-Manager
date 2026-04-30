@@ -1,6 +1,6 @@
-import { sql } from "drizzle-orm";
-import { pgTable, text, serial, timestamp, integer, boolean, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, boolean, jsonb, unique, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod/v4";
 
 /**
  * Job Sources — RSS/Atom feed configurations for job aggregation.
@@ -13,27 +13,26 @@ export const jobSourcesTable = pgTable("job_sources", {
   feedUrl: text("feed_url").notNull(),
   sourceType: text("source_type").notNull().default("rss"),
   category: text("category").default("general"),
-  keywords: text("keywords").array().default(sql`'{}'::text[]`),
+  keywords: text("keywords").array().default([]),
   isActive: boolean("is_active").default(true).notNull(),
-  lastFetchedAt: timestamp("last_fetched_at"),
-  lastSuccessAt: timestamp("last_success_at"),
+  lastFetchedAt: timestamp("last_fetched_at", { withTimezone: true }),
+  lastSuccessAt: timestamp("last_success_at", { withTimezone: true }),
   lastError: text("last_error"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+}, (table) => [
+  index("job_sources_category_idx").on(table.category),
+  index("job_sources_active_idx").on(table.isActive),
+]);
 
-export const insertJobSourceSchema = createInsertSchema(jobSourcesTable).pick({
-  key: true,
-  name: true,
-  feedUrl: true,
-  sourceType: true,
-  category: true,
-  keywords: true,
-  isActive: true,
+export const insertJobSourceSchema = createInsertSchema(jobSourcesTable).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
 export type JobSource = typeof jobSourcesTable.$inferSelect;
-export type InsertJobSource = typeof jobSourcesTable.$inferInsert;
+export type InsertJobSource = z.infer<typeof insertJobSourceSchema>;
 
 /**
  * Job Listings — aggregated job postings from RSS feeds.
@@ -48,33 +47,29 @@ export const jobListingsTable = pgTable("job_listings", {
   company: text("company").notNull(),
   location: text("location"),
   summary: text("summary"),
-  tags: text("tags").array().default(sql`'{}'::text[]`),
+  tags: text("tags").array().default([]),
   jobType: text("job_type"),
   workplaceType: text("workplace_type"),
-  publishedAt: timestamp("published_at"),
+  publishedAt: timestamp("published_at", { withTimezone: true }),
   isActive: boolean("is_active").default(true).notNull(),
-  fetchedAt: timestamp("fetched_at").defaultNow(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
+  fetchedAt: timestamp("fetched_at", { withTimezone: true }).defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+}, (table) => [
+  unique().on(table.sourceKey, table.sourceItemId),
+  index("job_listings_source_id_idx").on(table.sourceId),
+  index("job_listings_active_idx").on(table.isActive),
+  index("job_listings_published_idx").on(table.publishedAt),
+]);
 
-export const insertJobListingSchema = createInsertSchema(jobListingsTable).pick({
-  sourceId: true,
-  sourceKey: true,
-  sourceItemId: true,
-  sourceUrl: true,
-  title: true,
-  company: true,
-  location: true,
-  summary: true,
-  tags: true,
-  jobType: true,
-  workplaceType: true,
-  publishedAt: true,
+export const insertJobListingSchema = createInsertSchema(jobListingsTable).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
 export type JobListing = typeof jobListingsTable.$inferSelect;
-export type InsertJobListing = typeof jobListingsTable.$inferInsert;
+export type InsertJobListing = z.infer<typeof insertJobListingSchema>;
 
 /**
  * Trends Cache — stores AI-generated market research with TTL.
@@ -88,23 +83,22 @@ export const trendsCacheTable = pgTable("trends_cache", {
   salaryTarget: integer("salary_target"),
   analysisJson: jsonb("analysis_json").notNull().$type<MarketAnalysis>(),
   jobMatchesCount: integer("job_matches_count").default(0),
-  createdAt: timestamp("created_at").defaultNow(),
-  expiresAt: timestamp("expires_at").notNull(),
-});
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+}, (table) => [
+  index("trends_cache_job_title_idx").on(table.jobTitle),
+  index("trends_cache_expires_idx").on(table.expiresAt),
+]);
 
-export const insertTrendsCacheSchema = createInsertSchema(trendsCacheTable).pick({
-  queryHash: true,
-  jobTitle: true,
-  location: true,
-  experienceLevel: true,
-  salaryTarget: true,
-  analysisJson: true,
-  jobMatchesCount: true,
-  expiresAt: true,
+export const insertTrendsCacheSchema = createInsertSchema(trendsCacheTable).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
 export type TrendsCache = typeof trendsCacheTable.$inferSelect;
-export type InsertTrendsCache = typeof trendsCacheTable.$inferInsert;
+export type InsertTrendsCache = z.infer<typeof insertTrendsCacheSchema>;
 
 /**
  * Market Analysis JSON structure (stored in trendsCache.analysisJson).

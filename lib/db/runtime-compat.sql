@@ -420,56 +420,62 @@ CREATE INDEX IF NOT EXISTS ai_training_examples_active_idx ON ai_training_exampl
 
 -- Job board tables (runtime compat)
 CREATE TABLE IF NOT EXISTS job_sources (
-  id SERIAL PRIMARY KEY,
-  key TEXT NOT NULL UNIQUE,
-  name TEXT NOT NULL,
-  feed_url TEXT NOT NULL,
-  source_type TEXT NOT NULL DEFAULT 'rss',
-  category TEXT DEFAULT 'general',
-  keywords TEXT[] DEFAULT '{}',
-  is_active BOOLEAN NOT NULL DEFAULT true,
-  last_fetched_at TIMESTAMP,
-  last_success_at TIMESTAMP,
-  last_error TEXT,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
+    id SERIAL PRIMARY KEY,
+    key TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    feed_url TEXT NOT NULL,
+    source_type TEXT NOT NULL DEFAULT 'rss',
+    category TEXT DEFAULT 'general',
+    keywords TEXT[] DEFAULT '{}',
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    last_fetched_at TIMESTAMPTZ,
+    last_success_at TIMESTAMPTZ,
+    last_error TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE INDEX IF NOT EXISTS job_sources_category_idx ON job_sources(category);
+CREATE INDEX IF NOT EXISTS job_sources_active_idx ON job_sources(is_active);
 
 CREATE TABLE IF NOT EXISTS job_listings (
-  id SERIAL PRIMARY KEY,
-  source_id INTEGER NOT NULL REFERENCES job_sources(id) ON DELETE CASCADE,
-  source_key TEXT NOT NULL,
-  source_item_id TEXT NOT NULL,
-  source_url TEXT NOT NULL,
-  title TEXT NOT NULL,
-  company TEXT NOT NULL,
-  location TEXT,
-  summary TEXT,
-  tags TEXT[] DEFAULT '{}',
-  job_type TEXT,
-  workplace_type TEXT,
-  published_at TIMESTAMP,
-  is_active BOOLEAN NOT NULL DEFAULT true,
-  fetched_at TIMESTAMP DEFAULT NOW(),
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW(),
-  UNIQUE(source_key, source_item_id)
+    id SERIAL PRIMARY KEY,
+    source_id INTEGER NOT NULL REFERENCES job_sources(id) ON DELETE CASCADE,
+    source_key TEXT NOT NULL,
+    source_item_id TEXT NOT NULL,
+    source_url TEXT NOT NULL,
+    title TEXT NOT NULL,
+    company TEXT NOT NULL,
+    location TEXT,
+    summary TEXT,
+    tags TEXT[] DEFAULT '{}',
+    job_type TEXT,
+    workplace_type TEXT,
+    published_at TIMESTAMPTZ,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    fetched_at TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(source_key, source_item_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_job_listings_active ON job_listings(is_active);
-CREATE INDEX IF NOT EXISTS idx_job_listings_published ON job_listings(published_at);
+CREATE INDEX IF NOT EXISTS job_listings_source_id_idx ON job_listings(source_id);
+CREATE INDEX IF NOT EXISTS job_listings_active_idx ON job_listings(is_active);
+CREATE INDEX IF NOT EXISTS job_listings_published_idx ON job_listings(published_at);
 
 CREATE TABLE IF NOT EXISTS trends_cache (
-  id SERIAL PRIMARY KEY,
-  query_hash TEXT NOT NULL UNIQUE,
-  job_title TEXT NOT NULL,
-  location TEXT,
-  experience_level TEXT,
-  salary_target INTEGER,
-  analysis_json JSONB NOT NULL,
-  job_matches_count INTEGER DEFAULT 0,
-  created_at TIMESTAMP DEFAULT NOW(),
-  expires_at TIMESTAMP NOT NULL
+    id SERIAL PRIMARY KEY,
+    query_hash TEXT NOT NULL UNIQUE,
+    job_title TEXT NOT NULL,
+    location TEXT,
+    experience_level TEXT,
+    salary_target INTEGER,
+    analysis_json JSONB NOT NULL,
+    job_matches_count INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_trends_cache_expires ON trends_cache(expires_at);
+CREATE INDEX IF NOT EXISTS trends_cache_job_title_idx ON trends_cache(job_title);
+CREATE INDEX IF NOT EXISTS trends_cache_expires_idx ON trends_cache(expires_at);
