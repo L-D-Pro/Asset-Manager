@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   approveCoverLetterVersion,
   approveResumeVersion,
@@ -13,7 +13,10 @@ import {
   useCreateApplicationSession,
   useCreateJob,
   useCreateRoleProfile,
+  useCreateWizardSession,
+  useDeleteWizardSession,
   useDraftCoverLetter,
+  useListWizardSessions,
   getGetCoverLetterVersionQueryKey,
   getGetJobClaimMatchesQueryKey,
   getGetJobQueryKey,
@@ -34,7 +37,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Sparkles, Link2, ClipboardCheck, Wand2, ShieldCheck, MousePointerClick, UserCircle } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Sparkles, Link2, ClipboardCheck, Wand2, ShieldCheck, MousePointerClick, UserCircle, Tag, Check, AlertCircle, ChevronRight, Download, Save, Upload, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getErrorMessage } from "@/lib/api-errors";
 import { Link } from "react-router-dom";
@@ -88,6 +92,20 @@ type CompareCandidate = {
   runId?: string | null;
   eventLogId?: number | null;
   error?: string;
+};
+
+const ROLE_COLORS: Record<string, string> = {
+  opening: "bg-blue-50 border-blue-100 dark:bg-blue-950/20 dark:border-blue-900/30",
+  hook: "bg-purple-50 border-purple-100 dark:bg-purple-950/20 dark:border-purple-900/30",
+  body: "bg-emerald-50 border-emerald-100 dark:bg-emerald-950/20 dark:border-emerald-900/30",
+  closing: "bg-amber-50 border-amber-100 dark:bg-amber-950/20 dark:border-amber-900/30",
+};
+
+const ROLE_LABEL_COLORS: Record<string, string> = {
+  opening: "text-blue-700 bg-blue-100 dark:text-blue-300 dark:bg-blue-900/50",
+  hook: "text-purple-700 bg-purple-100 dark:text-purple-300 dark:bg-purple-900/50",
+  body: "text-emerald-700 bg-emerald-100 dark:text-emerald-300 dark:bg-emerald-900/50",
+  closing: "text-amber-700 bg-amber-100 dark:text-amber-300 dark:bg-amber-900/50",
 };
 
 const STEP_ORDER: WizardStep[] = ["intake", "parse", "role", "tailor", "approve", "assisted"];
@@ -161,6 +179,8 @@ export default function ApplyWizardPage() {
   const [coverCandidates, setCoverCandidates] = useState<CompareCandidate[]>([]);
   const [selectedResumeWinner, setSelectedResumeWinner] = useState<string | null>(null);
   const [selectedCoverWinner, setSelectedCoverWinner] = useState<string | null>(null);
+  const [activeResumeTab, setActiveResumeTab] = useState<string | null>(null);
+  const [activeCoverTab, setActiveCoverTab] = useState<string | null>(null);
 
   const [quickProfile, setQuickProfile] = useState({
     name: "",
@@ -196,8 +216,22 @@ export default function ApplyWizardPage() {
   const approveCover = useApproveCoverLetterVersion();
   const rejectCover = useRejectCoverLetterVersion();
   const createSession = useCreateApplicationSession();
+  const createWizardSession = useCreateWizardSession();
+  const deleteWizardSession = useDeleteWizardSession();
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [savedSessions, setSavedSessions] = useState<Array<{
+    id: number;
+    jobId: number | null;
+    currentStep: string;
+    state: Record<string, unknown>;
+    createdAt: string;
+    updatedAt: string;
+  }>>([]);
+  const [savingSession, setSavingSession] = useState(false);
 
   const { data: roleProfiles = [] } = useListRoleProfiles();
+  const { data: apiSessions, refetch: refetchSessions } = useListWizardSessions();
   const { data: job, isLoading: jobLoading, refetch: refetchJob } = useGetJob(jobId ?? 0, {
     query: { enabled: !!jobId, queryKey: getGetJobQueryKey(jobId ?? 0) },
   });
@@ -272,6 +306,18 @@ export default function ApplyWizardPage() {
   }, [claimMatches, selectedClaimIds.length]);
 
   useEffect(() => {
+    if (resumeCandidates.length > 0 && !activeResumeTab) {
+      setActiveResumeTab(resumeCandidates[0].modelName);
+    }
+  }, [resumeCandidates, activeResumeTab]);
+
+  useEffect(() => {
+    if (coverCandidates.length > 0 && !activeCoverTab) {
+      setActiveCoverTab(coverCandidates[0].modelName);
+    }
+  }, [coverCandidates, activeCoverTab]);
+
+  useEffect(() => {
     if (!ENABLE_WIZARD) return;
     let cancelled = false;
     const loadModelCatalog = async () => {
@@ -304,6 +350,19 @@ export default function ApplyWizardPage() {
       cancelled = true;
     };
   }, [toast]);
+
+  useEffect(() => {
+    if (apiSessions && apiSessions.length > 0) {
+      setSavedSessions(apiSessions as unknown as Array<{
+        id: number;
+        jobId: number | null;
+        currentStep: string;
+        state: Record<string, unknown>;
+        createdAt: string;
+        updatedAt: string;
+      }>);
+    }
+  }, [apiSessions]);
 
   const currentStepIndex = STEP_ORDER.indexOf(step);
 
@@ -401,6 +460,94 @@ export default function ApplyWizardPage() {
       setBatchText(content);
     };
     reader.readAsText(file);
+  };
+
+  const handleDownloadTemplate = () => {
+    const csv = "title,company,location,url,jd\n\"Software Engineer\",\"Acme Corp\",\"Remote\",\"https://example.com/job\",\"Full job description here\"";
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "batch-import-template.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const buildWizardState = (): Record<string, unknown> => ({
+    jobId,
+    intake,
+    intakeMode,
+    parsedDraft,
+    quickProfile,
+    selectedRoleProfileId,
+    selectedClaimIds,
+    resumeVersionId,
+    coverLetterVersionId,
+    assistedSessionId,
+    assistedForm,
+    batchText,
+    batchRuns,
+    useCustomComparison,
+    resumeCompareModels,
+    coverCompareModels,
+  });
+
+  const handleSaveSession = async () => {
+    setSavingSession(true);
+    try {
+      await createWizardSession.mutateAsync({
+        data: {
+          jobId: jobId ?? null,
+          currentStep: step,
+          state: buildWizardState(),
+        },
+      });
+      refetchSessions();
+      toast({ title: "Progress saved" });
+    } catch (error) {
+      toast({
+        title: "Failed to save",
+        description: getErrorMessage(error, "Try again."),
+        variant: "destructive",
+      });
+    } finally {
+      setSavingSession(false);
+    }
+  };
+
+  const handleDeleteSession = async (sessionId: number) => {
+    try {
+      await deleteWizardSession.mutateAsync({ id: sessionId });
+      refetchSessions();
+      toast({ title: "Saved session deleted" });
+    } catch (error) {
+      toast({
+        title: "Failed to delete",
+        description: getErrorMessage(error, "Try again."),
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleResumeSession = (session: { currentStep: string; jobId: number | null; state: Record<string, unknown> }) => {
+    const s = session.state as Record<string, unknown>;
+    if (s.jobId != null) setJobId(s.jobId as number);
+    if (s.intake) setIntake(s.intake as typeof intake);
+    if (s.intakeMode) setIntakeMode(s.intakeMode as IntakeMode);
+    if (s.parsedDraft) setParsedDraft(s.parsedDraft as typeof parsedDraft);
+    if (s.quickProfile) setQuickProfile(s.quickProfile as typeof quickProfile);
+    if (s.selectedRoleProfileId != null) setSelectedRoleProfileId(s.selectedRoleProfileId as number);
+    if (s.selectedClaimIds) setSelectedClaimIds(s.selectedClaimIds as number[]);
+    if (s.resumeVersionId) setResumeVersionId(s.resumeVersionId as number);
+    if (s.coverLetterVersionId) setCoverLetterVersionId(s.coverLetterVersionId as number);
+    if (s.assistedSessionId) setAssistedSessionId(s.assistedSessionId as number);
+    if (s.assistedForm) setAssistedForm(s.assistedForm as typeof assistedForm);
+    if (s.batchText) setBatchText(s.batchText as string);
+    if (s.useCustomComparison != null) setUseCustomComparison(s.useCustomComparison as boolean);
+    if (s.resumeCompareModels) setResumeCompareModels(s.resumeCompareModels as string[]);
+    if (s.coverCompareModels) setCoverCompareModels(s.coverCompareModels as string[]);
+    setStep(session.currentStep as WizardStep);
+    toast({ title: "Session restored" });
   };
 
   const handleRunBatch = async () => {
@@ -586,40 +733,36 @@ export default function ApplyWizardPage() {
 
   const handleSaveParsedEdits = () => {
     if (!jobId) return;
+    const splitLines = (val: string) =>
+      val
+        .split("\n")
+        .map((s) => s.trim())
+        .filter(Boolean);
+
     updateJob.mutate(
       {
         id: jobId,
         data: {
           rawJdText: intake.rawJdText || null,
+          parsedRequiredSkills: splitLines(parsedDraft.requiredSkills),
+          parsedNiceToHaveSkills: splitLines(parsedDraft.niceSkills),
+          parsedResponsibilities: splitLines(parsedDraft.responsibilities),
+          parsedKeywords: parsedDraft.keywords
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean),
+          status: "scored",
         },
       },
       {
         onSuccess: () => {
-          parseJob.mutate(
-            {
-              id: jobId,
-              data: {
-                rawJdText: intake.rawJdText || "",
-              },
-            },
-            {
-              onSuccess: () => {
-                toast({ title: "JD saved and reparsed" });
-                refetchJob();
-                setStep("role");
-              },
-              onError: (error) =>
-                toast({
-                  title: "Failed to reparse updated JD",
-                  description: getErrorMessage(error, "Try running parser again."),
-                  variant: "destructive",
-                }),
-            },
-          );
+          toast({ title: "JD saved" });
+          refetchJob();
+          setStep("role");
         },
         onError: (error) =>
           toast({
-            title: "Failed to save JD text",
+            title: "Failed to save JD",
             description: getErrorMessage(error, "Try again."),
             variant: "destructive",
           }),
@@ -718,7 +861,6 @@ export default function ApplyWizardPage() {
         onSuccess: (version) => {
           setResumeVersionId(version.id);
           toast({ title: `Resume draft created (#${version.id})` });
-          setStep("approve");
         },
         onError: (error) =>
           toast({
@@ -741,7 +883,6 @@ export default function ApplyWizardPage() {
         onSuccess: (version) => {
           setCoverLetterVersionId(version.id);
           toast({ title: `Cover letter draft created (#${version.id})` });
-          setStep("approve");
         },
         onError: (error) =>
           toast({
@@ -988,6 +1129,42 @@ export default function ApplyWizardPage() {
         </p>
       </div>
 
+      {savedSessions.length > 0 ? (
+        <Card className="border-dashed">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Save className="h-4 w-4" />
+              Saved Sessions
+            </CardTitle>
+            <CardDescription>Resume a previous wizard session or delete it.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {savedSessions.map((session) => (
+              <div key={session.id} className="flex items-center justify-between rounded border p-2 text-sm">
+                <div>
+                  <p className="font-medium">
+                    {(session.state as Record<string, unknown>)?.intake
+                      ? `${((session.state as Record<string, unknown>).intake as { title?: string; company?: string }).title || "Untitled"} — ${((session.state as Record<string, unknown>).intake as { company?: string }).company || "No company"}`
+                      : "New job"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Step: {session.currentStep} · {new Date(session.updatedAt ?? session.createdAt).toLocaleString()}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => handleResumeSession(session)}>
+                    Resume
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => handleDeleteSession(session.id)}>
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
+
       <div className="grid gap-4 md:grid-cols-6">
         {STEP_ORDER.map((name, index) => (
           <Card
@@ -1083,7 +1260,15 @@ export default function ApplyWizardPage() {
               value={intake.rawJdText}
               onChange={(e) => setIntake((prev) => ({ ...prev, rawJdText: e.target.value }))}
             />
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={handleSaveSession}
+                disabled={savingSession}
+              >
+                <Save className="h-3.5 w-3.5 mr-1.5" />
+                {savingSession ? "Saving..." : "Save & Continue Later"}
+              </Button>
               <Button
                 onClick={handleCreateJob}
                 disabled={!intake.title || !intake.company || createJob.isPending}
@@ -1107,13 +1292,27 @@ export default function ApplyWizardPage() {
                   />
                   <div className="flex flex-wrap items-center gap-2">
                     <input
+                      ref={fileInputRef}
                       type="file"
                       accept=".csv,text/csv,text/plain"
+                      className="hidden"
                       onChange={(event) => {
                         const file = event.target.files?.[0];
                         if (file) handleBatchFileUpload(file);
                       }}
                     />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <Upload className="h-3.5 w-3.5 mr-1.5" />
+                      Choose File
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={handleDownloadTemplate}>
+                      <Download className="h-3.5 w-3.5 mr-1.5" />
+                      Download Template
+                    </Button>
                     <Button onClick={handleRunBatch} disabled={batchRunning || !batchText.trim()}>
                       {batchRunning ? "Running Batch..." : "Run Batch"}
                     </Button>
@@ -1215,6 +1414,10 @@ export default function ApplyWizardPage() {
 
             <div className="flex flex-wrap gap-2 justify-end">
               <Button variant="outline" onClick={() => setStep("intake")}>Back</Button>
+              <Button variant="outline" onClick={handleSaveSession} disabled={savingSession}>
+                <Save className="h-3.5 w-3.5 mr-1.5" />
+                {savingSession ? "Saving..." : "Save & Continue Later"}
+              </Button>
               <Button variant="secondary" onClick={handleParse} disabled={parseJob.isPending}>
                 {parseJob.isPending ? "Parsing..." : "Run Parser"}
               </Button>
@@ -1339,6 +1542,10 @@ export default function ApplyWizardPage() {
 
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setStep("parse")}>Back</Button>
+              <Button variant="outline" onClick={handleSaveSession} disabled={savingSession}>
+                <Save className="h-3.5 w-3.5 mr-1.5" />
+                {savingSession ? "Saving..." : "Save & Continue Later"}
+              </Button>
               <Button
                 onClick={() => setStep("tailor")}
                 disabled={selectedRoleProfileId == null || selectedClaimIds.length === 0}
@@ -1435,20 +1642,8 @@ export default function ApplyWizardPage() {
                           <p className="text-muted-foreground whitespace-pre-wrap line-clamp-4">
                             {candidate.status === "failed" ? candidate.error : candidate.preview || candidate.notes || "No preview"}
                           </p>
-                          {candidate.status === "succeeded" ? (
-                            <Button
-                              size="sm"
-                              variant={selectedResumeWinner === candidate.modelName ? "default" : "outline"}
-                              onClick={() => setSelectedResumeWinner(candidate.modelName)}
-                            >
-                              {selectedResumeWinner === candidate.modelName ? "Winner Selected" : "Choose Winner"}
-                            </Button>
-                          ) : null}
                         </div>
                       ))}
-                      <Button onClick={handlePromoteResumeWinner} disabled={!selectedResumeWinner || promoting === "resume"}>
-                        {promoting === "resume" ? "Promoting..." : "Promote Resume Winner"}
-                      </Button>
                     </div>
                   ) : null}
                 </div>
@@ -1499,20 +1694,8 @@ export default function ApplyWizardPage() {
                           <p className="text-muted-foreground whitespace-pre-wrap line-clamp-4">
                             {candidate.status === "failed" ? candidate.error : candidate.preview || candidate.notes || "No preview"}
                           </p>
-                          {candidate.status === "succeeded" ? (
-                            <Button
-                              size="sm"
-                              variant={selectedCoverWinner === candidate.modelName ? "default" : "outline"}
-                              onClick={() => setSelectedCoverWinner(candidate.modelName)}
-                            >
-                              {selectedCoverWinner === candidate.modelName ? "Winner Selected" : "Choose Winner"}
-                            </Button>
-                          ) : null}
                         </div>
                       ))}
-                      <Button onClick={handlePromoteCoverWinner} disabled={!selectedCoverWinner || promoting === "cover"}>
-                        {promoting === "cover" ? "Promoting..." : "Promote Cover Winner"}
-                      </Button>
                     </div>
                   ) : null}
                 </div>
@@ -1528,7 +1711,18 @@ export default function ApplyWizardPage() {
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setStep("role")}>Back</Button>
-              <Button onClick={() => setStep("approve")} disabled={!resumeVersionId || !coverLetterVersionId}>
+              <Button variant="outline" onClick={handleSaveSession} disabled={savingSession}>
+                <Save className="h-3.5 w-3.5 mr-1.5" />
+                {savingSession ? "Saving..." : "Save & Continue Later"}
+              </Button>
+              <Button
+                onClick={() => setStep("approve")}
+                disabled={
+                  useCustomComparison
+                    ? resumeCandidates.length === 0 || coverCandidates.length === 0
+                    : !resumeVersionId || !coverLetterVersionId
+                }
+              >
                 Continue
               </Button>
             </div>
@@ -1544,63 +1738,285 @@ export default function ApplyWizardPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ShieldCheck className="h-5 w-5" />
-              5) Human Approval
+              5) Human Approval & Selection
             </CardTitle>
             <CardDescription>
-              Review and explicitly approve/reject drafts before application prep.
+              {useCustomComparison
+                ? "Compare candidates from different models, pick winners, and approve for final use."
+                : "Review and explicitly approve/reject drafts before application prep."}
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="rounded-md border p-3 space-y-2">
-              <p className="text-sm font-medium">Resume draft</p>
-              {!resumeVersionId ? (
-                <p className="text-sm text-muted-foreground">No resume draft generated yet.</p>
-              ) : (
-                <>
-                  <p className="text-sm">Version #{resumeVersionId} - status: <strong>{resumeVersion?.status ?? "loading"}</strong></p>
-                  <div className="flex gap-2">
-                    <Button variant="secondary" onClick={handleApproveResume}>
-                      Approve Resume
-                    </Button>
-                    <Button variant="outline" onClick={handleRejectResume}>
-                      Reject Resume
-                    </Button>
+          <CardContent className="space-y-6">
+            {/* Resume Section */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <ClipboardCheck className="h-5 w-5 text-primary" />
+                  Resume
+                </h3>
+                {resumeVersionId && (
+                  <Badge variant={resumeVersion?.status === "approved" ? "default" : "secondary"}>
+                    {resumeVersion?.status === "approved" ? "Approved" : "Pending Approval"}
+                  </Badge>
+                )}
+              </div>
+
+              {useCustomComparison && resumeCandidates.length > 0 ? (
+                <div className="rounded-md border bg-card overflow-hidden">
+                  <div className="flex border-b bg-muted/30 overflow-x-auto no-scrollbar">
+                    {resumeCandidates.map((c) => (
+                      <button
+                        key={c.modelName}
+                        onClick={() => setActiveResumeTab(c.modelName)}
+                        className={`px-4 py-2 text-xs font-medium border-r transition-colors flex items-center gap-2 whitespace-nowrap
+                          ${activeResumeTab === c.modelName ? "bg-background border-b-2 border-b-primary" : "text-muted-foreground hover:bg-muted/50"}
+                          ${c.status === "failed" ? "text-destructive" : ""}
+                        `}
+                      >
+                        {c.modelName}
+                        {selectedResumeWinner === c.modelName && <Check className="h-3 w-3 text-primary" />}
+                        {c.status === "failed" && <AlertCircle className="h-3 w-3" />}
+                      </button>
+                    ))}
                   </div>
-                </>
+                  <div className="p-4">
+                    {(() => {
+                      const activeCandidate = resumeCandidates.find((c) => c.modelName === activeResumeTab);
+                      if (activeCandidate?.status === "failed") {
+                        return (
+                          <div className="p-8 text-center space-y-2">
+                            <AlertCircle className="h-8 w-8 text-destructive mx-auto" />
+                            <p className="text-sm font-medium">Generation Failed</p>
+                            <p className="text-xs text-muted-foreground">{activeCandidate.error}</p>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div className="space-y-4">
+                          <div className="max-h-[28rem] overflow-y-auto bg-muted/50 rounded-md border p-4 text-sm whitespace-pre-wrap font-mono leading-relaxed">
+                            {activeCandidate?.preview || "No preview content available."}
+                          </div>
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant={selectedResumeWinner === activeResumeTab ? "default" : "outline"}
+                                onClick={() => setSelectedResumeWinner(activeResumeTab)}
+                              >
+                                {selectedResumeWinner === activeResumeTab ? (
+                                  <><Check className="h-4 w-4 mr-1.5" /> Winner Selected</>
+                                ) : (
+                                  "Select as Winner"
+                                )}
+                              </Button>
+                            </div>
+                            {selectedResumeWinner === activeResumeTab && (
+                              <Button
+                                size="sm"
+                                onClick={handlePromoteResumeWinner}
+                                disabled={promoting === "resume" || resumeVersionId != null}
+                              >
+                                {promoting === "resume" ? "Promoting..." : resumeVersionId ? "Promoted" : "Promote & Use"}
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              ) : null}
+
+              {(!useCustomComparison || resumeVersionId) && (
+                <div className="space-y-3">
+                  <div className="max-h-96 overflow-y-auto bg-muted/50 rounded-md border p-4 text-sm whitespace-pre-wrap font-mono leading-relaxed">
+                    {resumeVersion?.tailoredDocumentText || (resumeVersionId ? "No tailored content available." : "Generate a resume in Step 4 first.")}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant={resumeVersion?.status === "approved" ? "outline" : "default"}
+                      onClick={handleApproveResume}
+                      disabled={resumeVersion?.status === "approved" || !resumeVersionId}
+                    >
+                      {resumeVersion?.status === "approved" ? <><Check className="h-4 w-4 mr-2" /> Resume Approved</> : "Approve Resume"}
+                    </Button>
+                    <Button variant="outline" onClick={handleRejectResume} disabled={!resumeVersionId}>
+                      Reject & Regenerate
+                    </Button>
+                    {resumeVersion?.status === "approved" && (
+                      <Button variant="secondary" asChild>
+                        <a href={`/api/resume-versions/${resumeVersionId}/export`} target="_blank" rel="noopener noreferrer">
+                          <Download className="h-4 w-4 mr-2" /> Export DOCX
+                        </a>
+                      </Button>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
 
-            <div className="rounded-md border p-3 space-y-2">
-              <p className="text-sm font-medium">Cover letter draft</p>
-              {!coverLetterVersionId ? (
-                <p className="text-sm text-muted-foreground">No cover letter draft generated yet.</p>
-              ) : (
-                <>
-                  <p className="text-sm">Version #{coverLetterVersionId} - status: <strong>{coverLetterVersion?.status ?? "loading"}</strong></p>
-                  <div className="flex gap-2">
-                    <Button variant="secondary" onClick={handleApproveCover}>
-                      Approve Cover Letter
-                    </Button>
-                    <Button variant="outline" onClick={handleRejectCover}>
-                      Reject Cover Letter
-                    </Button>
+            <Separator />
+
+            {/* Cover Letter Section */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Wand2 className="h-5 w-5 text-primary" />
+                  Cover Letter
+                </h3>
+                {coverLetterVersionId && (
+                  <Badge variant={coverLetterVersion?.status === "approved" ? "default" : "secondary"}>
+                    {coverLetterVersion?.status === "approved" ? "Approved" : "Pending Approval"}
+                  </Badge>
+                )}
+              </div>
+
+              {useCustomComparison && coverCandidates.length > 0 ? (
+                <div className="rounded-md border bg-card overflow-hidden">
+                  <div className="flex border-b bg-muted/30 overflow-x-auto no-scrollbar">
+                    {coverCandidates.map((c) => (
+                      <button
+                        key={c.modelName}
+                        onClick={() => setActiveCoverTab(c.modelName)}
+                        className={`px-4 py-2 text-xs font-medium border-r transition-colors flex items-center gap-2 whitespace-nowrap
+                          ${activeCoverTab === c.modelName ? "bg-background border-b-2 border-b-primary" : "text-muted-foreground hover:bg-muted/50"}
+                          ${c.status === "failed" ? "text-destructive" : ""}
+                        `}
+                      >
+                        {c.modelName}
+                        {selectedCoverWinner === c.modelName && <Check className="h-3 w-3 text-primary" />}
+                        {c.status === "failed" && <AlertCircle className="h-3 w-3" />}
+                      </button>
+                    ))}
                   </div>
-                </>
+                  <div className="p-4">
+                    {(() => {
+                      const activeCandidate = coverCandidates.find((c) => c.modelName === activeCoverTab);
+                      if (activeCandidate?.status === "failed") {
+                        return (
+                          <div className="p-8 text-center space-y-2">
+                            <AlertCircle className="h-8 w-8 text-destructive mx-auto" />
+                            <p className="text-sm font-medium">Generation Failed</p>
+                            <p className="text-xs text-muted-foreground">{activeCandidate.error}</p>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div className="space-y-4">
+                          <div className="max-h-[28rem] overflow-y-auto bg-muted/50 rounded-md border p-4 text-sm whitespace-pre-wrap leading-relaxed">
+                            {activeCandidate?.preview || "No preview content available."}
+                          </div>
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant={selectedCoverWinner === activeCoverTab ? "default" : "outline"}
+                                onClick={() => setSelectedCoverWinner(activeCoverTab)}
+                              >
+                                {selectedCoverWinner === activeCoverTab ? (
+                                  <><Check className="h-4 w-4 mr-1.5" /> Winner Selected</>
+                                ) : (
+                                  "Select as Winner"
+                                )}
+                              </Button>
+                            </div>
+                            {selectedCoverWinner === activeCoverTab && (
+                              <Button
+                                size="sm"
+                                onClick={handlePromoteCoverWinner}
+                                disabled={promoting === "cover" || coverLetterVersionId != null}
+                              >
+                                {promoting === "cover" ? "Promoting..." : coverLetterVersionId ? "Promoted" : "Promote & Use"}
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              ) : null}
+
+              {(!useCustomComparison || coverLetterVersionId) && (
+                <div className="space-y-3">
+                  <div className="max-h-[32rem] overflow-y-auto rounded-md border p-4 bg-muted/30">
+                    {coverLetterVersion?.annotatedParagraphs && Array.isArray(coverLetterVersion.annotatedParagraphs) && coverLetterVersion.annotatedParagraphs.length > 0 ? (
+                      <div className="space-y-3">
+                        {(coverLetterVersion.annotatedParagraphs as any[]).map((para, i) => (
+                          <div
+                            key={i}
+                            className={`p-3 rounded-md border text-sm ${ROLE_COLORS[para.role] || "bg-card"}`}
+                          >
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className={`text-[10px] font-bold uppercase rounded px-1.5 py-0.5 ${ROLE_LABEL_COLORS[para.role] || "bg-muted"}`}>
+                                {para.role}
+                              </span>
+                              {para.claimIds?.length > 0 && (
+                                <div className="flex items-center gap-1 flex-wrap">
+                                  <Tag className="h-3 w-3 text-muted-foreground" />
+                                  {para.claimIds.map((cid: number) => {
+                                    const claim = claimMatches.find((m: any) => m.claim?.id === cid)?.claim;
+                                    return (
+                                      <span
+                                        key={cid}
+                                        className="text-[10px] bg-primary/10 text-primary rounded px-1.5 py-0.5"
+                                        title={claim?.summary}
+                                      >
+                                        {claim ? claim.summary.slice(0, 30) + (claim.summary.length > 30 ? "…" : "") : `Claim #${cid}`}
+                                      </span>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                            <p className="leading-relaxed">{para.text}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-sm whitespace-pre-wrap leading-relaxed">
+                        {coverLetterVersionId ? "No tailored content available." : "Generate a cover letter in Step 4 first."}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant={coverLetterVersion?.status === "approved" ? "outline" : "default"}
+                      onClick={handleApproveCover}
+                      disabled={coverLetterVersion?.status === "approved" || !coverLetterVersionId}
+                    >
+                      {coverLetterVersion?.status === "approved" ? <><Check className="h-4 w-4 mr-2" /> Cover Approved</> : "Approve Cover Letter"}
+                    </Button>
+                    <Button variant="outline" onClick={handleRejectCover} disabled={!coverLetterVersionId}>
+                      Reject & Regenerate
+                    </Button>
+                    {coverLetterVersion?.status === "approved" && (
+                      <Button variant="secondary" asChild>
+                        <a href={`/api/cover-letter-versions/${coverLetterVersionId}/export`} target="_blank" rel="noopener noreferrer">
+                          <Download className="h-4 w-4 mr-2" /> Export DOCX
+                        </a>
+                      </Button>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
 
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-2 pt-4">
               <Button variant="outline" onClick={() => setStep("tailor")}>Back</Button>
+              <Button variant="outline" onClick={handleSaveSession} disabled={savingSession}>
+                <Save className="h-3.5 w-3.5 mr-1.5" />
+                {savingSession ? "Saving..." : "Save & Continue Later"}
+              </Button>
               <Button
+                size="lg"
+                className="px-8"
                 onClick={() => setStep("assisted")}
                 disabled={resumeVersion?.status !== "approved" || coverLetterVersion?.status !== "approved"}
               >
-                Continue
+                Continue to Submission <ChevronRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Continue requires both drafts to be explicitly approved.
-            </p>
           </CardContent>
         </Card>
       ) : null}
@@ -1658,7 +2074,13 @@ export default function ApplyWizardPage() {
 
             <div className="flex justify-between">
               <Button variant="outline" onClick={() => setStep("approve")}>Back</Button>
-              <Button variant="secondary" onClick={() => setStep("intake")}>Start New Job</Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={handleSaveSession} disabled={savingSession}>
+                  <Save className="h-3.5 w-3.5 mr-1.5" />
+                  {savingSession ? "Saving..." : "Save & Continue Later"}
+                </Button>
+                <Button variant="secondary" onClick={() => setStep("intake")}>Start New Job</Button>
+              </div>
             </div>
           </CardContent>
         </Card>
