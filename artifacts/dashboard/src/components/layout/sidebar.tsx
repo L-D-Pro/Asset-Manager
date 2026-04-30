@@ -135,7 +135,7 @@ export function Sidebar() {
       <SidebarContent>
         <SidebarMenu>
           {/* Featured cards with glass-morphism hover effect */}
-          <div className="px-3 pt-2 space-y-2.5">
+          <div className="px-3 pt-2 space-y-5">
             <NavLink to="/dashboard" className="contents">
               {({ isActive }) => (
                 <div
@@ -143,7 +143,7 @@ export function Sidebar() {
                     "group relative overflow-hidden rounded-xl border transition-all duration-300 cursor-pointer",
                     isActive
                       ? "bg-indigo-500/20 border-indigo-500/60 shadow-lg shadow-indigo-500/15"
-                      : "bg-slate-800/60 border-slate-700/50 hover:border-slate-600/80 hover:bg-slate-800/80 hover:shadow-md hover:shadow-indigo-500/5"
+                      : "bg-white/[0.09] border-white/[0.12] hover:border-white/25 hover:bg-white/[0.15] hover:shadow-md hover:shadow-indigo-500/5"
                   )}
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/[0.06] to-violet-500/[0.06] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -170,7 +170,7 @@ export function Sidebar() {
                       "group relative overflow-hidden rounded-xl border transition-all duration-300 cursor-pointer",
                       isActive
                         ? "bg-indigo-500/20 border-indigo-500/60 shadow-lg shadow-indigo-500/15"
-                        : "bg-slate-800/60 border-slate-700/50 hover:border-slate-600/80 hover:bg-slate-800/80 hover:shadow-md hover:shadow-indigo-500/5"
+                        : "bg-white/[0.08] border-white/[0.12] hover:border-white/25 hover:bg-white/[0.14] hover:shadow-md hover:shadow-indigo-500/5"
                     )}
                   >
                     <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/[0.06] to-violet-500/[0.06] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -197,7 +197,7 @@ export function Sidebar() {
                     "group relative overflow-hidden rounded-xl border transition-all duration-300 cursor-pointer",
                     isActive
                       ? "bg-blue-500/20 border-blue-500/60 shadow-lg shadow-blue-500/15"
-                      : "bg-slate-800/60 border-slate-700/50 hover:border-slate-600/80 hover:bg-slate-800/80 hover:shadow-md hover:shadow-blue-500/5"
+                        : "bg-white/[0.10] border-white/[0.14] hover:border-white/25 hover:bg-white/[0.16] hover:shadow-md hover:shadow-blue-500/5"
                   )}
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-blue-500/[0.06] to-teal-500/[0.06] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -223,7 +223,7 @@ export function Sidebar() {
                     "group relative overflow-hidden rounded-xl border transition-all duration-300 cursor-pointer",
                     isActive
                       ? "bg-emerald-500/20 border-emerald-500/60 shadow-lg shadow-emerald-500/15"
-                      : "bg-slate-800/60 border-slate-700/50 hover:border-slate-600/80 hover:bg-slate-800/80 hover:shadow-md hover:shadow-emerald-500/5"
+                        : "bg-white/[0.11] border-white/[0.15] hover:border-white/25 hover:bg-white/[0.17] hover:shadow-md hover:shadow-emerald-500/5"
                   )}
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/[0.06] to-teal-500/[0.06] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
