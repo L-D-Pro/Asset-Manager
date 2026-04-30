@@ -1,32 +1,30 @@
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
+import { ContentCard } from "@/components/ui/content-card";
 import { useAuth } from "@/context/auth";
-import { Shield, BookOpen } from "lucide-react";
+import { Shield } from "lucide-react";
 
 export default function AdminDocsPage() {
   const { user } = useAuth();
 
   if (user?.role !== "admin") {
     return (
-      <Card>
+      <ContentCard>
         <CardHeader><CardTitle>Access Denied</CardTitle></CardHeader>
-      </Card>
+      </ContentCard>
     );
   }
 
   return (
     <div className="space-y-8 max-w-4xl">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <BookOpen className="h-6 w-6 text-primary" />
-          Admin Documentation
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Internal technical guide. See <code className="bg-muted px-1 rounded">docs/ADMIN_GUIDE.md</code> for the full document.
-        </p>
-      </div>
+      <PageHeader
+        title="Admin Documentation"
+        subtitle="Technical documentation for deployment, database, and system configuration."
+        gradient="from-slate-700 to-slate-600"
+      />
 
-      <div className="space-y-6">
-        <Card>
+      <div className="space-y-8">
+        <ContentCard>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Shield className="h-5 w-5" />
@@ -43,9 +41,9 @@ export default function AdminDocsPage() {
               <li>Hosted on DigitalOcean App Platform</li>
             </ul>
           </CardContent>
-        </Card>
+        </ContentCard>
 
-        <Card>
+        <ContentCard>
           <CardHeader>
             <CardTitle>Database</CardTitle>
             <CardDescription>Key tables relevant to administration</CardDescription>
@@ -68,9 +66,9 @@ export default function AdminDocsPage() {
               <p className="text-muted-foreground">Saved apply wizard state. Columns: userId, jobId, currentStep, state (JSONB)</p>
             </div>
           </CardContent>
-        </Card>
+        </ContentCard>
 
-        <Card>
+        <ContentCard>
           <CardHeader>
             <CardTitle>Admin Operations</CardTitle>
             <CardDescription>Common tasks for platform administrators</CardDescription>
@@ -98,9 +96,9 @@ export default function AdminDocsPage() {
 corepack pnpm --filter @workspace/db run compat`}</pre>
             </div>
           </CardContent>
-        </Card>
+        </ContentCard>
 
-        <Card>
+        <ContentCard>
           <CardHeader>
             <CardTitle>Environment Variables</CardTitle>
             <CardDescription>Sensitive configuration (do not commit)</CardDescription>
@@ -116,9 +114,9 @@ corepack pnpm --filter @workspace/db run compat`}</pre>
               <li><code className="bg-muted px-1 rounded">VITE_ENABLE_APPLY_WIZARD</code> — Feature flag for wizard</li>
             </ul>
           </CardContent>
-        </Card>
+        </ContentCard>
 
-        <Card>
+        <ContentCard>
           <CardHeader>
             <CardTitle>Security Notes</CardTitle>
           </CardHeader>
@@ -130,9 +128,9 @@ corepack pnpm --filter @workspace/db run compat`}</pre>
             <p>Usage limits: Enforced at API layer on all AI endpoints.</p>
             <p>API responses: Never expose passwordHash, totpSecret, or totpRecoveryCodes.</p>
           </CardContent>
-        </Card>
+        </ContentCard>
 
-        <Card>
+        <ContentCard>
           <CardHeader>
             <CardTitle>Troubleshooting</CardTitle>
           </CardHeader>
@@ -142,7 +140,7 @@ corepack pnpm --filter @workspace/db run compat`}</pre>
             <p><strong>Session issues:</strong> Clear cookies, verify SESSION_SECRET matches, check PostgreSQL session table.</p>
             <p><strong>Schema drift:</strong> Use runtime-compat.sql migration instead of drizzle-kit push (TUI-interactive).</p>
           </CardContent>
-        </Card>
+        </ContentCard>
       </div>
     </div>
   );

@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
+import { ContentCard } from "@/components/ui/content-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -106,30 +108,27 @@ export default function AdminInviteCodesPage() {
 
   if (user?.role !== "admin") {
     return (
-      <Card>
+      <ContentCard>
         <CardHeader><CardTitle>Access Denied</CardTitle></CardHeader>
-      </Card>
+      </ContentCard>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Ticket className="h-6 w-6 text-primary" />
-            Invite Codes
-          </h1>
-          <p className="text-muted-foreground mt-1">Generate and manage pilot invitation codes.</p>
-        </div>
+    <div className="space-y-8">
+      <PageHeader
+        title="Invite Codes"
+        subtitle="Generate and manage invite codes for new user registration."
+        gradient="from-slate-700 to-slate-600"
+      >
         <Button onClick={() => setShowGenerate(true)} disabled={codes.length >= 10}>
           <Plus className="h-4 w-4 mr-2" />
           Generate Code
         </Button>
-      </div>
+      </PageHeader>
 
       {newCode && (
-        <Card className="border-green-500">
+        <ContentCard className="border-green-500">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
@@ -144,10 +143,10 @@ export default function AdminInviteCodesPage() {
               </div>
             </div>
           </CardContent>
-        </Card>
+        </ContentCard>
       )}
 
-      <Card>
+      <ContentCard>
         <CardContent className="p-0">
           {loading ? (
             <div className="p-8 text-center text-muted-foreground">Loading...</div>
@@ -197,7 +196,7 @@ export default function AdminInviteCodesPage() {
             </Table>
           )}
         </CardContent>
-      </Card>
+      </ContentCard>
 
       <Dialog open={showGenerate} onOpenChange={setShowGenerate}>
         <DialogContent>

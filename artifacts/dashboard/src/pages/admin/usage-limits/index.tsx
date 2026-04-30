@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
+import { ContentCard } from "@/components/ui/content-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,7 +23,7 @@ import {
 } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth";
-import { BarChart3, Pencil, AlertTriangle } from "lucide-react";
+import { Pencil, AlertTriangle } from "lucide-react";
 
 interface UsageRecord {
   limit: {
@@ -83,23 +85,21 @@ export default function AdminUsageLimitsPage() {
 
   if (user?.role !== "admin") {
     return (
-      <Card>
+      <ContentCard>
         <CardHeader><CardTitle>Access Denied</CardTitle></CardHeader>
-      </Card>
+      </ContentCard>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <BarChart3 className="h-6 w-6 text-primary" />
-          Usage Limits
-        </h1>
-        <p className="text-muted-foreground mt-1">Monitor and adjust AI request quotas for pilot users.</p>
-      </div>
+    <div className="space-y-8">
+      <PageHeader
+        title="Usage Limits"
+        subtitle="Configure AI usage quotas and rate limits per user role."
+        gradient="from-slate-700 to-slate-600"
+      />
 
-      <Card>
+      <ContentCard>
         <CardContent className="p-0">
           {loading ? (
             <div className="p-8 text-center text-muted-foreground">Loading...</div>
@@ -158,7 +158,7 @@ export default function AdminUsageLimitsPage() {
             </Table>
           )}
         </CardContent>
-      </Card>
+      </ContentCard>
 
       <Dialog open={!!editUser} onOpenChange={() => setEditUser(null)}>
         <DialogContent>

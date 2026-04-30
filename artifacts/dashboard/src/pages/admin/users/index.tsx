@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/context/auth";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
+import { ContentCard } from "@/components/ui/content-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -275,19 +277,17 @@ export default function AdminUsersPage() {
   });
 
   return (
-    <div className="space-y-6">
-      <motion.div variants={fadeIn} initial="hidden" animate="visible">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight gradient-text">User Management</h1>
-            <p className="text-muted-foreground mt-1">Create and manage test user accounts.</p>
-          </div>
-          <Button onClick={openAdd} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Add User
-          </Button>
-        </div>
-      </motion.div>
+    <div className="space-y-8">
+      <PageHeader
+        title="User Management"
+        subtitle="Manage user accounts, roles, and access permissions."
+        gradient="from-slate-700 to-slate-600"
+      >
+        <Button onClick={openAdd} className="gap-2">
+          <Plus className="h-4 w-4" />
+          Add User
+        </Button>
+      </PageHeader>
 
       <motion.div variants={fadeIn} initial="hidden" animate="visible" className="flex items-center gap-2">
         <Search className="h-4 w-4 text-muted-foreground" />
@@ -299,7 +299,7 @@ export default function AdminUsersPage() {
         />
       </motion.div>
 
-      <Card>
+      <ContentCard>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
             <Users className="h-5 w-5 text-primary" />
@@ -378,7 +378,7 @@ export default function AdminUsersPage() {
             </div>
           )}
         </CardContent>
-      </Card>
+      </ContentCard>
 
       {/* Add / Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
