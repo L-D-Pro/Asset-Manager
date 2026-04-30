@@ -134,29 +134,28 @@ export function Sidebar() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu>
-          {/* Featured cards with glass-morphism hover effect */}
+          {/* Featured cards */}
           <div className="px-3 pt-2 space-y-5">
             <NavLink to="/dashboard" className="contents">
               {({ isActive }) => (
                 <div
                   className={cn(
-                    "group relative overflow-hidden rounded-xl border transition-all duration-300 cursor-pointer",
+                    "relative rounded-xl border transition-all duration-300 cursor-pointer",
                     isActive
-                      ? "bg-indigo-500/20 border-indigo-500/60 shadow-lg shadow-indigo-500/15"
-                        : "bg-white/[0.23] border-white/[0.20] hover:border-white/35 hover:bg-white/[0.31] hover:shadow-md hover:shadow-indigo-500/5"
+                      ? "bg-[#A6B1D8] border-[#8A97C0] shadow-lg shadow-[#A6B1D8]/30 scale-[1.02]"
+                      : "bg-[#A6B1D8] border-[#A6B1D8] hover:shadow-md hover:border-[#8A97C0] hover:scale-[1.01]"
                   )}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/[0.06] to-violet-500/[0.06] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  <div className="relative flex items-center gap-3 px-3 py-2.5">
+                  <div className="flex items-center gap-3 px-3 py-2.5">
                     <div className={cn(
                       "flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-300",
-                      isActive ? "bg-indigo-500/30" : "bg-indigo-500/15 group-hover:bg-indigo-500/25"
+                      isActive ? "bg-black/20" : "bg-black/15"
                     )}>
-                      <LayoutDashboard className={cn("h-4 w-4", isActive ? "text-indigo-300" : "text-indigo-400")} />
+                      <LayoutDashboard className="h-4 w-4 text-white" />
                     </div>
                     <div>
-                      <span className={cn("font-semibold text-sm", isActive ? "text-white" : "text-slate-200")}>Dashboard</span>
-                      <p className="text-[10px] text-slate-400 leading-tight">Overview & stats</p>
+                      <span className="font-semibold text-sm text-white">Dashboard</span>
+                      <p className="text-[10px] text-white/70 leading-tight">Overview & stats</p>
                     </div>
                   </div>
                 </div>
@@ -167,23 +166,22 @@ export function Sidebar() {
                 {({ isActive }) => (
                   <div
                     className={cn(
-                      "group relative overflow-hidden rounded-xl border transition-all duration-300 cursor-pointer",
+                      "relative rounded-xl border transition-all duration-300 cursor-pointer",
                       isActive
-                        ? "bg-indigo-500/20 border-indigo-500/60 shadow-lg shadow-indigo-500/15"
-                        : "bg-white/[0.20] border-white/[0.20] hover:border-white/35 hover:bg-white/[0.28] hover:shadow-md hover:shadow-indigo-500/5"
+                        ? "bg-[#B7C9E6] border-[#A0B4D4] shadow-lg shadow-[#B7C9E6]/30 scale-[1.02]"
+                        : "bg-[#B7C9E6] border-[#B7C9E6] hover:shadow-md hover:border-[#A0B4D4] hover:scale-[1.01]"
                     )}
                   >
-                    <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/[0.06] to-violet-500/[0.06] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    <div className="relative flex items-center gap-3 px-3 py-2.5">
+                    <div className="flex items-center gap-3 px-3 py-2.5">
                       <div className={cn(
                         "flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-300",
-                        isActive ? "bg-indigo-500/30" : "bg-indigo-500/15 group-hover:bg-indigo-500/25"
+                        isActive ? "bg-black/20" : "bg-black/15"
                       )}>
-                        <Sparkles className={cn("h-4 w-4", isActive ? "text-indigo-300" : "text-indigo-400")} />
+                        <Sparkles className="h-4 w-4 text-white" />
                       </div>
                       <div>
-                        <span className={cn("font-semibold text-sm", isActive ? "text-white" : "text-slate-200")}>Wizard</span>
-                        <p className="text-[10px] text-slate-400 leading-tight">AI-powered apply</p>
+                        <span className="font-semibold text-sm text-white">Wizard</span>
+                        <p className="text-[10px] text-white/70 leading-tight">AI-powered apply</p>
                       </div>
                     </div>
                   </div>
@@ -194,23 +192,22 @@ export function Sidebar() {
               {({ isActive }) => (
                 <div
                   className={cn(
-                    "group relative overflow-hidden rounded-xl border transition-all duration-300 cursor-pointer",
+                    "relative rounded-xl border transition-all duration-300 cursor-pointer",
                     isActive
-                      ? "bg-blue-500/20 border-blue-500/60 shadow-lg shadow-blue-500/15"
-                        : "bg-white/[0.26] border-white/[0.20] hover:border-white/35 hover:bg-white/[0.34] hover:shadow-md hover:shadow-blue-500/5"
+                      ? "bg-[#E2E4F8] border-[#C8CCE0] shadow-lg shadow-[#E2E4F8]/40 scale-[1.02]"
+                      : "bg-[#E2E4F8] border-[#E2E4F8] hover:shadow-md hover:border-[#C8CCE0] hover:scale-[1.01]"
                   )}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500/[0.06] to-teal-500/[0.06] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  <div className="relative flex items-center gap-3 px-3 py-2.5">
+                  <div className="flex items-center gap-3 px-3 py-2.5">
                     <div className={cn(
                       "flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-300",
-                      isActive ? "bg-blue-500/30" : "bg-blue-500/15 group-hover:bg-blue-500/25"
+                      isActive ? "bg-black/10" : "bg-black/8"
                     )}>
-                      <TrendingUp className={cn("h-4 w-4", isActive ? "text-blue-300" : "text-blue-400")} />
+                      <TrendingUp className="h-4 w-4 text-slate-700" />
                     </div>
                     <div>
-                      <span className={cn("font-semibold text-sm", isActive ? "text-white" : "text-slate-200")}>Trends</span>
-                      <p className="text-[10px] text-slate-400 leading-tight">Market insights</p>
+                      <span className="font-semibold text-sm text-slate-800">Trends</span>
+                      <p className="text-[10px] text-slate-500 leading-tight">Market insights</p>
                     </div>
                   </div>
                 </div>
@@ -220,23 +217,22 @@ export function Sidebar() {
               {({ isActive }) => (
                 <div
                   className={cn(
-                    "group relative overflow-hidden rounded-xl border transition-all duration-300 cursor-pointer",
+                    "relative rounded-xl border transition-all duration-300 cursor-pointer",
                     isActive
-                      ? "bg-emerald-500/20 border-emerald-500/60 shadow-lg shadow-emerald-500/15"
-                        : "bg-white/[0.29] border-white/[0.20] hover:border-white/35 hover:bg-white/[0.37] hover:shadow-md hover:shadow-emerald-500/5"
+                      ? "bg-[#F5F7FF] border-[#D8DCE8] shadow-lg shadow-[#C4D7E3]/40 scale-[1.02]"
+                      : "bg-[#F5F7FF] border-[#F5F7FF] hover:shadow-md hover:border-[#D8DCE8] hover:scale-[1.01]"
                   )}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/[0.06] to-teal-500/[0.06] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  <div className="relative flex items-center gap-3 px-3 py-2.5">
+                  <div className="flex items-center gap-3 px-3 py-2.5">
                     <div className={cn(
                       "flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-300",
-                      isActive ? "bg-emerald-500/30" : "bg-emerald-500/15 group-hover:bg-emerald-500/25"
+                      isActive ? "bg-black/8" : "bg-black/5"
                     )}>
-                      <Heart className={cn("h-4 w-4", isActive ? "text-emerald-300" : "text-emerald-400")} />
+                      <Heart className="h-4 w-4 text-slate-700" />
                     </div>
                     <div>
-                      <span className={cn("font-semibold text-sm", isActive ? "text-white" : "text-slate-200")}>Resources</span>
-                      <p className="text-[10px] text-slate-400 leading-tight">Free tools & support</p>
+                      <span className="font-semibold text-sm text-slate-800">Resources</span>
+                      <p className="text-[10px] text-slate-500 leading-tight">Free tools & support</p>
                     </div>
                   </div>
                 </div>
