@@ -1,7 +1,7 @@
 import { db, coverLetterVersionsTable } from "@workspace/db";
 import { callAI, parseJsonResponse } from "../ai-client";
 import { matchClaimsToJob } from "../scoring";
-import { validateParagraph, assertMinimumContent, TruthLockViolation } from "./validation";
+import { validateParagraph, assertMinimumContent, TruthLockViolation, stripClaimIdRefs } from "./validation";
 import { logger } from "../logger";
 import type { Job, RoleProfile, Claim } from "@workspace/db";
 
@@ -23,8 +23,9 @@ CRITICAL RULES — NEVER VIOLATE:
 1. Every body/hook paragraph MUST cite at least one claim ID from the provided list.
 2. Use ONLY claim IDs from the provided list. Do NOT use any other IDs.
 3. Do NOT invent achievements, metrics, or experiences not in the claims.
-4. The letter should be authentic, concise (3-4 paragraphs), and tailored to the specific role.
-
+4. Do NOT include claim ID references (like "(ID:4)" or "[ID:14]") in the paragraph text body.
+   Claim attribution goes ONLY in the "claimIds" array field, never in the prose.
+    
 Return ONLY valid JSON with this exact structure:
 {
   "subject": "Application for [Role] at [Company]",
@@ -171,8 +172,15 @@ Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed
   }
 
   const usedClaimIds = [...new Set(validatedParagraphs.flatMap((p) => p.claimIds))];
-  const fullText = parsed.fullText?.trim() ||
-    validatedParagraphs.map((p) => p.text).join("\n\n");
+  const sanitizedParagraphs = validatedParagraphs.map((p) => ({
+    ...p,
+    text: stripClaimIdRefs(p.text),
+  }));
+
+  const fullText = stripClaimIdRefs(
+    parsed.fullText?.trim() ||
+    sanitizedParagraphs.map((p) => p.text).join("\n\n")
+  );
 
   const [row] = await db
     .insert(coverLetterVersionsTable)
@@ -184,7 +192,7 @@ Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed
       eventLogId: result.eventLogId,
       claimIds: usedClaimIds,
       draftContent: fullText,
-      annotatedParagraphs: validatedParagraphs as unknown as Record<string, unknown>[],
+      annotatedParagraphs: sanitizedParagraphs as unknown as Record<string, unknown>[],
       notes: `Subject: ${parsed.subject ?? `Application for ${job.title} at ${job.company}`}`,
     })
     .returning();

@@ -175,19 +175,27 @@ git rebase --continue
 
 ### End-of-session DB note
 
-When schema changes have been committed, push the migration to the running database before handing off:
+When schema changes have been committed, push the migration to the running database before handing off.
+
+**Load DATABASE_URL from .env first** (required because drizzle-kit and pg scripts don't auto-load `.env`):
+
+```powershell
+$env:DATABASE_URL = (Select-String -Path .env -Pattern "^DATABASE_URL=(.*)" | ForEach-Object { $_.Matches.Groups[1].Value })
+```
+
+Then push:
 
 ```powershell
 corepack pnpm --filter @workspace/db run push
 ```
 
-If that fails (schema drift), fall back to:
+If that fails (schema drift) or the TUI blocks scripting, fall back to the compat script (which applies `lib/db/runtime-compat.sql` via plain SQL):
 
 ```powershell
-corepack pnpm --filter @workspace/db run compat
+$env:DATABASE_URL = (Select-String -Path .env -Pattern "^DATABASE_URL=(.*)" | ForEach-Object { $_.Matches.Groups[1].Value }); corepack pnpm --filter @workspace/db run compat
 ```
 
-Note: `drizzle-kit push` is TUI-interactive and cannot be automated via stdin on Windows. When scripting, use a manual SQL migration script with `CREATE TABLE IF NOT EXISTS` and `CREATE INDEX IF NOT EXISTS` statements, executed via `pg` alone.
+Note: `drizzle-kit push` is TUI-interactive and cannot be automated via stdin on Windows. When scripting, use a manual SQL migration script with `CREATE TABLE IF NOT EXISTS` and `CREATE INDEX IF NOT EXISTS` statements in `lib/db/runtime-compat.sql`, then execute via `compat`.
 
 ## Change rules for agents
 
@@ -268,6 +276,7 @@ If behavior changed, update docs in the same PR/commit set (`docs/USER_GUIDE.md`
 - Explain changes briefly with file paths.
 - Prefer safe, reversible operations.
 - If unexpected workspace changes appear, stop and ask before proceeding.
+- When invoking a superpowers skill, announce it explicitly with `[skill-name] to [purpose]` before acting on it.
 
 ## Tooling reliability: large-file write strategy
 

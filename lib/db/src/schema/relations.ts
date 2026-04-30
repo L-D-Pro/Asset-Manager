@@ -147,6 +147,18 @@ export const aiRunEvaluationsRelations = relations(
   }),
 );
 
+import { wizardSessionsTable } from "./wizard-sessions";
+
+export const wizardSessionsRelations = relations(
+  wizardSessionsTable,
+  ({ one }) => ({
+    job: one(jobsTable, {
+      fields: [wizardSessionsTable.jobId],
+      references: [jobsTable.id],
+    }),
+  }),
+);
+
 export const aiModelConfigsRelations = relations(
   aiModelConfigsTable,
   ({ one, many }) => ({

@@ -39,6 +39,7 @@ import AdminUsageLimitsPage from "@/pages/admin/usage-limits";
 import AdminDocsPage from "@/pages/admin/docs";
 import AiLearningPage from "@/pages/ai-learning";
 import TrendsPage from "@/pages/trends";
+import ResourcesPage from "@/pages/resources";
 import NotFound from "@/pages/not-found";
 
 const ENABLE_APPLY_WIZARD = import.meta.env.VITE_ENABLE_APPLY_WIZARD === "true";
@@ -128,6 +129,7 @@ function ProtectedRoutes() {
           <Route path="/admin/docs" element={<AdminDocsPage />} />
           <Route path="/ai-learning" element={<AiLearningPage />} />
           <Route path="/trends" element={<TrendsPage />} />
+          <Route path="/resources" element={<ResourcesPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </PageTransition>

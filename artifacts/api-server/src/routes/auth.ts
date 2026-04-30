@@ -4,11 +4,13 @@ import { randomBytes } from "crypto";
 import speakeasy from "speakeasy";
 import qrcode from "qrcode";
 import { db } from "@workspace/db";
-import { adminUsersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { adminUsersTable, inviteCodesTable, userUsageLimitsTable } from "@workspace/db";
+import { eq, and, lt } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { logger } from "../lib/logger";
 import type { JobOpsRequest } from "../lib/http-types";
+import { resendService } from "../lib/resend-service";
+import { checkUsageLimit } from "../lib/usage-limit";
 
 /**
  * Auth router — all routes are mounted at /api/auth
@@ -91,6 +93,18 @@ authRouter.post("/auth/login", async (req: JobOpsRequest, res): Promise<void> =>
   if (!user || !passwordOk) {
     logger.warn({ username }, "Failed login attempt");
     res.status(401).json({ error: "Invalid username or password" });
+    return;
+  }
+
+  if (!user.emailVerified) {
+    logger.warn({ adminId: user.id }, "Login blocked: email not verified");
+    res.status(403).json({ error: "Please verify your email before logging in. Check your inbox or request a new verification email." });
+    return;
+  }
+
+  if (!user.isActive) {
+    logger.warn({ adminId: user.id }, "Login blocked: account inactive");
+    res.status(403).json({ error: "Your account has been deactivated. Contact support." });
     return;
   }
 
@@ -427,6 +441,243 @@ authRouter.post("/auth/2fa/regenerate-codes", requireAuth, async (req: JobOpsReq
 
   logger.info({ adminId: admin.id }, "Recovery codes regenerated");
   res.json({ ok: true, recoveryCodes: plainCodes });
+});
+
+// ── POST /api/auth/register ──────────────────────────────────────────────────
+
+authRouter.post("/auth/register", async (req: JobOpsRequest, res): Promise<void> => {
+  const { username, email, password, inviteCode, utmSource, utmMedium, utmCampaign } = req.body as {
+    username?: string;
+    email?: string;
+    password?: string;
+    inviteCode?: string;
+    utmSource?: string;
+    utmMedium?: string;
+    utmCampaign?: string;
+  };
+
+  const usernameRegex = /^[a-z0-9_]+$/;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if (!username || !usernameRegex.test(username)) {
+    res.status(400).json({ error: "Username must be lowercase alphanumeric with underscores only" });
+    return;
+  }
+  if (!email || !emailRegex.test(email)) {
+    res.status(400).json({ error: "Valid email is required" });
+    return;
+  }
+  if (!password || password.length < 12) {
+    res.status(400).json({ error: "Password must be at least 12 characters" });
+    return;
+  }
+  if (!inviteCode) {
+    res.status(400).json({ error: "Invite code is required" });
+    return;
+  }
+
+  const codeStr = inviteCode.trim().toUpperCase();
+  const [invite] = await db
+    .select()
+    .from(inviteCodesTable)
+    .where(eq(inviteCodesTable.code, codeStr));
+
+  if (!invite || !invite.isActive || new Date() > invite.expiresAt) {
+    res.status(400).json({ error: "Invalid or expired invitation code" });
+    return;
+  }
+  if (invite.usedCount >= invite.maxUses) {
+    res.status(400).json({ error: "This invite code has reached its limit" });
+    return;
+  }
+
+  const [existing] = await db
+    .select({ id: adminUsersTable.id })
+    .from(adminUsersTable)
+    .where(eq(adminUsersTable.username, username.toLowerCase().trim()));
+
+  if (existing) {
+    res.status(409).json({ error: "Username already taken" });
+    return;
+  }
+
+  const passwordHash = await hashPassword(password);
+  const confirmationToken = randomBytes(32).toString("hex");
+  const confirmationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+  const [user] = await db
+    .insert(adminUsersTable)
+    .values({
+      username: username.toLowerCase().trim(),
+      email: email.trim().toLowerCase(),
+      passwordHash,
+      role: "user",
+      emailVerified: false,
+      emailConfirmationToken: confirmationToken,
+      emailConfirmationExpires: new Date(confirmationExpires),
+      isPilotParticipant: true,
+      pilotEnrollmentType: "invite",
+      pilotTermsAcceptedAt: new Date(),
+      utmSource: utmSource ?? null,
+      utmMedium: utmMedium ?? null,
+      utmCampaign: utmCampaign ?? null,
+    })
+    .returning();
+
+  if (!user) {
+    res.status(500).json({ error: "Failed to create account" });
+    return;
+  }
+
+  await db
+    .update(inviteCodesTable)
+    .set({ usedCount: invite.usedCount + 1 })
+    .where(eq(inviteCodesTable.id, invite.id));
+
+  await db.insert(userUsageLimitsTable).values({ userId: user.id });
+
+  resendService.sendConfirmationEmail(user.email, confirmationToken, undefined);
+
+  logger.info({ userId: user.id, inviteCode: codeStr }, "User registered");
+  res.status(201).json({ id: user.id, message: "Account created. Check your email to verify." });
+});
+
+// ── GET /api/auth/verify-email/:token ────────────────────────────────────────
+
+authRouter.get("/auth/verify-email/:token", async (req: JobOpsRequest, res): Promise<void> => {
+  const token = Array.isArray(req.params.token) ? req.params.token[0] : req.params.token;
+
+  const [user] = await db
+    .select()
+    .from(adminUsersTable)
+    .where(eq(adminUsersTable.emailConfirmationToken, token));
+
+  if (!user) {
+    res.redirect("/login?error=invalid_token");
+    return;
+  }
+  if (user.emailConfirmationExpires && new Date() > user.emailConfirmationExpires) {
+    res.redirect("/login?error=expired_token");
+    return;
+  }
+
+  await db
+    .update(adminUsersTable)
+    .set({
+      emailVerified: true,
+      emailConfirmationToken: null,
+      emailConfirmationExpires: null,
+    })
+    .where(eq(adminUsersTable.id, user.id));
+
+  resendService.sendWelcomeEmail(user.email, user.firstName ?? undefined);
+
+  logger.info({ userId: user.id }, "Email verified");
+  res.redirect("/login?verified=1");
+});
+
+// ── POST /api/auth/resend-verification ────────────────────────────────────────
+
+authRouter.post("/auth/resend-verification", async (req: JobOpsRequest, res): Promise<void> => {
+  const { email } = req.body as { email?: string };
+  if (!email) {
+    res.json({ ok: true });
+    return;
+  }
+
+  const [user] = await db
+    .select()
+    .from(adminUsersTable)
+    .where(eq(adminUsersTable.email, email.trim().toLowerCase()));
+
+  if (!user || user.emailVerified) {
+    res.json({ ok: true });
+    return;
+  }
+
+  const confirmationToken = randomBytes(32).toString("hex");
+  const confirmationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+  await db
+    .update(adminUsersTable)
+    .set({ emailConfirmationToken: confirmationToken, emailConfirmationExpires: new Date(confirmationExpires) })
+    .where(eq(adminUsersTable.id, user.id));
+
+  resendService.sendConfirmationEmail(user.email, confirmationToken, user.firstName ?? undefined);
+
+  res.json({ ok: true });
+});
+
+// ── POST /api/auth/forgot-password ────────────────────────────────────────────
+
+authRouter.post("/auth/forgot-password", async (req: JobOpsRequest, res): Promise<void> => {
+  const { email } = req.body as { email?: string };
+  if (!email) {
+    res.json({ ok: true });
+    return;
+  }
+
+  const [user] = await db
+    .select()
+    .from(adminUsersTable)
+    .where(eq(adminUsersTable.email, email.trim().toLowerCase()));
+
+  if (!user) {
+    res.json({ ok: true });
+    return;
+  }
+
+  const resetToken = randomBytes(32).toString("hex");
+  const resetExpires = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+
+  await db
+    .update(adminUsersTable)
+    .set({ passwordResetToken: resetToken, passwordResetExpires: new Date(resetExpires) })
+    .where(eq(adminUsersTable.id, user.id));
+
+  resendService.sendPasswordReset(user.email, resetToken, user.firstName ?? undefined);
+
+  logger.info({ userId: user.id }, "Password reset requested");
+  res.json({ ok: true });
+});
+
+// ── POST /api/auth/reset-password ────────────────────────────────────────────
+
+authRouter.post("/auth/reset-password", async (req: JobOpsRequest, res): Promise<void> => {
+  const { token, password } = req.body as { token?: string; password?: string };
+
+  if (!token || !password) {
+    res.status(400).json({ error: "Token and password are required" });
+    return;
+  }
+  if (password.length < 12) {
+    res.status(400).json({ error: "Password must be at least 12 characters" });
+    return;
+  }
+
+  const [user] = await db
+    .select()
+    .from(adminUsersTable)
+    .where(eq(adminUsersTable.passwordResetToken, token));
+
+  if (!user) {
+    res.status(400).json({ error: "Invalid or expired reset token" });
+    return;
+  }
+  if (user.passwordResetExpires && new Date() > user.passwordResetExpires) {
+    res.status(400).json({ error: "Reset token has expired" });
+    return;
+  }
+
+  const passwordHash = await hashPassword(password);
+
+  await db
+    .update(adminUsersTable)
+    .set({ passwordHash, passwordResetToken: null, passwordResetExpires: null })
+    .where(eq(adminUsersTable.id, user.id));
+
+  logger.info({ userId: user.id }, "Password reset completed");
+  res.json({ ok: true });
 });
 
 export default authRouter;

@@ -137,26 +137,29 @@ router.post("/resume-versions/:id/approve", async (req, res): Promise<void> => {
     return;
   }
 
-  // Validate lineage before processing the approval
-  const lineageValidation = await validateLineage({
-    table: "resume_versions",
-    id: resumeVersion.id,
-    runId: resumeVersion.runId,
-    eventLogId: resumeVersion.eventLogId,
-    entityType: "resume_version",
-    entityId: resumeVersion.id,
-    jobId: resumeVersion.jobId,
-  });
-
-  if (!lineageValidation.ok) {
-    res.status(422).json({
-      error: "Lineage validation failed",
-      details: {
-        status: lineageValidation.status,
-        reasons: lineageValidation.diagnostics.reasons,
-      },
+  // Only validate lineage when runId is present — versions created
+  // via error paths or manual creation may not have lineage data
+  if (resumeVersion.runId) {
+    const lineageValidation = await validateLineage({
+      table: "resume_versions",
+      id: resumeVersion.id,
+      runId: resumeVersion.runId,
+      eventLogId: resumeVersion.eventLogId,
+      entityType: "resume_version",
+      entityId: resumeVersion.id,
+      jobId: resumeVersion.jobId,
     });
-    return;
+
+    if (!lineageValidation.ok) {
+      res.status(422).json({
+        error: "Lineage validation failed",
+        details: {
+          status: lineageValidation.status,
+          reasons: lineageValidation.diagnostics.reasons,
+        },
+      });
+      return;
+    }
   }
 
   const row = await db.transaction(async (tx) => {
@@ -261,26 +264,29 @@ router.post("/resume-versions/:id/reject", async (req, res): Promise<void> => {
     return;
   }
 
-  // Validate lineage before processing the rejection
-  const lineageValidation = await validateLineage({
-    table: "resume_versions",
-    id: resumeVersion.id,
-    runId: resumeVersion.runId,
-    eventLogId: resumeVersion.eventLogId,
-    entityType: "resume_version",
-    entityId: resumeVersion.id,
-    jobId: resumeVersion.jobId,
-  });
-
-  if (!lineageValidation.ok) {
-    res.status(422).json({
-      error: "Lineage validation failed",
-      details: {
-        status: lineageValidation.status,
-        reasons: lineageValidation.diagnostics.reasons,
-      },
+  // Only validate lineage when runId is present — versions created
+  // via error paths or manual creation may not have lineage data
+  if (resumeVersion.runId) {
+    const lineageValidation = await validateLineage({
+      table: "resume_versions",
+      id: resumeVersion.id,
+      runId: resumeVersion.runId,
+      eventLogId: resumeVersion.eventLogId,
+      entityType: "resume_version",
+      entityId: resumeVersion.id,
+      jobId: resumeVersion.jobId,
     });
-    return;
+
+    if (!lineageValidation.ok) {
+      res.status(422).json({
+        error: "Lineage validation failed",
+        details: {
+          status: lineageValidation.status,
+          reasons: lineageValidation.diagnostics.reasons,
+        },
+      });
+      return;
+    }
   }
 
   const row = await db.transaction(async (tx) => {

@@ -74,6 +74,8 @@ artifacts/dashboard/.env
 *.code-workspace
 .env.*
 !.env.example
+
+.localstorage
 node_modules/
 .next/
 dist/
@@ -87,3 +89,4 @@ vendor/
 *.log
 coverage/
 tmp/
+.worktrees/

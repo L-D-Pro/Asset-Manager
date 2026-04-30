@@ -6,7 +6,7 @@ import {
 import { eq } from "drizzle-orm";
 import { callAI, parseJsonResponse } from "../ai-client";
 import { matchClaimsToJob } from "../scoring";
-import { validateBullet, assertMinimumContent, TruthLockViolation } from "./validation";
+import { validateBullet, assertMinimumContent, TruthLockViolation, stripClaimIdRefs } from "./validation";
 import { logger } from "../logger";
 import type { Job, Claim } from "@workspace/db";
 
@@ -42,7 +42,9 @@ CRITICAL RULES — NEVER VIOLATE:
 3. Bullets that combine multiple claims must explicitly flag isAggregated: true.
 4. Use strong action verbs and quantifiable language where supported by claims.
 5. Match the job's required skills and keywords where truthfully supported by claims.
-6. Return a complete resume draft in plain text with section headings and bullets.
+6. Do NOT include claim ID references (like "(ID:4)" or "[ID:14]") in the text (bullets or documentText).
+   Claim attribution goes ONLY in the "claimIds" array field of the bullets, never in the prose.
+7. Return a complete resume draft in plain text with section headings and bullets.
 
 Return ONLY valid JSON with this exact structure:
 {
@@ -224,6 +226,13 @@ Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed
     bulletsDiscarded: parsed.bullets.length - validatedBullets.length,
   };
 
+  const sanitizedBullets = validatedBullets.map((b) => ({
+    ...b,
+    text: stripClaimIdRefs(b.text),
+  }));
+
+  const sanitizedDocumentText = stripClaimIdRefs(parsed.documentText as string);
+
   const [row] = await db
     .insert(resumeVersionsTable)
     .values({
@@ -234,8 +243,8 @@ Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed
       runId: result.runId,
       eventLogId: result.eventLogId,
       claimIds: usedClaimIds,
-      tailoredDocumentText: parsed.documentText,
-      tailoredBullets: validatedBullets as unknown as Record<string, unknown>[],
+      tailoredDocumentText: sanitizedDocumentText,
+      tailoredBullets: sanitizedBullets as unknown as Record<string, unknown>[],
       diffData: diffData as unknown as Record<string, unknown>,
       notes: parsed.summary ?? "AI-generated resume tailoring",
     })

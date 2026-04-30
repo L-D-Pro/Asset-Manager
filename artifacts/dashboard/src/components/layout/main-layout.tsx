@@ -1,5 +1,7 @@
 import { Sidebar } from "./sidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { Link } from "react-router-dom";
+import { FeedbackWidget } from "@/components/feedback-widget";
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -16,15 +18,16 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
             </div>
           </main>
           <footer className="border-t border-border/50 py-4 text-center text-xs text-muted-foreground space-y-1">
-            <p>&copy; 2026 Cyrus Sepasi. All rights reserved. Portfolio Studio&trade; is a product of L&amp;D PRO.</p>
+            <p>&copy; 2026 L&D PRO. All rights reserved. Job Ops is a product of L&amp;D PRO.</p>
             <p className="space-x-3">
-              <span className="hover:text-foreground transition-colors cursor-pointer">Terms of Service</span>
+              <Link to="/terms-of-service" className="hover:text-foreground transition-colors">Terms of Service</Link>
               <span className="text-border">|</span>
-              <span className="hover:text-foreground transition-colors cursor-pointer">Privacy Policy</span>
+              <Link to="/privacy-policy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
             </p>
           </footer>
         </div>
       </div>
+      <FeedbackWidget />
     </SidebarProvider>
   );
 }

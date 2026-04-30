@@ -1,9 +1,9 @@
-import { rateLimit, type Options } from "express-rate-limit";
+import { rateLimit, ipKeyGenerator, type Options } from "express-rate-limit";
 
 const defaultOptions: Partial<Options> = {
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => (req.ip ?? "unknown"),
+  keyGenerator: (req) => ipKeyGenerator(req.ip ?? ""),
 };
 
 /** Rate limiter for login attempts: 5 per 15 minutes per IP. */

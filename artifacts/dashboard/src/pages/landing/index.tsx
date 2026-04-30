@@ -22,6 +22,7 @@ import {
   Clock,
   TrendingUp,
 } from 'lucide-react';
+import { CommunityActivity } from '@/components/community-activity';
 
 /* ─── Animation primitives ─── */
 const fadeInUp = {
@@ -133,27 +134,27 @@ const faqs = [
 
 const pricingTiers = [
   {
-    name: 'Starter',
-    price: '$49',
-    description: 'One-time payment for individuals exploring the market.',
-    features: ['10 tailored applications', 'ATS optimization', 'Basic resume review', 'Email support'],
-    cta: 'Get Started',
+    name: 'Pilot Program',
+    price: 'Free',
+    description: 'Limited-time early access. Invite code required.',
+    features: ['Weekly AI request quota', 'Job parsing & matching', 'Resume tailoring', 'Cover letter drafting', 'Application tracking'],
+    cta: 'Join Pilot',
     featured: false,
   },
   {
-    name: 'Professional',
-    price: '$149',
-    description: 'For serious job seekers targeting specific roles.',
-    features: ['30 tailored applications', 'Priority turnaround (12h)', 'Cover letter crafting', 'Interview prep tips', 'Priority chat support'],
-    cta: 'Most Popular',
+    name: 'Pilot + Bonus',
+    price: 'Free + 3mo Basic',
+    description: 'Complete the pilot and get 3 months of Basic Tier free at launch.',
+    features: ['All Pilot features', '3 months post-launch access', 'Priority support channel', 'Early access to new features', 'Shape the product roadmap'],
+    cta: 'Join Pilot',
     featured: true,
   },
   {
-    name: 'Premium',
-    price: '$299',
-    description: 'White-glove service for executives and career switchers.',
-    features: ['Unlimited applications', 'Same-day turnaround', 'LinkedIn optimization', 'Mock interview session', 'Dedicated success coach'],
-    cta: 'Go Premium',
+    name: 'VIP Pilot',
+    price: 'Free',
+    description: 'For close connections and power users. Higher limits.',
+    features: ['Enhanced weekly quota', 'All Pilot + Bonus features', 'Direct line to the founder', 'Custom feature requests', 'Early adopter badge'],
+    cta: 'Join Pilot',
     featured: false,
   },
 ];
@@ -221,9 +222,9 @@ function Navbar() {
                 Sign In
               </button>
             </Link>
-            <Link to="/login">
+            <Link to="/register">
               <button className="text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors px-4 py-2 rounded-lg">
-                Get Started
+                Join Pilot
               </button>
             </Link>
           </div>
@@ -263,9 +264,9 @@ function Navbar() {
                     Sign In
                   </button>
                 </Link>
-                <Link to="/login" onClick={() => setMobileOpen(false)}>
+                <Link to="/register" onClick={() => setMobileOpen(false)}>
                   <button className="w-full text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors px-4 py-2 rounded-lg">
-                    Get Started
+                    Join Pilot
                   </button>
                 </Link>
               </div>
@@ -295,7 +296,7 @@ function Hero() {
             className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 backdrop-blur-sm px-4 py-1.5 text-sm text-muted-foreground mb-6"
           >
             <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
-            Trusted by 3,500+ job seekers worldwide
+            Private pilot with limited spots
           </motion.div>
 
           <motion.h1
@@ -326,13 +327,13 @@ function Hero() {
             transition={{ duration: 0.6, delay: 0.24, ease: easing.smooth }}
             className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4"
           >
-            <Link to="/login">
+            <Link to="/register">
               <button className="group inline-flex items-center gap-2 text-base font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-all px-6 py-3 rounded-xl shadow-lg shadow-primary/20 hover:shadow-primary/30 hover:-translate-y-0.5">
                 Start for Free
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </button>
             </Link>
-            <Link to="/login">
+            <Link to="/register">
               <button className="inline-flex items-center gap-2 text-base font-medium text-foreground bg-card border border-border hover:bg-accent transition-colors px-6 py-3 rounded-xl">
                 <Play className="h-4 w-4" />
                 See How It Works
@@ -346,7 +347,7 @@ function Hero() {
             transition={{ delay: 0.4, duration: 0.5 }}
             className="mt-4 text-xs text-muted-foreground"
           >
-            Free forever access · No credit card needed
+            Limited pilot access · Invite code required
           </motion.p>
         </div>
 
@@ -399,7 +400,6 @@ function Hero() {
 }
 
 function SocialProof() {
-  const companies = ['Google', 'Meta', 'Amazon', 'Microsoft', 'Apple', 'Netflix', 'Stripe', 'Uber'];
   return (
     <section className="py-10 border-y border-border/30 bg-muted/20">
       <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
@@ -408,16 +408,14 @@ function SocialProof() {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true }}
-          className="text-center text-xs font-medium uppercase tracking-wider text-muted-foreground mb-6"
+          className="text-center text-xs font-medium uppercase tracking-wider text-muted-foreground mb-4"
         >
-          Trusted by job seekers at
+          Built for modern job seekers
         </motion.p>
         <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4">
-          {companies.map((c) => (
-            <span key={c} className="text-lg font-bold text-muted-foreground/40 select-none">
-              {c}
-            </span>
-          ))}
+          <span className="text-lg font-bold text-muted-foreground/60 select-none">
+            AI-Powered &middot; Human-Guided &middot; Private Pilot
+          </span>
         </div>
       </div>
     </section>
@@ -541,8 +539,8 @@ function Stats() {
           viewport={{ once: true }}
           className="text-center mb-16"
         >
-          <h2 className="text-3xl md:text-4xl font-bold tracking-tight">Results That Speak</h2>
-          <p className="mt-4 text-muted-foreground text-lg">Real outcomes from real job seekers.</p>
+          <h2 className="text-3xl md:text-4xl font-bold tracking-tight">What the Pilot Offers</h2>
+          <p className="mt-4 text-muted-foreground text-lg">Free access to powerful job application tools.</p>
         </motion.div>
 
         <div className="grid md:grid-cols-3 gap-8">
@@ -631,9 +629,9 @@ function Pricing() {
           viewport={{ once: true }}
           className="text-center max-w-2xl mx-auto mb-16"
         >
-          <h2 className="text-3xl md:text-4xl font-bold tracking-tight">Simple, Transparent Pricing</h2>
+          <h2 className="text-3xl md:text-4xl font-bold tracking-tight">Pilot Program</h2>
           <p className="mt-4 text-muted-foreground text-lg">
-            One-time payments. No subscriptions. No hidden fees. Pay for results, not promises.
+            Free for the duration of the test phase. No credit card required. Invite code needed to join.
           </p>
         </motion.div>
 
@@ -676,7 +674,7 @@ function Pricing() {
                   </li>
                 ))}
               </ul>
-              <Link to="/login" className="mt-8 block">
+              <Link to="/register" className="mt-8 block">
                 <button className={cn(
                   'w-full text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors',
                   tier.featured
@@ -831,16 +829,16 @@ function FinalCTA() {
             Ready to stop applying and start interviewing?
           </h2>
           <p className="mt-6 text-lg text-muted-foreground">
-            Join 3,500+ job seekers who have reclaimed their time and landed their dream roles.
+            Join our pilot community and help shape the future of AI-assisted job applications.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link to="/login">
+            <Link to="/register">
               <button className="group inline-flex items-center gap-2 text-base font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-all px-6 py-3 rounded-xl shadow-lg shadow-primary/20 hover:shadow-primary/30 hover:-translate-y-0.5">
                 Start for Free
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </button>
             </Link>
-            <Link to="/login">
+            <Link to="/register">
               <button className="inline-flex items-center gap-2 text-base font-medium text-foreground bg-card border border-border hover:bg-accent transition-colors px-6 py-3 rounded-xl">
                 Sign In
               </button>
@@ -880,20 +878,23 @@ function Footer() {
           <div>
             <h4 className="text-sm font-semibold mb-3">Legal</h4>
             <ul className="space-y-2">
-              {['Privacy Policy', 'Terms of Service', 'Refund Policy'].map((item) => (
-                <li key={item}>
-                  <span className="text-sm text-muted-foreground">{item}</span>
+              {[
+                { label: 'Privacy Policy', href: '/privacy-policy' },
+                { label: 'Terms of Service', href: '/terms-of-service' },
+              ].map((item) => (
+                <li key={item.label}>
+                  <Link to={item.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">{item.label}</Link>
                 </li>
               ))}
             </ul>
           </div>
         </div>
         <div className="mt-10 pt-6 border-t border-border/30 text-center text-xs text-muted-foreground space-y-2">
-          <p>&copy; 2026 Cyrus Sepasi. All rights reserved. Portfolio Studio&trade; is a product of L&amp;D PRO.</p>
+          <p>&copy; 2026 L&D PRO. All rights reserved. Job Ops is a product of L&amp;D PRO.</p>
           <p className="space-x-3">
-            <span className="hover:text-foreground transition-colors cursor-pointer">Terms of Service</span>
+            <Link to="/terms-of-service" className="hover:text-foreground transition-colors">Terms of Service</Link>
             <span className="text-border">|</span>
-            <span className="hover:text-foreground transition-colors cursor-pointer">Privacy Policy</span>
+            <Link to="/privacy-policy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
           </p>
         </div>
       </div>
@@ -908,6 +909,9 @@ export default function LandingPage() {
       <Navbar />
       <Hero />
       <SocialProof />
+      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 mt-8">
+        <CommunityActivity />
+      </div>
       <HowItWorks />
       <Comparison />
       <Stats />

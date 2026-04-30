@@ -23,6 +23,12 @@ interface AuthContextValue {
   logout: () => Promise<void>;
   /** Re-fetch the current user (useful after profile changes). */
   refetch: () => Promise<void>;
+  /** Register a new account (public). Returns user id on success. */
+  register: (data: { username: string; email: string; password: string; inviteCode: string }) => Promise<{ id: number }>;
+  /** Resend email verification. Always returns ok for anti-enumeration. */
+  resendVerification: (email: string) => Promise<void>;
+  /** Request a password reset email. Always returns ok for anti-enumeration. */
+  requestPasswordReset: (email: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -95,8 +101,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  const register = useCallback(async (data: { username: string; email: string; password: string; inviteCode: string }) => {
+    const utmRaw = localStorage.getItem("jobops_utm");
+    const utm = utmRaw ? JSON.parse(utmRaw) : {};
+    const res = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: data.username,
+        email: data.email,
+        password: data.password,
+        inviteCode: data.inviteCode,
+        utmSource: utm.source ?? undefined,
+        utmMedium: utm.medium ?? undefined,
+        utmCampaign: utm.campaign ?? undefined,
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json() as { error: string };
+      throw new Error(err.error ?? "Registration failed");
+    }
+
+    localStorage.removeItem("jobops_utm");
+    return res.json() as Promise<{ id: number }>;
+  }, []);
+
+  const resendVerification = useCallback(async (email: string) => {
+    await fetch("/api/auth/resend-verification", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+  }, []);
+
+  const requestPasswordReset = useCallback(async (email: string) => {
+    await fetch("/api/auth/forgot-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, login, verifyTotp, logout, refetch: fetchMe }}>
+    <AuthContext.Provider value={{ user, login, verifyTotp, logout, refetch: fetchMe, register, resendVerification, requestPasswordReset }}>
       {children}
     </AuthContext.Provider>
   );

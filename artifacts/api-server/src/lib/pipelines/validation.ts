@@ -151,3 +151,17 @@ export function assertMinimumContent<T>(
     );
   }
 }
+
+/**
+ * Strips AI-generated claim ID references (e.g. "(ID:4)", "[ID:14]") from text.
+ * Also cleans up leftover whitespace and double spaces.
+ */
+export function stripClaimIdRefs(text: string): string {
+  if (!text) return "";
+  return text
+    .replace(/\s*\(ID:\d+\)/gi, "")
+    .replace(/\s*\[ID:\d+\]/gi, "")
+    .replace(/\s+,/g, ",") // clean up leftover trailing commas
+    .replace(/\s{2,}/g, " ") // collapse double-spaces
+    .trim();
+}
