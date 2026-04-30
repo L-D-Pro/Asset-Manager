@@ -1,17 +1,15 @@
 import { useListJobs, useCreateJob, useScoreJob, useListRoleProfiles, getScoreJobQueryKey, type RoleProfile } from "@workspace/api-client-react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/ui/page-header";
+import { ContentCard } from "@/components/ui/content-card";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import { StaggerContainer, StaggerItem } from "@/components/motion/stagger-container";
 import { Link, useNavigate } from "react-router-dom";
 import { Plus, Briefcase, MapPin, Building, ExternalLink, Sparkles } from "lucide-react";
-import { AnimatedCard } from "@/components/motion/animated-card";
-import { StaggerContainer, StaggerItem } from "@/components/motion/stagger-container";
-import { FadeIn } from "@/components/motion/fade-in";
-
 import { format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { motion } from "framer-motion";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -120,47 +118,36 @@ export default function JobsPage() {
     );
   };
 
-  const getStatusBadge = (status: string) => {
+  const statusLabel = (status: string) => {
     switch (status) {
-      case "new":
-        return <Badge variant="secondary" data-testid={`job-status-${status}`}>New</Badge>;
-      case "parsing":
-      case "tailoring":
-        return <Badge variant="outline" className="bg-blue-100 text-blue-800" data-testid={`job-status-${status}`}>Processing</Badge>;
-      case "ready":
-      case "parsed":
-      case "scored":
-        return <Badge variant="outline" className="bg-green-100 text-green-800" data-testid={`job-status-${status}`}>Ready</Badge>;
-      case "applied":
-        return <Badge variant="default" data-testid={`job-status-${status}`}>Applied</Badge>;
-      case "archived":
-        return <Badge variant="destructive" data-testid={`job-status-${status}`}>Archived</Badge>;
-      default:
-        return <Badge variant="outline" data-testid={`job-status-${status}`}>{status}</Badge>;
+      case "parsing": case "tailoring": return "Processing";
+      case "ready": case "parsed": case "scored": return "Ready";
+      default: return status.charAt(0).toUpperCase() + status.slice(1);
     }
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Jobs Pipeline</h1>
-          <p className="text-muted-foreground mt-1">Manage and parse your job opportunities.</p>
-        </div>
-        
+    <div className="space-y-8">
+      <PageHeader
+        title="Jobs Pipeline"
+        subtitle="Manage and parse your job opportunities."
+      >
         <div className="flex items-center gap-2">
-          {ENABLE_APPLY_WIZARD ? (
-            <Button variant="outline" asChild>
+          {ENABLE_APPLY_WIZARD && (
+            <Button variant="outline" size="sm" asChild className="border-white/30 text-white hover:bg-white/10">
               <Link to="/apply-wizard">
                 <Sparkles className="mr-2 h-4 w-4" />
                 Open Wizard
               </Link>
             </Button>
-          ) : null}
-
+          )}
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button data-testid="btn-add-job">
+              <Button
+                size="sm"
+                data-testid="btn-add-job"
+                className="bg-white text-indigo-600 hover:bg-white/90 font-semibold shadow-sm"
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 Ingest Job
               </Button>
@@ -232,10 +219,10 @@ export default function JobsPage() {
                       <FormItem>
                         <FormLabel>Raw Job Description</FormLabel>
                         <FormControl>
-                          <Textarea 
-                            placeholder="Paste the full job description here..." 
-                            className="h-32" 
-                            {...field} 
+                          <Textarea
+                            placeholder="Paste the full job description here..."
+                            className="h-32"
+                            {...field}
                             data-testid="input-job-jd"
                           />
                         </FormControl>
@@ -244,7 +231,12 @@ export default function JobsPage() {
                     )}
                   />
                   <div className="flex justify-end pt-4">
-                    <Button type="submit" disabled={createJob.isPending} data-testid="btn-submit-job">
+                    <Button
+                      type="submit"
+                      disabled={createJob.isPending}
+                      data-testid="btn-submit-job"
+                      className="bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 shadow-lg shadow-indigo-500/25"
+                    >
                       {createJob.isPending ? "Ingesting..." : "Ingest Job"}
                     </Button>
                   </div>
@@ -253,31 +245,24 @@ export default function JobsPage() {
             </DialogContent>
           </Dialog>
         </div>
-      </div>
+      </PageHeader>
 
       <StaggerContainer className="grid gap-4">
         {isLoading ? (
           <>
-            <Skeleton className="h-32 w-full" />
-            <Skeleton className="h-32 w-full" />
-            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-32 w-full rounded-2xl" />
+            <Skeleton className="h-32 w-full rounded-2xl" />
+            <Skeleton className="h-32 w-full rounded-2xl" />
           </>
         ) : jobs?.length === 0 ? (
-          <FadeIn>
-            <Card className="flex flex-col items-center justify-center p-12 text-center border-dashed">
-              <motion.div
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ type: "spring", stiffness: 200, damping: 15 }}
-              >
-                <Briefcase className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
-              </motion.div>
-              <h3 className="text-lg font-medium">No jobs yet</h3>
-              <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-                Ingest your first job description to start the parsing and tailoring pipeline.
-              </p>
-            </Card>
-          </FadeIn>
+          <ContentCard>
+            <EmptyState
+              icon={<Briefcase className="h-8 w-8" />}
+              title="No jobs yet"
+              description="Ingest your first job description to start the parsing and tailoring pipeline."
+              action={{ label: "Ingest Job", onClick: () => setIsDialogOpen(true) }}
+            />
+          </ContentCard>
         ) : (
           jobs?.map((job, index) => (
             <StaggerItem key={job.id}>
@@ -294,51 +279,53 @@ export default function JobsPage() {
                   }
                 }}
               >
-                <AnimatedCard index={index}>
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-3 mb-2 flex-wrap">
-                          <h3 className="font-semibold text-lg" data-testid={`text-job-title-${job.id}`}>{job.title}</h3>
-                          {getStatusBadge(job.status)}
-                          <JobScoreChips jobId={job.id} profiles={roleProfiles} />
-                        </div>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
-                          <div className="flex items-center gap-1">
-                            <Building className="h-4 w-4" />
-                            <span data-testid={`text-job-company-${job.id}`}>{job.company}</span>
-                          </div>
-                          {job.location && (
-                            <div className="flex items-center gap-1">
-                              <MapPin className="h-4 w-4" />
-                              <span data-testid={`text-job-location-${job.id}`}>{job.location}</span>
-                            </div>
-                          )}
-                          <div className="flex items-center gap-1">
-                            <span>Added {format(new Date(job.createdAt), "MMM d, yyyy")}</span>
-                          </div>
-                          {job.parsedRequiredSkills && job.parsedRequiredSkills.length > 0 && (
-                            <span className="text-xs">{job.parsedRequiredSkills.length} required skills</span>
-                          )}
-                        </div>
+                <ContentCard index={index} className="hover:border-indigo-200 hover:shadow-md">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3 mb-2 flex-wrap">
+                        <h3 className="font-semibold text-lg text-slate-900" data-testid={`text-job-title-${job.id}`}>
+                          {job.title}
+                        </h3>
+                        <StatusBadge status={statusLabel(job.status)} />
+                        <JobScoreChips jobId={job.id} profiles={roleProfiles} />
                       </div>
-                      <div className="flex flex-col items-end gap-2 shrink-0 ml-4">
-                        {job.sourceUrl && (
-                          <a 
-                            href={job.sourceUrl} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="text-xs flex items-center gap-1 text-primary hover:underline"
-                            onClick={(e) => e.stopPropagation()}
-                            data-testid={`link-job-source-${job.id}`}
-                          >
-                            Original Post <ExternalLink className="h-3 w-3" />
-                          </a>
+                      <div className="flex items-center gap-4 text-sm text-slate-500 flex-wrap">
+                        <div className="flex items-center gap-1.5">
+                          <Building className="h-3.5 w-3.5" />
+                          <span data-testid={`text-job-company-${job.id}`}>{job.company}</span>
+                        </div>
+                        {job.location && (
+                          <div className="flex items-center gap-1.5">
+                            <MapPin className="h-3.5 w-3.5" />
+                            <span data-testid={`text-job-location-${job.id}`}>{job.location}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-1.5">
+                          <span>Added {format(new Date(job.createdAt), "MMM d, yyyy")}</span>
+                        </div>
+                        {job.parsedRequiredSkills && job.parsedRequiredSkills.length > 0 && (
+                          <span className="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                            {job.parsedRequiredSkills.length} skills
+                          </span>
                         )}
                       </div>
                     </div>
-                  </CardContent>
-                </AnimatedCard>
+                    <div className="flex flex-col items-end gap-2 shrink-0 ml-4">
+                      {job.sourceUrl && (
+                        <a
+                          href={job.sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs flex items-center gap-1 text-indigo-600 hover:text-indigo-700 font-medium transition-colors"
+                          onClick={(e) => e.stopPropagation()}
+                          data-testid={`link-job-source-${job.id}`}
+                        >
+                          Original Post <ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </ContentCard>
               </div>
             </StaggerItem>
           ))

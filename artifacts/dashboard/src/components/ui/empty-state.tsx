@@ -3,11 +3,17 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import type { ReactNode } from "react";
 
+interface EmptyStateAction {
+  label: string;
+  href?: string;
+  onClick?: () => void;
+}
+
 interface EmptyStateProps {
   icon: ReactNode;
   title: string;
   description: string;
-  action?: { label: string; href: string };
+  action?: EmptyStateAction;
   className?: string;
 }
 
@@ -20,12 +26,21 @@ export function EmptyState({ icon, title, description, action, className }: Empt
       <h3 className="text-base font-semibold text-slate-900 mb-1.5">{title}</h3>
       <p className="text-sm text-slate-500 max-w-sm">{description}</p>
       {action && (
-        <Button
-          asChild
-          className="mt-6 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 shadow-lg shadow-indigo-500/25"
-        >
-          <Link to={action.href}>{action.label}</Link>
-        </Button>
+        action.href ? (
+          <Button
+            asChild
+            className="mt-6 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 shadow-lg shadow-indigo-500/25"
+          >
+            <Link to={action.href}>{action.label}</Link>
+          </Button>
+        ) : (
+          <Button
+            onClick={action.onClick}
+            className="mt-6 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 shadow-lg shadow-indigo-500/25"
+          >
+            {action.label}
+          </Button>
+        )
       )}
     </div>
   );

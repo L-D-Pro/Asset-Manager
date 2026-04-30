@@ -1,11 +1,14 @@
 import { useGetJob, useParseJobDescription, useTailorJobResume, useDraftCoverLetter, getGetJobQueryKey, useScoreJob, getScoreJobQueryKey, useGetJobClaimMatches, getGetJobClaimMatchesQueryKey } from "@workspace/api-client-react";
 import { useParams, Link } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageHeader } from "@/components/ui/page-header";
+import { ContentCard } from "@/components/ui/content-card";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Building, MapPin, ExternalLink, ArrowLeft, Wand2, AlertCircle, Tag } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
@@ -134,47 +137,37 @@ export default function JobDetail() {
   const scorePercent = score ? Math.round(score.score) : null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
-        <Link to="/jobs" className="text-sm text-muted-foreground flex items-center gap-1 hover:text-foreground mb-4 w-fit">
+        <Link
+          to="/jobs"
+          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600 mb-4 transition-colors font-medium"
+        >
           <ArrowLeft className="h-4 w-4" /> Back to pipeline
         </Link>
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight" data-testid="job-title">{job.title}</h1>
-            <div className="flex items-center gap-4 mt-2 text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <Building className="h-4 w-4" />
-                <span data-testid="job-company">{job.company}</span>
-              </div>
-              {job.location && (
-                <div className="flex items-center gap-1">
-                  <MapPin className="h-4 w-4" />
-                  <span data-testid="job-location">{job.location}</span>
-                </div>
-              )}
-              <Badge variant="outline" className="capitalize" data-testid="job-status-badge">{job.status}</Badge>
-            </div>
-          </div>
-          <div className="flex gap-2">
+        <PageHeader title={job.title} subtitle={`${job.company}${job.location ? ` · ${job.location}` : ""}`}>
+          <div className="flex items-center gap-2">
+            <StatusBadge status={job.status} />
             {job.sourceUrl && (
-              <Button variant="outline" size="sm" asChild data-testid="job-source-btn">
+              <Button variant="outline" size="sm" asChild data-testid="job-source-btn" className="border-white/30 text-white hover:bg-white/10">
                 <a href={job.sourceUrl} target="_blank" rel="noopener noreferrer">
-                  View Source <ExternalLink className="ml-2 h-4 w-4" />
+                  View Source <ExternalLink className="ml-2 h-3.5 w-3.5" />
                 </a>
               </Button>
             )}
           </div>
-        </div>
+        </PageHeader>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-2 space-y-6">
-          <Card>
+          <ContentCard>
             <CardHeader className="pb-3">
               <div className="flex justify-between items-center">
-                <CardTitle>AI Pipeline Actions</CardTitle>
-                <Wand2 className="h-5 w-5 text-primary" />
+                <CardTitle className="text-slate-900">AI Pipeline Actions</CardTitle>
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/10">
+                  <Wand2 className="h-4 w-4 text-indigo-500" />
+                </div>
               </div>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-3">
@@ -214,8 +207,8 @@ export default function JobDetail() {
                 idleLabel="Draft Cover Letter"
                 data-testid="btn-draft-cl"
               />
-            </CardContent>
-          </Card>
+              </CardContent>
+            </ContentCard>
 
           <Tabs defaultValue="jd" className="w-full">
             <TabsList>
@@ -225,16 +218,16 @@ export default function JobDetail() {
               <TabsTrigger value="claims">Claim Matches</TabsTrigger>
             </TabsList>
             <TabsContent value="jd" className="mt-4">
-              <Card>
+              <ContentCard>
                 <CardContent className="pt-6">
-                  <div className="whitespace-pre-wrap text-sm" data-testid="job-raw-jd">
+                  <div className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700" data-testid="job-raw-jd">
                     {job.rawJdText || "No job description provided."}
                   </div>
                 </CardContent>
-              </Card>
+              </ContentCard>
             </TabsContent>
             <TabsContent value="parsed" className="mt-4">
-              <Card>
+              <ContentCard>
                 <CardContent className="pt-6 space-y-6">
                   {job.parsedRequiredSkills ? (
                     <>
@@ -273,10 +266,10 @@ export default function JobDetail() {
                     </div>
                   )}
                 </CardContent>
-              </Card>
+              </ContentCard>
             </TabsContent>
             <TabsContent value="research" className="mt-4">
-              <Card>
+              <ContentCard>
                 <CardContent className="pt-6 space-y-6">
                   {(() => {
                     const rd = job.researchData as Record<string, unknown> | null;
@@ -308,10 +301,10 @@ export default function JobDetail() {
                     );
                   })()}
                 </CardContent>
-              </Card>
+              </ContentCard>
             </TabsContent>
             <TabsContent value="claims" className="mt-4">
-              <Card>
+              <ContentCard>
                 <CardHeader>
                   <CardTitle className="text-sm">Verified Claim Matches</CardTitle>
                   <CardDescription>Claims from your ledger that align with this job's requirements</CardDescription>
@@ -349,15 +342,15 @@ export default function JobDetail() {
                     <div className="text-sm text-muted-foreground">No claim matches. Parse the JD first, then run scoring.</div>
                   )}
                 </CardContent>
-              </Card>
+              </ContentCard>
             </TabsContent>
           </Tabs>
         </div>
 
-        <div className="space-y-6">
-          <Card>
+        <div className="space-y-4">
+          <ContentCard>
             <CardHeader>
-              <CardTitle>Match Score</CardTitle>
+              <CardTitle className="text-slate-900">Match Score</CardTitle>
             </CardHeader>
             <CardContent>
               {scoreLoading ? (
@@ -389,10 +382,10 @@ export default function JobDetail() {
                 <div className="text-sm text-muted-foreground text-center">Score pending — parse JD first</div>
               )}
             </CardContent>
-          </Card>
+          </ContentCard>
 
           {job.parsedRequiredSkills && job.parsedRequiredSkills.length > 0 && (
-            <Card>
+            <ContentCard>
               <CardHeader>
                 <CardTitle className="text-sm">Required Skills</CardTitle>
               </CardHeader>
@@ -402,8 +395,8 @@ export default function JobDetail() {
                     <Badge key={i} variant="secondary" className="text-xs">{skill}</Badge>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
+            </CardContent>
+          </ContentCard>
           )}
         </div>
       </div>
