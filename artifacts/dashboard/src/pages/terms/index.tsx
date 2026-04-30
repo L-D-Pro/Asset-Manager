@@ -1,14 +1,18 @@
 import { Link } from "react-router-dom";
+import { PageHeader } from "@/components/ui/page-header";
+import { ContentCard } from "@/components/ui/content-card";
 
 export default function TermsOfServicePage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-3xl mx-auto px-4 py-12 md:py-20">
         <Link to="/" className="text-sm text-muted-foreground hover:text-foreground mb-8 inline-block">&larr; Back to Home</Link>
-        <h1 className="text-3xl font-bold tracking-tight mb-2">Terms of Service</h1>
-        <p className="text-sm text-muted-foreground mb-8">Pilot Version — Non-Final Legal Text · Effective: Pilot Phase (Pre-Release)</p>
 
-        <div className="prose prose-sm prose-neutral dark:prose-invert max-w-none space-y-6">
+        <div className="space-y-8">
+          <PageHeader title="Terms of Service" subtitle="Last updated: 2026" gradient="from-slate-600 to-slate-500" />
+
+          <ContentCard className="p-8 prose max-w-none">
+            <div className="prose prose-sm prose-neutral dark:prose-invert max-w-none space-y-8">
           <section>
             <h2>1. Purpose of the Pilot</h2>
             <p>The Job Ops Pilot Program provides early access to pre-release features, workflows, and experimental functionality for AI-assisted job application management. The purpose of this pilot is to validate real job-seeking use cases and gather feedback that informs future product development.</p>
@@ -81,6 +85,8 @@ export default function TermsOfServicePage() {
             <p>For questions or issues, contact us at <a href="mailto:cyrusplans@gmail.com">cyrusplans@gmail.com</a>.</p>
           </section>
         </div>
+      </ContentCard>
+    </div>
       </div>
     </div>
   );

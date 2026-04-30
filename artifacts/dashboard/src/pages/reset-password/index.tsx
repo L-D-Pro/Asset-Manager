@@ -1,11 +1,12 @@
 import { useState, type FormEvent, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ContentCard } from "@/components/ui/content-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Sparkles, KeyRound, AlertCircle, CheckCircle } from "lucide-react";
+import { KeyRound, AlertCircle, CheckCircle } from "lucide-react";
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate();
@@ -65,14 +66,14 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-        <div className="flex items-center justify-center gap-2 mb-8">
-          <Sparkles className="h-8 w-8 text-primary" />
-          <span className="text-2xl font-bold tracking-tight">Job Ops</span>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-indigo-500 to-violet-500 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <ContentCard className="p-8 shadow-2xl border-white/20">
+          <div className="text-center mb-6">
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-violet-500 bg-clip-text text-transparent">Job Ops</h1>
+            <p className="text-slate-500 text-sm mt-1">Enter your email to receive a reset link</p>
+          </div>
 
-        <Card className="shadow-lg">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-2">
               <KeyRound className="h-5 w-5" />
@@ -169,10 +170,10 @@ export default function ResetPasswordPage() {
               </form>
             )}
           </CardContent>
-        </Card>
+        </ContentCard>
 
-        <p className="text-center text-xs text-muted-foreground mt-6">
-          <Link to="/login" className="text-primary underline">Back to Sign In</Link>
+        <p className="text-center text-xs text-white/60 mt-6">
+          <Link to="/login" className="text-white/80 underline hover:text-white">Back to Sign In</Link>
         </p>
       </div>
     </div>

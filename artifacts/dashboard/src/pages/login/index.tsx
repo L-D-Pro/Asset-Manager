@@ -2,11 +2,12 @@ import { useState, type FormEvent } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ContentCard } from "@/components/ui/content-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { FileCode, Lock, AlertCircle, KeyRound } from "lucide-react";
+import { Lock, AlertCircle, KeyRound } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { easing } from "@/lib/animations";
 
@@ -76,24 +77,14 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: easing.smooth }}
-        className="w-full max-w-sm"
-      >
-        <motion.div
-          className="flex items-center justify-center gap-2 mb-8"
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ delay: 0.1, duration: 0.4, ease: easing.smooth }}
-        >
-          <FileCode className="h-8 w-8 text-primary" />
-          <span className="text-2xl font-bold tracking-tight">Job Ops</span>
-        </motion.div>
+    <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-indigo-500 to-violet-500 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <ContentCard className="p-8 shadow-2xl border-white/20">
+          <div className="text-center mb-6">
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-violet-500 bg-clip-text text-transparent">Job Ops</h1>
+            <p className="text-slate-500 text-sm mt-1">Sign in to your account</p>
+          </div>
 
-        <Card className="shadow-lg overflow-hidden">
           <AnimatePresence mode="wait">
             {step === "password" ? (
               <motion.div
@@ -246,22 +237,17 @@ export default function LoginPage() {
               </motion.div>
             )}
           </AnimatePresence>
-        </Card>
+        </ContentCard>
 
-        <motion.div
-          className="text-center text-xs text-muted-foreground mt-6 space-y-2"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-        >
-          <p>&copy; 2026 Cyrus Sepasi. All rights reserved. Portfolio Studio&trade; is a product of L&amp;D PRO.</p>
-          <p className="space-x-3">
-            <span className="hover:text-foreground transition-colors cursor-pointer">Terms of Service</span>
-            <span className="text-border">|</span>
-            <span className="hover:text-foreground transition-colors cursor-pointer">Privacy Policy</span>
-          </p>
-        </motion.div>
-      </motion.div>
+        <p className="text-center text-xs text-white/60 mt-6 space-y-2">
+          <span>&copy; 2026 Cyrus Sepasi. All rights reserved. Portfolio Studio&trade; is a product of L&amp;D PRO.</span>
+          <span className="block space-x-3 mt-1">
+            <span className="hover:text-white/80 transition-colors cursor-pointer">Terms of Service</span>
+            <span>|</span>
+            <span className="hover:text-white/80 transition-colors cursor-pointer">Privacy Policy</span>
+          </span>
+        </p>
+      </div>
     </div>
   );
 }

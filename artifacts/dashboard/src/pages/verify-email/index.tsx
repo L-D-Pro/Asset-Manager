@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ContentCard } from "@/components/ui/content-card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Sparkles, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 
 export default function VerifyEmailPage() {
   const { token } = useParams<{ token: string }>();
@@ -34,14 +35,14 @@ export default function VerifyEmailPage() {
   }, [token]);
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-        <div className="flex items-center justify-center gap-2 mb-8">
-          <Sparkles className="h-8 w-8 text-primary" />
-          <span className="text-2xl font-bold tracking-tight">Job Ops</span>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-indigo-500 to-violet-500 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <ContentCard className="p-8 shadow-2xl border-white/20">
+          <div className="text-center mb-6">
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-violet-500 bg-clip-text text-transparent">Job Ops</h1>
+            <p className="text-slate-500 text-sm mt-1">Check your inbox for a verification link</p>
+          </div>
 
-        <Card className="shadow-lg">
           <CardHeader className="text-center">
             {status === "loading" ? (
               <>
@@ -77,7 +78,7 @@ export default function VerifyEmailPage() {
               </p>
             )}
           </CardContent>
-        </Card>
+        </ContentCard>
       </div>
     </div>
   );

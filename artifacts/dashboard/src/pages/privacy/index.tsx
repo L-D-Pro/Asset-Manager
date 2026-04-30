@@ -1,14 +1,18 @@
 import { Link } from "react-router-dom";
+import { PageHeader } from "@/components/ui/page-header";
+import { ContentCard } from "@/components/ui/content-card";
 
 export default function PrivacyPolicyPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-3xl mx-auto px-4 py-12 md:py-20">
         <Link to="/" className="text-sm text-muted-foreground hover:text-foreground mb-8 inline-block">&larr; Back to Home</Link>
-        <h1 className="text-3xl font-bold tracking-tight mb-2">Privacy Policy</h1>
-        <p className="text-sm text-muted-foreground mb-8">Pilot Version — Non-Final Legal Text · Effective: Pilot Phase (Pre-Release)</p>
 
-        <div className="prose prose-sm prose-neutral dark:prose-invert max-w-none space-y-6">
+        <div className="space-y-8">
+          <PageHeader title="Privacy Policy" subtitle="Last updated: 2026" gradient="from-slate-600 to-slate-500" />
+
+          <ContentCard className="p-8 prose max-w-none">
+            <div className="prose prose-sm prose-neutral dark:prose-invert max-w-none space-y-8">
           <section>
             <h2>1. Overview</h2>
             <p>This Privacy Policy explains how Job Ops ("we", "us") collects, uses, and shares information when you register, upload resumes, or interact with pilot features.</p>
@@ -93,6 +97,8 @@ export default function PrivacyPolicyPage() {
             <p>For privacy questions or requests, email <a href="mailto:cyrusplans@gmail.com">cyrusplans@gmail.com</a>.</p>
           </section>
         </div>
+      </ContentCard>
+    </div>
 
         <div className="mt-12 pt-6 border-t text-xs text-muted-foreground space-y-1">
           <p>&copy; 2026 L&D PRO. All rights reserved. Job Ops is a product of L&D PRO.</p>

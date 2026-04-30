@@ -23,6 +23,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { CommunityActivity } from '@/components/community-activity';
+import { ContentCard } from '@/components/ui/content-card';
 
 /* ─── Animation primitives ─── */
 const fadeInUp = {
@@ -281,21 +282,21 @@ function Navbar() {
 function Hero() {
   const shouldReduce = useReducedMotion();
   return (
-    <section className="relative overflow-hidden pt-32 pb-20 md:pt-40 md:pb-28">
+    <section className="min-h-[90vh] bg-gradient-to-br from-indigo-600 via-indigo-500 to-violet-500 flex flex-col items-center justify-center text-center px-4 relative overflow-hidden pt-32 pb-20 md:pt-40 md:pb-28">
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-primary/10 rounded-full blur-[120px] opacity-60" />
-        <div className="absolute bottom-0 right-0 w-[500px] h-[400px] bg-emerald-500/5 rounded-full blur-[100px]" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-white/5 rounded-full blur-[120px] opacity-60" />
+        <div className="absolute bottom-0 right-0 w-[500px] h-[400px] bg-white/5 rounded-full blur-[100px]" />
       </div>
 
-      <div className="relative max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
+      <div className="relative max-w-7xl mx-auto px-4 md:px-6 lg:px-8 w-full">
         <div className="max-w-3xl mx-auto text-center">
           <motion.div
             initial={{ opacity: 0, y: shouldReduce ? 0 : 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: easing.smooth }}
-            className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 backdrop-blur-sm px-4 py-1.5 text-sm text-muted-foreground mb-6"
+            className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 backdrop-blur-sm px-4 py-1.5 text-sm text-blue-100 mb-6"
           >
-            <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
+            <Star className="h-3.5 w-3.5 text-amber-400 fill-amber-400" />
             Private pilot with limited spots
           </motion.div>
 
@@ -303,10 +304,10 @@ function Hero() {
             initial={{ opacity: 0, y: shouldReduce ? 0 : 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.08, ease: easing.smooth }}
-            className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1]"
+            className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1] text-white"
           >
             Land your dream job{' '}
-            <span className="bg-gradient-to-r from-primary to-emerald-500 bg-clip-text text-transparent">
+            <span className="text-blue-200">
               while you sleep
             </span>
           </motion.h1>
@@ -315,7 +316,7 @@ function Hero() {
             initial={{ opacity: 0, y: shouldReduce ? 0 : 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.16, ease: easing.smooth }}
-            className="mt-6 text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed"
+            className="mt-6 text-lg md:text-xl text-blue-100 max-w-2xl mx-auto leading-relaxed"
           >
             Human assistants + AI agents apply to jobs for you with custom resumes and cover letters.
             So you can focus on what actually matters: networking and interviews.
@@ -328,13 +329,13 @@ function Hero() {
             className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4"
           >
             <Link to="/register">
-              <button className="group inline-flex items-center gap-2 text-base font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-all px-6 py-3 rounded-xl shadow-lg shadow-primary/20 hover:shadow-primary/30 hover:-translate-y-0.5">
+              <button className="group inline-flex items-center gap-2 text-base font-semibold bg-white text-indigo-600 hover:bg-blue-50 transition-all px-6 py-3 rounded-xl shadow-lg shadow-black/10 hover:shadow-black/20 hover:-translate-y-0.5">
                 Start for Free
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </button>
             </Link>
             <Link to="/register">
-              <button className="inline-flex items-center gap-2 text-base font-medium text-foreground bg-card border border-border hover:bg-accent transition-colors px-6 py-3 rounded-xl">
+              <button className="inline-flex items-center gap-2 text-base font-medium text-white border border-white/30 hover:bg-white/10 transition-colors px-6 py-3 rounded-xl">
                 <Play className="h-4 w-4" />
                 See How It Works
               </button>
@@ -345,7 +346,7 @@ function Hero() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4, duration: 0.5 }}
-            className="mt-4 text-xs text-muted-foreground"
+            className="mt-4 text-xs text-blue-200"
           >
             Limited pilot access · Invite code required
           </motion.p>
@@ -358,8 +359,8 @@ function Hero() {
           transition={{ duration: 0.8, delay: 0.3, ease: easing.smooth }}
           className="mt-16 relative max-w-5xl mx-auto"
         >
-          <div className="rounded-2xl border border-border/50 bg-card/40 backdrop-blur-xl shadow-2xl overflow-hidden">
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-border/30 bg-muted/30">
+          <ContentCard className="p-6 shadow-2xl border-white/20">
+            <div className="flex items-center gap-2 px-4 py-3 -mx-6 -mt-6 mb-6 border-b border-border/30 bg-muted/30 rounded-t-2xl">
               <div className="flex gap-1.5">
                 <div className="w-3 h-3 rounded-full bg-red-400/80" />
                 <div className="w-3 h-3 rounded-full bg-amber-400/80" />
@@ -367,7 +368,7 @@ function Hero() {
               </div>
               <span className="text-xs text-muted-foreground ml-2">L&D Pro — Job Ops Dashboard</span>
             </div>
-            <div className="p-6 md:p-8 grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-3">
               {[0, 1, 2].map((i) => (
                 <div key={i} className="rounded-xl border border-border/40 bg-background/60 p-4 space-y-3">
                   <div className="flex items-center justify-between">
@@ -392,7 +393,7 @@ function Hero() {
                 ))}
               </div>
             </div>
-          </div>
+          </ContentCard>
         </motion.div>
       </div>
     </section>
