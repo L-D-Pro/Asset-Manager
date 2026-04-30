@@ -135,7 +135,33 @@ export function Sidebar() {
       <SidebarContent>
         <SidebarMenu>
           {/* Featured cards with glass-morphism hover effect */}
-          <div className="px-3 space-y-2">
+          <div className="px-3 pt-2 space-y-2.5">
+            <NavLink to="/dashboard" className="contents">
+              {({ isActive }) => (
+                <div
+                  className={cn(
+                    "group relative overflow-hidden rounded-xl border transition-all duration-300 cursor-pointer",
+                    isActive
+                      ? "bg-indigo-500/20 border-indigo-500/60 shadow-lg shadow-indigo-500/15"
+                      : "bg-slate-800/60 border-slate-700/50 hover:border-slate-600/80 hover:bg-slate-800/80 hover:shadow-md hover:shadow-indigo-500/5"
+                  )}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/[0.06] to-violet-500/[0.06] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <div className="relative flex items-center gap-3 px-3 py-2.5">
+                    <div className={cn(
+                      "flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-300",
+                      isActive ? "bg-indigo-500/30" : "bg-indigo-500/15 group-hover:bg-indigo-500/25"
+                    )}>
+                      <LayoutDashboard className={cn("h-4 w-4", isActive ? "text-indigo-300" : "text-indigo-400")} />
+                    </div>
+                    <div>
+                      <span className={cn("font-semibold text-sm", isActive ? "text-white" : "text-slate-200")}>Dashboard</span>
+                      <p className="text-[10px] text-slate-400 leading-tight">Overview & stats</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </NavLink>
             {ENABLE_APPLY_WIZARD && (
               <NavLink to="/apply-wizard" className="contents">
                 {({ isActive }) => (
@@ -143,11 +169,11 @@ export function Sidebar() {
                     className={cn(
                       "group relative overflow-hidden rounded-xl border transition-all duration-300 cursor-pointer",
                       isActive
-                        ? "bg-indigo-500/15 border-indigo-500/50 shadow-lg shadow-indigo-500/10"
-                        : "bg-white/5 backdrop-blur-sm border-white/10 hover:border-white/20 hover:bg-white/10 hover:shadow-lg hover:shadow-indigo-500/5"
+                        ? "bg-indigo-500/20 border-indigo-500/60 shadow-lg shadow-indigo-500/15"
+                        : "bg-slate-800/60 border-slate-700/50 hover:border-slate-600/80 hover:bg-slate-800/80 hover:shadow-md hover:shadow-indigo-500/5"
                     )}
                   >
-                    <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/[0.08] to-violet-500/[0.08] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/[0.06] to-violet-500/[0.06] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                     <div className="relative flex items-center gap-3 px-3 py-2.5">
                       <div className={cn(
                         "flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-300",
@@ -157,7 +183,7 @@ export function Sidebar() {
                       </div>
                       <div>
                         <span className={cn("font-semibold text-sm", isActive ? "text-white" : "text-slate-200")}>Wizard</span>
-                        <p className="text-[10px] text-slate-500 leading-tight">AI-powered apply</p>
+                        <p className="text-[10px] text-slate-400 leading-tight">AI-powered apply</p>
                       </div>
                     </div>
                   </div>
@@ -170,11 +196,11 @@ export function Sidebar() {
                   className={cn(
                     "group relative overflow-hidden rounded-xl border transition-all duration-300 cursor-pointer",
                     isActive
-                      ? "bg-blue-500/15 border-blue-500/50 shadow-lg shadow-blue-500/10"
-                      : "bg-white/5 backdrop-blur-sm border-white/10 hover:border-white/20 hover:bg-white/10 hover:shadow-lg hover:shadow-blue-500/5"
+                      ? "bg-blue-500/20 border-blue-500/60 shadow-lg shadow-blue-500/15"
+                      : "bg-slate-800/60 border-slate-700/50 hover:border-slate-600/80 hover:bg-slate-800/80 hover:shadow-md hover:shadow-blue-500/5"
                   )}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500/[0.08] to-teal-500/[0.08] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500/[0.06] to-teal-500/[0.06] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   <div className="relative flex items-center gap-3 px-3 py-2.5">
                     <div className={cn(
                       "flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-300",
@@ -184,7 +210,7 @@ export function Sidebar() {
                     </div>
                     <div>
                       <span className={cn("font-semibold text-sm", isActive ? "text-white" : "text-slate-200")}>Trends</span>
-                      <p className="text-[10px] text-slate-500 leading-tight">Market insights</p>
+                      <p className="text-[10px] text-slate-400 leading-tight">Market insights</p>
                     </div>
                   </div>
                 </div>
@@ -196,11 +222,11 @@ export function Sidebar() {
                   className={cn(
                     "group relative overflow-hidden rounded-xl border transition-all duration-300 cursor-pointer",
                     isActive
-                      ? "bg-emerald-500/15 border-emerald-500/50 shadow-lg shadow-emerald-500/10"
-                      : "bg-white/5 backdrop-blur-sm border-white/10 hover:border-white/20 hover:bg-white/10 hover:shadow-lg hover:shadow-emerald-500/5"
+                      ? "bg-emerald-500/20 border-emerald-500/60 shadow-lg shadow-emerald-500/15"
+                      : "bg-slate-800/60 border-slate-700/50 hover:border-slate-600/80 hover:bg-slate-800/80 hover:shadow-md hover:shadow-emerald-500/5"
                   )}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/[0.08] to-teal-500/[0.08] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/[0.06] to-teal-500/[0.06] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   <div className="relative flex items-center gap-3 px-3 py-2.5">
                     <div className={cn(
                       "flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-300",
@@ -210,7 +236,7 @@ export function Sidebar() {
                     </div>
                     <div>
                       <span className={cn("font-semibold text-sm", isActive ? "text-white" : "text-slate-200")}>Resources</span>
-                      <p className="text-[10px] text-slate-500 leading-tight">Free tools & support</p>
+                      <p className="text-[10px] text-slate-400 leading-tight">Free tools & support</p>
                     </div>
                   </div>
                 </div>
@@ -219,39 +245,10 @@ export function Sidebar() {
           </div>
 
           {/* Divider after featured cards */}
-          <div className="px-3 pt-2 pb-1">
+          <div className="px-3 pt-3 pb-1">
             <div className="h-px bg-slate-800" />
           </div>
-
-          <SidebarMenuItem>
-            <NavLink to="/dashboard" className="contents">
-              {({ isActive }) => (
-                <SidebarMenuButton tooltip="Dashboard" asChild>
-                  <span
-                    className={cn(
-                      "flex items-center gap-3 cursor-pointer px-3 py-1.5 rounded-lg transition-all duration-200",
-                      isActive
-                        ? "text-white bg-indigo-500/15 font-medium"
-                        : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
-                    )}
-                  >
-                    <LayoutDashboard
-                      className={cn(
-                        "h-4 w-4",
-                        isActive ? "text-indigo-400" : "text-slate-500"
-                      )}
-                    />
-                    <span>Dashboard</span>
-                  </span>
-                </SidebarMenuButton>
-              )}
-            </NavLink>
-          </SidebarMenuItem>
         </SidebarMenu>
-
-        <div className="px-3 py-4">
-          <div className="h-px bg-slate-800" />
-        </div>
 
         {navGroups.map((group) => {
           const isOpen = openGroup === group.label;
