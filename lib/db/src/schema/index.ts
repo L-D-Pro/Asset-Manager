@@ -20,3 +20,4 @@ export * from "./ai-variant-stats";
 export * from "./ai-variant-comparisons";
 export * from "./ai-learning-config";
 export * from "./admin-users";
+export * from "./job-board";

@@ -417,3 +417,59 @@ CREATE TABLE IF NOT EXISTS ai_training_examples (
 CREATE INDEX IF NOT EXISTS ai_training_examples_task_scope_idx ON ai_training_examples(task_scope);
 CREATE INDEX IF NOT EXISTS ai_training_examples_source_idx ON ai_training_examples(source_entity_type, source_entity_id);
 CREATE INDEX IF NOT EXISTS ai_training_examples_active_idx ON ai_training_examples(task_scope, is_active);
+
+-- Job board tables (runtime compat)
+CREATE TABLE IF NOT EXISTS job_sources (
+  id SERIAL PRIMARY KEY,
+  key TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  feed_url TEXT NOT NULL,
+  source_type TEXT NOT NULL DEFAULT 'rss',
+  category TEXT DEFAULT 'general',
+  keywords TEXT[] DEFAULT '{}',
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  last_fetched_at TIMESTAMP,
+  last_success_at TIMESTAMP,
+  last_error TEXT,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS job_listings (
+  id SERIAL PRIMARY KEY,
+  source_id INTEGER NOT NULL REFERENCES job_sources(id) ON DELETE CASCADE,
+  source_key TEXT NOT NULL,
+  source_item_id TEXT NOT NULL,
+  source_url TEXT NOT NULL,
+  title TEXT NOT NULL,
+  company TEXT NOT NULL,
+  location TEXT,
+  summary TEXT,
+  tags TEXT[] DEFAULT '{}',
+  job_type TEXT,
+  workplace_type TEXT,
+  published_at TIMESTAMP,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  fetched_at TIMESTAMP DEFAULT NOW(),
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(source_key, source_item_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_job_listings_active ON job_listings(is_active);
+CREATE INDEX IF NOT EXISTS idx_job_listings_published ON job_listings(published_at);
+
+CREATE TABLE IF NOT EXISTS trends_cache (
+  id SERIAL PRIMARY KEY,
+  query_hash TEXT NOT NULL UNIQUE,
+  job_title TEXT NOT NULL,
+  location TEXT,
+  experience_level TEXT,
+  salary_target INTEGER,
+  analysis_json JSONB NOT NULL,
+  job_matches_count INTEGER DEFAULT 0,
+  created_at TIMESTAMP DEFAULT NOW(),
+  expires_at TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_trends_cache_expires ON trends_cache(expires_at);
