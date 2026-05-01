@@ -1,5 +1,6 @@
 import type { Response, NextFunction } from "express";
 import type { JobOpsRequest } from "../lib/http-types";
+import { getOrCreateUserStats, awardXp } from "../lib/gamification";
 
 /**
  * Authentication middleware.
@@ -14,7 +15,7 @@ import type { JobOpsRequest } from "../lib/http-types";
  * Public routes (health check, auth endpoints) are whitelisted and
  * do not go through this middleware — see `routes/index.ts`.
  */
-export function requireAuth(req: JobOpsRequest, res: Response, next: NextFunction): void {
+export async function requireAuth(req: JobOpsRequest, res: Response, next: NextFunction): Promise<void> {
   if (!req.session.adminId) {
     res.status(401).json({ error: "Unauthorized" });
     return;
@@ -25,6 +26,14 @@ export function requireAuth(req: JobOpsRequest, res: Response, next: NextFunctio
   if (req.session.totpVerified === false) {
     res.status(401).json({ error: "TOTP verification required", totpRequired: true });
     return;
+  }
+
+  const stats = await getOrCreateUserStats(req.session.adminId).catch(() => null);
+  if (stats) {
+    const today = new Date().toISOString().slice(0, 10);
+    if (stats.lastActivityDate !== today) {
+      awardXp(req.session.adminId, "daily_login", {}).catch(() => {});
+    }
   }
 
   next();

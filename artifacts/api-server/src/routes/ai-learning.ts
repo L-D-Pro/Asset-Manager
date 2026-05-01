@@ -1,6 +1,8 @@
 import { Router, type IRouter } from "express";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
+import { awardXp } from "../lib/gamification";
+import type { JobOpsRequest } from "../lib/http-types";
 import {
   db,
   aiPromptVersionsTable,
@@ -31,7 +33,7 @@ const ListQuery = z.object({
 
 router.use(aiMetricsSnapshotRouter);
 
-router.get("/ai-review/overview", async (_req, res): Promise<void> => {
+router.get("/ai-review/overview", async (req: JobOpsRequest, res): Promise<void> => {
   const [recentAiEvents, evaluations, promptVersions, trainingExamples] =
     await Promise.all([
       db
@@ -56,6 +58,8 @@ router.get("/ai-review/overview", async (_req, res): Promise<void> => {
         .orderBy(desc(aiTrainingExamplesTable.createdAt))
         .limit(25),
     ]);
+
+  awardXp(req.session.adminId!, "ai_visit", {}).catch(() => {});
 
   res.json({
     recentAiEvents,

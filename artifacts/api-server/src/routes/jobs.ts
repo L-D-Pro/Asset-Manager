@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import type { JobOpsRequest } from "../lib/http-types";
 import { eq, and } from "drizzle-orm";
 import {
   db,
@@ -44,6 +45,7 @@ import { runCoverLetterPipeline } from "../lib/pipelines/cover-letter-draft";
 import { runJobResearchPipeline } from "../lib/pipelines/job-research";
 import { runGapAnalysisPipeline } from "../lib/pipelines/gap-analysis";
 import { mintRunId } from "../lib/lineage";
+import { awardXp } from "../lib/gamification";
 import { z } from "zod/v4";
 
 const router: IRouter = Router();
@@ -331,7 +333,7 @@ router.get("/jobs/:id/claim-matches", async (req, res): Promise<void> => {
   res.json(GetJobClaimMatchesResponse.parse(matches));
 });
 
-router.post("/jobs/:id/tailor", async (req, res): Promise<void> => {
+router.post("/jobs/:id/tailor", async (req: JobOpsRequest, res): Promise<void> => {
   const params = TailorJobResumeParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -369,6 +371,8 @@ router.post("/jobs/:id/tailor", async (req, res): Promise<void> => {
       body.data.claimIds,
       { modelOverride: requestedModelOverride.success ? requestedModelOverride.data : undefined },
     );
+
+    awardXp(req.session.adminId!, "job_apply", { jobId: job.id }).catch(() => {});
 
     res.status(201).json(GetResumeVersionResponse.parse(resumeVersion));
   } catch (error) {
@@ -431,7 +435,7 @@ router.post("/jobs/:id/cover-letter", async (req, res): Promise<void> => {
   res.status(201).json(GetCoverLetterVersionResponse.parse(coverLetterVersion));
 });
 
-router.post("/jobs/:id/compare/resume", async (req, res): Promise<void> => {
+router.post("/jobs/:id/compare/resume", async (req: JobOpsRequest, res): Promise<void> => {
   const params = TailorJobResumeParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -507,10 +511,12 @@ router.post("/jobs/:id/compare/resume", async (req, res): Promise<void> => {
     },
   });
 
+  awardXp(req.session.adminId!, "compare", { jobId: job.id }).catch(() => {});
+
   res.json({ comparisonRunId, candidates });
 });
 
-router.post("/jobs/:id/compare/cover-letter", async (req, res): Promise<void> => {
+router.post("/jobs/:id/compare/cover-letter", async (req: JobOpsRequest, res): Promise<void> => {
   const params = DraftCoverLetterParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -595,6 +601,8 @@ router.post("/jobs/:id/compare/cover-letter", async (req, res): Promise<void> =>
       candidates,
     },
   });
+
+  awardXp(req.session.adminId!, "compare", { jobId: job.id }).catch(() => {});
 
   res.json({ comparisonRunId, candidates });
 });

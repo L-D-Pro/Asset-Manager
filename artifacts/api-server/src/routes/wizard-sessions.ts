@@ -9,6 +9,7 @@ import {
   DeleteWizardSessionParams,
 } from "@workspace/api-zod";
 import type { JobOpsRequest } from "../lib/http-types";
+import { awardXp } from "../lib/gamification";
 
 const router: IRouter = Router();
 
@@ -57,6 +58,11 @@ router.post("/wizard-sessions", async (req: JobOpsRequest, res): Promise<void> =
     .returning();
 
   req.log.info({ sessionId: row!.id, userId }, "Wizard session saved");
+
+  if (parsed.data.currentStep === "assisted") {
+    awardXp(userId, "wizard_complete", { wizardId: row!.id }).catch(() => {});
+  }
+
   res.status(201).json(GetWizardSessionResponse.parse(row!));
 });
 
