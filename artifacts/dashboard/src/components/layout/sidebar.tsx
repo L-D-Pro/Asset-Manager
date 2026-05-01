@@ -38,10 +38,13 @@ import {
   TrendingUp,
   ChevronDown,
   Heart,
+  LayoutTemplate,
 } from "lucide-react";
 import { useAuth } from "@/context/auth";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { useResolvedUiConfig } from "@/ui-shell/use-ui-shell-config";
+import { SetupProgress } from "@/components/onboarding/setup-progress";
 
 const ENABLE_APPLY_WIZARD = import.meta.env.VITE_ENABLE_APPLY_WIZARD === "true";
 
@@ -54,7 +57,6 @@ interface NavItem {
 interface NavGroup {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-  accent: string;
   items: NavItem[];
 }
 
@@ -62,25 +64,77 @@ export function Sidebar() {
   const { user, logout } = useAuth();
   const isAdmin = user?.role === "admin";
   const [openGroup, setOpenGroup] = useState<string | null>(null);
+  const uiConfig = useResolvedUiConfig();
+  const [documentsOpen, setDocumentsOpen] = useState(false);
+  const [aiToolsOpen, setAiToolsOpen] = useState(false);
+  const [freelanceOpen, setFreelanceOpen] = useState(false);
 
-  const navGroups: NavGroup[] = [
+  const featuredCardRegistry: Record<
+    string,
     {
-      label: "Jobs",
-      icon: Briefcase,
-      accent: "text-blue-400",
-      items: [
-        { name: "Jobs Pipeline", href: "/jobs", icon: Briefcase },
-        { name: "Applications", href: "/applications", icon: CheckSquare },
-        { name: "Assisted Apply", href: "/assisted-apply", icon: MousePointerClick },
-        { name: "Role Profiles", href: "/role-profiles", icon: UserCircle },
-      ],
+      href: string;
+      subtitle: string;
+      icon: React.ComponentType<{ className?: string }>;
+      activeClass: string;
+      idleClass: string;
+      iconColor: string;
+    }
+  > = {
+    "nav-dashboard": {
+      href: "/dashboard",
+      subtitle: "Overview & stats",
+      icon: LayoutDashboard,
+      activeClass: "bg-sidebar-primary/16 border-sidebar-primary/45 shadow-sm",
+      idleClass: "bg-sidebar-accent/28 border-sidebar-border hover:border-sidebar-primary/35 hover:bg-sidebar-accent/42",
+      iconColor: "text-sidebar-primary",
     },
+    "nav-wizard": {
+      href: "/apply-wizard",
+      subtitle: "AI-powered apply",
+      icon: Sparkles,
+      activeClass: "bg-sidebar-primary/16 border-sidebar-primary/45 shadow-sm",
+      idleClass: "bg-sidebar-accent/28 border-sidebar-border hover:border-sidebar-primary/35 hover:bg-sidebar-accent/42",
+      iconColor: "text-sidebar-primary",
+    },
+    "nav-trends": {
+      href: "/trends",
+      subtitle: "Market insights",
+      icon: TrendingUp,
+      activeClass: "bg-sidebar-primary/16 border-sidebar-primary/45 shadow-sm",
+      idleClass: "bg-sidebar-accent/28 border-sidebar-border hover:border-sidebar-primary/35 hover:bg-sidebar-accent/42",
+      iconColor: "text-sidebar-primary",
+    },
+    "nav-resources": {
+      href: "/resources",
+      subtitle: "Free tools & support",
+      icon: Heart,
+      activeClass: "bg-sidebar-primary/16 border-sidebar-primary/45 shadow-sm",
+      idleClass: "bg-sidebar-accent/28 border-sidebar-border hover:border-sidebar-primary/35 hover:bg-sidebar-accent/42",
+      iconColor: "text-sidebar-primary",
+    },
+  };
+
+  const featuredItems = uiConfig.slots.navbar
+    .filter((item) => item.visibility)
+    .sort((a, b) => a.order - b.order)
+    .filter((item) => item.componentKey !== "nav-wizard" || ENABLE_APPLY_WIZARD)
+    .flatMap((item) => {
+      const meta = featuredCardRegistry[item.componentKey];
+      return meta ? [{ item, meta }] : [];
+    });
+
+  const primaryItems: NavItem[] = [
+    { name: "Jobs Pipeline", href: "/jobs", icon: Briefcase },
+    { name: "Applications", href: "/applications", icon: CheckSquare },
+    { name: "Base Resume", href: "/base-resume", icon: ScrollText },
+    ...(ENABLE_APPLY_WIZARD ? [{ name: "Apply Wizard", href: "/apply-wizard", icon: Sparkles }] : []),
+  ];
+
+  const collapsibleGroups: NavGroup[] = [
     {
       label: "Documents",
       icon: FileText,
-      accent: "text-teal-400",
       items: [
-        { name: "Base Resume", href: "/base-resume", icon: ScrollText },
         { name: "Claims Ledger", href: "/claims", icon: CheckSquare },
         { name: "Resumes Queue", href: "/resume-versions", icon: FileText },
         { name: "Cover Letters Queue", href: "/cover-letters", icon: MessageSquare },
@@ -89,30 +143,18 @@ export function Sidebar() {
     {
       label: "AI Tools",
       icon: Brain,
-      accent: "text-fuchsia-400",
       items: [
         { name: "AI Review", href: "/ai-review", icon: Brain },
         { name: "AI Metrics", href: "/ai-metrics", icon: Activity },
         { name: "AI Config", href: "/ai-config", icon: Activity },
         { name: "AI Learning", href: "/ai-learning", icon: Brain },
-        { name: "Feedback Signals", href: "/feedback", icon: Activity },
       ],
     },
     {
       label: "Freelance",
       icon: Handshake,
-      accent: "text-amber-400",
       items: [
         { name: "Freelance Assist", href: "/freelance", icon: Handshake },
-      ],
-    },
-    {
-      label: "Settings",
-      icon: UserCircle,
-      accent: "text-slate-400",
-      items: [
-        { name: "Account", href: "/account", icon: User },
-        { name: "Help & Tips", href: "/guide", icon: BookOpen },
       ],
     },
   ];
@@ -123,11 +165,11 @@ export function Sidebar() {
   };
 
   return (
-    <SidebarComponent className="border-r border-slate-800 bg-slate-950">
-      <SidebarHeader className="p-4 border-b border-slate-800">
-        <h2 className="text-lg font-bold tracking-tight flex items-center gap-2.5 text-white">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/20">
-            <FileCode className="h-4 w-4 text-indigo-400" />
+    <SidebarComponent className="border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
+      <SidebarHeader className="p-4 border-b border-sidebar-border">
+        <h2 className="text-lg font-bold tracking-tight flex items-center gap-2.5 text-sidebar-foreground">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sidebar-primary/20">
+            <FileCode className="h-4 w-4 text-sidebar-primary" />
           </div>
           <span>Job Ops</span>
         </h2>
@@ -135,136 +177,102 @@ export function Sidebar() {
       <SidebarContent>
         <SidebarMenu>
           {/* Featured cards */}
-          <div className="px-3 pt-2 space-y-5">
-            <NavLink to="/dashboard" className="contents">
-              {({ isActive }) => (
-                <div
-                  className={cn(
-                    "relative rounded-xl border transition-all duration-300 cursor-pointer",
-                    isActive
-                      ? "bg-[#A6B1D8] border-[#8A97C0] shadow-lg shadow-[#A6B1D8]/30 scale-[1.02]"
-                      : "bg-[#A6B1D8] border-[#A6B1D8] hover:shadow-md hover:border-[#8A97C0] hover:scale-[1.01]"
-                  )}
-                >
-                  <div className="flex items-center gap-3 px-3 py-2.5">
-                    <div className={cn(
-                      "flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-300",
-                      isActive ? "bg-black/20" : "bg-black/15"
-                    )}>
-                      <LayoutDashboard className="h-4 w-4 text-white" />
-                    </div>
-                    <div>
-                      <span className="font-semibold text-sm text-white">Dashboard</span>
-                      <p className="text-[10px] text-white/70 leading-tight">Overview & stats</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </NavLink>
-            {ENABLE_APPLY_WIZARD && (
-              <NavLink to="/apply-wizard" className="contents">
-                {({ isActive }) => (
-                  <div
-                    className={cn(
-                      "relative rounded-xl border transition-all duration-300 cursor-pointer",
-                      isActive
-                        ? "bg-[#B7C9E6] border-[#A0B4D4] shadow-lg shadow-[#B7C9E6]/30 scale-[1.02]"
-                        : "bg-[#B7C9E6] border-[#B7C9E6] hover:shadow-md hover:border-[#A0B4D4] hover:scale-[1.01]"
-                    )}
-                  >
-                    <div className="flex items-center gap-3 px-3 py-2.5">
-                      <div className={cn(
-                        "flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-300",
-                        isActive ? "bg-black/20" : "bg-black/15"
-                      )}>
-                        <Sparkles className="h-4 w-4 text-white" />
-                      </div>
-                      <div>
-                        <span className="font-semibold text-sm text-white">Wizard</span>
-                        <p className="text-[10px] text-white/70 leading-tight">AI-powered apply</p>
+          <div className="px-3 pt-2 space-y-1.5">
+            {featuredItems.map(({ item, meta }) => {
+              const Icon = meta.icon;
+              const textColor = "text-sidebar-foreground";
+              const subtitleColor = "text-sidebar-foreground/60";
+              return (
+                <NavLink to={meta.href} className="contents" key={item.id}>
+                  {({ isActive }) => (
+                    <div
+                      className={cn(
+                        "relative rounded-md border transition-all duration-200 cursor-pointer",
+                        isActive ? meta.activeClass : meta.idleClass
+                      )}
+                    >
+                      <div className="flex items-center gap-3 px-3 py-2.5">
+                        <div className={cn(
+                          "flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-300",
+                          isActive ? "bg-sidebar-primary/16" : "bg-sidebar-foreground/5"
+                        )}>
+                          <Icon className={cn("h-4 w-4", meta.iconColor)} />
+                        </div>
+                        <div>
+                          <span className={cn("font-semibold text-sm", textColor)}>{item.label}</span>
+                          <p className={cn("text-[10px] leading-tight", subtitleColor)}>{meta.subtitle}</p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
-              </NavLink>
-            )}
-            <NavLink to="/trends" className="contents">
-              {({ isActive }) => (
-                <div
-                  className={cn(
-                    "relative rounded-xl border transition-all duration-300 cursor-pointer",
-                    isActive
-                      ? "bg-[#E2E4F8] border-[#C8CCE0] shadow-lg shadow-[#E2E4F8]/40 scale-[1.02]"
-                      : "bg-[#E2E4F8] border-[#E2E4F8] hover:shadow-md hover:border-[#C8CCE0] hover:scale-[1.01]"
                   )}
-                >
-                  <div className="flex items-center gap-3 px-3 py-2.5">
-                    <div className={cn(
-                      "flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-300",
-                      isActive ? "bg-black/10" : "bg-black/8"
-                    )}>
-                      <TrendingUp className="h-4 w-4 text-slate-700" />
-                    </div>
-                    <div>
-                      <span className="font-semibold text-sm text-slate-800">Trends</span>
-                      <p className="text-[10px] text-slate-500 leading-tight">Market insights</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </NavLink>
-            <NavLink to="/resources" className="contents">
-              {({ isActive }) => (
-                <div
-                  className={cn(
-                    "relative rounded-xl border transition-all duration-300 cursor-pointer",
-                    isActive
-                      ? "bg-[#F5F7FF] border-[#D8DCE8] shadow-lg shadow-[#C4D7E3]/40 scale-[1.02]"
-                      : "bg-[#F5F7FF] border-[#F5F7FF] hover:shadow-md hover:border-[#D8DCE8] hover:scale-[1.01]"
-                  )}
-                >
-                  <div className="flex items-center gap-3 px-3 py-2.5">
-                    <div className={cn(
-                      "flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-300",
-                      isActive ? "bg-black/8" : "bg-black/5"
-                    )}>
-                      <Heart className="h-4 w-4 text-slate-700" />
-                    </div>
-                    <div>
-                      <span className="font-semibold text-sm text-slate-800">Resources</span>
-                      <p className="text-[10px] text-slate-500 leading-tight">Free tools & support</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </NavLink>
+                </NavLink>
+              );
+            })}
           </div>
 
           {/* Divider after featured cards */}
           <div className="px-3 pt-3 pb-1">
-            <div className="h-px bg-slate-800" />
+            <div className="h-px bg-sidebar-border" />
           </div>
         </SidebarMenu>
 
-        {navGroups.map((group) => {
-          const isOpen = openGroup === group.label;
+        <SetupProgress />
+
+        {/* Primary nav items */}
+        <SidebarMenu className="px-3 pt-2 space-y-0.5">
+          {primaryItems.map((item) => (
+            <SidebarMenuItem key={item.name}>
+              <NavLink to={item.href} className="contents">
+                {({ isActive }) => (
+                  <SidebarMenuButton tooltip={item.name} size="sm" asChild>
+                    <span
+                      className={cn(
+                        "flex items-center gap-2.5 cursor-pointer pl-5 pr-2 py-1.5 rounded-r-lg transition-all duration-200 border-l-2",
+                        isActive
+                          ? "text-sidebar-foreground bg-sidebar-primary/15 border-sidebar-primary font-medium"
+                          : "text-sidebar-foreground/75 hover:text-sidebar-foreground hover:bg-sidebar-accent/40 border-transparent"
+                      )}
+                    >
+                      <item.icon
+                        className={cn(
+                          "h-3.5 w-3.5",
+                          isActive ? "text-sidebar-primary" : "text-sidebar-foreground/60"
+                        )}
+                      />
+                      <span className="text-sm">{item.name}</span>
+                    </span>
+                  </SidebarMenuButton>
+                )}
+              </NavLink>
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
+
+        {/* Thin divider below primary */}
+        <div className="px-3 pt-3 pb-1">
+          <div className="h-px bg-sidebar-border" />
+        </div>
+
+        {/* Secondary collapsible groups */}
+        {collapsibleGroups.map((group) => {
+          const stateMap: Record<string, { open: boolean; setOpen: (v: boolean) => void }> = {
+            Documents: { open: documentsOpen, setOpen: setDocumentsOpen },
+            "AI Tools": { open: aiToolsOpen, setOpen: setAiToolsOpen },
+            Freelance: { open: freelanceOpen, setOpen: setFreelanceOpen },
+          };
+          const { open: isOpen, setOpen } = stateMap[group.label] ?? { open: false, setOpen: () => {} };
           return (
-            <Collapsible
-              key={group.label}
-              open={isOpen}
-              onOpenChange={(open) => setOpenGroup(open ? group.label : null)}
-              className="px-3"
-            >
+            <Collapsible key={group.label} open={isOpen} onOpenChange={setOpen} className="px-3">
               <SidebarGroup>
                 <CollapsibleTrigger asChild>
                   <div className="flex w-full items-center justify-between cursor-pointer py-1">
-                    <SidebarGroupLabel className="flex items-center gap-2 text-xs uppercase tracking-wider text-slate-500 font-semibold cursor-pointer select-none">
-                      <group.icon className={cn("h-3 w-3", group.accent)} />
+                    <SidebarGroupLabel className="flex items-center gap-2 text-xs uppercase tracking-wider text-sidebar-foreground/60 font-semibold cursor-pointer select-none">
+                      <group.icon className="h-3 w-3 text-sidebar-primary" />
                       <span>{group.label}</span>
                     </SidebarGroupLabel>
                     <ChevronDown
                       className={cn(
-                        "h-3.5 w-3.5 text-slate-500 shrink-0 transition-transform duration-200",
+                        "h-3.5 w-3.5 text-sidebar-foreground/60 shrink-0 transition-transform duration-200",
                         isOpen && "rotate-180"
                       )}
                     />
@@ -285,14 +293,14 @@ export function Sidebar() {
                                 className={cn(
                                   "flex items-center gap-2.5 cursor-pointer pl-5 pr-2 py-1.5 rounded-r-lg transition-all duration-200 border-l-2",
                                   isActive
-                                    ? "text-white bg-indigo-500/10 border-indigo-500 font-medium"
-                                    : "text-slate-400 hover:text-slate-200 hover:bg-white/5 border-transparent"
+                                    ? "text-sidebar-foreground bg-sidebar-primary/15 border-sidebar-primary font-medium"
+                                    : "text-sidebar-foreground/75 hover:text-sidebar-foreground hover:bg-sidebar-accent/40 border-transparent"
                                 )}
                               >
                                 <item.icon
                                   className={cn(
                                     "h-3.5 w-3.5",
-                                    isActive ? "text-indigo-400" : "text-slate-500"
+                                    isActive ? "text-sidebar-primary" : "text-sidebar-foreground/60"
                                   )}
                                 />
                                 <span className="text-sm">{item.name}</span>
@@ -309,14 +317,90 @@ export function Sidebar() {
           );
         })}
 
+        {/* Settings group */}
+        <Collapsible
+          open={openGroup === "Settings"}
+          onOpenChange={(open) => setOpenGroup(open ? "Settings" : null)}
+          className="px-3"
+        >
+          <SidebarGroup>
+            <CollapsibleTrigger asChild>
+              <div className="flex w-full items-center justify-between cursor-pointer py-1">
+                <SidebarGroupLabel className="flex items-center gap-2 text-xs uppercase tracking-wider text-sidebar-foreground/60 font-semibold cursor-pointer select-none">
+                  <UserCircle className="h-3 w-3 text-sidebar-primary" />
+                  <span>Settings</span>
+                </SidebarGroupLabel>
+                <ChevronDown
+                  className={cn(
+                    "h-3.5 w-3.5 text-sidebar-foreground/60 shrink-0 transition-transform duration-200",
+                    openGroup === "Settings" && "rotate-180"
+                  )}
+                />
+              </div>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+              <SidebarMenu className="mt-1">
+                <SidebarMenuItem>
+                  <NavLink to="/account" className="contents">
+                    {({ isActive }) => (
+                      <SidebarMenuButton tooltip="Account" size="sm" asChild>
+                        <span
+                          className={cn(
+                            "flex items-center gap-2.5 cursor-pointer pl-5 pr-2 py-1.5 rounded-r-lg transition-all duration-200 border-l-2",
+                            isActive
+                              ? "text-sidebar-foreground bg-sidebar-primary/15 border-sidebar-primary font-medium"
+                              : "text-sidebar-foreground/75 hover:text-sidebar-foreground hover:bg-sidebar-accent/40 border-transparent"
+                          )}
+                        >
+                          <User
+                            className={cn(
+                              "h-3.5 w-3.5",
+                              isActive ? "text-sidebar-primary" : "text-sidebar-foreground/60"
+                            )}
+                          />
+                          <span className="text-sm">Account</span>
+                        </span>
+                      </SidebarMenuButton>
+                    )}
+                  </NavLink>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <NavLink to="/guide" className="contents">
+                    {({ isActive }) => (
+                      <SidebarMenuButton tooltip="Help & Tips" size="sm" asChild>
+                        <span
+                          className={cn(
+                            "flex items-center gap-2.5 cursor-pointer pl-5 pr-2 py-1.5 rounded-r-lg transition-all duration-200 border-l-2",
+                            isActive
+                              ? "text-sidebar-foreground bg-sidebar-primary/15 border-sidebar-primary font-medium"
+                              : "text-sidebar-foreground/75 hover:text-sidebar-foreground hover:bg-sidebar-accent/40 border-transparent"
+                          )}
+                        >
+                          <BookOpen
+                            className={cn(
+                              "h-3.5 w-3.5",
+                              isActive ? "text-sidebar-primary" : "text-sidebar-foreground/60"
+                            )}
+                          />
+                          <span className="text-sm">Help & Tips</span>
+                        </span>
+                      </SidebarMenuButton>
+                    )}
+                  </NavLink>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </CollapsibleContent>
+          </SidebarGroup>
+        </Collapsible>
+
         {isAdmin && (
           <>
             <div className="px-3 py-3">
-              <div className="h-px bg-slate-800" />
+              <div className="h-px bg-sidebar-border" />
             </div>
             <div className="px-3">
               <SidebarGroup>
-                <SidebarGroupLabel className="text-xs uppercase tracking-wider text-slate-500 font-semibold">
+                <SidebarGroupLabel className="text-xs uppercase tracking-wider text-sidebar-foreground/60 font-semibold">
                   Admin
                 </SidebarGroupLabel>
                 <SidebarMenu className="mt-1">
@@ -328,14 +412,14 @@ export function Sidebar() {
                             className={cn(
                               "flex items-center gap-2.5 cursor-pointer pl-5 pr-2 py-1.5 rounded-r-lg transition-all duration-200 border-l-2",
                               isActive
-                                ? "text-white bg-indigo-500/10 border-indigo-500 font-medium"
-                                : "text-slate-400 hover:text-slate-200 hover:bg-white/5 border-transparent"
+                                ? "text-sidebar-foreground bg-sidebar-primary/15 border-sidebar-primary font-medium"
+                                : "text-sidebar-foreground/75 hover:text-sidebar-foreground hover:bg-sidebar-accent/40 border-transparent"
                             )}
                           >
                             <Shield
                               className={cn(
                                 "h-3.5 w-3.5",
-                                isActive ? "text-indigo-400" : "text-slate-500"
+                                isActive ? "text-sidebar-primary" : "text-sidebar-foreground/60"
                               )}
                             />
                             <span className="text-sm">User Management</span>
@@ -352,14 +436,14 @@ export function Sidebar() {
                             className={cn(
                               "flex items-center gap-2.5 cursor-pointer pl-5 pr-2 py-1.5 rounded-r-lg transition-all duration-200 border-l-2",
                               isActive
-                                ? "text-white bg-indigo-500/10 border-indigo-500 font-medium"
-                                : "text-slate-400 hover:text-slate-200 hover:bg-white/5 border-transparent"
+                                ? "text-sidebar-foreground bg-sidebar-primary/15 border-sidebar-primary font-medium"
+                                : "text-sidebar-foreground/75 hover:text-sidebar-foreground hover:bg-sidebar-accent/40 border-transparent"
                             )}
                           >
                             <Ticket
                               className={cn(
                                 "h-3.5 w-3.5",
-                                isActive ? "text-indigo-400" : "text-slate-500"
+                                isActive ? "text-sidebar-primary" : "text-sidebar-foreground/60"
                               )}
                             />
                             <span className="text-sm">Invite Codes</span>
@@ -376,17 +460,41 @@ export function Sidebar() {
                             className={cn(
                               "flex items-center gap-2.5 cursor-pointer pl-5 pr-2 py-1.5 rounded-r-lg transition-all duration-200 border-l-2",
                               isActive
-                                ? "text-white bg-indigo-500/10 border-indigo-500 font-medium"
-                                : "text-slate-400 hover:text-slate-200 hover:bg-white/5 border-transparent"
+                                ? "text-sidebar-foreground bg-sidebar-primary/15 border-sidebar-primary font-medium"
+                                : "text-sidebar-foreground/75 hover:text-sidebar-foreground hover:bg-sidebar-accent/40 border-transparent"
                             )}
                           >
                             <BarChart3
                               className={cn(
                                 "h-3.5 w-3.5",
-                                isActive ? "text-indigo-400" : "text-slate-500"
+                                isActive ? "text-sidebar-primary" : "text-sidebar-foreground/60"
                               )}
                             />
                             <span className="text-sm">Usage Limits</span>
+                          </span>
+                        </SidebarMenuButton>
+                      )}
+                    </NavLink>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <NavLink to="/admin/ui-shell" className="contents">
+                      {({ isActive }) => (
+                        <SidebarMenuButton tooltip="UI Shell" size="sm" asChild>
+                          <span
+                            className={cn(
+                              "flex items-center gap-2.5 cursor-pointer pl-5 pr-2 py-1.5 rounded-r-lg transition-all duration-200 border-l-2",
+                              isActive
+                                ? "text-sidebar-foreground bg-sidebar-primary/15 border-sidebar-primary font-medium"
+                                : "text-sidebar-foreground/75 hover:text-sidebar-foreground hover:bg-sidebar-accent/40 border-transparent"
+                            )}
+                          >
+                            <LayoutTemplate
+                              className={cn(
+                                "h-3.5 w-3.5",
+                                isActive ? "text-sidebar-primary" : "text-sidebar-foreground/60"
+                              )}
+                            />
+                            <span className="text-sm">UI Shell</span>
                           </span>
                         </SidebarMenuButton>
                       )}
@@ -400,14 +508,14 @@ export function Sidebar() {
                             className={cn(
                               "flex items-center gap-2.5 cursor-pointer pl-5 pr-2 py-1.5 rounded-r-lg transition-all duration-200 border-l-2",
                               isActive
-                                ? "text-white bg-indigo-500/10 border-indigo-500 font-medium"
-                                : "text-slate-400 hover:text-slate-200 hover:bg-white/5 border-transparent"
+                                ? "text-sidebar-foreground bg-sidebar-primary/15 border-sidebar-primary font-medium"
+                                : "text-sidebar-foreground/75 hover:text-sidebar-foreground hover:bg-sidebar-accent/40 border-transparent"
                             )}
                           >
                             <BookOpen
                               className={cn(
                                 "h-3.5 w-3.5",
-                                isActive ? "text-indigo-400" : "text-slate-500"
+                                isActive ? "text-sidebar-primary" : "text-sidebar-foreground/60"
                               )}
                             />
                             <span className="text-sm">Admin Docs</span>
@@ -422,11 +530,11 @@ export function Sidebar() {
           </>
         )}
       </SidebarContent>
-      <SidebarFooter className="border-t border-slate-800 p-2">
+      <SidebarFooter className="border-t border-sidebar-border p-2">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton tooltip="Sign out" asChild onClick={handleLogout}>
-              <span className="flex items-center gap-3 cursor-pointer text-slate-500 hover:text-slate-300 transition-colors px-3">
+              <span className="flex items-center gap-3 cursor-pointer text-sidebar-foreground/65 hover:text-sidebar-foreground transition-colors px-3">
                 <LogOut className="h-4 w-4" />
                 <span>Sign out</span>
               </span>
