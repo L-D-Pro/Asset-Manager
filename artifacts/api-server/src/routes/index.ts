@@ -26,6 +26,7 @@ import trendsRouter from "./trends";
 import jobBoardRouter from "./job-board";
 import uiShellConfigsRouter from "./ui-shell-configs";
 import gamificationRouter from "./gamification";
+import onboardingRouter from "./onboarding";
 
 /**
  * Root API router. Aggregates all entity-specific sub-routers and mounts them
@@ -79,5 +80,6 @@ router.use(trendsRouter);
 router.use(jobBoardRouter);
 router.use(uiShellConfigsRouter);
 router.use(gamificationRouter);
+router.use(onboardingRouter);
 
 export default router;
