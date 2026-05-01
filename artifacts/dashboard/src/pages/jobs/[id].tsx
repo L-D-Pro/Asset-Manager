@@ -141,15 +141,15 @@ export default function JobDetail() {
       <div>
         <Link
           to="/jobs"
-          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600 mb-4 transition-colors font-medium"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary mb-4 transition-colors font-medium"
         >
           <ArrowLeft className="h-4 w-4" /> Back to pipeline
         </Link>
-        <PageHeader title={job.title} subtitle={`${job.company}${job.location ? ` · ${job.location}` : ""}`}>
+        <PageHeader title={job.title} subtitle={`${job.company}${job.location ? ` - ${job.location}` : ""}`} variant="data">
           <div className="flex items-center gap-2">
             <StatusBadge status={job.status} />
             {job.sourceUrl && (
-              <Button variant="outline" size="sm" asChild data-testid="job-source-btn" className="border-white/30 text-white hover:bg-white/10">
+              <Button variant="outline" size="sm" asChild data-testid="job-source-btn" className="rounded-md border-border hover:border-primary/35 hover:bg-primary/5">
                 <a href={job.sourceUrl} target="_blank" rel="noopener noreferrer">
                   View Source <ExternalLink className="ml-2 h-3.5 w-3.5" />
                 </a>
@@ -161,12 +161,12 @@ export default function JobDetail() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-2 space-y-6">
-          <ContentCard>
+          <ContentCard className="gamify-gradient-subtle">
             <CardHeader className="pb-3">
               <div className="flex justify-between items-center">
-                <CardTitle className="text-slate-900">AI Pipeline Actions</CardTitle>
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/10">
-                  <Wand2 className="h-4 w-4 text-indigo-500" />
+                <CardTitle className="text-foreground">AI Pipeline Actions</CardTitle>
+                <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10">
+                  <Wand2 className="h-4 w-4 text-primary" />
                 </div>
               </div>
             </CardHeader>
@@ -220,7 +220,7 @@ export default function JobDetail() {
             <TabsContent value="jd" className="mt-4">
               <ContentCard>
                 <CardContent className="pt-6">
-                  <div className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700" data-testid="job-raw-jd">
+                  <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/80" data-testid="job-raw-jd">
                     {job.rawJdText || "No job description provided."}
                   </div>
                 </CardContent>
@@ -348,9 +348,9 @@ export default function JobDetail() {
         </div>
 
         <div className="space-y-4">
-          <ContentCard>
+          <ContentCard className="gamify-shadow">
             <CardHeader>
-              <CardTitle className="text-slate-900">Match Score</CardTitle>
+              <CardTitle className="text-foreground">Match Score</CardTitle>
             </CardHeader>
             <CardContent>
               {scoreLoading ? (
@@ -360,7 +360,7 @@ export default function JobDetail() {
                   <div className="text-center">
                     <div
                       className={`text-5xl font-bold mb-1 ${
-                        scorePercent! >= 70 ? "text-green-600" : scorePercent! >= 40 ? "text-yellow-600" : "text-destructive"
+                        scorePercent! >= 70 ? "text-success" : scorePercent! >= 40 ? "text-warning" : "text-destructive"
                       }`}
                       data-testid="job-score"
                     >
@@ -385,7 +385,7 @@ export default function JobDetail() {
           </ContentCard>
 
           {job.parsedRequiredSkills && job.parsedRequiredSkills.length > 0 && (
-            <ContentCard>
+            <ContentCard className="gamify-shadow">
               <CardHeader>
                 <CardTitle className="text-sm">Required Skills</CardTitle>
               </CardHeader>

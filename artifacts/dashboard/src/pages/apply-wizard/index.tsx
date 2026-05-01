@@ -97,17 +97,17 @@ type CompareCandidate = {
 };
 
 const ROLE_COLORS: Record<string, string> = {
-  opening: "bg-blue-50 border-blue-100 dark:bg-blue-950/20 dark:border-blue-900/30",
+  opening: "bg-primary/10 border-primary/20",
   hook: "bg-purple-50 border-purple-100 dark:bg-purple-950/20 dark:border-purple-900/30",
-  body: "bg-emerald-50 border-emerald-100 dark:bg-emerald-950/20 dark:border-emerald-900/30",
-  closing: "bg-amber-50 border-amber-100 dark:bg-amber-950/20 dark:border-amber-900/30",
+  body: "bg-success/10 border-success/20",
+  closing: "bg-warning/10 border-warning/20",
 };
 
 const ROLE_LABEL_COLORS: Record<string, string> = {
-  opening: "text-blue-700 bg-blue-100 dark:text-blue-300 dark:bg-blue-900/50",
+  opening: "text-primary bg-primary/10",
   hook: "text-purple-700 bg-purple-100 dark:text-purple-300 dark:bg-purple-900/50",
-  body: "text-emerald-700 bg-emerald-100 dark:text-emerald-300 dark:bg-emerald-900/50",
-  closing: "text-amber-700 bg-amber-100 dark:text-amber-300 dark:bg-amber-900/50",
+  body: "text-success bg-success/10",
+  closing: "text-warning bg-warning/10",
 };
 
 const STEP_ORDER: WizardStep[] = ["intake", "parse", "role", "tailor", "approve", "assisted"];
@@ -1121,7 +1121,7 @@ export default function ApplyWizardPage() {
 
   return (
     <div className="space-y-8">
-      <PageHeader title="Apply Wizard" subtitle="Multi-step AI-powered job application assistant." gradient="from-indigo-600 via-indigo-500 to-violet-500" />
+      <PageHeader title="Apply Wizard" subtitle="Multi-step AI-powered job application assistant." variant="workflow" />
 
       {savedSessions.length > 0 ? (
         <ContentCard className="border-dashed">
@@ -1198,7 +1198,7 @@ export default function ApplyWizardPage() {
           transition={{ duration: 0.3, ease: easing.smooth }}
         >
           {step === "intake" ? (
-        <ContentCard>
+        <ContentCard className="gamify-radius-chunky">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Link2 className="h-5 w-5" />
@@ -1266,6 +1266,7 @@ export default function ApplyWizardPage() {
               <Button
                 onClick={handleCreateJob}
                 disabled={!intake.title || !intake.company || createJob.isPending}
+                className="gamify-gradient-primary"
               >
                 {createJob.isPending ? "Ingesting..." : "Create Job & Continue"}
               </Button>
@@ -1307,7 +1308,7 @@ export default function ApplyWizardPage() {
                       <Download className="h-3.5 w-3.5 mr-1.5" />
                       Download Template
                     </Button>
-                    <Button onClick={handleRunBatch} disabled={batchRunning || !batchText.trim()}>
+                    <Button onClick={handleRunBatch} disabled={batchRunning || !batchText.trim()} className="gamify-gradient-primary">
                       {batchRunning ? "Running Batch..." : "Run Batch"}
                     </Button>
                     <Button
@@ -1361,7 +1362,7 @@ export default function ApplyWizardPage() {
       ) : null}
 
       {step === "parse" ? (
-        <ContentCard>
+        <ContentCard className="gamify-radius-chunky">
           <CardHeader>
             <CardTitle>2) Parse and Edit JD</CardTitle>
             <CardDescription>
@@ -1418,6 +1419,7 @@ export default function ApplyWizardPage() {
               <Button
                 onClick={handleSaveParsedEdits}
                 disabled={updateJob.isPending || !intake.rawJdText.trim()}
+                className="gamify-gradient-primary"
               >
                 {updateJob.isPending ? "Saving..." : "Save & Continue"}
               </Button>
@@ -1430,7 +1432,7 @@ export default function ApplyWizardPage() {
       ) : null}
 
       {step === "role" ? (
-        <ContentCard>
+        <ContentCard className="gamify-radius-chunky">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <UserCircle className="h-5 w-5" />
@@ -1543,6 +1545,7 @@ export default function ApplyWizardPage() {
               <Button
                 onClick={() => setStep("tailor")}
                 disabled={selectedRoleProfileId == null || selectedClaimIds.length === 0}
+                className="gamify-gradient-primary"
               >
                 Continue
               </Button>
@@ -1555,7 +1558,7 @@ export default function ApplyWizardPage() {
       ) : null}
 
       {step === "tailor" ? (
-        <ContentCard>
+        <ContentCard className="gamify-radius-chunky">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Wand2 className="h-5 w-5" />
@@ -1716,6 +1719,7 @@ export default function ApplyWizardPage() {
                     ? resumeCandidates.length === 0 || coverCandidates.length === 0
                     : !resumeVersionId || !coverLetterVersionId
                 }
+                className="gamify-gradient-primary"
               >
                 Continue
               </Button>
@@ -1728,7 +1732,7 @@ export default function ApplyWizardPage() {
       ) : null}
 
       {step === "approve" ? (
-        <ContentCard>
+        <ContentCard className="gamify-radius-chunky">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ShieldCheck className="h-5 w-5" />
@@ -2004,7 +2008,7 @@ export default function ApplyWizardPage() {
               </Button>
               <Button
                 size="lg"
-                className="px-8"
+                className="px-8 gamify-gradient-primary"
                 onClick={() => setStep("assisted")}
                 disabled={resumeVersion?.status !== "approved" || coverLetterVersion?.status !== "approved"}
               >
@@ -2016,7 +2020,7 @@ export default function ApplyWizardPage() {
       ) : null}
 
       {step === "assisted" ? (
-        <ContentCard>
+        <ContentCard className="gamify-radius-chunky">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <MousePointerClick className="h-5 w-5" />
@@ -2056,7 +2060,7 @@ export default function ApplyWizardPage() {
             />
 
             <div className="flex flex-wrap items-center gap-3">
-              <Button onClick={handleCreateAssistedSession} disabled={createSession.isPending || !assistedForm.platform}>
+              <Button onClick={handleCreateAssistedSession} disabled={createSession.isPending || !assistedForm.platform} className="gamify-gradient-primary">
                 {createSession.isPending ? "Creating Session..." : "Create Assisted Session"}
               </Button>
               {assistedSessionId ? (

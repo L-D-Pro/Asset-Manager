@@ -247,7 +247,7 @@ export default function ApplicationsPage() {
             </p>
           </Card>
         ) : (
-          <div className="border rounded-md divide-y bg-card">
+          <div className="border gamify-radius-chunky gamify-shadow divide-y bg-card">
             {applications?.map((app) => (
               <div key={app.id} className="p-4 flex items-center justify-between hover:bg-muted/30 transition-colors" data-testid={`row-app-${app.id}`}>
                 <div className="space-y-1">

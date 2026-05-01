@@ -49,10 +49,10 @@ function JobScoreChip({ jobId, roleProfileId, profileName }: { jobId: number; ro
   const pct = Math.round(score.score);
   const color =
     pct >= 70
-      ? "text-green-600 border-green-300 bg-green-50"
+      ? "text-success dark:text-success border-success/25 bg-success/10"
       : pct >= 40
-      ? "text-yellow-600 border-yellow-300 bg-yellow-50"
-      : "text-red-600 border-red-300 bg-red-50";
+      ? "text-warning dark:text-warning border-warning/25 bg-warning/10"
+      : "text-destructive dark:text-destructive border-destructive/25 bg-destructive/10";
 
   return (
     <span
@@ -131,10 +131,11 @@ export default function JobsPage() {
       <PageHeader
         title="Jobs Pipeline"
         subtitle="Manage and parse your job opportunities."
+        variant="data"
       >
         <div className="flex items-center gap-2">
           {ENABLE_APPLY_WIZARD && (
-            <Button variant="outline" size="sm" asChild className="border-white/30 text-white hover:bg-white/10">
+            <Button variant="outline" size="sm" asChild className="rounded-md border-border hover:border-primary/35 hover:bg-primary/5">
               <Link to="/apply-wizard">
                 <Sparkles className="mr-2 h-4 w-4" />
                 Open Wizard
@@ -146,7 +147,7 @@ export default function JobsPage() {
               <Button
                 size="sm"
                 data-testid="btn-add-job"
-                className="bg-white text-indigo-600 hover:bg-white/90 font-semibold shadow-sm"
+                className="rounded-md font-semibold shadow-sm"
               >
                 <Plus className="mr-2 h-4 w-4" />
                 Ingest Job
@@ -235,7 +236,7 @@ export default function JobsPage() {
                       type="submit"
                       disabled={createJob.isPending}
                       data-testid="btn-submit-job"
-                      className="bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 shadow-lg shadow-indigo-500/25"
+                      className="rounded-md shadow-sm"
                     >
                       {createJob.isPending ? "Ingesting..." : "Ingest Job"}
                     </Button>
@@ -250,9 +251,9 @@ export default function JobsPage() {
       <StaggerContainer className="grid gap-4">
         {isLoading ? (
           <>
-            <Skeleton className="h-32 w-full rounded-2xl" />
-            <Skeleton className="h-32 w-full rounded-2xl" />
-            <Skeleton className="h-32 w-full rounded-2xl" />
+            <Skeleton className="h-28 w-full rounded-lg" />
+            <Skeleton className="h-28 w-full rounded-lg" />
+            <Skeleton className="h-28 w-full rounded-lg" />
           </>
         ) : jobs?.length === 0 ? (
           <ContentCard>
@@ -279,17 +280,17 @@ export default function JobsPage() {
                   }
                 }}
               >
-                <ContentCard index={index} className="hover:border-indigo-200 hover:shadow-md">
+                <ContentCard index={index} className="gamify-radius-chunky gamify-shadow">
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 mb-2 flex-wrap">
-                        <h3 className="font-semibold text-lg text-slate-900" data-testid={`text-job-title-${job.id}`}>
+                        <h3 className="font-semibold text-lg text-foreground" data-testid={`text-job-title-${job.id}`}>
                           {job.title}
                         </h3>
                         <StatusBadge status={statusLabel(job.status)} />
                         <JobScoreChips jobId={job.id} profiles={roleProfiles} />
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-slate-500 flex-wrap">
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
                         <div className="flex items-center gap-1.5">
                           <Building className="h-3.5 w-3.5" />
                           <span data-testid={`text-job-company-${job.id}`}>{job.company}</span>
@@ -304,7 +305,7 @@ export default function JobsPage() {
                           <span>Added {format(new Date(job.createdAt), "MMM d, yyyy")}</span>
                         </div>
                         {job.parsedRequiredSkills && job.parsedRequiredSkills.length > 0 && (
-                          <span className="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                          <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20">
                             {job.parsedRequiredSkills.length} skills
                           </span>
                         )}
@@ -316,7 +317,7 @@ export default function JobsPage() {
                           href={job.sourceUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-xs flex items-center gap-1 text-indigo-600 hover:text-indigo-700 font-medium transition-colors"
+                          className="text-xs flex items-center gap-1 text-primary hover:text-primary/85 font-medium transition-colors"
                           onClick={(e) => e.stopPropagation()}
                           data-testid={`link-job-source-${job.id}`}
                         >
