@@ -24,6 +24,8 @@ import growthRouter from "./growth";
 import feedbackRouter from "./feedback";
 import trendsRouter from "./trends";
 import jobBoardRouter from "./job-board";
+import uiShellConfigsRouter from "./ui-shell-configs";
+import gamificationRouter from "./gamification";
 
 /**
  * Root API router. Aggregates all entity-specific sub-routers and mounts them
@@ -75,5 +77,7 @@ router.use(usageLimitsRouter);
 router.use(feedbackRouter);
 router.use(trendsRouter);
 router.use(jobBoardRouter);
+router.use(uiShellConfigsRouter);
+router.use(gamificationRouter);
 
 export default router;
