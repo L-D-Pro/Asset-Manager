@@ -1,6 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+
+import { UiThemeProvider } from "@workspace/ui-core";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { MainLayout } from "@/components/layout/main-layout";
@@ -37,10 +40,12 @@ import AdminUsersPage from "@/pages/admin/users";
 import AdminInviteCodesPage from "@/pages/admin/invite-codes";
 import AdminUsageLimitsPage from "@/pages/admin/usage-limits";
 import AdminDocsPage from "@/pages/admin/docs";
+import AdminUiShellPage from "@/pages/admin/ui-shell";
 import AiLearningPage from "@/pages/ai-learning";
 import TrendsPage from "@/pages/trends";
 import ResourcesPage from "@/pages/resources";
 import NotFound from "@/pages/not-found";
+import { useUiShellState } from "@/ui-shell/use-ui-shell-config";
 
 const ENABLE_APPLY_WIZARD = import.meta.env.VITE_ENABLE_APPLY_WIZARD === "true";
 
@@ -88,6 +93,7 @@ const queryClient = new QueryClient({
 function ProtectedRoutes() {
   const { user } = useAuth();
   const location = useLocation();
+  const { themeID, themes } = useUiShellState();
 
   if (user === undefined) {
     return (
@@ -101,39 +107,44 @@ function ProtectedRoutes() {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 
+  const activeTheme = themes.find((theme) => theme.id === themeID) ?? themes[0];
+
   return (
-    <MainLayout>
-      <PageTransition>
-        <Routes>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/jobs" element={<JobsList />} />
-          <Route path="/jobs/:id" element={<JobDetail />} />
-          <Route path="/apply-wizard" element={<ApplyWizardPage />} />
-          <Route path="/claims" element={<ClaimsPage />} />
-          <Route path="/base-resume" element={<BaseResumePage />} />
-          <Route path="/resume-versions" element={<ResumeVersionsPage />} />
-          <Route path="/cover-letters" element={<CoverLettersPage />} />
-          <Route path="/applications" element={<ApplicationsPage />} />
-          <Route path="/assisted-apply" element={<AssistedApplyPage />} />
-          <Route path="/freelance" element={<FreelancePage />} />
-          <Route path="/ai-review" element={<AiReviewPage />} />
-          <Route path="/ai-metrics" element={<AiMetricsPage />} />
-          <Route path="/ai-config" element={<AiConfigPage />} />
-          <Route path="/role-profiles" element={<RoleProfilesPage />} />
-          <Route path="/feedback" element={<FeedbackPage />} />
-          <Route path="/guide" element={<GuidePage />} />
-          <Route path="/account" element={<AccountPage />} />
-          <Route path="/admin/users" element={<AdminUsersPage />} />
-          <Route path="/admin/invite-codes" element={<AdminInviteCodesPage />} />
-          <Route path="/admin/usage-limits" element={<AdminUsageLimitsPage />} />
-          <Route path="/admin/docs" element={<AdminDocsPage />} />
-          <Route path="/ai-learning" element={<AiLearningPage />} />
-          <Route path="/trends" element={<TrendsPage />} />
-          <Route path="/resources" element={<ResourcesPage />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </PageTransition>
-    </MainLayout>
+    <UiThemeProvider defaultTheme={activeTheme}>
+      <MainLayout>
+        <PageTransition>
+          <Routes>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/jobs" element={<JobsList />} />
+            <Route path="/jobs/:id" element={<JobDetail />} />
+            <Route path="/apply-wizard" element={<ApplyWizardPage />} />
+            <Route path="/claims" element={<ClaimsPage />} />
+            <Route path="/base-resume" element={<BaseResumePage />} />
+            <Route path="/resume-versions" element={<ResumeVersionsPage />} />
+            <Route path="/cover-letters" element={<CoverLettersPage />} />
+            <Route path="/applications" element={<ApplicationsPage />} />
+            <Route path="/assisted-apply" element={<AssistedApplyPage />} />
+            <Route path="/freelance" element={<FreelancePage />} />
+            <Route path="/ai-review" element={<AiReviewPage />} />
+            <Route path="/ai-metrics" element={<AiMetricsPage />} />
+            <Route path="/ai-config" element={<AiConfigPage />} />
+            <Route path="/role-profiles" element={<RoleProfilesPage />} />
+            <Route path="/feedback" element={<FeedbackPage />} />
+            <Route path="/guide" element={<GuidePage />} />
+            <Route path="/account" element={<AccountPage />} />
+            <Route path="/admin/users" element={<AdminUsersPage />} />
+            <Route path="/admin/invite-codes" element={<AdminInviteCodesPage />} />
+            <Route path="/admin/usage-limits" element={<AdminUsageLimitsPage />} />
+            <Route path="/admin/docs" element={<AdminDocsPage />} />
+            <Route path="/admin/ui-shell" element={<AdminUiShellPage />} />
+            <Route path="/ai-learning" element={<AiLearningPage />} />
+            <Route path="/trends" element={<TrendsPage />} />
+            <Route path="/resources" element={<ResourcesPage />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </PageTransition>
+      </MainLayout>
+    </UiThemeProvider>
   );
 }
 
