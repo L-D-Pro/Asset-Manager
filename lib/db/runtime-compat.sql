@@ -587,3 +587,108 @@ CREATE TABLE IF NOT EXISTS feedback (
     metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- UI shell orchestration config (theme + layout metadata)
+CREATE TABLE IF NOT EXISTS ui_shell_configs (
+    id SERIAL PRIMARY KEY,
+    app_key TEXT NOT NULL UNIQUE,
+    theme_id TEXT NOT NULL,
+    theme_definitions JSONB NOT NULL DEFAULT '[]'::jsonb,
+    ui_config JSONB NOT NULL DEFAULT '{}'::jsonb,
+    updated_by_admin_id INTEGER REFERENCES admin_users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ui_shell_configs_app_key_unique
+    ON ui_shell_configs(app_key);
+
+ALTER TABLE ui_shell_configs ADD COLUMN IF NOT EXISTS theme_id TEXT;
+ALTER TABLE ui_shell_configs ADD COLUMN IF NOT EXISTS theme_definitions JSONB NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE ui_shell_configs ADD COLUMN IF NOT EXISTS ui_config JSONB NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE ui_shell_configs ADD COLUMN IF NOT EXISTS updated_by_admin_id INTEGER REFERENCES admin_users(id) ON DELETE SET NULL;
+
+-- Gamification: user_stats
+CREATE TABLE IF NOT EXISTS user_stats (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL UNIQUE REFERENCES admin_users(id) ON DELETE CASCADE,
+    total_xp INTEGER NOT NULL DEFAULT 0,
+    current_level INTEGER NOT NULL DEFAULT 1,
+    current_streak INTEGER NOT NULL DEFAULT 0,
+    longest_streak INTEGER NOT NULL DEFAULT 0,
+    last_activity_date DATE,
+    quests_completed INTEGER NOT NULL DEFAULT 0,
+    achievements_unlocked INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Gamification: xp_log
+CREATE TABLE IF NOT EXISTS xp_log (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES admin_users(id) ON DELETE CASCADE,
+    action_type TEXT NOT NULL,
+    xp_amount INTEGER NOT NULL,
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS xp_log_user_idx ON xp_log(user_id);
+CREATE INDEX IF NOT EXISTS xp_log_action_idx ON xp_log(action_type);
+
+-- Gamification: achievements
+CREATE TABLE IF NOT EXISTS achievements (
+    id SERIAL PRIMARY KEY,
+    slug TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL,
+    icon_name TEXT NOT NULL DEFAULT 'trophy',
+    xp_reward INTEGER NOT NULL DEFAULT 0,
+    criteria_type TEXT NOT NULL,
+    criteria_value INTEGER NOT NULL,
+    is_hidden BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Gamification: user_achievements
+CREATE TABLE IF NOT EXISTS user_achievements (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES admin_users(id) ON DELETE CASCADE,
+    achievement_id INTEGER NOT NULL REFERENCES achievements(id) ON DELETE CASCADE,
+    unlocked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    seen BOOLEAN NOT NULL DEFAULT false
+);
+CREATE UNIQUE INDEX IF NOT EXISTS user_achievement_uidx ON user_achievements(user_id, achievement_id);
+
+-- Gamification: quests
+CREATE TABLE IF NOT EXISTS quests (
+    id SERIAL PRIMARY KEY,
+    slug TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL,
+    xp_reward INTEGER NOT NULL DEFAULT 25,
+    frequency TEXT NOT NULL DEFAULT 'one_time',
+    criteria_type TEXT NOT NULL,
+    criteria_value INTEGER NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Gamification: user_quests
+CREATE TABLE IF NOT EXISTS user_quests (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES admin_users(id) ON DELETE CASCADE,
+    quest_id INTEGER NOT NULL REFERENCES quests(id) ON DELETE CASCADE,
+    progress INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'active',
+    started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    completed_at TIMESTAMPTZ
+);
+
+-- Gamification: streak_log
+CREATE TABLE IF NOT EXISTS streak_log (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES admin_users(id) ON DELETE CASCADE,
+    date DATE NOT NULL,
+    xp_earned_today INTEGER NOT NULL DEFAULT 0,
+    actions_count INTEGER NOT NULL DEFAULT 0
+);
+CREATE UNIQUE INDEX IF NOT EXISTS streak_log_user_date_uidx ON streak_log(user_id, date);

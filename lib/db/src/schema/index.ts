@@ -26,3 +26,5 @@ export * from "./user-usage-limits";
 export * from "./waitlist";
 export * from "./feedback";
 export * from "./job-board";
+export * from "./ui-shell-configs";
+export * from "./gamification";

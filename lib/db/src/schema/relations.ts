@@ -159,6 +159,18 @@ export const wizardSessionsRelations = relations(
   }),
 );
 
+import { adminUsersTable } from "./admin-users";
+import { userStatsTable } from "./gamification";
+import { xpLogTable } from "./gamification";
+
+export const userStatsRelations = relations(userStatsTable, ({ one }) => ({
+  user: one(adminUsersTable, { fields: [userStatsTable.userId], references: [adminUsersTable.id] }),
+}));
+
+export const xpLogRelations = relations(xpLogTable, ({ one }) => ({
+  user: one(adminUsersTable, { fields: [xpLogTable.userId], references: [adminUsersTable.id] }),
+}));
+
 export const aiModelConfigsRelations = relations(
   aiModelConfigsTable,
   ({ one, many }) => ({
