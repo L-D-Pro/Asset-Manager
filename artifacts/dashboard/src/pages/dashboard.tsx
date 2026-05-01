@@ -8,6 +8,7 @@ import { AnimatedCard } from "@/components/motion/animated-card";
 import { AnimatedCounter } from "@/components/motion/animated-counter";
 import { StaggerContainer, StaggerItem } from "@/components/motion/stagger-container";
 import { FadeIn } from "@/components/motion/fade-in";
+import { NextActions } from "@/components/dashboard/next-actions";
 import {
   ArrowRight,
   BookOpen,
@@ -72,7 +73,7 @@ function StatCard({
 }) {
   return (
     <AnimatedCard index={index}>
-      <div className="relative overflow-hidden rounded-xl border border-border/70 bg-[linear-gradient(150deg,hsl(var(--card)),hsl(var(--card))_68%,hsl(var(--accent)/0.08))] text-card-foreground backdrop-blur-xl shadow-[0_10px_28px_rgba(20,24,33,0.08)] transition-all duration-300 hover:border-primary/35 hover:shadow-[0_16px_40px_rgba(20,24,33,0.12)]">
+      <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br from-card via-card to-primary/[0.04] text-card-foreground backdrop-blur-xl shadow-[0_10px_28px_rgba(20,24,33,0.08)] transition-all duration-300 hover:border-primary/35 hover:gamify-shadow hover:shadow-[0_16px_40px_rgba(20,24,33,0.12)]">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
           <CardTitle className="text-xs font-medium uppercase tracking-[0.04em] text-muted-foreground">
             {title}
@@ -86,7 +87,7 @@ function StatCard({
               <div className="text-2xl font-semibold tracking-normal text-foreground">
                 <AnimatedCounter value={value} prefix={prefix} suffix={suffix} decimals={decimals} />
               </div>
-              <div className={`flex items-center text-xs font-medium ${trendUp ? "text-emerald-600 dark:text-emerald-300" : "text-red-500 dark:text-red-300"}`}>
+              <div className={`flex items-center text-xs font-medium ${trendUp ? "text-primary" : "text-red-500 dark:text-red-300"}`}>
                 {trendUp ? <TrendingUp className="h-3 w-3 mr-0.5" /> : <TrendingDown className="h-3 w-3 mr-0.5" />}
                 {(Math.random() * 8 + 1).toFixed(1)}%
               </div>
@@ -123,9 +124,9 @@ const statusBadgeMap: Record<string, { variant: "default" | "secondary" | "outli
   new: { variant: "secondary" },
   parsing: { variant: "outline", className: "bg-primary/10 text-primary border-primary/20" },
   tailoring: { variant: "outline", className: "bg-primary/10 text-primary border-primary/20" },
-  ready: { variant: "outline", className: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/25" },
-  parsed: { variant: "outline", className: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/25" },
-  scored: { variant: "outline", className: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/25" },
+  ready: { variant: "outline", className: "bg-primary/10 text-primary border-primary/25" },
+  parsed: { variant: "outline", className: "bg-primary/10 text-primary border-primary/25" },
+  scored: { variant: "outline", className: "bg-primary/10 text-primary border-primary/25" },
   applied: { variant: "default" },
   archived: { variant: "destructive" },
 };
@@ -208,6 +209,9 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Next Actions */}
+      <NextActions />
+
       {isVisible("dashboard-hero") && (
         <ContentCard
           style={{ order: getOrder("dashboard-hero", 0) } as CSSProperties}
@@ -238,13 +242,13 @@ export default function Dashboard() {
               <StatCard title="Total Applications" value={total} isLoading={statsLoading} trend={generateTrend(total)} trendUp color="hsl(var(--primary))" index={0} />
             </StaggerItem>
             <StaggerItem>
-              <StatCard title="Interview Rate" value={interviewRate} isLoading={statsLoading} suffix="%" decimals={1} trend={generateTrend(interviewRate)} trendUp={interviewRate > 20} color="rgb(16 185 129)" index={1} />
+              <StatCard title="Interview Rate" value={interviewRate} isLoading={statsLoading} suffix="%" decimals={1} trend={generateTrend(interviewRate)} trendUp={interviewRate > 20} color="hsl(var(--primary))" index={1} />
             </StaggerItem>
             <StaggerItem>
               <StatCard title="Response Rate" value={responseRate} isLoading={statsLoading} suffix="%" decimals={1} trend={generateTrend(responseRate)} trendUp={responseRate > 15} color="rgb(245 158 11)" index={2} />
             </StaggerItem>
             <StaggerItem>
-              <StatCard title="Active Jobs" value={activeJobs} isLoading={jobsLoading} trend={generateTrend(activeJobs)} trendUp color="rgb(6 182 212)" index={3} />
+              <StatCard title="Active Jobs" value={activeJobs} isLoading={jobsLoading} trend={generateTrend(activeJobs)} trendUp color="hsl(var(--primary))" index={3} />
             </StaggerItem>
           </StaggerContainer>
         </div>
