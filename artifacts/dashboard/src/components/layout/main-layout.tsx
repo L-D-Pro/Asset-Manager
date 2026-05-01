@@ -2,6 +2,7 @@ import { Sidebar } from "./sidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Link } from "react-router-dom";
 import { FeedbackWidget } from "@/components/feedback-widget";
+import { ContextualHint } from "@/components/onboarding/contextual-hint";
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -9,11 +10,12 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
       <div className="flex min-h-screen w-full bg-background">
         <Sidebar />
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="h-14 border-b flex items-center px-4 bg-card/50 backdrop-blur sticky top-0 z-10">
+          <header className="h-14 border-b border-border/60 flex items-center px-4 bg-card/82 backdrop-blur-xl sticky top-0 z-10">
             <SidebarTrigger />
           </header>
-          <main className="flex-1 p-6 overflow-auto">
-            <div className="max-w-6xl mx-auto space-y-6">
+          <main className="flex-1 overflow-auto bg-[linear-gradient(180deg,hsl(var(--background)),hsl(var(--muted)/0.34))] p-6">
+            <div className="mx-auto max-w-6xl space-y-6">
+              <ContextualHint />
               {children}
             </div>
           </main>
