@@ -3,6 +3,7 @@ import { db, achievementsTable, userAchievementsTable, questsTable, userQuestsTa
 import { eq, and, desc, count } from "drizzle-orm";
 import type { JobOpsRequest } from "../lib/http-types";
 import { getGamificationStats, getOrCreateUserStats } from "../lib/gamification";
+import { getNextActions } from "../lib/next-actions";
 
 const router: IRouter = Router();
 
@@ -104,6 +105,13 @@ router.post("/gamification/quests/:questId/accept", async (req: JobOpsRequest, r
     .returning();
 
   res.status(201).json({ quest: row });
+});
+
+// GET /gamification/next-actions
+router.get("/gamification/next-actions", async (req: JobOpsRequest, res) => {
+  const userId = req.session.adminId!;
+  const actions = await getNextActions(userId);
+  res.json({ actions });
 });
 
 export default router;
