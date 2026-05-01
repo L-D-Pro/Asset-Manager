@@ -282,7 +282,7 @@ function Navbar() {
 function Hero() {
   const shouldReduce = useReducedMotion();
   return (
-    <section className="min-h-[90vh] bg-gradient-to-br from-indigo-600 via-indigo-500 to-violet-500 flex flex-col items-center justify-center text-center px-4 relative overflow-hidden pt-32 pb-20 md:pt-40 md:pb-28">
+    <section className="min-h-[90vh] bg-gradient-to-br from-primary via-primary/80 to-accent flex flex-col items-center justify-center text-center px-4 relative overflow-hidden pt-32 pb-20 md:pt-40 md:pb-28">
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-white/5 rounded-full blur-[120px] opacity-60" />
         <div className="absolute bottom-0 right-0 w-[500px] h-[400px] bg-white/5 rounded-full blur-[100px]" />
@@ -294,9 +294,9 @@ function Hero() {
             initial={{ opacity: 0, y: shouldReduce ? 0 : 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: easing.smooth }}
-            className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 backdrop-blur-sm px-4 py-1.5 text-sm text-blue-100 mb-6"
+            className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 backdrop-blur-sm px-4 py-1.5 text-sm text-primary-foreground/80 mb-6"
           >
-            <Star className="h-3.5 w-3.5 text-amber-400 fill-amber-400" />
+            <Star className="h-3.5 w-3.5 text-warning fill-warning" />
             Private pilot with limited spots
           </motion.div>
 
@@ -307,7 +307,7 @@ function Hero() {
             className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1] text-white"
           >
             Land your dream job{' '}
-            <span className="text-blue-200">
+            <span className="text-primary-foreground/70">
               while you sleep
             </span>
           </motion.h1>
@@ -316,7 +316,7 @@ function Hero() {
             initial={{ opacity: 0, y: shouldReduce ? 0 : 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.16, ease: easing.smooth }}
-            className="mt-6 text-lg md:text-xl text-blue-100 max-w-2xl mx-auto leading-relaxed"
+            className="mt-6 text-lg md:text-xl text-primary-foreground/80 max-w-2xl mx-auto leading-relaxed"
           >
             Human assistants + AI agents apply to jobs for you with custom resumes and cover letters.
             So you can focus on what actually matters: networking and interviews.
@@ -329,7 +329,7 @@ function Hero() {
             className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4"
           >
             <Link to="/register">
-              <button className="group inline-flex items-center gap-2 text-base font-semibold bg-white text-indigo-600 hover:bg-blue-50 transition-all px-6 py-3 rounded-xl shadow-lg shadow-black/10 hover:shadow-black/20 hover:-translate-y-0.5">
+              <button className="group inline-flex items-center gap-2 text-base font-semibold bg-white text-primary hover:bg-primary/10 transition-all px-6 py-3 rounded-xl shadow-lg shadow-black/10 hover:shadow-black/20 hover:-translate-y-0.5">
                 Start for Free
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </button>
@@ -346,7 +346,7 @@ function Hero() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4, duration: 0.5 }}
-            className="mt-4 text-xs text-blue-200"
+            className="mt-4 text-xs text-primary-foreground/70"
           >
             Limited pilot access · Invite code required
           </motion.p>
@@ -362,9 +362,9 @@ function Hero() {
           <ContentCard className="p-6 shadow-2xl border-white/20">
             <div className="flex items-center gap-2 px-4 py-3 -mx-6 -mt-6 mb-6 border-b border-border/30 bg-muted/30 rounded-t-2xl">
               <div className="flex gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-red-400/80" />
-                <div className="w-3 h-3 rounded-full bg-amber-400/80" />
-                <div className="w-3 h-3 rounded-full bg-emerald-400/80" />
+                <div className="w-3 h-3 rounded-full bg-destructive/80" />
+                <div className="w-3 h-3 rounded-full bg-warning/80" />
+                <div className="w-3 h-3 rounded-full bg-success/80" />
               </div>
               <span className="text-xs text-muted-foreground ml-2">L&D Pro — Job Ops Dashboard</span>
             </div>
@@ -388,7 +388,7 @@ function Hero() {
                       <div className="h-2.5 w-3/4 bg-muted rounded" />
                       <div className="h-2 w-1/2 bg-muted/60 rounded" />
                     </div>
-                    <div className="h-5 w-14 bg-emerald-100 dark:bg-emerald-900/30 rounded-full" />
+                    <div className="h-5 w-14 bg-success/10 rounded-full" />
                   </div>
                 ))}
               </div>
@@ -469,6 +469,62 @@ function HowItWorks() {
   );
 }
 
+function GamificationTeaser() {
+  return (
+    <section className="py-20 md:py-28 border-t border-border/50">
+      <motion.div
+        variants={fadeInUp}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: "-100px" }}
+        className="mx-auto max-w-6xl px-6"
+      >
+        <div className="mb-12 text-center">
+          <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
+            Level Up Your Job Search
+          </h2>
+          <p className="mt-3 text-lg text-muted-foreground">
+            Stay motivated with gamification that tracks your progress
+          </p>
+        </div>
+        <div className="grid gap-6 md:grid-cols-3">
+          {[
+            {
+              title: "Earn XP",
+              description: "Get experience points for every job ingested, resume tailored, and application tracked.",
+              emoji: "⚡",
+            },
+            {
+              title: "Build Streaks",
+              description: "Maintain daily login streaks and watch your flame grow with consistent action.",
+              emoji: "🔥",
+            },
+            {
+              title: "Unlock Achievements",
+              description: "Collect badges for milestones — from your first job to your 100th application.",
+              emoji: "🏆",
+            },
+          ].map((item, i) => (
+            <motion.div
+              key={item.title}
+              variants={staggerItem}
+              className="gamify-gradient-subtle gamify-radius-chunky gamify-shadow flex flex-col items-center gap-4 rounded-2xl border border-border/50 p-8 text-center transition-all hover:gamify-shadow-lg"
+            >
+              <span className="text-4xl">{item.emoji}</span>
+              <div>
+                <h3 className="text-lg font-semibold">{item.title}</h3>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {item.description}
+                </p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </motion.div>
+    </section>
+  );
+}
+
 function Comparison() {
   return (
     <section className="py-20 md:py-28 bg-muted/20">
@@ -506,16 +562,16 @@ function Comparison() {
               <span className="text-sm">{row.feature}</span>
               <div className="flex justify-center w-20">
                 {row.us ? (
-                  <CheckCircle className="h-5 w-5 text-emerald-500" />
+                  <CheckCircle className="h-5 w-5 text-success" />
                 ) : (
-                  <X className="h-5 w-5 text-red-400" />
+                  <X className="h-5 w-5 text-destructive" />
                 )}
               </div>
               <div className="flex justify-center w-20">
                 {row.them ? (
-                  <CheckCircle className="h-5 w-5 text-emerald-500/40" />
+                  <CheckCircle className="h-5 w-5 text-success/40" />
                 ) : (
-                  <X className="h-5 w-5 text-red-400/40" />
+                  <X className="h-5 w-5 text-destructive/40" />
                 )}
               </div>
             </div>
@@ -602,7 +658,7 @@ function ProofOfWork() {
                 <div className="flex items-center gap-2">
                   <div className={cn(
                     'h-8 w-8 rounded-lg flex items-center justify-center',
-                    card.status === 'done' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'
+                    card.status === 'done' ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'
                   )}>
                     <card.icon className="h-4 w-4" />
                   </div>
@@ -670,7 +726,7 @@ function Pricing() {
               <ul className="mt-6 space-y-3 flex-1">
                 {tier.features.map((f) => (
                   <li key={f} className="flex items-start gap-2 text-sm">
-                    <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                    <CheckCircle className="h-4 w-4 text-success shrink-0 mt-0.5" />
                     <span>{f}</span>
                   </li>
                 ))}
@@ -725,7 +781,7 @@ function Testimonials() {
             >
               <div className="flex gap-1 mb-4">
                 {[1, 2, 3, 4, 5].map((s) => (
-                  <Star key={s} className="h-4 w-4 text-amber-500 fill-amber-500" />
+                  <Star key={s} className="h-4 w-4 text-warning fill-warning" />
                 ))}
               </div>
               <p className="text-sm leading-relaxed flex-1">&ldquo;{t.quote}&rdquo;</p>
@@ -814,7 +870,7 @@ function FAQ() {
 function FinalCTA() {
   return (
     <section className="py-20 md:py-28 relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-background to-emerald-500/5" />
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-background to-success/5" />
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[400px] bg-primary/10 rounded-full blur-[120px]" />
       </div>
@@ -914,6 +970,7 @@ export default function LandingPage() {
         <CommunityActivity />
       </div>
       <HowItWorks />
+      <GamificationTeaser />
       <Comparison />
       <Stats />
       <ProofOfWork />
