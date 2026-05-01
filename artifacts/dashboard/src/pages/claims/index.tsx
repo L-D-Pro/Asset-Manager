@@ -269,7 +269,7 @@ export default function ClaimsPage() {
       <PageHeader
         title="Claims Ledger"
         subtitle="Track skills, accomplishments, and quantifiable claims for your resume."
-        gradient="from-teal-500 via-teal-400 to-cyan-400"
+        variant="workflow"
       >
           <Dialog open={isAiDialogOpen} onOpenChange={setIsAiDialogOpen}>
             <DialogTrigger asChild>
@@ -594,7 +594,7 @@ export default function ClaimsPage() {
           </ContentCard>
         ) : (
           claims?.map((claim) => (
-            <ContentCard key={claim.id} data-testid={`card-claim-${claim.id}`} className={!claim.isActive ? "opacity-60" : ""}>
+            <ContentCard key={claim.id} data-testid={`card-claim-${claim.id}`} className={`gamify-radius-chunky gamify-shadow ${!claim.isActive ? "opacity-60" : ""}`}>
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="space-y-2 flex-1 pr-4">

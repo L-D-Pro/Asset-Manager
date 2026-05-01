@@ -125,9 +125,9 @@ function ChangeItem({
   onDecide: (key: string, d: ChangeDecision) => void;
 }) {
   const colorBase =
-    type === "added" ? "bg-green-50 border-green-200 text-green-800" :
-    type === "removed" ? "bg-red-50 border-red-200 text-red-800" :
-    "bg-blue-50 border-blue-200 text-blue-800";
+    type === "added" ? "bg-success/10 border-success/30 text-success" :
+    type === "removed" ? "bg-destructive/10 border-destructive/30 text-destructive" :
+    "bg-primary/10 border-primary/30 text-primary";
   const prefix = type === "added" ? "+" : type === "removed" ? "−" : "↕";
   return (
     <li className={`flex items-start gap-2 px-3 py-2 border-b last:border-b-0 ${colorBase} ${decision === "reject" ? "opacity-50 line-through" : ""}`}>
@@ -136,21 +136,21 @@ function ChangeItem({
       <div className="flex items-center gap-1 shrink-0">
         <button
           type="button"
-          className={`p-1 rounded transition-colors ${decision === "accept" ? "bg-green-200" : "hover:bg-green-100"}`}
+          className={`p-1 rounded transition-colors ${decision === "accept" ? "bg-success/30" : "hover:bg-success/20"}`}
           onClick={() => onDecide(changeKey, decision === "accept" ? "pending" : "accept")}
           title="Accept this change"
           data-testid={`btn-accept-change-${changeKey}`}
         >
-          <ThumbsUp className="h-3.5 w-3.5 text-green-700" />
+          <ThumbsUp className="h-3.5 w-3.5 text-success" />
         </button>
         <button
           type="button"
-          className={`p-1 rounded transition-colors ${decision === "reject" ? "bg-red-200" : "hover:bg-red-100"}`}
+          className={`p-1 rounded transition-colors ${decision === "reject" ? "bg-destructive/30" : "hover:bg-destructive/20"}`}
           onClick={() => onDecide(changeKey, decision === "reject" ? "pending" : "reject")}
           title="Reject this change"
           data-testid={`btn-reject-change-${changeKey}`}
         >
-          <ThumbsDown className="h-3.5 w-3.5 text-red-700" />
+          <ThumbsDown className="h-3.5 w-3.5 text-destructive" />
         </button>
       </div>
     </li>
@@ -183,14 +183,14 @@ function DiffReview({
       )}
       {total > 0 && (
         <div className="text-xs flex gap-3" data-testid={`decisions-summary-${versionId}`}>
-          <span className="text-green-600 font-medium">{accepted} accepted</span>
-          <span className="text-red-600 font-medium">{rejected} rejected</span>
-          {pending > 0 && <span className="text-orange-600 font-medium">{pending} pending decision</span>}
+          <span className="text-success font-medium">{accepted} accepted</span>
+          <span className="text-destructive font-medium">{rejected} rejected</span>
+          {pending > 0 && <span className="text-warning font-medium">{pending} pending decision</span>}
         </div>
       )}
       {diffData.addedBullets && diffData.addedBullets.length > 0 && (
         <div className="rounded-md border overflow-hidden">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 border-b text-xs font-semibold text-green-700">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-success/10 border-b text-xs font-semibold text-success">
             <Plus className="h-3 w-3" /> Added Bullets ({diffData.addedBullets.length})
           </div>
           <ul>
@@ -203,7 +203,7 @@ function DiffReview({
       )}
       {diffData.removedBullets && diffData.removedBullets.length > 0 && (
         <div className="rounded-md border overflow-hidden">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 border-b text-xs font-semibold text-red-700">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-destructive/10 border-b text-xs font-semibold text-destructive">
             <Minus className="h-3 w-3" /> Removed Bullets ({diffData.removedBullets.length})
           </div>
           <ul>
@@ -216,7 +216,7 @@ function DiffReview({
       )}
       {diffData.reorderedSections && diffData.reorderedSections.length > 0 && (
         <div className="rounded-md border overflow-hidden">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border-b text-xs font-semibold text-blue-700">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 border-b text-xs font-semibold text-primary">
             <ArrowLeftRight className="h-3 w-3" /> Reordered Sections
           </div>
           <ul>
@@ -319,19 +319,19 @@ export default function ResumeVersionsPage() {
       <PageHeader
         title="Resume Queue"
         subtitle="Review each individual change before approving. Accepted/rejected bullet decisions are recorded on the version record before approval."
-        gradient="from-teal-500 via-teal-400 to-cyan-400"
+        variant="workflow"
       />
       <div className="grid gap-4">
         {isLoading ? (
-          <><Skeleton className="h-32 w-full rounded-2xl" /><Skeleton className="h-32 w-full rounded-2xl" /></>
+          <><Skeleton className="h-28 w-full rounded-lg" /><Skeleton className="h-28 w-full rounded-lg" /></>
         ) : versions?.length === 0 ? (
           <ContentCard>
             <div className="flex flex-col items-center justify-center p-12 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 text-slate-300 mb-5">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-muted text-muted-foreground mb-4 border border-border">
                 <FileText className="h-8 w-8" />
               </div>
-              <h3 className="text-base font-semibold text-slate-900 mb-1.5">Queue empty</h3>
-              <p className="text-sm text-slate-500 max-w-sm">
+              <h3 className="text-base font-semibold text-foreground mb-1.5">Queue empty</h3>
+              <p className="text-sm text-muted-foreground max-w-sm">
                 No resume versions pending review. Trigger "Tailor Resume" from a job detail page to generate one.
               </p>
             </div>
@@ -348,7 +348,7 @@ export default function ResumeVersionsPage() {
             const hasPending = pendingCount > 0;
 
             return (
-              <ContentCard key={version.id} data-testid={`card-resume-${version.id}`} className="p-0">
+              <ContentCard key={version.id} data-testid={`card-resume-${version.id}`} className="p-0 gamify-radius-chunky gamify-shadow">
                 <CardHeader className="pb-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="space-y-1">
@@ -361,7 +361,7 @@ export default function ResumeVersionsPage() {
                           {version.status.replace("_", " ")}
                         </Badge>
                         {version.status === "pending_approval" && hasDiff && hasPending && (
-                          <Badge variant="outline" className="text-orange-600 border-orange-300 text-xs">
+                          <Badge variant="outline" className="text-warning border-warning/50 text-xs">
                             {pendingCount} undecided
                           </Badge>
                         )}
@@ -432,9 +432,9 @@ export default function ResumeVersionsPage() {
                         baseResumeVersionId={version.baseResumeVersionId}
                       />
                       {version.status === "pending_approval" && hasDiff && hasPending && (
-                        <Alert variant="default" className="border-orange-200 bg-orange-50">
-                          <AlertCircle className="h-4 w-4 text-orange-600" />
-                          <AlertDescription className="text-orange-800 text-xs">
+                        <Alert variant="default" className="border-warning/40 bg-warning/10">
+                          <AlertCircle className="h-4 w-4 text-warning" />
+                          <AlertDescription className="text-warning text-xs">
                             {pendingCount} change{pendingCount > 1 ? "s" : ""} still need{pendingCount === 1 ? "s" : ""} a decision. Accept or reject each before approving — your decisions will be saved on the version record.
                           </AlertDescription>
                         </Alert>

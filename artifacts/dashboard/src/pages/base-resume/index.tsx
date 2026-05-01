@@ -146,17 +146,17 @@ export default function BaseResumePage() {
       <PageHeader
         title="Base Resume"
         subtitle="Maintain the single source-of-truth resume that AI tailoring builds from."
-        gradient="from-teal-500 via-teal-400 to-cyan-400"
+        variant="workflow"
       />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_360px]">
-        <ContentCard>
+        <ContentCard className="gamify-radius-chunky gamify-gradient-subtle">
           <CardHeader className="space-y-3">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <CardTitle className="flex items-center gap-2 text-slate-900">
-                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-500/10">
-                    <FileText className="h-4 w-4 text-teal-500" />
+                <CardTitle className="flex items-center gap-2 text-foreground">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10">
+                    <FileText className="h-4 w-4 text-primary" />
                   </div>
                   Current Resume Text
                 </CardTitle>
@@ -236,7 +236,7 @@ export default function BaseResumePage() {
                 onClick={handleSave}
                 disabled={saveDisabled}
                 data-testid="btn-save-base-resume"
-                className="bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 shadow-lg shadow-teal-500/25"
+                className="rounded-md shadow-sm"
               >
                 <Save className="mr-2 h-4 w-4" />
                 {saveResume.isPending ? "Saving..." : hasCurrentResume ? "Save New Version" : "Save Base Resume"}
@@ -245,11 +245,11 @@ export default function BaseResumePage() {
           </CardContent>
         </ContentCard>
 
-        <ContentCard>
+        <ContentCard className="gamify-radius-chunky">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-slate-900">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-500/10">
-                <History className="h-4 w-4 text-teal-500" />
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10">
+                <History className="h-4 w-4 text-primary" />
               </div>
               Version History
             </CardTitle>
@@ -274,7 +274,7 @@ export default function BaseResumePage() {
                   {history.map((version) => (
                     <div
                       key={version.id}
-                      className="rounded-md border bg-card p-3 space-y-3"
+                      className="rounded-md border bg-card p-3 space-y-3 gamify-shadow"
                       data-testid={`card-base-resume-history-${version.id}`}
                     >
                       <div className="flex items-start justify-between gap-3">

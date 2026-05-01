@@ -22,17 +22,17 @@ type AnnotatedParagraph = {
 };
 
 const ROLE_COLORS: Record<string, string> = {
-  opening: "bg-blue-50 border-blue-200",
-  hook: "bg-purple-50 border-purple-200",
-  body: "bg-amber-50 border-amber-200",
-  closing: "bg-green-50 border-green-200",
+  opening: "bg-primary/10 border-primary/30",
+  hook: "bg-primary/5 border-primary/20",
+  body: "bg-warning/10 border-warning/30",
+  closing: "bg-success/10 border-success/30",
 };
 
 const ROLE_LABEL_COLORS: Record<string, string> = {
-  opening: "text-blue-700 bg-blue-100",
-  hook: "text-purple-700 bg-purple-100",
-  body: "text-amber-700 bg-amber-100",
-  closing: "text-green-700 bg-green-100",
+  opening: "text-primary bg-primary/10",
+  hook: "text-primary bg-primary/10",
+  body: "text-warning bg-warning/10",
+  closing: "text-success bg-success/10",
 };
 
 export default function CoverLettersPage() {
@@ -106,23 +106,23 @@ export default function CoverLettersPage() {
       <PageHeader
         title="Cover Letter Queue"
         subtitle="Review AI-drafted cover letters with claim attribution before approving."
-        gradient="from-teal-500 via-teal-400 to-cyan-400"
+        variant="workflow"
       />
 
       <div className="grid gap-4">
         {isLoading ? (
           <>
-            <Skeleton className="h-64 w-full rounded-2xl" />
-            <Skeleton className="h-64 w-full rounded-2xl" />
+            <Skeleton className="h-56 w-full rounded-lg" />
+            <Skeleton className="h-56 w-full rounded-lg" />
           </>
         ) : versions?.length === 0 ? (
           <ContentCard>
             <div className="flex flex-col items-center justify-center p-12 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 text-slate-300 mb-5">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-muted text-muted-foreground mb-4 border border-border">
                 <MessageSquare className="h-8 w-8" />
               </div>
-              <h3 className="text-base font-semibold text-slate-900 mb-1.5">Queue empty</h3>
-              <p className="text-sm text-slate-500 max-w-sm">
+              <h3 className="text-base font-semibold text-foreground mb-1.5">Queue empty</h3>
+              <p className="text-sm text-muted-foreground max-w-sm">
                 No cover letters pending review right now.
               </p>
             </div>
@@ -131,7 +131,7 @@ export default function CoverLettersPage() {
           versions?.map((version) => {
             const annotations = parseAnnotations(version);
             return (
-              <ContentCard key={version.id} data-testid={`card-cl-${version.id}`} className="p-0">
+              <ContentCard key={version.id} data-testid={`card-cl-${version.id}`} className="p-0 gamify-radius-chunky gamify-shadow">
                 <CardHeader className="pb-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="space-y-1">
