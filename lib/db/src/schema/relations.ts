@@ -160,6 +160,7 @@ export const wizardSessionsRelations = relations(
 );
 
 import { adminUsersTable } from "./admin-users";
+import { userOnboardingStateTable } from "./user-onboarding";
 import { userStatsTable } from "./gamification";
 import { xpLogTable } from "./gamification";
 
@@ -169,6 +170,13 @@ export const userStatsRelations = relations(userStatsTable, ({ one }) => ({
 
 export const xpLogRelations = relations(xpLogTable, ({ one }) => ({
   user: one(adminUsersTable, { fields: [xpLogTable.userId], references: [adminUsersTable.id] }),
+}));
+
+export const adminUsersRelations = relations(adminUsersTable, ({ one }) => ({
+  onboardingState: one(userOnboardingStateTable, {
+    fields: [adminUsersTable.id],
+    references: [userOnboardingStateTable.userId],
+  }),
 }));
 
 export const aiModelConfigsRelations = relations(

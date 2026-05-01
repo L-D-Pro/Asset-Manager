@@ -692,3 +692,15 @@ CREATE TABLE IF NOT EXISTS streak_log (
     actions_count INTEGER NOT NULL DEFAULT 0
 );
 CREATE UNIQUE INDEX IF NOT EXISTS streak_log_user_date_uidx ON streak_log(user_id, date);
+
+-- User onboarding state table
+CREATE TABLE IF NOT EXISTS user_onboarding_state (
+    user_id INTEGER PRIMARY KEY REFERENCES admin_users(id) ON DELETE CASCADE,
+    has_seen_welcome BOOLEAN NOT NULL DEFAULT false,
+    completed_steps TEXT[] NOT NULL DEFAULT '{}',
+    dismissed_hints TEXT[] NOT NULL DEFAULT '{}',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS user_onboarding_state_user_id_idx ON user_onboarding_state(user_id);
