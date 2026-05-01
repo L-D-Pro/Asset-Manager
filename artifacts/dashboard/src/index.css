@@ -105,14 +105,14 @@
   --input: 214.3 31.8% 91.4%;
   --ring: 221.2 83.2% 53.3%;
 
-  --sidebar: 222 47% 11%;
-  --sidebar-foreground: 210 40% 98%;
-  --sidebar-border: 217 32% 17%;
-  --sidebar-primary: 221 83% 53%;
+  --sidebar: 218 38% 12%;
+  --sidebar-foreground: 213 31% 92%;
+  --sidebar-border: 217 30% 22%;
+  --sidebar-primary: 221 83% 62%;
   --sidebar-primary-foreground: 210 40% 98%;
-  --sidebar-accent: 217 32% 17%;
+  --sidebar-accent: 217 28% 20%;
   --sidebar-accent-foreground: 210 40% 98%;
-  --sidebar-ring: 221 83% 53%;
+  --sidebar-ring: 221 83% 62%;
 
   --chart-1: 221.2 83.2% 53.3%;
   --chart-2: 142 70.6% 45.3%;
@@ -146,31 +146,31 @@
   --background: 222 47% 11%;
   --foreground: 210 40% 98%;
 
-  --card: 222 47% 11%;
+  --card: 220 33% 16%;
   --card-foreground: 210 40% 98%;
-  --card-border: 217 32% 17%;
+  --card-border: 218 27% 24%;
 
-  --popover: 222 47% 11%;
+  --popover: 220 33% 16%;
   --popover-foreground: 210 40% 98%;
-  --popover-border: 217 32% 17%;
+  --popover-border: 218 27% 24%;
 
   --primary: 217 91% 60%;
   --primary-foreground: 222 47% 11%;
 
-  --secondary: 217 32% 17%;
+  --secondary: 218 28% 20%;
   --secondary-foreground: 210 40% 98%;
 
-  --muted: 217 32% 17%;
-  --muted-foreground: 215 20.2% 65.1%;
+  --muted: 218 28% 20%;
+  --muted-foreground: 214 18% 74%;
 
-  --accent: 217 32% 17%;
+  --accent: 218 28% 22%;
   --accent-foreground: 210 40% 98%;
 
   --destructive: 0 62.8% 30.6%;
   --destructive-foreground: 210 40% 98%;
 
-  --border: 217 32% 17%;
-  --input: 217 32% 17%;
+  --border: 218 27% 24%;
+  --input: 218 27% 24%;
   --ring: 224 76.3% 48%;
 
   --sidebar: 222 47% 11%;
@@ -249,5 +249,85 @@
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+}
+
+@layer utilities {
+  /* Primary brand gradient - adapts to any UI Shell theme */
+  .gamify-gradient-primary {
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.8) 50%, hsl(var(--accent) / 0.6));
+  }
+
+  /* Warm accent gradient for cards and badges */
+  .gamify-gradient-warm {
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+  }
+
+  /* Subtle gradient for backgrounds and surfaces */
+  .gamify-gradient-subtle {
+    background: linear-gradient(150deg, hsl(var(--card)), hsl(var(--card)) 70%, hsl(var(--primary) / 0.08));
+  }
+
+  /* Glow shadow for interactive elements */
+  .gamify-shadow {
+    box-shadow: 0 4px 20px -4px hsl(var(--primary) / 0.25);
+  }
+
+  .gamify-shadow-lg {
+    box-shadow: 0 8px 40px -8px hsl(var(--primary) / 0.3);
+  }
+
+  /* Ambient glow for featured elements */
+  .gamify-glow {
+    box-shadow: 0 0 40px -10px hsl(var(--primary) / 0.35);
+  }
+
+  /* Chunky border radius (Duolingo-style) */
+  .gamify-radius-chunky {
+    border-radius: 16px;
+  }
+
+  /* Pill radius for buttons and badges */
+  .gamify-radius-pill {
+    border-radius: 9999px;
+  }
+
+  /* Animated gradient border effect */
+  .gamify-gradient-border {
+    position: relative;
+  }
+
+  .gamify-gradient-border::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 2px;
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  /* Floating animation for featured elements */
+  .gamify-float {
+    animation: gamify-float 3s ease-in-out infinite;
+  }
+
+  @keyframes gamify-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+
+  /* Pulse glow for notifications/new items */
+  .gamify-pulse-glow {
+    animation: gamify-pulse-glow 2s ease-in-out infinite;
+  }
+
+  @keyframes gamify-pulse-glow {
+    0%, 100% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0.4); }
+    50% { box-shadow: 0 0 20px 4px hsl(var(--primary) / 0.2); }
   }
 }
