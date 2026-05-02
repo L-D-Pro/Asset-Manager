@@ -5,6 +5,7 @@ import { GamifiedBadge } from "@/components/gamification/GamifiedBadge";
 import { QuestCard } from "@/components/gamification/QuestCard";
 import { LeaderboardStrip } from "@/components/gamification/LeaderboardStrip";
 import { MascotAvatar } from "@/components/gamification/MascotAvatar";
+import { TiltCard } from "@/components/gamification/TiltCard";
 import { FloatingXP } from "@/components/gamification/FloatingXP";
 import { SpeechBubble } from "@/components/gamification/SpeechBubble";
 import { NextActions } from "@/components/dashboard/next-actions";
@@ -139,7 +140,7 @@ export default function Dashboard() {
  >
   {/* Hero Strip */}
   <motion.div variants={itemVariants}>
-    <div className="card-glass p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+    <TiltCard gradient="blue" className="p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
       {/* Left: Greeting */}
       <div>
         <h1 className="text-3xl md:text-4xl font-extrabold leading-tight tracking-tight gradient-text">
@@ -180,7 +181,7 @@ export default function Dashboard() {
           </span>
         </div>
       </div>
-    </div>
+    </TiltCard>
   </motion.div>
 
   {/* Speech Bubble */}
@@ -204,15 +205,17 @@ export default function Dashboard() {
     className="grid grid-cols-1 md:grid-cols-3 gap-5"
   >
     {/* Left: XPCard */}
-    <XPCard
-      level={level}
-      currentXp={currentLevelXp}
-      xpToNext={xpForNextLevel}
-      totalXp={totalXp}
-    />
+    <TiltCard gradient="purple">
+      <XPCard
+        level={level}
+        currentXp={currentLevelXp}
+        xpToNext={xpForNextLevel}
+        totalXp={totalXp}
+      />
+    </TiltCard>
 
     {/* Center: Streak card */}
-    <div className="card-glass flex flex-col items-center justify-center gap-4 p-6">
+    <TiltCard gradient="orange" className="flex flex-col items-center justify-center gap-4 p-6">
       <StreakFlame
         days={streak}
         className="!p-0 !shadow-none !border-none !bg-transparent !rounded-none"
@@ -226,10 +229,10 @@ export default function Dashboard() {
           Longest streak: {gStats.longestStreak} days
         </p>
       )}
-    </div>
+    </TiltCard>
 
     {/* Right: Quick action card */}
-    <div className="card-glass flex flex-col items-center justify-center gap-4 p-6 text-center">
+    <TiltCard gradient="blue" className="flex flex-col items-center justify-center gap-4 p-6 text-center">
       <h3 className="text-lg font-bold text-foreground tracking-tight">
         Ready to apply?
       </h3>
@@ -251,10 +254,10 @@ export default function Dashboard() {
           Ingest a Job
         </Button>
       </div>
-    </div>
+    </TiltCard>
   </motion.div>
 
- {/*********** Third Row: Next Actions ***********/}
+  {/*********** Third Row: Next Actions ***********/}
  <motion.div variants={itemVariants}>
  <NextActions />
   </motion.div>
