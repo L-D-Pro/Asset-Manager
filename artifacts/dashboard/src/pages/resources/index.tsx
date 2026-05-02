@@ -1,5 +1,7 @@
 import { BookOpen, Heart, ExternalLink, GraduationCap, LifeBuoy, Shield } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
+import { ContentCard } from "@/components/ui/content-card";
 import { FadeIn } from "@/components/motion/fade-in";
 import { StaggerContainer, StaggerItem } from "@/components/motion/stagger-container";
 
@@ -166,23 +168,18 @@ const RESOURCE_SECTIONS: ResourceSection[] = [
 
 export default function ResourcesPage() {
  return (
- <div className="space-y-8 max-w-5xl">
- <div>
- <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
- <Heart className="h-6 w-6 text-destructive" />
- Resources
- </h1>
- <p className="text-muted-foreground mt-1">
- Free tools, learning platforms, mental health support, and financial resources — curated for job seekers.
- </p>
- </div>
+  <div className="space-y-6 max-w-5xl">
+  <PageHeader
+  title="Resources"
+  subtitle="Free tools, learning platforms, mental health support, and financial resources — curated for job seekers."
+  />
 
  <StaggerContainer className="space-y-6">
  {RESOURCE_SECTIONS.map((section) => (
- <StaggerItem key={section.title}>
- <FadeIn>
- <Card className="rounded-2xl ">
- <CardHeader>
+  <StaggerItem key={section.title}>
+  <FadeIn>
+  <ContentCard padding="none">
+  <CardHeader>
  <CardTitle className="flex items-center gap-2 text-lg">
  <section.icon className="h-5 w-5 text-primary" />
  {section.title}
@@ -211,7 +208,7 @@ export default function ResourcesPage() {
  ))}
  </ul>
  </CardContent>
- </Card>
+ </ContentCard>
  </FadeIn>
  </StaggerItem>
  ))}

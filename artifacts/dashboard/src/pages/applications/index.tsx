@@ -117,13 +117,8 @@ export default function ApplicationsPage() {
 
  return (
  <div className="space-y-6">
- <div className="flex justify-between items-center">
- <div>
- <h1 className="text-4xl font-bold font-sans text-foreground">Applications</h1>
-  <p className="text-muted-foreground text-lg">Track submitted applications and pipeline stage.</p>
- </div>
-
- <Dialog open={isDialogOpen} onOpenChange={(open) => { if(!open) handleClose(); else setIsDialogOpen(true); }}>
+  <PageHeader title="Applications" subtitle="Track submitted applications and pipeline stage.">
+  <Dialog open={isDialogOpen} onOpenChange={(open) => { if(!open) handleClose(); else setIsDialogOpen(true); }}>
  <DialogTrigger asChild>
  <Button data-testid="btn-add-app">
  <Plus className="mr-2 h-4 w-4" />
@@ -214,10 +209,10 @@ export default function ApplicationsPage() {
  </Button>
  </div>
  </form>
- </Form>
- </DialogContent>
- </Dialog>
- </div>
+  </Form>
+  </DialogContent>
+  </Dialog>
+  </PageHeader>
 
  <div className="flex gap-2 flex-wrap" data-testid="filter-app-status">
  {statuses.map((s) => (

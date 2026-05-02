@@ -1,5 +1,7 @@
 import { BookOpen, Lightbulb, HelpCircle, ArrowRight, FileText, Briefcase, Brain, MessageSquare, Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
+import { ContentCard } from "@/components/ui/content-card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
@@ -49,28 +51,25 @@ const GETTING_STARTED = [
 
 export default function GuidePage() {
  return (
- <div className="max-w-4xl space-y-10">
- <div>
- <div className="mb-2 flex items-center gap-3">
- <BookOpen className="h-8 w-8 text-primary" />
- <h1 className="text-4xl font-bold font-sans text-foreground">Help &amp; Tips</h1>
- </div>
-  <p className="text-muted-foreground text-lg">
- Everything you need to run an effective, honest job search with Job Ops.
- </p>
- <div className="mt-3 flex flex-wrap gap-2">
- <Badge variant="outline">Human reviewed</Badge>
- <Badge variant="outline">AI assisted</Badge>
- <Badge variant="outline">No auto-submit</Badge>
- </div>
- </div>
+  <div className="max-w-4xl space-y-6">
+  <PageHeader
+  title="Help & Tips"
+  subtitle="Everything you need to run an effective, honest job search with Job Ops."
+  badge={
+  <div className="flex flex-wrap gap-2">
+  <Badge variant="outline">Human reviewed</Badge>
+  <Badge variant="outline">AI assisted</Badge>
+  <Badge variant="outline">No auto-submit</Badge>
+  </div>
+  }
+  />
 
- <FadeIn>
- <Card className="rounded-2xl">
- <CardHeader>
- <CardTitle className="flex items-center gap-2">
- <Sparkles className="h-5 w-5 text-primary" />
- Getting Started
+  <FadeIn>
+  <ContentCard padding="none">
+  <CardHeader>
+  <CardTitle className="flex items-center gap-2">
+  <Sparkles className="h-5 w-5 text-primary" />
+  Getting Started
  </CardTitle>
  <CardDescription>Follow these four steps to make your first application.</CardDescription>
  </CardHeader>
@@ -90,15 +89,15 @@ export default function GuidePage() {
  ))}
  </div>
  </CardContent>
- </Card>
+ </ContentCard>
  </FadeIn>
 
- <FadeIn>
- <Card className="rounded-2xl ">
- <CardHeader>
- <CardTitle className="flex items-center gap-2">
- <Lightbulb className="h-5 w-5 text-warning" />
- Pro Tips
+  <FadeIn>
+  <ContentCard padding="none">
+  <CardHeader>
+  <CardTitle className="flex items-center gap-2">
+  <Lightbulb className="h-5 w-5 text-warning" />
+  Pro Tips
  </CardTitle>
  <CardDescription>Small habits that make a big difference.</CardDescription>
  </CardHeader>
@@ -126,15 +125,15 @@ export default function GuidePage() {
  </li>
  </ul>
  </CardContent>
- </Card>
+ </ContentCard>
  </FadeIn>
 
- <FadeIn>
- <Card className="rounded-2xl">
- <CardHeader>
- <CardTitle className="flex items-center gap-2">
- <HelpCircle className="h-5 w-5 text-primary" />
- Frequently Asked Questions
+  <FadeIn>
+  <ContentCard padding="none">
+  <CardHeader>
+  <CardTitle className="flex items-center gap-2">
+  <HelpCircle className="h-5 w-5 text-primary" />
+  Frequently Asked Questions
  </CardTitle>
  </CardHeader>
  <CardContent>
@@ -149,7 +148,7 @@ export default function GuidePage() {
  ))}
  </Accordion>
  </CardContent>
- </Card>
+ </ContentCard>
  </FadeIn>
 
  <p className="text-center text-xs text-muted-foreground pb-8">

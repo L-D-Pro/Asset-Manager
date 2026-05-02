@@ -8,6 +8,8 @@ import {
  type ResearchTrendsBodyExperienceLevel,
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
+import { ContentCard } from "@/components/ui/content-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -65,29 +67,22 @@ export default function TrendsPage() {
  };
 
  return (
- <div className="flex flex-col h-full">
- <div className="border-b px-6 py-4">
- <div className="flex items-center gap-2 mb-2">
- <TrendingUp className="h-6 w-6 text-primary" />
- <h1 className="text-4xl font-bold font-sans text-foreground">Market Trends</h1>
- </div>
-  <p className="text-muted-foreground text-lg mb-4">
- AI-powered market analysis to understand demand, skills, salaries, and
- certifications for any job role.
- </p>
- <TrendsSearchForm
- onSearch={handleSearch}
- isLoading={mutation.isPending}
- />
- {sources && sources.length > 0 && (
- <p className="text-xs text-muted-foreground mt-3 flex items-center gap-1">
- <Database className="h-3 w-3" />
- {sources.length} job board source
- {sources.length !== 1 ? "s" : ""} configured — results will be
- enriched with live listings
- </p>
- )}
- </div>
+  <div className="flex flex-col h-full space-y-6">
+  <div className="px-6 pt-4 space-y-4">
+  <PageHeader title="Market Trends" subtitle="AI-powered market analysis to understand demand, skills, salaries, and certifications for any job role." />
+  <TrendsSearchForm
+  onSearch={handleSearch}
+  isLoading={mutation.isPending}
+  />
+  {sources && sources.length > 0 && (
+  <p className="text-xs text-muted-foreground flex items-center gap-1">
+  <Database className="h-3 w-3" />
+  {sources.length} job board source
+  {sources.length !== 1 ? "s" : ""} configured — results will be
+  enriched with live listings
+  </p>
+  )}
+  </div>
 
  <div className="flex-1 overflow-auto p-6">
  {mutation.isError && (
@@ -121,13 +116,13 @@ export default function TrendsPage() {
  <TabsContent value="overview">
  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
  <MarketOverviewCard overview={analysis.marketOverview} />
- <Card className="">
- <CardHeader>
- <CardTitle className="text-lg">
- Salary Insights
- </CardTitle>
- </CardHeader>
- <CardContent className="space-y-4">
+  <ContentCard padding="none">
+  <CardHeader>
+  <CardTitle className="text-lg">
+  Salary Insights
+  </CardTitle>
+  </CardHeader>
+  <CardContent className="space-y-4">
  <div className="flex gap-4">
  <div className="flex-1 text-center p-3 rounded-lg bg-muted">
  <p className="text-xs text-muted-foreground">Low</p>
@@ -165,9 +160,9 @@ export default function TrendsPage() {
  ))}
  </div>
  </div>
- </CardContent>
- </Card>
- </div>
+  </CardContent>
+  </ContentCard>
+  </div>
  </TabsContent>
 
  <TabsContent value="skills">
