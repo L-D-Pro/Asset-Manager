@@ -40,6 +40,7 @@ import AdminInviteCodesPage from "@/pages/admin/invite-codes";
 import AdminUsageLimitsPage from "@/pages/admin/usage-limits";
 import AdminDocsPage from "@/pages/admin/docs";
 import AdminUiShellPage from "@/pages/admin/ui-shell";
+import AdminBestPracticesPage from "@/pages/admin/best-practices";
 import AiLearningPage from "@/pages/ai-learning";
 import TrendsPage from "@/pages/trends";
 import ResourcesPage from "@/pages/resources";
@@ -133,8 +134,9 @@ function ProtectedRoutes() {
  <Route path="/admin/invite-codes" element={<AdminInviteCodesPage />} />
  <Route path="/admin/usage-limits" element={<AdminUsageLimitsPage />} />
  <Route path="/admin/docs" element={<AdminDocsPage />} />
- <Route path="/admin/ui-shell" element={<AdminUiShellPage />} />
- <Route path="/ai-learning" element={<AiLearningPage />} />
+          <Route path="/admin/ui-shell" element={<AdminUiShellPage />} />
+          <Route path="/admin/best-practices" element={<AdminBestPracticesPage />} />
+          <Route path="/ai-learning" element={<AiLearningPage />} />
  <Route path="/trends" element={<TrendsPage />} />
  <Route path="/resources" element={<ResourcesPage />} />
  <Route path="/stats" element={<StatsPage />} />
