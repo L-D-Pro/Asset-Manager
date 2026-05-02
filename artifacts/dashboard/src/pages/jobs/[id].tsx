@@ -1,30 +1,31 @@
 import { useGetJob, useParseJobDescription, useTailorJobResume, useDraftCoverLetter, getGetJobQueryKey, useScoreJob, getScoreJobQueryKey, useGetJobClaimMatches, getGetJobClaimMatchesQueryKey } from "@workspace/api-client-react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
+
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { getErrorMessage } from "@/lib/api-errors";
 import { AiProgressButton } from "@/components/ai/ai-progress-button";
-import { ArrowLeft, MapPin, Building, AlertCircle, Check, X, ExternalLink, Tag } from "lucide-react";
+import { ArrowLeft, AlertCircle, Check, X, ExternalLink, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/ui/page-header";
 import { motion, useReducedMotion } from "framer-motion";
 
 const statusStyles: Record<string, string> = {
- new: "bg-muted/40 text-foreground/80 border-border",
- parsing: "bg-warning/15 text-[hsl(var(--warning))] border-warning/30",
- tailoring: "bg-warning/15 text-[hsl(var(--warning))] border-warning/30",
- drafting: "bg-warning/15 text-[hsl(var(--warning))] border-warning/30",
- scored: "bg-secondary/15 text-[hsl(var(--secondary))] border-secondary/30",
- applied: "bg-primary/15 text-[hsl(var(--primary))] border-primary/30",
- parse_failed: "bg-destructive/15 text-[hsl(var(--destructive))] border-destructive/30",
- ready: "bg-primary/15 text-[hsl(var(--primary))] border-primary/30",
- parsed: "bg-primary/15 text-[hsl(var(--primary))] border-primary/30",
- rejected: "bg-destructive/15 text-[hsl(var(--destructive))] border-destructive/30",
- archived: "bg-destructive/15 text-[hsl(var(--destructive))] border-destructive/30",
+  new: "bg-muted/40 text-foreground/80 border-border",
+  parsing: "bg-warning/15 text-warning border-warning/30",
+  tailoring: "bg-warning/15 text-warning border-warning/30",
+  drafting: "bg-warning/15 text-warning border-warning/30",
+  scored: "bg-secondary/15 text-secondary border-secondary/30",
+  applied: "bg-primary/15 text-primary border-primary/30",
+  parse_failed: "bg-destructive/15 text-destructive border-destructive/30",
+  ready: "bg-primary/15 text-primary border-primary/30",
+  parsed: "bg-primary/15 text-primary border-primary/30",
+  rejected: "bg-destructive/15 text-destructive border-destructive/30",
+  archived: "bg-destructive/15 text-destructive border-destructive/30",
 };
 
 const statusLabels: Record<string, string> = {
@@ -80,7 +81,7 @@ export default function JobDetail() {
  const draftCoverLetter = useDraftCoverLetter();
  const { toast } = useToast();
  const queryClient = useQueryClient();
- const navigate = useNavigate();
+ 
  const shouldReduceMotion = useReducedMotion();
 
  const researchJob = useMutation({
@@ -145,7 +146,7 @@ export default function JobDetail() {
  <h2 className="text-xl font-bold  text-foreground mb-2">Job not found</h2>
  <Link
  to="/jobs"
- className="text-[hsl(var(--primary))] hover:underline font-medium"
+ className="text-primary hover:underline font-medium"
  >
  Back to Jobs Pipeline
  </Link>
@@ -204,52 +205,35 @@ export default function JobDetail() {
  const scorePercent = score ? Math.round(score.score) : null;
 
  return (
- <div className="space-y-6">
- {/* Header */}
- <div>
- <button
- onClick={() => navigate("/jobs")}
- className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors font-medium"
- >
- <ArrowLeft className="h-4 w-4" /> Back to Jobs
- </button>
- <div className="flex items-start justify-between gap-4 flex-wrap">
- <div>
- <h1 className="text-[32px] leading-tight font-bold  text-foreground">
- {job.title}
- </h1>
- <div className="flex items-center gap-3 mt-2 text-muted-foreground flex-wrap">
- <span className="flex items-center gap-1.5">
- <Building className="h-4 w-4" />
- {job.company}
- </span>
- {job.location && (
- <span className="flex items-center gap-1.5">
- <MapPin className="h-4 w-4" />
- {job.location}
- </span>
- )}
- </div>
- </div>
- <div className="flex items-center gap-2 shrink-0">
- <StatusPill status={job.status} />
- {job.sourceUrl && (
- <Button variant="outline" size="sm" asChild data-testid="job-source-btn">
- <a href={job.sourceUrl} target="_blank" rel="noopener noreferrer">
- View Source <ExternalLink className="ml-2 h-3.5 w-3.5" />
- </a>
- </Button>
- )}
- </div>
- </div>
- </div>
+  <div className="space-y-6 p-6">
+  {/* Header */}
+  <Link
+  to="/jobs"
+  className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors font-medium"
+  >
+  <ArrowLeft className="h-4 w-4" /> Back to Jobs
+  </Link>
+  <PageHeader
+  title={job.title}
+  subtitle={[job.company, job.location].filter(Boolean).join(" · ")}
+  variant="hero"
+  >
+  <StatusPill status={job.status} />
+  {job.sourceUrl && (
+  <Button variant="outline" size="sm" asChild data-testid="job-source-btn">
+  <a href={job.sourceUrl} target="_blank" rel="noopener noreferrer">
+  View Source <ExternalLink className="ml-2 h-3.5 w-3.5" />
+  </a>
+  </Button>
+  )}
+  </PageHeader>
 
  {/* Score & Match card */}
  <motion.div
  initial={shouldReduceMotion ? {} : { opacity: 0, y: 12 }}
  animate={{ opacity: 1, y: 0 }}
  transition={{ duration: 0.4, delay: 0.05, ease: [0.22, 1, 0.36, 1] }}
- className="card-glass shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]"
+ className="card-glass"
  >
  <h2 className="text-lg font-bold  text-foreground mb-5">Score &amp; Match</h2>
 
@@ -289,10 +273,10 @@ export default function JobDetail() {
  strokeLinecap="round"
  className={cn(
  scorePercent! >= 70
- ? "text-[hsl(var(--primary))]"
+ ? "text-primary"
  : scorePercent! >= 40
- ? "text-[hsl(var(--warning))]"
- : "text-[hsl(var(--destructive))]"
+ ? "text-warning"
+ : "text-destructive"
  )}
  style={{ transition: "stroke-dashoffset 0.7s ease-out" }}
  />
@@ -311,13 +295,13 @@ export default function JobDetail() {
  <div className="flex items-center gap-2 mt-2">
  {score.passesHardFilters ? (
  <>
- <Check className="h-4 w-4 text-[hsl(var(--primary))]" />
- <span className="text-sm text-[hsl(var(--primary))] font-medium">Passes hard filters</span>
+ <Check className="h-4 w-4 text-primary" />
+ <span className="text-sm text-primary font-medium">Passes hard filters</span>
  </>
  ) : (
  <>
- <AlertCircle className="h-4 w-4 text-[hsl(var(--destructive))]" />
- <span className="text-sm text-[hsl(var(--destructive))] font-medium">Fails hard filters</span>
+ <AlertCircle className="h-4 w-4 text-destructive" />
+ <span className="text-sm text-destructive font-medium">Fails hard filters</span>
  </>
  )}
  </div>
@@ -330,7 +314,7 @@ export default function JobDetail() {
  {score.matchedSkills.map((skill, i) => (
  <span
  key={i}
- className="inline-flex items-center gap-1 text-xs font-medium rounded-full px-3 py-1 bg-primary/10 text-[hsl(var(--primary))] border border-primary/20"
+ className="inline-flex items-center gap-1 text-xs font-medium rounded-full px-3 py-1 bg-primary/10 text-primary border border-primary/20"
  >
  <Check className="h-3 w-3" />
  {skill}
@@ -347,7 +331,7 @@ export default function JobDetail() {
  {score.unmatchedRequiredSkills.map((skill, i) => (
  <span
  key={i}
- className="inline-flex items-center gap-1 text-xs font-medium rounded-full px-3 py-1 bg-destructive/10 text-[hsl(var(--destructive))] border border-destructive/20"
+ className="inline-flex items-center gap-1 text-xs font-medium rounded-full px-3 py-1 bg-destructive/10 text-destructive border border-destructive/20"
  >
  <X className="h-3 w-3" />
  {skill}
@@ -364,7 +348,7 @@ export default function JobDetail() {
  {score.matchedNiceToHaveSkills.map((skill, i) => (
  <span
  key={i}
- className="inline-flex items-center gap-1 text-xs font-medium rounded-full px-3 py-1 bg-secondary/10 text-[hsl(var(--secondary))] border border-secondary/20"
+ className="inline-flex items-center gap-1 text-xs font-medium rounded-full px-3 py-1 bg-secondary/10 text-secondary border border-secondary/20"
  >
  <Check className="h-3 w-3" />
  {skill}
@@ -390,7 +374,7 @@ export default function JobDetail() {
  initial={shouldReduceMotion ? {} : { opacity: 0, y: 12 }}
  animate={{ opacity: 1, y: 0 }}
  transition={{ duration: 0.4, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
- className="card-glass shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]"
+ className="card-glass"
  >
  <h2 className="text-lg font-bold  text-foreground mb-4">AI Actions</h2>
  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -440,30 +424,30 @@ export default function JobDetail() {
  animate={{ opacity: 1, y: 0 }}
  transition={{ duration: 0.4, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
  >
- <div className="card-glass shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
+ <div className="card-glass">
  <Tabs defaultValue="jd" className="w-full">
  <TabsList className="w-full justify-start gap-1 bg-transparent border-b border-border pb-0 mb-0 rounded-none h-auto">
  <TabsTrigger
  value="jd"
- className="data-[state=active]:border-b-2 data-[state=active]:border-[hsl(var(--primary))] data-[state=active]:text-[hsl(var(--primary))] rounded-none px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+ className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
  >
  Job Description
  </TabsTrigger>
  <TabsTrigger
  value="parsed"
- className="data-[state=active]:border-b-2 data-[state=active]:border-[hsl(var(--primary))] data-[state=active]:text-[hsl(var(--primary))] rounded-none px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+ className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
  >
  Parsed Data
  </TabsTrigger>
  <TabsTrigger
  value="research"
- className="data-[state=active]:border-b-2 data-[state=active]:border-[hsl(var(--primary))] data-[state=active]:text-[hsl(var(--primary))] rounded-none px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+ className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
  >
  Research
  </TabsTrigger>
  <TabsTrigger
  value="claims"
- className="data-[state=active]:border-b-2 data-[state=active]:border-[hsl(var(--primary))] data-[state=active]:text-[hsl(var(--primary))] rounded-none px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+ className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
  >
  Claim Matches
  </TabsTrigger>
@@ -485,7 +469,7 @@ export default function JobDetail() {
  {job.parsedRequiredSkills.map((skill, i) => (
  <span
  key={i}
- className="inline-flex items-center text-xs font-medium rounded-full px-3 py-1 bg-primary/10 text-[hsl(var(--primary))] border border-primary/20"
+ className="inline-flex items-center text-xs font-medium rounded-full px-3 py-1 bg-primary/10 text-primary border border-primary/20"
  >
  {skill}
  </span>
@@ -499,7 +483,7 @@ export default function JobDetail() {
  {job.parsedNiceToHaveSkills.map((skill, i) => (
  <span
  key={i}
- className="inline-flex items-center text-xs font-medium rounded-full px-3 py-1 bg-secondary/10 text-[hsl(var(--secondary))] border border-secondary/20"
+ className="inline-flex items-center text-xs font-medium rounded-full px-3 py-1 bg-secondary/10 text-secondary border border-secondary/20"
  >
  {skill}
  </span>
@@ -534,19 +518,19 @@ export default function JobDetail() {
  <div className="space-y-6 text-sm">
  {typeof rd.companyOverview === "string" && (
  <div>
- <h4 className="font-semibold text-lg mb-1 text-[hsl(var(--primary))]">Company Overview</h4>
+ <h4 className="font-semibold text-lg mb-1 text-primary">Company Overview</h4>
  <p className="text-muted-foreground leading-relaxed">{rd.companyOverview}</p>
  </div>
  )}
  {typeof rd.recentNewsOrProjects === "string" && (
  <div>
- <h4 className="font-semibold text-lg mb-1 text-[hsl(var(--primary))]">Recent News</h4>
+ <h4 className="font-semibold text-lg mb-1 text-primary">Recent News</h4>
  <p className="text-muted-foreground leading-relaxed">{rd.recentNewsOrProjects}</p>
  </div>
  )}
  {typeof rd.interviewStrategy === "string" && (
  <div>
- <h4 className="font-semibold text-lg mb-1 text-[hsl(var(--primary))]">Interview Strategy</h4>
+ <h4 className="font-semibold text-lg mb-1 text-primary">Interview Strategy</h4>
  <p className="text-muted-foreground leading-relaxed">{rd.interviewStrategy}</p>
  </div>
  )}
@@ -571,12 +555,12 @@ export default function JobDetail() {
  ) : claimMatches && claimMatches.length > 0 ? (
  <div className="space-y-3">
  {claimMatches.map((match, i) => (
- <div key={i} className="p-4 rounded-xl border border-border/70 bg-card/50 backdrop-blur-md space-y-2 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
+  <div key={i} className="card-glass p-4 space-y-2">
  <div className="flex items-start justify-between gap-2">
  <p className="text-sm font-medium leading-snug flex-1 text-foreground">
  {match.claim.summary}
  </p>
- <span className="text-xs font-bold rounded-full px-2 py-0.5 bg-primary/10 text-[hsl(var(--primary))] border border-primary/20 shrink-0">
+ <span className="text-xs font-bold rounded-full px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 shrink-0">
  {match.score} pts
  </span>
  </div>
@@ -585,7 +569,7 @@ export default function JobDetail() {
  {match.matchedKeywords.slice(0, 5).map((kw, ki) => (
  <span
  key={ki}
- className="inline-flex items-center gap-1 text-[10px] bg-primary/10 text-[hsl(var(--primary))] rounded-full px-2 py-0.5"
+ className="inline-flex items-center gap-1 text-[10px] bg-primary/10 text-primary rounded-full px-2 py-0.5"
  >
  <Tag className="h-2.5 w-2.5" />
  {kw}
