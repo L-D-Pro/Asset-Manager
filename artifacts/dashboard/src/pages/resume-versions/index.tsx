@@ -4,6 +4,7 @@ import {
   useRejectResumeVersion,
   useUpdateResumeVersion,
   useDeleteResumeVersion,
+  deleteResumeVersion,
   getListResumeVersionsQueryKey,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -258,6 +259,7 @@ export default function ResumeVersionsPage() {
   const [decisions, setDecisions] = useState<Record<number, VersionDecisions>>({});
   const [expandedVersions, setExpandedVersions] = useState<Set<number>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
+  const [showBulkDelete, setShowBulkDelete] = useState(false);
 
   const toggleVersion = (id: number) => {
     setExpandedVersions(prev => {
@@ -350,13 +352,38 @@ export default function ResumeVersionsPage() {
     });
   };
 
+  const handleBulkDelete = async () => {
+    const toDelete = versions?.filter(v => v.status !== 'approved') ?? [];
+    if (toDelete.length === 0) {
+      setShowBulkDelete(false);
+      return;
+    }
+    try {
+      await Promise.all(toDelete.map(v => deleteResumeVersion(v.id)));
+      toast({ title: `Deleted ${toDelete.length} resume version${toDelete.length !== 1 ? 's' : ''}` });
+      queryClient.invalidateQueries({ queryKey: getListResumeVersionsQueryKey() });
+    } catch (error) {
+      toast({
+        title: "Failed to delete some resume versions",
+        description: getErrorMessage(error, "Please try again."),
+        variant: "destructive",
+      });
+    } finally {
+      setShowBulkDelete(false);
+    }
+  };
+
  return (
   <div className="space-y-6">
- <PageHeader
- title="Resume Queue"
- subtitle="Review each individual change before approving. Accepted/rejected bullet decisions are recorded on the version record before approval."
- variant="workflow"
- />
+      <PageHeader
+        title="Resume Queue"
+        subtitle="Review each individual change before approving. Accepted/rejected bullet decisions are recorded on the version record before approval."
+        variant="workflow"
+      >
+        <Button variant="outline" size="sm" onClick={() => setShowBulkDelete(true)}>
+          <Trash2 className="mr-1 h-4 w-4" /> Clean Up
+        </Button>
+      </PageHeader>
  <div className="grid gap-4">
  {isLoading ? (
  <><Skeleton className="h-28 w-full rounded-lg" /><Skeleton className="h-28 w-full rounded-lg" /></>
@@ -376,7 +403,7 @@ export default function ResumeVersionsPage() {
  versions?.map((version) => {
  const diffData = version.diffData as DiffData | null | undefined;
  const hasDiff = diffData && hasDiffContent(diffData);
- const hasDocument = Boolean(version.tailoredDocumentText);
+  const hasDocument = Boolean(version.tailoredDocumentText || version.rawContent);
  const shouldShowReview = hasDiff || hasDocument;
  const versionDecisions = hasDiff ? getDecisions(version.id, diffData) : {};
  const totalDecisions = Object.keys(versionDecisions).length;
@@ -490,7 +517,7 @@ export default function ResumeVersionsPage() {
                   <div className="px-5 pt-4 pb-5 space-y-3">
                     {expandedVersions.has(version.id) && (
                       <DocumentPreview
-                        content={version.tailoredDocumentText}
+                        content={version.tailoredDocumentText || version.rawContent}
                         baseResumeVersionId={version.baseResumeVersionId}
                       />
                     )}
@@ -542,6 +569,27 @@ export default function ResumeVersionsPage() {
               disabled={deleteVersion.isPending}
             >
               {deleteVersion.isPending ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showBulkDelete} onOpenChange={setShowBulkDelete}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Clean Up Resume Versions</DialogTitle>
+            <DialogDescription>
+              This will permanently delete all rejected and pending resume versions. Approved versions will be kept.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowBulkDelete(false)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={handleBulkDelete}
+              data-testid="btn-confirm-bulk-delete"
+            >
+              Delete All Rejected/Pending
             </Button>
           </DialogFooter>
         </DialogContent>
