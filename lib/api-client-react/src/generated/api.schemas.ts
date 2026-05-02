@@ -205,6 +205,84 @@ export interface JobScoreResult {
   matchedNiceToHaveSkills: string[];
 }
 
+export type SkillMatchMatchType =
+  (typeof SkillMatchMatchType)[keyof typeof SkillMatchMatchType];
+
+export const SkillMatchMatchType = {
+  exact: "exact",
+  synonym: "synonym",
+  related: "related",
+  missing: "missing",
+} as const;
+
+export interface SkillMatch {
+  skill: string;
+  resumeEvidence: string;
+  jobRequired: boolean;
+  matchType: SkillMatchMatchType;
+}
+
+export interface ExperienceMatch {
+  category: string;
+  resumeYears: number;
+  jobRequiredYears: number;
+  matchScore: number;
+}
+
+export type EducationMatchMatchType =
+  (typeof EducationMatchMatchType)[keyof typeof EducationMatchMatchType];
+
+export const EducationMatchMatchType = {
+  exact: "exact",
+  equivalent: "equivalent",
+  partial: "partial",
+  missing: "missing",
+} as const;
+
+export interface EducationMatch {
+  resumeEducation: string;
+  jobRequiredEducation: string;
+  matchType: EducationMatchMatchType;
+  equivalents: string[];
+}
+
+export interface KeywordMatch {
+  term: string;
+  found: boolean;
+  /** @nullable */
+  context?: string | null;
+}
+
+export interface ScoreBreakdown {
+  skillsScore: number;
+  experienceScore: number;
+  educationScore: number;
+  keywordScore: number;
+}
+
+export interface MatchSummary {
+  skills: SkillMatch[];
+  experience: ExperienceMatch[];
+  education: EducationMatch[];
+  keywords: KeywordMatch[];
+}
+
+export interface GapSummary {
+  missingSkills: string[];
+  missingExperience: string[];
+  missingEducation: string[];
+  missingKeywords: string[];
+}
+
+export interface ResumeScoreResult {
+  overallScore: number;
+  breakdown: ScoreBreakdown;
+  matches: MatchSummary;
+  gaps: GapSummary;
+  suggestions: string[];
+  semanticRationale: string;
+}
+
 export interface Claim {
   id: number;
   summary: string;
@@ -1621,6 +1699,10 @@ export type ScoreJobParams = {
    * Override the role profile to score against. Defaults to the job's linked roleProfileId.
    */
   roleProfileId?: number;
+  /**
+   * If true, score the user's base resume against the job semantically instead of scoring the job against a role profile.
+   */
+  useResume?: boolean;
 };
 
 export type ListClaimsParams = {

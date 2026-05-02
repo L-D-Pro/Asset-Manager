@@ -334,6 +334,12 @@ export const ScoreJobQueryParams = zod.object({
     .describe(
       "Override the role profile to score against. Defaults to the job's linked roleProfileId.",
     ),
+  useResume: zod.coerce
+    .boolean()
+    .optional()
+    .describe(
+      "If true, score the user's base resume against the job semantically instead of scoring the job against a role profile.",
+    ),
 });
 
 export const ScoreJobResponse = zod.object({
@@ -345,6 +351,64 @@ export const ScoreJobResponse = zod.object({
   matchedSkills: zod.array(zod.string()),
   unmatchedRequiredSkills: zod.array(zod.string()),
   matchedNiceToHaveSkills: zod.array(zod.string()),
+});
+
+/**
+ * @summary Score the user's base resume semantically against a job
+ */
+export const ResumeScoreParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ResumeScoreResponse = zod.object({
+  overallScore: zod.number(),
+  breakdown: zod.object({
+    skillsScore: zod.number(),
+    experienceScore: zod.number(),
+    educationScore: zod.number(),
+    keywordScore: zod.number(),
+  }),
+  matches: zod.object({
+    skills: zod.array(
+      zod.object({
+        skill: zod.string(),
+        resumeEvidence: zod.string(),
+        jobRequired: zod.boolean(),
+        matchType: zod.enum(["exact", "synonym", "related", "missing"]),
+      }),
+    ),
+    experience: zod.array(
+      zod.object({
+        category: zod.string(),
+        resumeYears: zod.number(),
+        jobRequiredYears: zod.number(),
+        matchScore: zod.number(),
+      }),
+    ),
+    education: zod.array(
+      zod.object({
+        resumeEducation: zod.string(),
+        jobRequiredEducation: zod.string(),
+        matchType: zod.enum(["exact", "equivalent", "partial", "missing"]),
+        equivalents: zod.array(zod.string()),
+      }),
+    ),
+    keywords: zod.array(
+      zod.object({
+        term: zod.string(),
+        found: zod.boolean(),
+        context: zod.string().nullish(),
+      }),
+    ),
+  }),
+  gaps: zod.object({
+    missingSkills: zod.array(zod.string()),
+    missingExperience: zod.array(zod.string()),
+    missingEducation: zod.array(zod.string()),
+    missingKeywords: zod.array(zod.string()),
+  }),
+  suggestions: zod.array(zod.string()),
+  semanticRationale: zod.string(),
 });
 
 /**

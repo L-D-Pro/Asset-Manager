@@ -11,4 +11,8 @@ export type ScoreJobParams = {
    * Override the role profile to score against. Defaults to the job's linked roleProfileId.
    */
   roleProfileId?: number;
+  /**
+   * If true, score the user's base resume against the job semantically instead of scoring the job against a role profile.
+   */
+  useResume?: boolean;
 };

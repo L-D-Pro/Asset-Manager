@@ -331,6 +331,12 @@ paths:
           schema:
             type: integer
           description: Override the role profile to score against. Defaults to the job's linked roleProfileId.
+        - name: useResume
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: If true, score the user's base resume against the job semantically instead of scoring the job against a role profile.
       responses:
         "200":
           description: Job score result
@@ -338,6 +344,25 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/JobScoreResult"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /jobs/{id}/resume-score:
+    post:
+      operationId: resumeScore
+      tags: [jobs]
+      summary: Score the user's base resume semantically against a job
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Semantic resume scoring result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResumeScoreResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "404":
           $ref: "#/components/responses/NotFound"
 
@@ -2304,6 +2329,166 @@ components:
         - matchedSkills
         - unmatchedRequiredSkills
         - matchedNiceToHaveSkills
+
+    SkillMatch:
+      type: object
+      properties:
+        skill:
+          type: string
+        resumeEvidence:
+          type: string
+        jobRequired:
+          type: boolean
+        matchType:
+          type: string
+          enum: [exact, synonym, related, missing]
+      required:
+        - skill
+        - resumeEvidence
+        - jobRequired
+        - matchType
+
+    ExperienceMatch:
+      type: object
+      properties:
+        category:
+          type: string
+        resumeYears:
+          type: number
+        jobRequiredYears:
+          type: number
+        matchScore:
+          type: number
+      required:
+        - category
+        - resumeYears
+        - jobRequiredYears
+        - matchScore
+
+    EducationMatch:
+      type: object
+      properties:
+        resumeEducation:
+          type: string
+        jobRequiredEducation:
+          type: string
+        matchType:
+          type: string
+          enum: [exact, equivalent, partial, missing]
+        equivalents:
+          type: array
+          items:
+            type: string
+      required:
+        - resumeEducation
+        - jobRequiredEducation
+        - matchType
+        - equivalents
+
+    KeywordMatch:
+      type: object
+      properties:
+        term:
+          type: string
+        found:
+          type: boolean
+        context:
+          type: ["string", "null"]
+      required:
+        - term
+        - found
+
+    ScoreBreakdown:
+      type: object
+      properties:
+        skillsScore:
+          type: number
+        experienceScore:
+          type: number
+        educationScore:
+          type: number
+        keywordScore:
+          type: number
+      required:
+        - skillsScore
+        - experienceScore
+        - educationScore
+        - keywordScore
+
+    MatchSummary:
+      type: object
+      properties:
+        skills:
+          type: array
+          items:
+            $ref: "#/components/schemas/SkillMatch"
+        experience:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExperienceMatch"
+        education:
+          type: array
+          items:
+            $ref: "#/components/schemas/EducationMatch"
+        keywords:
+          type: array
+          items:
+            $ref: "#/components/schemas/KeywordMatch"
+      required:
+        - skills
+        - experience
+        - education
+        - keywords
+
+    GapSummary:
+      type: object
+      properties:
+        missingSkills:
+          type: array
+          items:
+            type: string
+        missingExperience:
+          type: array
+          items:
+            type: string
+        missingEducation:
+          type: array
+          items:
+            type: string
+        missingKeywords:
+          type: array
+          items:
+            type: string
+      required:
+        - missingSkills
+        - missingExperience
+        - missingEducation
+        - missingKeywords
+
+    ResumeScoreResult:
+      type: object
+      properties:
+        overallScore:
+          type: number
+        breakdown:
+          $ref: "#/components/schemas/ScoreBreakdown"
+        matches:
+          $ref: "#/components/schemas/MatchSummary"
+        gaps:
+          $ref: "#/components/schemas/GapSummary"
+        suggestions:
+          type: array
+          items:
+            type: string
+        semanticRationale:
+          type: string
+      required:
+        - overallScore
+        - breakdown
+        - matches
+        - gaps
+        - suggestions
+        - semanticRationale
 
     ClaimMatch:
       type: object

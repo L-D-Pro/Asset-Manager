@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import type { JobOpsRequest } from "../lib/http-types";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import {
   db,
   eventLogsTable,
@@ -9,6 +9,7 @@ import {
   claimsTable,
   resumeVersionsTable,
   coverLetterVersionsTable,
+  baseResumeVersionsTable,
 } from "@workspace/db";
 import {
   ListJobsQueryParams,
@@ -36,6 +37,7 @@ import {
   GetCoverLetterVersionResponse,
 } from "@workspace/api-zod";
 import { scoreJobAgainstProfile, matchClaimsToJob } from "../lib/scoring";
+import { scoreResumeAgainstJob } from "../lib/semantic-scoring";
 import { runJdParsePipeline } from "../lib/pipelines/jd-parse";
 import {
   runResumeTailorPipeline,
@@ -176,6 +178,28 @@ router.get("/jobs/:id/score", async (req, res): Promise<void> => {
     .where(eq(jobsTable.id, params.data.id));
   if (!job) {
     res.status(404).json({ error: "Job not found" });
+    return;
+  }
+
+  if (queryParams.data.useResume) {
+    const [latestResume] = await db
+      .select()
+      .from(baseResumeVersionsTable)
+      .where(eq(baseResumeVersionsTable.isCurrent, true))
+      .orderBy(desc(baseResumeVersionsTable.createdAt))
+      .limit(1);
+
+    if (!latestResume) {
+      res.status(400).json({ error: "No current resume found. Please upload a base resume first." });
+      return;
+    }
+
+    const result = await scoreResumeAgainstJob(latestResume.contentText, job);
+    req.log.info(
+      { jobId: job.id, overallScore: result.overallScore },
+      "Job scored using resume semantic scoring",
+    );
+    res.json(result);
     return;
   }
 

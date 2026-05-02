@@ -29,3 +29,4 @@ export * from "./job-board";
 export * from "./ui-shell-configs";
 export * from "./gamification";
 export * from "./user-onboarding";
+export * from "./best-practices";

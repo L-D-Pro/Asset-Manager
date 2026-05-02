@@ -92,6 +92,7 @@ import type {
   ProposalVersion,
   ResearchTrendsBody,
   ResearchTrendsResponse,
+  ResumeScoreResult,
   ResumeVersion,
   RoleProfile,
   ScoreJobParams,
@@ -1552,6 +1553,92 @@ export function useScoreJob<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Score the user's base resume semantically against a job
+ */
+export const getResumeScoreUrl = (id: number) => {
+  return `/api/jobs/${id}/resume-score`;
+};
+
+export const resumeScore = async (
+  id: number,
+  options?: RequestInit,
+): Promise<ResumeScoreResult> => {
+  return customFetch<ResumeScoreResult>(getResumeScoreUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getResumeScoreMutationOptions = <
+  TError = ErrorType<BadRequestResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resumeScore>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof resumeScore>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["resumeScore"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof resumeScore>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return resumeScore(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ResumeScoreMutationResult = NonNullable<
+  Awaited<ReturnType<typeof resumeScore>>
+>;
+
+export type ResumeScoreMutationError = ErrorType<
+  BadRequestResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Score the user's base resume semantically against a job
+ */
+export const useResumeScore = <
+  TError = ErrorType<BadRequestResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resumeScore>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof resumeScore>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getResumeScoreMutationOptions(options));
+};
 
 /**
  * @summary Parse job description with AI

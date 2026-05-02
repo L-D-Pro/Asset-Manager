@@ -27,6 +27,10 @@ import jobBoardRouter from "./job-board";
 import uiShellConfigsRouter from "./ui-shell-configs";
 import gamificationRouter from "./gamification";
 import onboardingRouter from "./onboarding";
+import bestPracticesRouter from "./best-practices";
+
+import resumeToProfileRouter from "./resume-to-profile";
+import resumeScoringRouter from "./resume-scoring";
 
 /**
  * Root API router. Aggregates all entity-specific sub-routers and mounts them
@@ -58,8 +62,9 @@ router.use(growthRouter);
 
 // Protected routes — require a valid authenticated session
 router.use(requireAuth);
-router.use(roleProfilesRouter);
-router.use(baseResumeRouter);
+  router.use(roleProfilesRouter);
+  router.use(resumeToProfileRouter);
+  router.use(baseResumeRouter);
 router.use(jobsRouter);
 router.use(claimsRouter);
 router.use(resumeVersionsRouter);
@@ -81,5 +86,7 @@ router.use(jobBoardRouter);
 router.use(uiShellConfigsRouter);
 router.use(gamificationRouter);
 router.use(onboardingRouter);
+router.use(bestPracticesRouter);
+router.use(resumeToProfileRouter);
 
 export default router;

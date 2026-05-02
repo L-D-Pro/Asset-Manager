@@ -704,3 +704,17 @@ CREATE TABLE IF NOT EXISTS user_onboarding_state (
 );
 
 CREATE INDEX IF NOT EXISTS user_onboarding_state_user_id_idx ON user_onboarding_state(user_id);
+
+-- Best Practices Configuration Table
+CREATE TABLE IF NOT EXISTS best_practices (
+    id SERIAL PRIMARY KEY,
+    domain TEXT NOT NULL DEFAULT 'general',
+    title TEXT NOT NULL DEFAULT 'Resume Best Practices',
+    items JSONB NOT NULL DEFAULT '[]'::jsonb,
+    hardcoded_guards JSONB NOT NULL DEFAULT '{}'::jsonb,
+    last_refreshed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS best_practices_domain_idx ON best_practices(domain);
