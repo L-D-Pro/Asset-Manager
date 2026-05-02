@@ -1,9 +1,8 @@
 import { useListCoverLetterVersions, useApproveCoverLetterVersion, useRejectCoverLetterVersion, useUpdateCoverLetterVersion, useListClaims, getListCoverLetterVersionsQueryKey, type CoverLetterVersion } from "@workspace/api-client-react";
-import { CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+
 import { PageHeader } from "@/components/ui/page-header";
 import { ContentCard } from "@/components/ui/content-card";
 import { MessageSquare, Check, X, Tag, RotateCcw, ExternalLink } from "lucide-react";
@@ -116,8 +115,8 @@ export default function CoverLettersPage() {
  <Skeleton className="h-56 w-full rounded-lg" />
  </>
  ) : versions?.length === 0 ? (
-  <ContentCard className="shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
-  <div className="flex flex-col items-center justify-center p-12 text-center">
+  <ContentCard>
+  <div className="flex flex-col items-center justify-center py-12 text-center">
  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-muted text-muted-foreground mb-4 border border-border">
  <MessageSquare className="h-8 w-8" />
  </div>
@@ -131,12 +130,11 @@ export default function CoverLettersPage() {
  versions?.map((version) => {
  const annotations = parseAnnotations(version);
  return (
-  <ContentCard key={version.id} data-testid={`card-cl-${version.id}`} className="p-0 rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
- <CardHeader className="pb-3">
- <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
- <div className="space-y-1">
- <div className="flex items-center gap-2 flex-wrap">
- <CardTitle>Cover Letter #{version.id}</CardTitle>
+  <ContentCard key={version.id} data-testid={`card-cl-${version.id}`}>
+  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-6 pb-3">
+  <div className="space-y-1">
+  <div className="flex items-center gap-2 flex-wrap">
+  <h3 className="text-lg font-semibold text-card-foreground">Cover Letter #{version.id}</h3>
  <Badge variant={
  version.status === "pending_approval" ? "secondary" :
  version.status === "approved" ? "default" : "destructive"
@@ -144,12 +142,12 @@ export default function CoverLettersPage() {
  {version.status.replace("_", " ")}
  </Badge>
  </div>
- <CardDescription>
- {version.jobId && (
- <>For <Link to={`/jobs/${version.jobId}`} className="text-primary hover:underline">Job #{version.jobId}</Link>{" "}&mdash;{" "}</>
- )}
- {annotations ? `${annotations.length} annotated paragraph${annotations.length !== 1 ? "s" : ""}` : "Full draft view"}
- </CardDescription>
+  <p className="text-sm text-muted-foreground">
+  {version.jobId && (
+  <>For <Link to={`/jobs/${version.jobId}`} className="text-primary hover:underline">Job #{version.jobId}</Link>{" "}&mdash;{" "}</>
+  )}
+  {annotations ? `${annotations.length} annotated paragraph${annotations.length !== 1 ? "s" : ""}` : "Full draft view"}
+  </p>
  </div>
 
  {version.status === "pending_approval" && (
@@ -192,12 +190,11 @@ export default function CoverLettersPage() {
  </Button>
  </div>
  )}
- </div>
- </CardHeader>
+  </div>
 
- <Separator />
+  <div className="border-t border-border/50" />
 
- <CardContent className="pt-4 space-y-4">
+  <div className="p-6 pt-4 space-y-4">
  {annotations ? (
  <div className="space-y-3">
  {annotations.map((para, i) => (
@@ -237,8 +234,8 @@ export default function CoverLettersPage() {
  {version.draftContent || "No content generated yet."}
  </div>
  )}
- </CardContent>
- </ContentCard>
+  </div>
+  </ContentCard>
  );
  })
  )}

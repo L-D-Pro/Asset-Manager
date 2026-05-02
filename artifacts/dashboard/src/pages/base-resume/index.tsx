@@ -150,7 +150,7 @@ export default function BaseResumePage() {
  />
 
  <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_360px]">
- <ContentCard className="rounded-2xl bg-card/50 backdrop-blur-md shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
+  <ContentCard>
  <CardHeader className="space-y-3">
  <div className="flex items-start justify-between gap-4">
  <div>
@@ -192,7 +192,7 @@ export default function BaseResumePage() {
  ) : null}
  </CardHeader>
  <CardContent className="space-y-4">
- <div className="rounded-md border bg-muted/30 p-4 space-y-3">
+  <div className="rounded-xl bg-surface/50 p-4 space-y-3 border border-border/30">
  <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
  <div className="flex-1 space-y-2">
  <label className="text-sm font-medium" htmlFor="base-resume-upload">
@@ -245,7 +245,7 @@ export default function BaseResumePage() {
  </CardContent>
  </ContentCard>
 
- <ContentCard className="rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
+  <ContentCard>
  <CardHeader>
  <CardTitle className="flex items-center gap-2 text-foreground">
  <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10">
@@ -265,7 +265,7 @@ export default function BaseResumePage() {
  <Skeleton className="h-20 w-full" />
  </div>
  ) : history.length === 0 ? (
- <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
+  <div className="rounded-xl border border-border/30 border-dashed p-6 text-center text-sm text-muted-foreground bg-surface/30">
  No saved resume versions yet.
  </div>
  ) : (
@@ -274,7 +274,7 @@ export default function BaseResumePage() {
  {history.map((version) => (
  <div
  key={version.id}
- className="rounded-md border bg-card/50 backdrop-blur-md p-3 space-y-3 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]"
+  className="card-glass p-4 space-y-3"
  data-testid={`card-base-resume-history-${version.id}`}
  >
  <div className="flex items-start justify-between gap-3">
