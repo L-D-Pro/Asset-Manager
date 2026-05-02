@@ -32,16 +32,16 @@ const ENABLE_APPLY_WIZARD = import.meta.env.VITE_ENABLE_APPLY_WIZARD === "true";
 
 const statusStyles: Record<string, string> = {
   new: "bg-muted/40 text-foreground/80 border-border",
-  parsing: "bg-warning/15 text-[hsl(var(--warning))] border-warning/30",
-  tailoring: "bg-warning/15 text-[hsl(var(--warning))] border-warning/30",
-  drafting: "bg-warning/15 text-[hsl(var(--warning))] border-warning/30",
-  scored: "bg-secondary/15 text-[hsl(var(--secondary))] border-secondary/30",
-  applied: "bg-primary/15 text-[hsl(var(--primary))] border-primary/30",
-  parse_failed: "bg-destructive/15 text-[hsl(var(--destructive))] border-destructive/30",
-  ready: "bg-primary/15 text-[hsl(var(--primary))] border-primary/30",
-  parsed: "bg-primary/15 text-[hsl(var(--primary))] border-primary/30",
-  rejected: "bg-destructive/15 text-[hsl(var(--destructive))] border-destructive/30",
-  archived: "bg-destructive/15 text-[hsl(var(--destructive))] border-destructive/30",
+  parsing: "bg-warning/15 text-warning border-warning/30",
+  tailoring: "bg-warning/15 text-warning border-warning/30",
+  drafting: "bg-warning/15 text-warning border-warning/30",
+  scored: "bg-secondary/15 text-secondary border-secondary/30",
+  applied: "bg-primary/15 text-primary border-primary/30",
+  parse_failed: "bg-destructive/15 text-destructive border-destructive/30",
+  ready: "bg-primary/15 text-primary border-primary/30",
+  parsed: "bg-primary/15 text-primary border-primary/30",
+  rejected: "bg-destructive/15 text-destructive border-destructive/30",
+  archived: "bg-destructive/15 text-destructive border-destructive/30",
 };
 
 const statusLabels: Record<string, string> = {
@@ -88,10 +88,10 @@ function ScoreDot({ jobId, roleProfileId }: { jobId: number; roleProfileId?: num
   const pct = Math.round(score.score);
   const colorClass =
   pct >= 70
-  ? "text-[hsl(var(--primary))] bg-primary/10"
+  ? "text-primary bg-primary/10"
   : pct >= 40
-  ? "text-[hsl(var(--warning))] bg-warning/10"
-  : "text-[hsl(var(--destructive))] bg-destructive/10";
+  ? "text-warning bg-warning/10"
+  : "text-destructive bg-destructive/10";
 
   return (
   <span
