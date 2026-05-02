@@ -135,15 +135,15 @@ export default function RegisterPage() {
   <div className="card-glass p-8">
   <div className="text-center mb-6">
   <h1 className="text-2xl font-bold gradient-text">Job Ops</h1>
-  <p className="text-muted text-sm mt-1">Create Account</p>
+  <p className="text-muted-foreground text-sm mt-1">Create Account</p>
   </div>
  <div className="text-center space-y-4">
  <CheckCircle className="h-12 w-12 text-success mx-auto" />
  <h3 className="text-lg font-semibold text-foreground">Check your email</h3>
- <p className="text-muted text-sm">
- We sent a verification link to <strong>{email}</strong>. Click it to activate your account, then sign in.
- </p>
- <p className="text-xs text-muted">
+  <p className="text-muted-foreground text-sm">
+  We sent a verification link to <strong>{email}</strong>. Click it to activate your account, then sign in.
+  </p>
+  <p className="text-xs text-muted-foreground">
  Didn't get it? Check spam or try signing in — you can request a new verification email.
  </p>
  <Button variant="outline" className="w-full" onClick={() => navigate("/login")}>
@@ -162,7 +162,7 @@ export default function RegisterPage() {
   <div className="card-glass p-8">
   <div className="text-center mb-6">
   <h1 className="text-2xl font-bold gradient-text">Job Ops</h1>
-  <p className="text-muted text-sm mt-1">Get started with Job Ops</p>
+  <p className="text-muted-foreground text-sm mt-1">Get started with Job Ops</p>
   </div>
 
  <CardHeader className="pb-4">

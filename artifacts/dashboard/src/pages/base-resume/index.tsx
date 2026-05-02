@@ -160,7 +160,7 @@ export default function BaseResumePage() {
  </div>
  Current Resume Text
  </CardTitle>
- <CardDescription className="mt-1 text-muted">
+  <CardDescription className="mt-1 text-muted-foreground">
  Paste or edit your canonical plain-text resume here. Each save creates a new immutable version.
  </CardDescription>
  </div>

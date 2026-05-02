@@ -82,7 +82,7 @@ export default function LoginPage() {
   <div className="card-glass p-8">
  <div className="text-center mb-6">
  <h1 className="text-2xl font-bold gradient-text">Job Ops</h1>
- <p className="text-muted text-sm mt-1">Sign in to your account</p>
+  <p className="text-muted-foreground text-sm mt-1">Sign in to your account</p>
  </div>
 
  <AnimatePresence mode="wait">

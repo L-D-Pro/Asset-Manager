@@ -40,7 +40,7 @@ export default function VerifyEmailPage() {
   <div className="p-8">
  <div className="text-center mb-6">
  <h1 className="text-2xl font-bold gradient-text">Job Ops</h1>
- <p className="text-muted text-sm mt-1">Check your inbox for a verification link</p>
+  <p className="text-muted-foreground text-sm mt-1">Check your inbox for a verification link</p>
  </div>
 
  <CardHeader className="text-center">

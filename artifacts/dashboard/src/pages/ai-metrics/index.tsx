@@ -173,7 +173,7 @@ function TaskScopePanel({ scope, windowStart, windowEnd }: { scope: TaskScope; w
  </AlertTitle>
  <AlertDescription>
  Best prompt ({lift.best.promptVersionId}) vs baseline ({lift.baseline.promptVersionId}): approval Δ{" "}
- <span className={cn(lift.deltaApprovalRate !== null && lift.deltaApprovalRate > 0 ? "text-success" : "text-muted")}> 
+ <span className={cn(lift.deltaApprovalRate !== null && lift.deltaApprovalRate > 0 ? "text-success" : "text-muted-foreground")}> 
  {formatPercent(lift.deltaApprovalRate)}
  </span>
  , edit distance Δ {formatNumber(lift.deltaAvgEditDistance)}.

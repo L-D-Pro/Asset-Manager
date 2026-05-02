@@ -71,7 +71,7 @@ export default function TrendsPage() {
  <TrendingUp className="h-6 w-6 text-primary" />
  <h1 className="text-4xl font-bold font-[family-name:var(--font-heading)] text-foreground">Market Trends</h1>
  </div>
- <p className="text-muted text-lg mb-4">
+  <p className="text-muted-foreground text-lg mb-4">
  AI-powered market analysis to understand demand, skills, salaries, and
  certifications for any job role.
  </p>

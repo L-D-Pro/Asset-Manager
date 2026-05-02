@@ -1,5 +1,7 @@
 import { useListApplications, useCreateApplication, useUpdateApplication, getListApplicationsQueryKey, type Application } from "@workspace/api-client-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { CardContent } from "@/components/ui/card";
+import { ContentCard } from "@/components/ui/content-card";
+import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -118,7 +120,7 @@ export default function ApplicationsPage() {
  <div className="flex justify-between items-center">
  <div>
  <h1 className="text-4xl font-bold font-[family-name:var(--font-heading)] text-foreground">Applications</h1>
- <p className="text-muted text-lg">Track submitted applications and pipeline stage.</p>
+  <p className="text-muted-foreground text-lg">Track submitted applications and pipeline stage.</p>
  </div>
 
  <Dialog open={isDialogOpen} onOpenChange={(open) => { if(!open) handleClose(); else setIsDialogOpen(true); }}>
@@ -240,9 +242,9 @@ export default function ApplicationsPage() {
  </>
  ) : applications?.length === 0 ? (
  <div className="card-glass flex flex-col items-center justify-center p-12 text-center shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
- <Activity className="h-12 w-12 text-muted mb-4 opacity-50" />
+  <Activity className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
  <h3 className="text-lg font-semibold text-foreground">No applications</h3>
- <p className="text-sm text-muted mt-1 max-w-sm">
+  <p className="text-sm text-muted-foreground mt-1 max-w-sm">
  {statusFilter !== "all" ? `No ${statusFilter} applications.` : "Start tracking your submitted applications here."}
  </p>
  </div>

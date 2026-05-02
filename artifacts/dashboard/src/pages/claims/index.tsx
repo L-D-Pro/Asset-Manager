@@ -586,9 +586,9 @@ export default function ClaimsPage() {
  </>
  ) : claims?.length === 0 ? (
   <div className="card-glass flex flex-col items-center justify-center p-12 text-center">
- <CheckSquare className="h-12 w-12 text-muted mb-4 opacity-50" />
+  <CheckSquare className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
  <h3 className="text-lg font-semibold text-foreground">No claims</h3>
- <p className="text-sm text-muted mt-1 max-w-sm">
+  <p className="text-sm text-muted-foreground mt-1 max-w-sm">
  {filter === "inactive" ? "No inactive claims." : filter === "all" ? "Add your first claim to get started." : "No active claims — all may be deactivated."}
  </p>
  </div>
