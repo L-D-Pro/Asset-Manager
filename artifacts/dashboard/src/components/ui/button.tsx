@@ -5,26 +5,30 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 active:scale-[0.97]",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap font-[family-name:var(--font-display)] font-bold transition-all duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[hsl(var(--primary))] disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 rounded-[16px] cursor-pointer select-none",
   {
     variants: {
       variant: {
         default:
-          "bg-[linear-gradient(135deg,hsl(var(--primary)),hsl(var(--primary)/0.8))] text-primary-foreground shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 hover:brightness-110",
-        destructive:
-          "bg-[linear-gradient(135deg,hsl(var(--destructive)),hsl(var(--destructive)/0.8))] text-destructive-foreground shadow-lg shadow-destructive/25 hover:shadow-xl hover:shadow-destructive/30 hover:brightness-110",
+          "bg-[hsl(var(--primary))] text-white shadow-[0_4px_0_hsl(var(--primary-dark))] hover:bg-[hsl(var(--primary-dark))] active:translate-y-1 active:shadow-[0_0px_0_hsl(var(--primary-dark))]",
+        primary:
+          "bg-[hsl(var(--primary))] text-white shadow-[0_4px_0_hsl(var(--primary-dark))] hover:bg-[hsl(var(--primary-dark))] active:translate-y-1 active:shadow-[0_0px_0_hsl(var(--primary-dark))]",
         outline:
-          "border-2 border-primary/30 bg-background/50 backdrop-blur-sm text-foreground hover:bg-primary/5 hover:border-primary/50 shadow-sm",
+          "bg-transparent text-[hsl(var(--foreground))] border-2 border-[hsl(var(--border))] shadow-[0_4px_0_hsl(var(--border))] hover:bg-[hsl(var(--surface))] hover:border-[hsl(var(--primary))]/30 active:translate-y-1 active:shadow-[0_0px_0_hsl(var(--border))]",
         secondary:
-          "bg-[linear-gradient(135deg,hsl(var(--secondary)),hsl(var(--secondary)/0.8))] text-secondary-foreground shadow-md hover:brightness-105",
-        ghost: "border-2 border-transparent text-foreground hover:bg-muted/50 hover:border-border/50",
-        link: "text-primary underline-offset-4 hover:underline p-0 h-auto font-normal rounded-none shadow-none active:scale-100",
+          "bg-transparent text-[hsl(var(--primary))] border-2 border-[hsl(var(--border))] shadow-[0_4px_0_hsl(var(--border))] hover:bg-[hsl(var(--surface))] active:translate-y-1 active:shadow-[0_0px_0_hsl(var(--border))]",
+        ghost:
+          "bg-transparent text-[hsl(var(--muted))] hover:bg-[hsl(var(--surface))] hover:text-[hsl(var(--foreground))] shadow-none",
+        destructive:
+          "bg-[hsl(var(--destructive))] text-white shadow-[0_4px_0_hsl(0,100%,50%)] hover:bg-[hsl(0,100%,55%)] active:translate-y-1 active:shadow-[0_0px_0_hsl(0,100%,50%)]",
+        link: "text-[hsl(var(--primary))] underline-offset-4 hover:underline h-auto p-0 font-normal rounded-none shadow-none active:translate-y-0 font-sans",
       },
       size: {
-        default: "min-h-10 px-5 py-2.5",
-        sm: "min-h-8 rounded-lg px-3 text-xs",
-        lg: "min-h-12 rounded-2xl px-8 text-base",
-        icon: "h-10 w-10 rounded-xl p-0",
+        default: "h-14 px-6 text-base",
+        sm: "h-12 px-4 text-sm rounded-xl",
+        md: "h-14 px-6 text-base",
+        lg: "h-16 px-8 text-lg rounded-[18px]",
+        icon: "h-14 w-14 p-0",
       },
     },
     defaultVariants: {
