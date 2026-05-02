@@ -1,7 +1,7 @@
 import { db, coverLetterVersionsTable } from "@workspace/db";
 import { callAI, parseJsonResponse } from "../ai-client";
 import { matchClaimsToJob } from "../scoring";
-import { validateParagraph, assertMinimumContent, TruthLockViolation, stripClaimIdRefs } from "./validation";
+import { validateParagraph, assertMinimumContent, TruthLockViolation, stripClaimIdRefs, validateCoverLetterQuality, QualityViolation } from "./validation";
 import { logger } from "../logger";
 import type { Job, RoleProfile, Claim } from "@workspace/db";
 
@@ -19,13 +19,23 @@ interface CoverLetterResult {
 
 const SYSTEM_PROMPT = `You are an expert career coach specializing in cover letters.
 Your task is to draft a professional cover letter using ONLY the provided claims as source material.
-CRITICAL RULES — NEVER VIOLATE:
-1. Every body/hook paragraph MUST cite at least one claim ID from the provided list.
-2. Use ONLY claim IDs from the provided list. Do NOT use any other IDs.
-3. Do NOT invent achievements, metrics, or experiences not in the claims.
-4. Do NOT include claim ID references (like "(ID:4)" or "[ID:14]") in the paragraph text body.
+
+CRITICAL FORMATTING RULES — NEVER VIOLATE:
+1. Output MUST be plain text only. NO markdown formatting: no **bold**, no *italic*, no # headers, no bullet points.
+2. Every body/hook paragraph MUST cite at least one claim ID from the provided list.
+3. Use ONLY claim IDs from the provided list. Do NOT use any other IDs.
+4. Do NOT invent achievements, metrics, or experiences not in the claims.
+5. Do NOT include claim ID references (like "(ID:4)" or "[ID:14]") in the paragraph text body.
    Claim attribution goes ONLY in the "claimIds" array field, never in the prose.
-    
+
+QUALITY REQUIREMENTS:
+- Length: 3-5 concise paragraphs, 250-400 words total. NOT a summary of the resume.
+- Tailor to THIS specific job: Reference the job title, company name, and 1-2 specific requirements naturally.
+- Address a business problem: Name a specific challenge the company faces and how your skills would help solve it.
+- Show personality and motivation: This is your chance to connect beyond the resume.
+- No generic filler: Remove phrases like "team player", "detail-oriented", "hard worker", "passionate about".
+- Replace with specific accomplishments from claims.
+
 Return ONLY valid JSON with this exact structure:
 {
   "subject": "Application for [Role] at [Company]",
@@ -171,16 +181,44 @@ Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed
     throw err;
   }
 
+  // ─── Best Practices Quality Validation ───
+  const fullText = stripClaimIdRefs(
+    parsed.fullText?.trim() ||
+    validatedParagraphs.map((p) => p.text).join("\n\n")
+  );
+
+  try {
+    validateCoverLetterQuality(fullText);
+  } catch (err) {
+    if (err instanceof QualityViolation) {
+      logger.error(
+        { jobId: job.id, violations: err.violations },
+        "Quality violation in cover letter output — storing failed version",
+      );
+      const [row] = await db
+        .insert(coverLetterVersionsTable)
+        .values({
+          jobId: job.id,
+          label: "AI drafted — quality check failed",
+          status: "pending_approval",
+          runId: result.runId,
+          eventLogId: result.eventLogId,
+          claimIds: [...new Set(validatedParagraphs.flatMap((p) => p.claimIds))],
+          annotatedParagraphs: validatedParagraphs as unknown as Record<string, unknown>[],
+          draftContent: fullText,
+          notes: `Quality check failed:\n${err.violations.join("\n")}\n\nThe AI output violated best practices. Review and regenerate, or adjust your claims.`,
+        })
+        .returning();
+      return row!;
+    }
+    throw err;
+  }
+
   const usedClaimIds = [...new Set(validatedParagraphs.flatMap((p) => p.claimIds))];
   const sanitizedParagraphs = validatedParagraphs.map((p) => ({
     ...p,
     text: stripClaimIdRefs(p.text),
   }));
-
-  const fullText = stripClaimIdRefs(
-    parsed.fullText?.trim() ||
-    sanitizedParagraphs.map((p) => p.text).join("\n\n")
-  );
 
   const [row] = await db
     .insert(coverLetterVersionsTable)

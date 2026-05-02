@@ -2,6 +2,23 @@ import { logger } from "../logger";
 import type { Claim } from "@workspace/db";
 
 /**
+ * Thrown when AI output fails quality validation — specifically when best practices
+ * are violated (markdown formatting, generic filler, wrong length, etc).
+ *
+ * Callers should catch this to trigger a retry or store the output for debugging.
+ */
+export class QualityViolation extends Error {
+  constructor(
+    message: string,
+    public readonly violations: string[],
+    public readonly rawContent: string,
+  ) {
+    super(message);
+    this.name = "QualityViolation";
+  }
+}
+
+/**
  * Thrown when AI output fails truth-lock validation — specifically when zero
  * valid content items remain after filtering hallucinated claim IDs.
  *
@@ -164,4 +181,146 @@ export function stripClaimIdRefs(text: string): string {
     .replace(/\s+,/g, ",") // clean up leftover trailing commas
     .replace(/\s{2,}/g, " ") // collapse double-spaces
     .trim();
+}
+
+// ─── Best Practices Validation ───
+
+const MARKDOWN_PATTERNS = [
+  /\*\*.+?\*\*/,      // bold
+  /\*.+?\*/,          // italic
+  /^#{1,6}\s/m,       // headers
+  /^\s*[-*+]\s/m,     // bullet lists
+  /^\s*\d+\.\s/m,      // numbered lists
+  /`[^`]+`/,          // inline code
+  /```[\s\S]*?```/,   // code blocks
+  /\[.+?\]\(.+?\)/,   // links
+];
+
+const GENERIC_FILLER_PHRASES = [
+  "team player",
+  "detail-oriented",
+  "detail oriented",
+  "hard worker",
+  "hardworking",
+  "passionate about",
+  "self-starter",
+  "self starter",
+  "think outside the box",
+  "go-getter",
+  "go getter",
+  "results-driven",
+  "results driven",
+  "synergy",
+  "leverage",
+  "proven track record",
+  "dynamic",
+  "motivated",
+  "enthusiastic",
+];
+
+/**
+ * Checks if text contains markdown formatting.
+ * Returns array of violations found.
+ */
+export function checkNoMarkdown(text: string): string[] {
+  const violations: string[] = [];
+  for (const pattern of MARKDOWN_PATTERNS) {
+    if (pattern.test(text)) {
+      violations.push(`Markdown formatting detected: ${pattern.source.slice(0, 40)}`);
+    }
+  }
+  return violations;
+}
+
+/**
+ * Checks for generic filler phrases.
+ * Returns array of violations found.
+ */
+export function checkNoGenericFiller(text: string): string[] {
+  const lower = text.toLowerCase();
+  const violations: string[] = [];
+  for (const phrase of GENERIC_FILLER_PHRASES) {
+    if (lower.includes(phrase)) {
+      violations.push(`Generic filler phrase: "${phrase}"`);
+    }
+  }
+  return violations;
+}
+
+/**
+ * Checks cover letter length (250-400 words).
+ * Returns violation if outside range.
+ */
+export function checkCoverLetterLength(text: string): string[] {
+  const wordCount = text.trim().split(/\s+/).length;
+  const violations: string[] = [];
+  if (wordCount < 200) {
+    violations.push(`Cover letter too short: ${wordCount} words (minimum 250)`);
+  } else if (wordCount > 500) {
+    violations.push(`Cover letter too long: ${wordCount} words (maximum 400)`);
+  }
+  return violations;
+}
+
+/**
+ * Checks that bullets contain quantified impact (numbers, percentages, etc.).
+ * Returns array of bullets that lack quantification.
+ */
+export function checkQuantifiedImpact(bullets: { text: string }[]): string[] {
+  const violations: string[] = [];
+  const numberPattern = /\d+%?|\$\d+|\d+\s*(k|K|m|M|million|thousand)|\d+\s*(years?|months?|weeks?|days?)|\d+\s*(users?|customers?|clients?|team members?)/i;
+
+  for (const bullet of bullets) {
+    if (!numberPattern.test(bullet.text)) {
+      violations.push(`Bullet lacks quantified impact: "${bullet.text.slice(0, 60)}..."`);
+    }
+  }
+  return violations;
+}
+
+/**
+ * Runs all best-practices validations on resume output.
+ * Throws QualityViolation if any violations found.
+ */
+export function validateResumeQuality(
+  documentText: string,
+  bullets: { text: string }[],
+): void {
+  const violations: string[] = [
+    ...checkNoMarkdown(documentText),
+    ...checkNoGenericFiller(documentText),
+    ...checkQuantifiedImpact(bullets),
+  ];
+
+  if (violations.length > 0) {
+    logger.warn({ violations }, "Resume quality violations detected");
+    throw new QualityViolation(
+      `Resume failed quality validation: ${violations.length} violations`,
+      violations,
+      documentText,
+    );
+  }
+}
+
+/**
+ * Runs all best-practices validations on cover letter output.
+ * Throws QualityViolation if any violations found.
+ */
+export function validateCoverLetterQuality(
+  fullText: string,
+): void {
+  const violations: string[] = [
+    ...checkNoMarkdown(fullText),
+    ...checkNoGenericFiller(fullText),
+    ...checkCoverLetterLength(fullText),
+  ];
+
+  if (violations.length > 0) {
+    logger.warn({ violations }, "Cover letter quality violations detected");
+    throw new QualityViolation(
+      `Cover letter failed quality validation: ${violations.length} violations`,
+      violations,
+      fullText,
+    );
+  }
 }

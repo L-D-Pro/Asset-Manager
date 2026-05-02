@@ -6,7 +6,7 @@ import {
 import { eq } from "drizzle-orm";
 import { callAI, parseJsonResponse } from "../ai-client";
 import { matchClaimsToJob } from "../scoring";
-import { validateBullet, assertMinimumContent, TruthLockViolation, stripClaimIdRefs } from "./validation";
+import { validateBullet, assertMinimumContent, TruthLockViolation, stripClaimIdRefs, validateResumeQuality, QualityViolation } from "./validation";
 import { logger } from "../logger";
 import type { Job, Claim } from "@workspace/db";
 
@@ -36,15 +36,23 @@ export class MissingBaseResumeError extends Error {
 
 const SYSTEM_PROMPT = `You are an expert resume writer and career coach specializing in ATS-optimized resumes.
 Your task is to tailor a full plain-text resume draft to a specific job, using the provided base resume as structure and ONLY the provided claims as new factual source material.
-CRITICAL RULES — NEVER VIOLATE:
-1. Every bullet MUST trace back to a provided claim. Do NOT invent new achievements.
-2. Use ONLY claim IDs from the provided list. Do NOT use any other IDs.
-3. Bullets that combine multiple claims must explicitly flag isAggregated: true.
-4. Use strong action verbs and quantifiable language where supported by claims.
-5. Match the job's required skills and keywords where truthfully supported by claims.
-6. Do NOT include claim ID references (like "(ID:4)" or "[ID:14]") in the text (bullets or documentText).
+
+CRITICAL FORMATTING RULES — NEVER VIOLATE:
+1. Output MUST be plain text only. NO markdown formatting: no **bold**, no *italic*, no # headers, no bullet points (• or -), no code blocks.
+2. Every bullet MUST trace back to a provided claim. Do NOT invent new achievements.
+3. Use ONLY claim IDs from the provided list. Do NOT use any other IDs.
+4. Bullets that combine multiple claims must explicitly flag isAggregated: true.
+5. Use strong action verbs and quantifiable language where supported by claims.
+6. Match the job's required skills and keywords where truthfully supported by claims.
+7. Do NOT include claim ID references (like "(ID:4)" or "[ID:14]") in the text (bullets or documentText).
    Claim attribution goes ONLY in the "claimIds" array field of the bullets, never in the prose.
-7. Return a complete resume draft in plain text with section headings and bullets.
+8. Return a complete resume draft in plain text with section headings and bullets.
+
+QUALITY REQUIREMENTS:
+- Tailor to THIS specific job: Reference the job title, company name, and key requirements naturally in the content.
+- Quantified impact: Every bullet must include at least one number, percentage, dollar amount, or measurable outcome.
+- No generic filler: Remove phrases like "team player", "detail-oriented", "hard worker", "passionate about".
+- Replace with specific achievements from claims.
 
 Return ONLY valid JSON with this exact structure:
 {
@@ -206,6 +214,36 @@ Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed
           tailoredDocumentText: parsed.documentText,
           rawContent: result.content,
           notes: `Truth lock failure: ${err.message}. All AI-generated bullets cited claim IDs not in the selected set. Review claims and regenerate.`,
+        })
+        .returning();
+      return row!;
+    }
+    throw err;
+  }
+
+  // ─── Best Practices Quality Validation ───
+  try {
+    validateResumeQuality(parsed.documentText as string, validatedBullets);
+  } catch (err) {
+    if (err instanceof QualityViolation) {
+      logger.error(
+        { jobId: job.id, violations: err.violations },
+        "Quality violation in resume output — storing failed version",
+      );
+      const [row] = await db
+        .insert(resumeVersionsTable)
+        .values({
+          jobId: job.id,
+          label: "AI tailored — quality check failed",
+          status: "pending_approval",
+          baseResumeVersionId: baseResumeVersion.id,
+          runId: result.runId,
+          eventLogId: result.eventLogId,
+          claimIds: [...new Set(validatedBullets.flatMap((b) => b.claimIds))],
+          tailoredBullets: validatedBullets as unknown as Record<string, unknown>[],
+          tailoredDocumentText: parsed.documentText as string,
+          rawContent: result.content,
+          notes: `Quality check failed:\n${err.violations.join("\n")}\n\nThe AI output violated best practices. Review and regenerate, or adjust your claims to include more quantified achievements.`,
         })
         .returning();
       return row!;
