@@ -8,6 +8,7 @@ import { callAI, parseJsonResponse } from "../ai-client";
 import { matchClaimsToJob } from "../scoring";
 import { validateBullet, assertMinimumContent, TruthLockViolation, stripClaimIdRefs, validateResumeQuality, QualityViolation } from "./validation";
 import { logger } from "../logger";
+import { loadOrCreateBestPractices, formatBestPracticesForPrompt } from "../best-practices";
 import type { Job, Claim } from "@workspace/db";
 
 interface RawBullet {
@@ -148,9 +149,14 @@ Keywords: ${(job.parsedKeywords ?? []).join(", ") || ""}
 Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed yet"}
 `.trim();
 
+  // Load best practices and inject into system prompt
+  const bestPractices = await loadOrCreateBestPractices("general");
+  const practicesText = formatBestPracticesForPrompt(bestPractices);
+  const augmentedSystemPrompt = SYSTEM_PROMPT + practicesText;
+
   const result = await callAI({
     taskType: "resume_tailoring",
-    systemPrompt: SYSTEM_PROMPT,
+    systemPrompt: augmentedSystemPrompt,
     userPrompt:
       `Tailor the base resume for this job.\n\n` +
       `Base Resume (current source of truth):\n${baseResumeVersion.contentText}\n\n` +

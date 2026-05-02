@@ -8,6 +8,7 @@ import { callAI, parseJsonResponse } from "../ai-client";
 import { matchClaimsToJob } from "../scoring";
 import { validateParagraph, assertMinimumContent, TruthLockViolation, stripClaimIdRefs, validateCoverLetterQuality, QualityViolation } from "./validation";
 import { logger } from "../logger";
+import { loadOrCreateBestPractices, formatBestPracticesForPrompt } from "../best-practices";
 import type { Job, RoleProfile, Claim } from "@workspace/db";
 
 interface RawParagraph {
@@ -143,9 +144,14 @@ Required Skills: ${(job.parsedRequiredSkills ?? []).join(", ") || "Not parsed ye
 Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed yet"}
 `.trim();
 
+  // Load best practices and inject into system prompt
+  const bestPractices = await loadOrCreateBestPractices("general");
+  const practicesText = formatBestPracticesForPrompt(bestPractices);
+  const augmentedSystemPrompt = SYSTEM_PROMPT + practicesText;
+
   const result = await callAI({
     taskType: "cover_letter",
-    systemPrompt: SYSTEM_PROMPT,
+    systemPrompt: augmentedSystemPrompt,
     userPrompt: `Draft a cover letter for this job:\n\n${jobContext}${resumeContext}\n\nAvailable claims (use ONLY these IDs):\n${claimsContext}`,
     jobId: job.id,
     modelOverride: options?.modelOverride,

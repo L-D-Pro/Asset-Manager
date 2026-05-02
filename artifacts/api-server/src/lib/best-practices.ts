@@ -16,6 +16,32 @@ export interface BestPracticesConfig {
   lastRefreshedAt?: Date;
 }
 
+/**
+ * Format best practices items as a bullet list for injection into AI prompts.
+ */
+export function formatBestPracticesForPrompt(config: BestPracticesConfig): string {
+  if (!config.items || config.items.length === 0) return "";
+  
+  const activeItems = config.items.filter((item) => {
+    // Skip if explicitly disabled by hardcoded guard
+    const guardKey = item.description.slice(0, 30).toLowerCase().replace(/[^a-z0-9]/g, "_");
+    if (config.hardcodedGuards[guardKey] === false) return false;
+    return true;
+  });
+
+  if (activeItems.length === 0) return "";
+
+  const lines = activeItems.map((item, i) => {
+    let line = `${i + 1}. ${item.description}`;
+    if (item.rationale) {
+      line += ` (${item.rationale})`;
+    }
+    return line;
+  });
+
+  return `\n\nQUALITY STANDARDS — FOLLOW ALL:\n${lines.join("\n")}`;
+}
+
 const DEFAULT_BEST_PRACTICES: BestPracticesConfig = {
   domain: "general",
   title: "Job Application Best Practices",
