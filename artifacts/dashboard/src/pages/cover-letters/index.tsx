@@ -155,18 +155,16 @@ export default function CoverLettersPage() {
                     {version.status === "pending_approval" && (
                       <div className="flex items-center gap-2">
                         <Button
-                          variant="outline"
+                          className="btn-ghost"
                           size="sm"
-                          className="text-muted-foreground"
                           onClick={() => { setRevisionTarget(version); setRevisionNote(""); }}
                           data-testid={`btn-revision-cl-${version.id}`}
                         >
                           <RotateCcw className="mr-1 h-4 w-4" /> Request Revision
                         </Button>
                         <Button
-                          variant="outline"
+                          className="btn-secondary text-destructive"
                           size="sm"
-                          className="text-destructive hover:bg-destructive/10"
                           onClick={() => handleReject(version.id)}
                           disabled={reject.isPending}
                           data-testid={`btn-reject-cl-${version.id}`}
@@ -174,7 +172,7 @@ export default function CoverLettersPage() {
                           <X className="mr-1 h-4 w-4" /> Reject
                         </Button>
                         <Button
-                          variant="default"
+                          className="btn-primary"
                           size="sm"
                           onClick={() => handleApprove(version.id)}
                           disabled={approve.isPending}
@@ -264,7 +262,7 @@ export default function CoverLettersPage() {
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => { setRevisionTarget(null); setRevisionNote(""); }}>Cancel</Button>
               <Button
-                variant="destructive"
+                className="bg-destructive text-white hover:bg-destructive/90"
                 disabled={reject.isPending || updateCL.isPending}
                 onClick={() => revisionTarget && handleReject(revisionTarget.id, revisionNote)}
                 data-testid="btn-confirm-revision"

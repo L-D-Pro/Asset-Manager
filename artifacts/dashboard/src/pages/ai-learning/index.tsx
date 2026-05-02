@@ -299,7 +299,7 @@ export default function AiLearningPage() {
             </ContentCard>
           </StaggerContainer>
 
-          <Card>
+          <div className="card-chunky">
             <CardHeader>
               <CardTitle>Variant Leaderboard</CardTitle>
               <CardDescription>
@@ -348,10 +348,10 @@ export default function AiLearningPage() {
                 </TableBody>
               </Table>
             </CardContent>
-          </Card>
+          </div>
 
           {suggestedComparisons.length > 0 && (
-            <Card>
+            <div className="card-chunky">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Trophy className="h-5 w-5 text-warning" />
@@ -427,11 +427,11 @@ export default function AiLearningPage() {
                   );
                 })}
               </CardContent>
-            </Card>
+            </div>
           )}
 
           {autoComparisons.length > 0 && (
-            <Card>
+            <div className="card-chunky">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <CheckCircle className="h-5 w-5 text-success" />
@@ -513,10 +513,10 @@ export default function AiLearningPage() {
                   );
                 })}
               </CardContent>
-            </Card>
+            </div>
           )}
 
-          <Card>
+          <div className="card-chunky">
             <CardHeader>
               <CardTitle>Learning Configuration</CardTitle>
               <CardDescription>
@@ -596,7 +596,7 @@ export default function AiLearningPage() {
                 </Button>
               )}
             </CardContent>
-          </Card>
+          </div>
         </>
       )}
     </div>

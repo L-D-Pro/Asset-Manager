@@ -130,39 +130,39 @@ export default function RegisterPage() {
 
   if (registered) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-indigo-500 to-violet-500 flex items-center justify-center p-4">
+      <div className="min-h-screen gamify-gradient-primary flex items-center justify-center p-4">
         <div className="w-full max-w-md">
-          <ContentCard className="p-8 shadow-2xl border-white/20">
+          <div className="card-chunky p-8 shadow-2xl border-white/10">
             <div className="text-center mb-6">
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-violet-500 bg-clip-text text-transparent">Job Ops</h1>
-              <p className="text-slate-500 text-sm mt-1">Create Account</p>
+              <h1 className="text-2xl font-bold gradient-text">Job Ops</h1>
+              <p className="text-muted text-sm mt-1">Create Account</p>
             </div>
             <div className="text-center space-y-4">
-              <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
-              <h3 className="text-lg font-semibold text-slate-800">Check your email</h3>
-              <p className="text-slate-500 text-sm">
+              <CheckCircle className="h-12 w-12 text-success mx-auto" />
+              <h3 className="text-lg font-semibold text-foreground">Check your email</h3>
+              <p className="text-muted text-sm">
                 We sent a verification link to <strong>{email}</strong>. Click it to activate your account, then sign in.
               </p>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-muted">
                 Didn't get it? Check spam or try signing in — you can request a new verification email.
               </p>
               <Button variant="outline" className="w-full" onClick={() => navigate("/login")}>
                 Go to Sign In
               </Button>
             </div>
-          </ContentCard>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-indigo-500 to-violet-500 flex items-center justify-center p-4">
+    <div className="min-h-screen gamify-gradient-primary flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <ContentCard className="p-8 shadow-2xl border-white/20">
+        <div className="card-chunky p-8 shadow-2xl border-white/10">
           <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-violet-500 bg-clip-text text-transparent">Job Ops</h1>
-            <p className="text-slate-500 text-sm mt-1">Get started with Job Ops</p>
+            <h1 className="text-2xl font-bold gradient-text">Job Ops</h1>
+            <p className="text-muted text-sm mt-1">Get started with Job Ops</p>
           </div>
 
           <CardHeader className="pb-4">
@@ -199,14 +199,14 @@ export default function RegisterPage() {
                   disabled={loading}
                 />
                 {codeValid !== null && (
-                  <p className={`text-xs ${codeValid ? "text-green-600" : "text-destructive"}`}>
+                  <p className={`text-xs ${codeValid ? "text-success" : "text-destructive"}`}>
                     {codeValid ? "Code valid" : codeMessage}
                   </p>
                 )}
 
                 {waitlistSent ? (
-                  <div className="rounded border border-green-500 p-3 text-sm">
-                    <CheckCircle className="h-4 w-4 text-green-500 inline mr-1" />
+                  <div className="rounded border border-success p-3 text-sm">
+                    <CheckCircle className="h-4 w-4 text-success inline mr-1" />
                     You're on the waitlist! We'll email you when spots open.
                   </div>
                 ) : showWaitlist ? (
@@ -338,9 +338,9 @@ export default function RegisterPage() {
               </Button>
             </form>
           </CardContent>
-        </ContentCard>
+          </div>
 
-        <p className="text-center text-xs text-white/60 mt-6">
+          <p className="text-center text-xs text-white/60 mt-6">
           Already have an account?{" "}
           <Link to="/login" className="text-white/80 underline hover:text-white">
             Sign in

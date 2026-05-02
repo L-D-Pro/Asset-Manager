@@ -317,11 +317,11 @@ export default function AiConfigPage() {
       </div>
 
       {isLoading ? <Skeleton className="h-64 w-full" /> : sortedConfigs.length === 0 ? (
-        <ContentCard className="flex flex-col items-center justify-center p-12 text-center border-dashed">
-          <Settings className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
-          <h3 className="text-lg font-medium">No AI configs yet</h3>
-          <p className="text-sm text-muted-foreground mt-1">Create your first model config to enable AI pipelines.</p>
-        </ContentCard>
+        <div className="card-chunky flex flex-col items-center justify-center p-12 text-center">
+          <Settings className="h-12 w-12 text-muted mb-4 opacity-50" />
+          <h3 className="text-lg font-semibold text-foreground">No AI configs yet</h3>
+          <p className="text-sm text-muted mt-1">Create your first model config to enable AI pipelines.</p>
+        </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {sortedConfigs.map(c => {

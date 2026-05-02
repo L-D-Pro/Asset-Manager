@@ -121,7 +121,7 @@ export default function AdminInviteCodesPage() {
         subtitle="Generate and manage invite codes for new user registration."
         variant="admin"
       >
-        <Button onClick={() => setShowGenerate(true)} disabled={codes.length >= 10}>
+        <Button onClick={() => setShowGenerate(true)} disabled={codes.length >= 10} className="btn-primary">
           <Plus className="h-4 w-4 mr-2" />
           Generate Code
         </Button>
@@ -226,8 +226,8 @@ export default function AdminInviteCodesPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowGenerate(false)}>Cancel</Button>
-            <Button onClick={handleGenerate} disabled={generating}>
+            <Button className="btn-ghost" onClick={() => setShowGenerate(false)}>Cancel</Button>
+            <Button onClick={handleGenerate} disabled={generating} className="btn-primary">
               {generating ? "Generating..." : "Generate"}
             </Button>
           </DialogFooter>

@@ -53,9 +53,9 @@ export default function GuidePage() {
       <div>
         <div className="mb-2 flex items-center gap-3">
           <BookOpen className="h-8 w-8 text-primary" />
-          <h1 className="text-3xl font-bold tracking-tight">Help &amp; Tips</h1>
+          <h1 className="text-4xl font-bold font-[family-name:var(--font-heading)] text-foreground">Help &amp; Tips</h1>
         </div>
-        <p className="text-lg text-muted-foreground">
+        <p className="text-muted text-lg">
           Everything you need to run an effective, honest job search with Job Ops.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">

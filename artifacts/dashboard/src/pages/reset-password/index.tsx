@@ -66,12 +66,12 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-indigo-500 to-violet-500 flex items-center justify-center p-4">
+    <div className="min-h-screen gamify-gradient-primary flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <ContentCard className="p-8 shadow-2xl border-white/20">
+        <div className="card-chunky p-8 shadow-2xl border-white/10">
           <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-violet-500 bg-clip-text text-transparent">Job Ops</h1>
-            <p className="text-slate-500 text-sm mt-1">Enter your email to receive a reset link</p>
+            <h1 className="text-2xl font-bold gradient-text">Job Ops</h1>
+            <p className="text-muted text-sm mt-1">Enter your email to receive a reset link</p>
           </div>
 
           <CardHeader className="pb-4">
@@ -88,7 +88,7 @@ export default function ResetPasswordPage() {
           <CardContent>
             {done && (
               <div className="text-center space-y-3">
-                <CheckCircle className="h-10 w-10 text-green-500 mx-auto" />
+                <CheckCircle className="h-10 w-10 text-success mx-auto" />
                 <p className="text-sm">Password reset successfully.</p>
                 <Button className="w-full" onClick={() => navigate("/login")}>
                   Go to Sign In
@@ -97,7 +97,7 @@ export default function ResetPasswordPage() {
             )}
             {requested && !done && (
               <div className="text-center space-y-3">
-                <CheckCircle className="h-10 w-10 text-green-500 mx-auto" />
+                <CheckCircle className="h-10 w-10 text-success mx-auto" />
                 <p className="text-sm">
                   If an account with that email exists, we've sent a reset link. Check your inbox.
                 </p>
@@ -170,7 +170,7 @@ export default function ResetPasswordPage() {
               </form>
             )}
           </CardContent>
-        </ContentCard>
+        </div>
 
         <p className="text-center text-xs text-white/60 mt-6">
           <Link to="/login" className="text-white/80 underline hover:text-white">Back to Sign In</Link>

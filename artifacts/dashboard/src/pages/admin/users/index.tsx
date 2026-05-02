@@ -283,7 +283,7 @@ export default function AdminUsersPage() {
         subtitle="Manage user accounts, roles, and access permissions."
         variant="admin"
       >
-        <Button onClick={openAdd} className="gap-2">
+        <Button onClick={openAdd} className="btn-primary gap-2">
           <Plus className="h-4 w-4" />
           Add User
         </Button>
@@ -543,10 +543,10 @@ export default function AdminUsersPage() {
           </div>
 
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setDialogOpen(false)}>
+            <Button className="btn-ghost" onClick={() => setDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={saving} className="gap-2">
+            <Button onClick={handleSave} disabled={saving} className="btn-primary gap-2">
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
               {editingUser ? "Save Changes" : "Create User"}
             </Button>
@@ -564,10 +564,10 @@ export default function AdminUsersPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setDeleteDialogOpen(false)}>
+            <Button className="btn-ghost" onClick={() => setDeleteDialogOpen(false)}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={deleting} className="gap-2">
+            <Button className="bg-destructive text-white hover:bg-destructive/90 gap-2" onClick={handleDelete} disabled={deleting}>
               {deleting && <Loader2 className="h-4 w-4 animate-spin" />}
               Delete
             </Button>

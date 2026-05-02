@@ -239,9 +239,9 @@ export default function FreelancePage() {
           <CardDescription>Score fit first, then draft a proposal only when it looks worth your time.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          {projects.length === 0 ? <p className="text-sm text-muted-foreground">No freelance projects yet.</p> : null}
+          {projects.length === 0 ? <p className="text-sm text-muted">No freelance projects yet.</p> : null}
           {projects.map((project) => (
-            <div key={project.id} className="gamify-radius-chunky gamify-shadow border p-3 text-sm">
+            <div key={project.id} className="card-chunky p-4 text-sm">
               <div className="flex items-center justify-between gap-3">
                 <span className="font-medium">{project.title}</span>
                 <Badge variant={project.fitScore != null && project.fitScore >= 70 ? "default" : "outline"}>
@@ -275,9 +275,9 @@ export default function FreelancePage() {
           <CardDescription>Drafts stay pending until you review and manually submit outside the app.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          {proposals.length === 0 ? <p className="text-sm text-muted-foreground">No proposal drafts yet.</p> : null}
+          {proposals.length === 0 ? <p className="text-sm text-muted">No proposal drafts yet.</p> : null}
           {proposals.map((proposal) => (
-            <div key={proposal.id} className="gamify-radius-chunky gamify-shadow border p-3 text-sm">
+            <div key={proposal.id} className="card-chunky p-4 text-sm">
               <div className="flex items-center justify-between gap-3">
                 <span className="font-medium">Project #{proposal.projectId}</span>
                 <Badge>{proposal.status}</Badge>

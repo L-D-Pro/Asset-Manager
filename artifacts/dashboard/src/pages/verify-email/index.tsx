@@ -35,12 +35,12 @@ export default function VerifyEmailPage() {
   }, [token]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-indigo-500 to-violet-500 flex items-center justify-center p-4">
+    <div className="min-h-screen gamify-gradient-primary flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <ContentCard className="p-8 shadow-2xl border-white/20">
+        <div className="card-chunky p-8 shadow-2xl border-white/10">
           <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-violet-500 bg-clip-text text-transparent">Job Ops</h1>
-            <p className="text-slate-500 text-sm mt-1">Check your inbox for a verification link</p>
+            <h1 className="text-2xl font-bold gradient-text">Job Ops</h1>
+            <p className="text-muted text-sm mt-1">Check your inbox for a verification link</p>
           </div>
 
           <CardHeader className="text-center">
@@ -52,7 +52,7 @@ export default function VerifyEmailPage() {
               </>
             ) : status === "success" ? (
               <>
-                <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-2" />
+                <CheckCircle className="h-12 w-12 text-success mx-auto mb-2" />
                 <CardTitle>Email Verified</CardTitle>
                 <CardDescription>
                   Your account is now active. You can sign in and start using Job Ops.
@@ -78,7 +78,7 @@ export default function VerifyEmailPage() {
               </p>
             )}
           </CardContent>
-        </ContentCard>
+        </div>
       </div>
     </div>
   );

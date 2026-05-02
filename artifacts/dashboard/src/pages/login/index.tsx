@@ -77,12 +77,12 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-indigo-500 to-violet-500 flex items-center justify-center p-4">
+    <div className="min-h-screen gamify-gradient-primary flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <ContentCard className="p-8 shadow-2xl border-white/20">
+        <div className="card-chunky p-8 shadow-2xl border-white/10">
           <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-violet-500 bg-clip-text text-transparent">Job Ops</h1>
-            <p className="text-slate-500 text-sm mt-1">Sign in to your account</p>
+            <h1 className="text-2xl font-bold gradient-text">Job Ops</h1>
+            <p className="text-muted text-sm mt-1">Sign in to your account</p>
           </div>
 
           <AnimatePresence mode="wait">
@@ -237,7 +237,7 @@ export default function LoginPage() {
               </motion.div>
             )}
           </AnimatePresence>
-        </ContentCard>
+        </div>
 
         <p className="text-center text-xs text-white/60 mt-6 space-y-2">
           <span>&copy; 2026 Cyrus Sepasi. All rights reserved. Portfolio Studio&trade; is a product of L&amp;D PRO.</span>

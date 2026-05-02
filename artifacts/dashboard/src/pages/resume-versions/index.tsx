@@ -388,8 +388,8 @@ export default function ResumeVersionsPage() {
                       {version.status === "pending_approval" && (
                         <>
                           <Button
-                            variant="outline" size="sm"
-                            className="text-destructive hover:bg-destructive/10"
+                            className="btn-secondary text-destructive"
+                            size="sm"
                             onClick={() => handleReject(version.id)}
                             disabled={reject.isPending}
                             data-testid={`btn-reject-resume-${version.id}`}
@@ -397,7 +397,8 @@ export default function ResumeVersionsPage() {
                             <X className="mr-1 h-4 w-4" /> Reject
                           </Button>
                           <Button
-                            variant="default" size="sm"
+                            className="btn-primary"
+                            size="sm"
                             onClick={() => handleApprove(version.id, diffData, versionDecisions)}
                             disabled={approve.isPending || updateResume.isPending}
                             data-testid={`btn-approve-resume-${version.id}`}

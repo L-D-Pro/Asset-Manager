@@ -585,13 +585,13 @@ export default function ClaimsPage() {
             <Skeleton className="h-24 w-full" />
           </>
         ) : claims?.length === 0 ? (
-          <ContentCard className="flex flex-col items-center justify-center p-12 text-center border-dashed">
-            <CheckSquare className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
-            <h3 className="text-lg font-medium">No claims</h3>
-            <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+          <div className="card-chunky flex flex-col items-center justify-center p-12 text-center">
+            <CheckSquare className="h-12 w-12 text-muted mb-4 opacity-50" />
+            <h3 className="text-lg font-semibold text-foreground">No claims</h3>
+            <p className="text-sm text-muted mt-1 max-w-sm">
               {filter === "inactive" ? "No inactive claims." : filter === "all" ? "Add your first claim to get started." : "No active claims — all may be deactivated."}
             </p>
-          </ContentCard>
+            </div>
         ) : (
           claims?.map((claim) => (
             <ContentCard key={claim.id} data-testid={`card-claim-${claim.id}`} className={`gamify-radius-chunky gamify-shadow ${!claim.isActive ? "opacity-60" : ""}`}>

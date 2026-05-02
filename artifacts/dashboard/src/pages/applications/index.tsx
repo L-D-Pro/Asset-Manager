@@ -117,8 +117,8 @@ export default function ApplicationsPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Applications</h1>
-          <p className="text-muted-foreground mt-1">Track submitted applications and pipeline stage.</p>
+          <h1 className="text-4xl font-bold font-[family-name:var(--font-heading)] text-foreground">Applications</h1>
+          <p className="text-muted text-lg">Track submitted applications and pipeline stage.</p>
         </div>
 
         <Dialog open={isDialogOpen} onOpenChange={(open) => { if(!open) handleClose(); else setIsDialogOpen(true); }}>
@@ -239,13 +239,13 @@ export default function ApplicationsPage() {
             <Skeleton className="h-20 w-full" />
           </>
         ) : applications?.length === 0 ? (
-          <Card className="flex flex-col items-center justify-center p-12 text-center border-dashed">
-            <Activity className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
-            <h3 className="text-lg font-medium">No applications</h3>
-            <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+          <div className="card-chunky flex flex-col items-center justify-center p-12 text-center">
+            <Activity className="h-12 w-12 text-muted mb-4 opacity-50" />
+            <h3 className="text-lg font-semibold text-foreground">No applications</h3>
+            <p className="text-sm text-muted mt-1 max-w-sm">
               {statusFilter !== "all" ? `No ${statusFilter} applications.` : "Start tracking your submitted applications here."}
             </p>
-          </Card>
+          </div>
         ) : (
           <div className="border gamify-radius-chunky gamify-shadow divide-y bg-card">
             {applications?.map((app) => (

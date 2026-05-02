@@ -98,14 +98,14 @@ type CompareCandidate = {
 
 const ROLE_COLORS: Record<string, string> = {
   opening: "bg-primary/10 border-primary/20",
-  hook: "bg-purple-50 border-purple-100 dark:bg-purple-950/20 dark:border-purple-900/30",
+  hook: "bg-accent/10 border-accent/20",
   body: "bg-success/10 border-success/20",
   closing: "bg-warning/10 border-warning/20",
 };
 
 const ROLE_LABEL_COLORS: Record<string, string> = {
   opening: "text-primary bg-primary/10",
-  hook: "text-purple-700 bg-purple-100 dark:text-purple-300 dark:bg-purple-900/50",
+  hook: "text-accent bg-accent/10",
   body: "text-success bg-success/10",
   closing: "text-warning bg-warning/10",
 };
@@ -1159,25 +1159,41 @@ export default function ApplyWizardPage() {
         </ContentCard>
       ) : null}
 
-      <div className="grid gap-4 md:grid-cols-6">
-        {STEP_ORDER.map((name, index) => (
-          <ContentCard
-            key={name}
-            className={
-              index <= currentStepIndex
-                ? "border-primary/50"
-                : "border-dashed opacity-80"
-            }
-          >
-            <CardContent className="p-3 text-center">
-              <p className="text-xs uppercase text-muted-foreground">Step {index + 1}</p>
-              <p className="text-sm font-medium capitalize">{name}</p>
-              {index > currentStepIndex ? (
-                <p className="text-[11px] text-muted-foreground mt-1">Locked</p>
-              ) : null}
-            </CardContent>
-          </ContentCard>
-        ))}
+      <div className="flex items-center justify-center gap-0">
+        {STEP_ORDER.map((name, index) => {
+          const isCompleted = index < currentStepIndex;
+          const isActive = index === currentStepIndex;
+          const isFuture = index > currentStepIndex;
+          return (
+            <div key={name} className="flex items-center">
+              {index > 0 && (
+                <div
+                  className={`h-1 w-6 md:w-10 ${
+                    isCompleted || isActive ? "bg-primary" : "bg-border"
+                  }`}
+                />
+              )}
+              <div className="flex flex-col items-center gap-1">
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold font-[family-name:var(--font-heading)] transition-colors ${
+                    isCompleted
+                      ? "bg-primary text-white"
+                      : isActive
+                      ? "bg-primary text-white ring-4 ring-primary/20"
+                      : "bg-surface border-2 border-border text-muted"
+                  }`}
+                >
+                  {isCompleted ? "✓" : index + 1}
+                </div>
+                <span className={`text-[10px] font-semibold capitalize hidden md:block ${
+                  isActive ? "text-primary" : isFuture ? "text-muted" : "text-foreground"
+                }`}>
+                  {name}
+                </span>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -1760,7 +1776,7 @@ export default function ApplyWizardPage() {
               </div>
 
               {useCustomComparison && resumeCandidates.length > 0 ? (
-                <div className="rounded-md border bg-card overflow-hidden">
+                <div className="rounded-md border bg-surface overflow-hidden">
                   <div className="flex border-b bg-muted/30 overflow-x-auto no-scrollbar">
                     {resumeCandidates.map((c) => (
                       <button
@@ -1870,7 +1886,7 @@ export default function ApplyWizardPage() {
               </div>
 
               {useCustomComparison && coverCandidates.length > 0 ? (
-                <div className="rounded-md border bg-card overflow-hidden">
+                <div className="rounded-md border bg-surface overflow-hidden">
                   <div className="flex border-b bg-muted/30 overflow-x-auto no-scrollbar">
                     {coverCandidates.map((c) => (
                       <button

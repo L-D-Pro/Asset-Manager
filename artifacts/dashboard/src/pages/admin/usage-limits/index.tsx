@@ -186,8 +186,8 @@ export default function AdminUsageLimitsPage() {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditUser(null)}>Cancel</Button>
-            <Button onClick={handleSaveLimit} disabled={saving}>
+            <Button className="btn-ghost" onClick={() => setEditUser(null)}>Cancel</Button>
+            <Button onClick={handleSaveLimit} disabled={saving} className="btn-primary">
               {saving ? "Saving..." : "Save"}
             </Button>
           </DialogFooter>

@@ -10,7 +10,7 @@ export default function NotFound() {
 
   return (
     <div className="min-h-screen gamify-gradient-primary flex items-center justify-center">
-      <ContentCard className="p-12 text-center max-w-md shadow-2xl border-white/20">
+      <div className="card-chunky p-12 text-center max-w-md shadow-2xl border-white/10 bg-background">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -44,7 +44,7 @@ export default function NotFound() {
             </Button>
           </div>
         </motion.div>
-      </ContentCard>
+      </div>
     </div>
   );
 }

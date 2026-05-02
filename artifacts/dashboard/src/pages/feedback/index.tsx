@@ -165,11 +165,11 @@ export default function FeedbackPage() {
           <Skeleton className="h-16 w-full" />
         </div>
       ) : signals?.length === 0 ? (
-        <ContentCard className="flex flex-col items-center justify-center p-12 text-center border-dashed gamify-radius-chunky">
-          <Activity className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
-          <h3 className="text-lg font-medium">No feedback signals yet</h3>
-          <p className="text-sm text-muted-foreground mt-1 max-w-sm">Log your first application outcome to start building signal data.</p>
-        </ContentCard>
+        <div className="card-chunky flex flex-col items-center justify-center p-12 text-center">
+          <Activity className="h-12 w-12 text-muted mb-4 opacity-50" />
+          <h3 className="text-lg font-semibold text-foreground">No feedback signals yet</h3>
+          <p className="text-sm text-muted mt-1 max-w-sm">Log your first application outcome to start building signal data.</p>
+        </div>
       ) : (
         <div className="border gamify-radius-chunky divide-y bg-card gamify-shadow">
           {signals?.map(s => (

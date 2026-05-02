@@ -154,15 +154,15 @@ export default function BaseResumePage() {
           <CardHeader className="space-y-3">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <CardTitle className="flex items-center gap-2 text-foreground">
-                  <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10">
-                    <FileText className="h-4 w-4 text-primary" />
-                  </div>
-                  Current Resume Text
-                </CardTitle>
-                <CardDescription className="mt-1">
-                  Paste or edit your canonical plain-text resume here. Each save creates a new immutable version.
-                </CardDescription>
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10">
+                <FileText className="h-4 w-4 text-primary" />
+              </div>
+              Current Resume Text
+            </CardTitle>
+            <CardDescription className="mt-1 text-muted">
+              Paste or edit your canonical plain-text resume here. Each save creates a new immutable version.
+            </CardDescription>
               </div>
               {hasCurrentResume && <Badge variant="secondary">Current</Badge>}
             </div>
@@ -208,7 +208,7 @@ export default function BaseResumePage() {
                 </div>
                 <Button
                   type="button"
-                  variant="outline"
+                  className="btn-secondary"
                   onClick={handleImport}
                   disabled={!uploadFile || importResume.isPending}
                   data-testid="btn-import-base-resume"
@@ -236,7 +236,7 @@ export default function BaseResumePage() {
                 onClick={handleSave}
                 disabled={saveDisabled}
                 data-testid="btn-save-base-resume"
-                className="rounded-md shadow-sm"
+                className="btn-primary"
               >
                 <Save className="mr-2 h-4 w-4" />
                 {saveResume.isPending ? "Saving..." : hasCurrentResume ? "Save New Version" : "Save Base Resume"}
@@ -290,7 +290,7 @@ export default function BaseResumePage() {
                           </p>
                         </div>
                         <Button
-                          variant="outline"
+                          className="btn-secondary"
                           size="sm"
                           disabled={restoreResume.isPending || version.isCurrent}
                           onClick={() => handleRestore(version.id)}
