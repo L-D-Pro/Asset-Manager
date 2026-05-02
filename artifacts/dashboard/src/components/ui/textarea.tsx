@@ -2,6 +2,13 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * Thin wrapper around a native <textarea>.
+ *
+ * Same rationale as Input — kept as a native element for react-hook-form
+ * and InputGroup compatibility. Mantine's Textarea should be used directly
+ * in new code where the full label/description/error chrome is wanted.
+ */
 const Textarea = React.forwardRef<
   HTMLTextAreaElement,
   React.ComponentProps<"textarea">

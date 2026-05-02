@@ -222,7 +222,7 @@ export default function RoleProfilesPage() {
       <PageHeader
         title="Role Profiles"
         subtitle="Define target roles with skills, keywords, and preferences for AI tailoring."
-        gradient="from-teal-500 via-teal-400 to-cyan-400"
+        variant="workflow"
       >
         <Dialog open={isDialogOpen} onOpenChange={(open) => { if(!open) handleClose(); else setIsDialogOpen(true); }}>
           <DialogTrigger asChild>
@@ -329,7 +329,7 @@ export default function RoleProfilesPage() {
       </PageHeader>
 
       {isLoading ? <Skeleton className="h-40 w-full" /> : profiles?.length === 0 ? (
-        <ContentCard className="flex flex-col items-center justify-center p-12 text-center border-dashed">
+        <ContentCard className="flex flex-col items-center justify-center p-12 text-center border-dashed gamify-radius-chunky">
           <UserCircle className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
           <h3 className="text-lg font-medium">No role profiles yet</h3>
           <p className="text-sm text-muted-foreground mt-1">Create a profile to define scoring criteria for your target roles.</p>
@@ -340,7 +340,7 @@ export default function RoleProfilesPage() {
             const hasHardFilters = !!(p.hardFilters && Object.keys(p.hardFilters).length);
             const hasSoftWeights = !!(p.softWeights && Object.keys(p.softWeights).length);
             return (
-              <ContentCard key={p.id} data-testid={`card-profile-${p.id}`}>
+              <ContentCard key={p.id} data-testid={`card-profile-${p.id}`} className="gamify-radius-chunky gamify-shadow">
                 <CardContent className="p-0">
                   <div className="p-5 flex justify-between items-start">
                     <div className="flex-1">
@@ -359,7 +359,7 @@ export default function RoleProfilesPage() {
                   {(hasHardFilters || hasSoftWeights) && (
                     <Accordion type="single" collapsible>
                       {hasHardFilters && (
-                        <AccordionItem value="hf" className="border-t border-b-0">
+                        <AccordionItem value="hf" className="border-t border-b-0 gamify-shadow">
                           <AccordionTrigger className="px-5 py-2 text-xs font-semibold hover:no-underline">
                             Hard Filters
                           </AccordionTrigger>
@@ -369,7 +369,7 @@ export default function RoleProfilesPage() {
                         </AccordionItem>
                       )}
                       {hasSoftWeights && (
-                        <AccordionItem value="sw" className="border-t border-b-0">
+                        <AccordionItem value="sw" className="border-t border-b-0 gamify-shadow">
                           <AccordionTrigger className="px-5 py-2 text-xs font-semibold hover:no-underline">
                             Soft Weights
                           </AccordionTrigger>

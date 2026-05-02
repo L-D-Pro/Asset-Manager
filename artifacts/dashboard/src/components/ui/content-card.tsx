@@ -1,11 +1,11 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 const paddingMap = {
-  default: "p-6",
+  default: "p-5",
   none: "",
-  sm: "p-4",
+  sm: "p-3",
 } as const;
 
 interface ContentCardProps {
@@ -13,6 +13,7 @@ interface ContentCardProps {
   className?: string;
   index?: number;
   padding?: keyof typeof paddingMap;
+  style?: CSSProperties;
 }
 
 export function ContentCard({
@@ -20,6 +21,7 @@ export function ContentCard({
   className,
   index = 0,
   padding = "default",
+  style,
 }: ContentCardProps) {
   const shouldReduceMotion = useReducedMotion();
 
@@ -35,13 +37,14 @@ export function ContentCard({
       whileHover={
         shouldReduceMotion
           ? undefined
-          : { y: -2, transition: { duration: 0.2, ease: [0.16, 1, 0.3, 1] } }
+          : { y: -1, transition: { duration: 0.2, ease: [0.16, 1, 0.3, 1] } }
       }
       className={cn(
-        "rounded-2xl bg-white/80 backdrop-blur-sm border border-white/50 shadow-sm hover:shadow-md transition-all duration-300",
+        "gamify-radius-chunky border border-border/70 bg-[linear-gradient(150deg,hsl(var(--card)),hsl(var(--card))_70%,hsl(var(--primary)/0.06))] text-card-foreground backdrop-blur-xl shadow-[0_10px_28px_rgba(20,24,33,0.08)] transition-all duration-300 hover:border-primary/35 hover:shadow-[0_16px_40px_rgba(20,24,33,0.12)]",
         paddingMap[padding],
         className
       )}
+      style={style}
     >
       {children}
     </motion.div>

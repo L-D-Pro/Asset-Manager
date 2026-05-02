@@ -13,15 +13,15 @@ export function SectionHeader({ title, description, action, className }: Section
   return (
     <div className={cn("flex items-center justify-between", className)}>
       <div>
-        <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
+        <h2 className="text-lg font-semibold text-foreground">{title}</h2>
         {description && (
-          <p className="text-sm text-slate-500 mt-0.5">{description}</p>
+          <p className="text-sm text-muted-foreground mt-0.5">{description}</p>
         )}
       </div>
       {action && (
         <Link
           to={action.href}
-          className="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors group"
+          className="flex items-center gap-1 text-sm font-medium text-primary hover:text-primary/85 transition-colors group"
         >
           {action.label}
           <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />

@@ -68,11 +68,11 @@ export default function AssistedApplyPage() {
       <PageHeader
         title="Assisted Apply"
         subtitle="Let AI guide you through multi-step job applications."
-        gradient="from-amber-500 via-amber-400 to-orange-400"
+        variant="workflow"
       />
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <ContentCard>
+        <ContentCard className="gamify-radius-chunky">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <ShieldAlert className="h-4 w-4" />
@@ -86,7 +86,7 @@ export default function AssistedApplyPage() {
           </CardContent>
         </ContentCard>
 
-        <ContentCard className="lg:col-span-2">
+        <ContentCard className="lg:col-span-2 gamify-radius-chunky">
           <CardHeader>
             <CardTitle>Start Assisted Session</CardTitle>
             <CardDescription>Create an audit record before using guided copy/fill workflows.</CardDescription>
@@ -127,7 +127,7 @@ export default function AssistedApplyPage() {
         </ContentCard>
       </div>
 
-      <ContentCard>
+      <ContentCard className="gamify-radius-chunky">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ClipboardCheck className="h-5 w-5" />
@@ -141,7 +141,7 @@ export default function AssistedApplyPage() {
             <p className="text-sm text-muted-foreground">No assisted apply sessions yet.</p>
           ) : null}
           {sessions.map((session) => (
-            <div key={session.id} className="rounded-md border p-3 text-sm">
+            <div key={session.id} className="rounded-md border p-3 text-sm gamify-shadow">
               <div className="flex items-center justify-between gap-3">
                 <span className="font-medium">{session.platform}</span>
                 <Badge variant="outline">{session.status}</Badge>

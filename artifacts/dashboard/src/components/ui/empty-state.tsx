@@ -19,24 +19,24 @@ interface EmptyStateProps {
 
 export function EmptyState({ icon, title, description, action, className }: EmptyStateProps) {
   return (
-    <div className={cn("flex flex-col items-center justify-center py-16 text-center", className)}>
-      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 text-slate-300 mb-5">
+      <div className={cn("flex flex-col items-center justify-center py-12 text-center gamify-radius-chunky", className)}>
+      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-muted text-muted-foreground mb-4 border border-border">
         {icon}
       </div>
-      <h3 className="text-base font-semibold text-slate-900 mb-1.5">{title}</h3>
-      <p className="text-sm text-slate-500 max-w-sm">{description}</p>
+      <h3 className="text-base font-semibold text-foreground mb-1.5">{title}</h3>
+      <p className="text-sm text-muted-foreground max-w-sm">{description}</p>
       {action && (
         action.href ? (
           <Button
             asChild
-            className="mt-6 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 shadow-lg shadow-indigo-500/25"
+            className="mt-5 rounded-md shadow-sm"
           >
             <Link to={action.href}>{action.label}</Link>
           </Button>
         ) : (
           <Button
             onClick={action.onClick}
-            className="mt-6 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 shadow-lg shadow-indigo-500/25"
+            className="mt-5 rounded-md shadow-sm"
           >
             {action.label}
           </Button>

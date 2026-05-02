@@ -32,16 +32,16 @@ export function StatsCard({
 }: StatsCardProps) {
   return (
     <AnimatedCard index={index}>
-      <div className="relative overflow-hidden rounded-2xl bg-white/80 backdrop-blur-sm border border-white/50 shadow-sm hover:shadow-md transition-all duration-300">
+      <div className="relative overflow-hidden gamify-radius-chunky border border-border/70 gamify-shadow bg-[linear-gradient(150deg,hsl(var(--card)),hsl(var(--card))_68%,hsl(var(--accent)/0.08))] text-card-foreground backdrop-blur-xl shadow-[0_10px_28px_rgba(20,24,33,0.08)] transition-all duration-300 hover:border-primary/35 hover:shadow-[0_16px_40px_rgba(20,24,33,0.12)]">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-slate-500">{title}</CardTitle>
+          <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {isLoading ? (
             <Skeleton className="h-10 w-24" />
           ) : (
             <div className="flex items-baseline gap-2">
-              <div className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent">
+              <div className="text-2xl font-semibold tracking-normal text-foreground">
                 <AnimatedCounter
                   value={value}
                   prefix={prefix}
@@ -51,7 +51,7 @@ export function StatsCard({
               </div>
               <div
                 className={`flex items-center text-xs font-semibold ${
-                  trendUp ? "text-emerald-600" : "text-red-500"
+                  trendUp ? "text-success" : "text-destructive"
                 }`}
               >
                 {trendUp ? (

@@ -29,10 +29,10 @@ const signalSchema = z.object({
 });
 
 const SIGNAL_COLORS: Record<string, string> = {
-  response: "bg-blue-100 text-blue-800",
-  interview: "bg-green-100 text-green-800",
-  offer: "bg-emerald-100 text-emerald-800",
-  rejection: "bg-red-100 text-red-800",
+  response: "bg-primary/10 text-primary",
+  interview: "bg-success/10 text-success",
+  offer: "bg-success/10 text-success",
+  rejection: "bg-destructive/10 text-destructive",
 };
 
 export default function FeedbackPage() {
@@ -75,11 +75,11 @@ export default function FeedbackPage() {
       <PageHeader
         title="Feedback Signals"
         subtitle="Review and curate feedback used for AI learning."
-        gradient="from-indigo-600 via-indigo-500 to-violet-500"
+        variant="data"
       >
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button data-testid="btn-add-signal" className="bg-white/20 border-white/40 text-white hover:bg-white/30"><Plus className="mr-2 h-4 w-4"/>Log Signal</Button>
+            <Button data-testid="btn-add-signal" className="rounded-md shadow-sm"><Plus className="mr-2 h-4 w-4"/>Log Signal</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Log Feedback Signal</DialogTitle></DialogHeader>
@@ -165,13 +165,13 @@ export default function FeedbackPage() {
           <Skeleton className="h-16 w-full" />
         </div>
       ) : signals?.length === 0 ? (
-        <ContentCard className="flex flex-col items-center justify-center p-12 text-center border-dashed">
+        <ContentCard className="flex flex-col items-center justify-center p-12 text-center border-dashed gamify-radius-chunky">
           <Activity className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
           <h3 className="text-lg font-medium">No feedback signals yet</h3>
           <p className="text-sm text-muted-foreground mt-1 max-w-sm">Log your first application outcome to start building signal data.</p>
         </ContentCard>
       ) : (
-        <div className="border rounded-md divide-y bg-card">
+        <div className="border gamify-radius-chunky divide-y bg-card gamify-shadow">
           {signals?.map(s => (
             <div key={s.id} className="p-4 space-y-1" data-testid={`row-signal-${s.id}`}>
               <div className="flex items-center gap-3">
