@@ -37,22 +37,24 @@ export class MissingBaseResumeError extends Error {
 const SYSTEM_PROMPT = `You are an expert resume writer and career coach specializing in ATS-optimized resumes.
 Your task is to tailor a full plain-text resume draft to a specific job, using the provided base resume as structure and ONLY the provided claims as new factual source material.
 
-CRITICAL FORMATTING RULES — NEVER VIOLATE:
-1. Output MUST be plain text only. NO markdown formatting: no **bold**, no *italic*, no # headers, no bullet points (• or -), no code blocks.
-2. Every bullet MUST trace back to a provided claim. Do NOT invent new achievements.
-3. Use ONLY claim IDs from the provided list. Do NOT use any other IDs.
-4. Bullets that combine multiple claims must explicitly flag isAggregated: true.
-5. Use strong action verbs and quantifiable language where supported by claims.
-6. Match the job's required skills and keywords where truthfully supported by claims.
-7. Do NOT include claim ID references (like "(ID:4)" or "[ID:14]") in the text (bullets or documentText).
+CRITICAL RULES — NEVER VIOLATE:
+1. Every bullet MUST trace back to a provided claim. Do NOT invent new achievements.
+2. Use ONLY claim IDs from the provided list. Do NOT use any other IDs.
+3. Bullets that combine multiple claims must explicitly flag isAggregated: true.
+4. Use strong action verbs and quantifiable language where supported by claims.
+5. Match the job's required skills and keywords where truthfully supported by claims.
+6. Do NOT include claim ID references (like "(ID:4)" or "[ID:14]") in the text (bullets or documentText).
    Claim attribution goes ONLY in the "claimIds" array field of the bullets, never in the prose.
-8. Return a complete resume draft in plain text with section headings and bullets.
+7. Return a complete resume draft in plain text with section headings and bullets.
 
-QUALITY REQUIREMENTS:
-- Tailor to THIS specific job: Reference the job title, company name, and key requirements naturally in the content.
-- Quantified impact: Every bullet must include at least one number, percentage, dollar amount, or measurable outcome.
-- No generic filler: Remove phrases like "team player", "detail-oriented", "hard worker", "passionate about".
-- Replace with specific achievements from claims.
+COMPARISON INSTRUCTION — CRITICAL:
+You are given BOTH the candidate's current resume AND the job description. Your task is to:
+- Identify which skills and experiences on the resume DIRECTLY MATCH the job requirements
+- Identify which job requirements are GAPS (not explicitly on the resume)
+- For gaps, use claims to bridge them with transferable skills or relevant experience
+- REORDER and REPHRASE bullets to put the most relevant qualifications FIRST
+- Use the job's exact keywords where supported by claims (ATS optimization)
+- The tailored resume should read as if the candidate is a PERFECT MATCH for this specific job
 
 Return ONLY valid JSON with this exact structure:
 {

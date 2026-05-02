@@ -1,4 +1,9 @@
-import { db, coverLetterVersionsTable } from "@workspace/db";
+import {
+  db,
+  coverLetterVersionsTable,
+  baseResumeVersionsTable,
+} from "@workspace/db";
+import { desc, eq } from "drizzle-orm";
 import { callAI, parseJsonResponse } from "../ai-client";
 import { matchClaimsToJob } from "../scoring";
 import { validateParagraph, assertMinimumContent, TruthLockViolation, stripClaimIdRefs, validateCoverLetterQuality, QualityViolation } from "./validation";
@@ -20,21 +25,29 @@ interface CoverLetterResult {
 const SYSTEM_PROMPT = `You are an expert career coach specializing in cover letters.
 Your task is to draft a professional cover letter using ONLY the provided claims as source material.
 
-CRITICAL FORMATTING RULES — NEVER VIOLATE:
-1. Output MUST be plain text only. NO markdown formatting: no **bold**, no *italic*, no # headers, no bullet points.
-2. Every body/hook paragraph MUST cite at least one claim ID from the provided list.
-3. Use ONLY claim IDs from the provided list. Do NOT use any other IDs.
-4. Do NOT invent achievements, metrics, or experiences not in the claims.
-5. Do NOT include claim ID references (like "(ID:4)" or "[ID:14]") in the paragraph text body.
+CRITICAL RULES — NEVER VIOLATE:
+1. Every body/hook paragraph MUST cite at least one claim ID from the provided list.
+2. Use ONLY claim IDs from the provided list. Do NOT use any other IDs.
+3. Do NOT invent achievements, metrics, or experiences not in the claims.
+4. Do NOT include claim ID references (like "(ID:4)" or "[ID:14]") in the paragraph text body.
    Claim attribution goes ONLY in the "claimIds" array field, never in the prose.
 
+RESUME CONTEXT — CRITICAL:
+You are given the candidate's resume as background context. The cover letter should:
+- COMPLEMENT the resume, not repeat it verbatim
+- Highlight 2-3 key achievements from the resume that are MOST RELEVANT to this job
+- Explain WHY the candidate is excited about THIS specific company and role
+- Address any gaps between the resume and job requirements (use claims to bridge)
+- Show personality and genuine enthusiasm
+- Be 250-400 words (roughly 3-4 paragraphs)
+
 QUALITY REQUIREMENTS:
-- Length: 3-5 concise paragraphs, 250-400 words total. NOT a summary of the resume.
-- Tailor to THIS specific job: Reference the job title, company name, and 1-2 specific requirements naturally.
-- Address a business problem: Name a specific challenge the company faces and how your skills would help solve it.
-- Show personality and motivation: This is your chance to connect beyond the resume.
-- No generic filler: Remove phrases like "team player", "detail-oriented", "hard worker", "passionate about".
-- Replace with specific accomplishments from claims.
+- Address the company's specific business problem or opportunity
+- Show you've researched the company (use company name, mission, recent news if known)
+- Use the hiring manager's name if provided
+- Include a clear call to action
+- NO generic filler phrases like "I am writing to apply for", "I believe I am a good fit"
+- NO markdown formatting — plain text only
 
 Return ONLY valid JSON with this exact structure:
 {
@@ -105,6 +118,18 @@ export async function runCoverLetterPipeline(
     )
     .join("\n");
 
+  // Fetch base resume for context
+  const [baseResumeVersion] = await db
+    .select()
+    .from(baseResumeVersionsTable)
+    .where(eq(baseResumeVersionsTable.isCurrent, true))
+    .orderBy(desc(baseResumeVersionsTable.createdAt))
+    .limit(1);
+
+  const resumeContext = baseResumeVersion
+    ? `\n\nCandidate's Resume (for context — do NOT repeat verbatim, use to complement):\n${baseResumeVersion.contentText.slice(0, 2000)}`
+    : "";
+
   const profileContext = roleProfile
     ? `Applying via role profile: ${roleProfile.name}. `
     : "";
@@ -121,7 +146,7 @@ Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed
   const result = await callAI({
     taskType: "cover_letter",
     systemPrompt: SYSTEM_PROMPT,
-    userPrompt: `Draft a cover letter for this job:\n\n${jobContext}\n\nAvailable claims (use ONLY these IDs):\n${claimsContext}`,
+    userPrompt: `Draft a cover letter for this job:\n\n${jobContext}${resumeContext}\n\nAvailable claims (use ONLY these IDs):\n${claimsContext}`,
     jobId: job.id,
     modelOverride: options?.modelOverride,
   });
