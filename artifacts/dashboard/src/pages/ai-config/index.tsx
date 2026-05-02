@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 import { Settings, Plus, Pencil, Trash2, ArrowRight } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
@@ -171,7 +172,7 @@ export default function AiConfigPage() {
         <PageHeader
           title="AI Config"
           subtitle="Configure AI model defaults per task type, manage cost caps, and set fallback behavior."
-          gradient="from-fuchsia-500 via-fuchsia-400 to-rose-400"
+          variant="data"
         />
 
         <Dialog open={isDialogOpen} onOpenChange={(open) => { if(!open) handleClose(); else setIsDialogOpen(true); }}>
@@ -326,7 +327,7 @@ export default function AiConfigPage() {
           {sortedConfigs.map(c => {
             const fallbackName = getFallbackName(c.fallbackModelId);
             return (
-              <ContentCard key={c.id} data-testid={`card-config-${c.id}`} className={!c.isActive ? "opacity-70" : ""}>
+              <ContentCard key={c.id} data-testid={`card-config-${c.id}`} className={cn("gamify-radius-chunky gamify-shadow", !c.isActive && "opacity-70")}>
                 <CardContent className="p-5 space-y-3">
                   <div className="flex justify-between items-start">
                     <div className="space-y-1 flex-1 min-w-0 pr-2">

@@ -56,7 +56,7 @@ export default function AiReviewPage() {
       <PageHeader
         title="AI Review"
         subtitle="Version prompts, inspect AI runs, and curate supervised learning signals without fine-tuning prematurely."
-        gradient="from-fuchsia-500 via-fuchsia-400 to-rose-400"
+        variant="data"
       />
 
       <div className="grid gap-4 md:grid-cols-4">
@@ -66,7 +66,7 @@ export default function AiReviewPage() {
         <Metric title="Training Examples" value={stats?.trainingExamples ?? 0} icon={<FlaskConical className="h-4 w-4" />} />
       </div>
 
-      <ContentCard>
+      <ContentCard className="gamify-gradient-subtle gamify-radius-chunky">
         <CardHeader>
           <CardTitle>Create Prompt Version</CardTitle>
           <CardDescription>
@@ -144,7 +144,7 @@ export default function AiReviewPage() {
       </ContentCard>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <ContentCard>
+        <ContentCard className="gamify-radius-chunky gamify-shadow">
           <CardHeader>
             <CardTitle>Recent AI Events</CardTitle>
             <CardDescription>Model, cost, prompt version, and fallback metadata are logged in event metadata.</CardDescription>
@@ -167,7 +167,7 @@ export default function AiReviewPage() {
           </CardContent>
         </ContentCard>
 
-        <ContentCard>
+        <ContentCard className="gamify-radius-chunky gamify-shadow">
           <CardHeader>
             <CardTitle>Prompt Versions</CardTitle>
             <CardDescription>Keep old versions immutable and activate only the prompt you want production calls to use.</CardDescription>
@@ -193,7 +193,7 @@ export default function AiReviewPage() {
 
 function Metric({ title, value, icon }: { title: string; value: number; icon: React.ReactNode }) {
   return (
-    <ContentCard>
+    <ContentCard className="gamify-shadow">
       <CardContent className="p-4">
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <span>{title}</span>

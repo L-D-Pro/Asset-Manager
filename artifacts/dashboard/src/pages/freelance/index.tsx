@@ -152,7 +152,7 @@ export default function FreelancePage() {
       <PageHeader
         title="Freelance Assist"
         subtitle="Manage your freelance pipeline — from proposals to retainer tracking."
-        gradient="from-amber-500 via-amber-400 to-orange-400"
+        variant="workflow"
       />
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -241,7 +241,7 @@ export default function FreelancePage() {
         <CardContent className="space-y-3">
           {projects.length === 0 ? <p className="text-sm text-muted-foreground">No freelance projects yet.</p> : null}
           {projects.map((project) => (
-            <div key={project.id} className="rounded-md border p-3 text-sm">
+            <div key={project.id} className="gamify-radius-chunky gamify-shadow border p-3 text-sm">
               <div className="flex items-center justify-between gap-3">
                 <span className="font-medium">{project.title}</span>
                 <Badge variant={project.fitScore != null && project.fitScore >= 70 ? "default" : "outline"}>
@@ -250,7 +250,7 @@ export default function FreelancePage() {
               </div>
               <p className="mt-1 text-muted-foreground line-clamp-2">{project.descriptionText}</p>
               {project.riskFlags.length ? (
-                <p className="mt-1 text-xs text-amber-700">Risks: {project.riskFlags.join(", ")}</p>
+                <p className="mt-1 text-xs text-warning">Risks: {project.riskFlags.join(", ")}</p>
               ) : null}
               <div className="mt-3 flex gap-2">
                 <Button size="sm" variant="outline" onClick={() => scoreProject.mutate(project.id)}>
@@ -277,7 +277,7 @@ export default function FreelancePage() {
         <CardContent className="space-y-3">
           {proposals.length === 0 ? <p className="text-sm text-muted-foreground">No proposal drafts yet.</p> : null}
           {proposals.map((proposal) => (
-            <div key={proposal.id} className="rounded-md border p-3 text-sm">
+            <div key={proposal.id} className="gamify-radius-chunky gamify-shadow border p-3 text-sm">
               <div className="flex items-center justify-between gap-3">
                 <span className="font-medium">Project #{proposal.projectId}</span>
                 <Badge>{proposal.status}</Badge>

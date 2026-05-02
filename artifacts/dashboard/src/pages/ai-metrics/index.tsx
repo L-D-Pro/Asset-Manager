@@ -42,7 +42,7 @@ export default function AiMetricsPage() {
       <PageHeader
         title="AI Metrics"
         subtitle="Track prompt version performance, success rates, and cost efficiency over time."
-        gradient="from-fuchsia-500 via-fuchsia-400 to-rose-400"
+        variant="data"
       />
 
       <Tabs defaultValue={TASK_SCOPES[0]}>
@@ -115,7 +115,7 @@ function TaskScopePanel({ scope, windowStart, windowEnd }: { scope: TaskScope; w
         />
       </div>
 
-      <ContentCard>
+      <ContentCard className="gamify-radius-chunky">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4" />
@@ -159,7 +159,7 @@ function TaskScopePanel({ scope, windowStart, windowEnd }: { scope: TaskScope; w
         </CardContent>
       </ContentCard>
 
-      <ContentCard>
+      <ContentCard className="gamify-radius-chunky">
         <CardHeader>
           <CardTitle>Prompt-version comparison</CardTitle>
           <CardDescription>Grouped by promptVersionId ("unknown" means built-in / not captured).</CardDescription>
@@ -173,7 +173,7 @@ function TaskScopePanel({ scope, windowStart, windowEnd }: { scope: TaskScope; w
               </AlertTitle>
               <AlertDescription>
                 Best prompt ({lift.best.promptVersionId}) vs baseline ({lift.baseline.promptVersionId}): approval Δ{" "}
-                <span className={cn(lift.deltaApprovalRate !== null && lift.deltaApprovalRate > 0 ? "text-emerald-700" : "")}> 
+                <span className={cn(lift.deltaApprovalRate !== null && lift.deltaApprovalRate > 0 ? "text-success" : "")}> 
                   {formatPercent(lift.deltaApprovalRate)}
                 </span>
                 , edit distance Δ {formatNumber(lift.deltaAvgEditDistance)}.
@@ -226,7 +226,7 @@ function DegradedBanner({ snapshot }: { snapshot: any }) {
   if (snapshot.status !== "degraded") return null;
 
   return (
-    <Alert className="border-amber-300 bg-amber-50">
+    <Alert className="border-warning/30 bg-warning/10">
       <AlertTriangle className="h-4 w-4" />
       <AlertTitle>Metrics snapshot degraded</AlertTitle>
       <AlertDescription className="space-y-2">
@@ -250,7 +250,7 @@ function DegradedBanner({ snapshot }: { snapshot: any }) {
 
 function MetricCard({ title, value, description }: { title: string; value: string | number; description?: string }) {
   return (
-    <ContentCard>
+    <ContentCard className="gamify-shadow">
       <CardContent className="p-4">
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <span>{title}</span>

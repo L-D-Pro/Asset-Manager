@@ -197,7 +197,7 @@ export default function AiLearningPage() {
       <PageHeader
         title="AI Learning"
         subtitle="Bayesian auto-optimizer that learns from feedback signals to improve prompt versions over time."
-        gradient="from-fuchsia-500 via-fuchsia-400 to-rose-400"
+        variant="data"
       >
         <Button
           onClick={() => recomputeMutation.mutate()}
@@ -267,7 +267,7 @@ export default function AiLearningPage() {
                   <CardTitle className="text-sm font-medium">
                     Suggestions
                   </CardTitle>
-                  <Trophy className="h-4 w-4 text-amber-500" />
+                  <Trophy className="h-4 w-4 text-warning" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
@@ -285,7 +285,7 @@ export default function AiLearningPage() {
                   <CardTitle className="text-sm font-medium">
                     Auto Promotions
                   </CardTitle>
-                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <CheckCircle className="h-4 w-4 text-success" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
@@ -354,7 +354,7 @@ export default function AiLearningPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Trophy className="h-5 w-5 text-amber-500" />
+                  <Trophy className="h-5 w-5 text-warning" />
                   Suggested Promotions
                 </CardTitle>
                 <CardDescription>
@@ -367,7 +367,7 @@ export default function AiLearningPage() {
                   return (
                     <Card
                       key={comp.id}
-                      className="border-amber-500/30"
+                      className="border-warning/30 gamify-radius-chunky gamify-shadow"
                     >
                       <CardContent className="pt-6">
                         <div className="flex items-center justify-between mb-4">
@@ -408,14 +408,14 @@ export default function AiLearningPage() {
                             </p>
                           </div>
                         </div>
-                        <div className="w-full bg-muted rounded-full h-2 mb-4">
+                            <div className="w-full bg-muted rounded-full h-2 mb-4">
                           <div
-                            className="bg-amber-500 h-2 rounded-full transition-all"
+                            className="bg-warning h-2 rounded-full transition-all"
                             style={{ width: `${confPct}%` }}
                           />
                         </div>
                         <Button
-                          variant="default"
+                          className="gamify-gradient-primary"
                           size="sm"
                           onClick={() => promoteMutation.mutate(comp.id)}
                           disabled={promoteMutation.isPending}
@@ -434,7 +434,7 @@ export default function AiLearningPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-500" />
+                  <CheckCircle className="h-5 w-5 text-success" />
                   Auto-Promoted
                 </CardTitle>
                 <CardDescription>
@@ -447,7 +447,7 @@ export default function AiLearningPage() {
                   return (
                     <Card
                       key={comp.id}
-                      className="border-green-500/30"
+                      className="border-success/30 gamify-radius-chunky gamify-shadow"
                     >
                       <CardContent className="pt-6">
                         <div className="flex items-center justify-between mb-4">
@@ -460,7 +460,7 @@ export default function AiLearningPage() {
                               {comp.taskScope}
                             </p>
                           </div>
-                          <Badge variant="default" className="bg-green-500">
+                          <Badge variant="default" className="bg-success">
                             Promoted
                           </Badge>
                         </div>
@@ -469,7 +469,7 @@ export default function AiLearningPage() {
                             <p className="text-xs text-muted-foreground">
                               Promoted (A)
                             </p>
-                            <p className="text-lg font-bold text-green-600">
+                            <p className="text-lg font-bold text-success">
                               {confidencePercent(comp.successRateA)}%
                             </p>
                             <p className="text-xs text-muted-foreground">
@@ -490,7 +490,7 @@ export default function AiLearningPage() {
                         </div>
                         <div className="w-full bg-muted rounded-full h-2 mb-4">
                           <div
-                            className="bg-green-500 h-2 rounded-full transition-all"
+                            className="bg-success h-2 rounded-full transition-all"
                             style={{ width: `${confPct}%` }}
                           />
                         </div>
@@ -500,7 +500,7 @@ export default function AiLearningPage() {
                           </p>
                         )}
                         <Button
-                          variant="destructive"
+                          className="gamify-gradient-primary"
                           size="sm"
                           onClick={() => revertMutation.mutate(comp.id)}
                           disabled={revertMutation.isPending}
