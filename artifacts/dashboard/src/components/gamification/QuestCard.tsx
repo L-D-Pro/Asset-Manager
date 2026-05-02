@@ -1,78 +1,65 @@
-import { GradientButton } from "./GradientButton"
 import { cn } from "@/lib/utils"
+import { motion } from "framer-motion"
+import { GradientButton } from "./GradientButton"
 
 interface QuestCardProps {
- questId: number
- name: string
- description: string
- xpReward: number
- progress: number
- criteriaValue: number
- status: "active" | "completed"
- frequency?: string
- onAccept?: (questId: number) => void
- className?: string
+  title: string
+  description: string
+  progress: number // 0-100
+  reward: string // e.g. "+50 XP"
+  emoji: string
+  onAccept?: () => void
+  className?: string
 }
 
-function QuestCard({ questId, name, description, xpReward, progress, criteriaValue, status, frequency, onAccept, className }: QuestCardProps) {
- const completed = status === "completed" || progress >= criteriaValue
- const pct = Math.min((progress / criteriaValue) * 100, 100)
-
- return (
- <div className={cn(
- "rounded-2xl border p-4 transition-all",
- completed
- ? "border-emerald-300 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/20"
- : "border-border/50 bg-card/50 backdrop-blur-sm hover:border-primary/30",
- className
- )}>
- <div className="flex items-start justify-between mb-2">
- <div>
- <h4 className={cn(
- "font-bold text-sm",
- completed ? "text-emerald-800 dark:text-emerald-200" : "text-foreground"
- )}>
- {completed ? "✓ " : ""}{name}
- </h4>
- <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
- </div>
- <span className={cn(
- "rounded-full px-2 py-0.5 text-xs font-bold",
- completed
- ? "bg-emerald-200 dark:bg-emerald-800 text-emerald-800 dark:text-emerald-200"
- : "bg-primary/10 text-primary"
- )}>
- +{xpReward} XP
- </span>
- </div>
- {!completed && (
- <>
- <div className="mt-3 h-2 rounded-full bg-muted/50 overflow-hidden">
- <div
- className="h-full rounded-full bg-[linear-gradient(90deg,hsl(var(--primary)),hsl(var(--primary)/0.7))] transition-all duration-500"
- style={{ width: `${pct}%` }}
- />
- </div>
- <div className="flex items-center justify-between mt-2">
- <span className="text-[11px] text-muted-foreground">{progress}/{criteriaValue}</span>
- {frequency && (
- <span className="text-[11px] text-muted-foreground capitalize">{frequency}</span>
- )}
- </div>
- </>
- )}
- {onAccept && (
- <GradientButton
- size="sm"
- variant="ghost"
- className="w-full mt-3"
- onClick={() => onAccept(questId)}
- >
- Accept
- </GradientButton>
- )}
- </div>
- )
+export function QuestCard({ title, description, progress, reward, emoji, onAccept, className }: QuestCardProps) {
+  const isComplete = progress >= 100
+  return (
+    <motion.div
+      whileHover={{ y: -2 }}
+      className={cn("card-glass p-5 space-y-3", isComplete && "border-primary/30", className)}
+    >
+      <div className="flex items-center gap-3">
+        <div className={cn(
+          "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xl",
+          isComplete ? "gradient-hero" : "bg-secondary/10",
+        )}>
+          {emoji}
+        </div>
+        <div className="flex-1 min-w-0">
+          <h4 className="font-bold text-foreground text-sm truncate">{title}</h4>
+          <p className="text-xs text-muted-foreground line-clamp-1">{description}</p>
+        </div>
+      </div>
+      {!isComplete && (
+        <>
+          <div className="h-2 rounded-full bg-border overflow-hidden">
+            <div
+              className="h-full rounded-full gradient-hero transition-all duration-700"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              {progress}% complete
+            </span>
+            <span className="text-[10px] font-extrabold text-secondary uppercase tracking-widest">
+              {reward}
+            </span>
+          </div>
+        </>
+      )}
+      {isComplete && (
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-success">Complete! 🎉</span>
+          <button
+            onClick={onAccept}
+            className="text-xs font-bold text-primary hover:underline"
+          >
+            Claim reward
+          </button>
+        </div>
+      )}
+    </motion.div>
+  )
 }
-
-export { QuestCard }
