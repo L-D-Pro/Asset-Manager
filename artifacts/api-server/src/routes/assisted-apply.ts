@@ -137,6 +137,26 @@ router.get("/application-sessions/:id", async (req, res): Promise<void> => {
   res.json({ session, fields, actions });
 });
 
+router.delete("/application-sessions/:id", async (req, res): Promise<void> => {
+  const params = IdParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const [session] = await db
+    .select()
+    .from(applicationSessionsTable)
+    .where(eq(applicationSessionsTable.id, params.data.id));
+  if (!session) {
+    res.status(404).json({ error: "Application session not found" });
+    return;
+  }
+  await db
+    .delete(applicationSessionsTable)
+    .where(eq(applicationSessionsTable.id, params.data.id));
+  res.status(204).send();
+});
+
 router.post("/application-sessions/:id/fields", async (req, res): Promise<void> => {
   const params = IdParams.safeParse(req.params);
   if (!params.success) {

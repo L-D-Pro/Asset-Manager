@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Plus, CheckSquare, Pencil, Trash2, EyeOff, X, Sparkles } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -66,9 +66,10 @@ export default function ClaimsPage() {
  const updateClaim = useUpdateClaim();
  const deleteClaim = useDeleteClaim();
  const draftClaims = useDraftClaims();
- const [isDialogOpen, setIsDialogOpen] = useState(false);
- const [isAiDialogOpen, setIsAiDialogOpen] = useState(false);
- const [editingId, setEditingId] = useState<number | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isAiDialogOpen, setIsAiDialogOpen] = useState(false);
+  const [isCleanUpDialogOpen, setIsCleanUpDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
  const [draftSourceText, setDraftSourceText] = useState("");
  const [draftPrompt, setDraftPrompt] = useState("");
  const [draftFile, setDraftFile] = useState<File | null>(null);
@@ -162,25 +163,52 @@ export default function ClaimsPage() {
  );
  };
 
- const handleDelete = (id: number) => {
- if (confirm("Are you sure you want to delete this claim?")) {
- deleteClaim.mutate(
- { id },
- {
- onSuccess: () => {
- toast({ title: "Claim deleted" });
- queryClient.invalidateQueries({ queryKey: getListClaimsQueryKey() });
- },
- onError: (error) =>
- toast({
- title: "Failed to delete claim",
- description: getErrorMessage(error, "Please try again."),
- variant: "destructive",
- }),
- }
- );
- }
- };
+  const handleDelete = (id: number) => {
+    if (confirm("Are you sure you want to delete this claim?")) {
+      deleteClaim.mutate(
+        { id },
+        {
+          onSuccess: () => {
+            toast({ title: "Claim deleted" });
+            queryClient.invalidateQueries({ queryKey: getListClaimsQueryKey() });
+          },
+          onError: (error) =>
+            toast({
+              title: "Failed to delete claim",
+              description: getErrorMessage(error, "Please try again."),
+              variant: "destructive",
+            }),
+        }
+      );
+    }
+  };
+
+  const handleCleanUpAll = async () => {
+    if (!claims || claims.length === 0) return;
+    let deletedCount = 0;
+    let errorCount = 0;
+    for (const claim of claims) {
+      try {
+        await deleteClaim.mutateAsync({ id: claim.id });
+        deletedCount++;
+      } catch {
+        errorCount++;
+      }
+    }
+    if (deletedCount > 0) {
+      await queryClient.invalidateQueries({ queryKey: getListClaimsQueryKey() });
+    }
+    if (errorCount > 0) {
+      toast({
+        title: `Deleted ${deletedCount} claim${deletedCount === 1 ? "" : "s"}`,
+        description: `${errorCount} failed to delete.`,
+        variant: "destructive",
+      });
+    } else {
+      toast({ title: `Deleted ${deletedCount} claim${deletedCount === 1 ? "" : "s"}` });
+    }
+    setIsCleanUpDialogOpen(false);
+  };
 
  const handleCloseDialog = () => {
  setIsDialogOpen(false);
@@ -550,8 +578,31 @@ export default function ClaimsPage() {
  </form>
  </Form>
  </DialogContent>
- </Dialog>
- </PageHeader>
+  </Dialog>
+
+  <Dialog open={isCleanUpDialogOpen} onOpenChange={setIsCleanUpDialogOpen}>
+  <DialogTrigger asChild>
+  <Button variant="outline" disabled={!claims || claims.length === 0} data-testid="btn-clean-up-claims">
+  <Trash2 className="mr-2 h-4 w-4" />
+  Clean Up
+  </Button>
+  </DialogTrigger>
+  <DialogContent>
+  <DialogHeader>
+  <DialogTitle>Clean Up Claims</DialogTitle>
+  <DialogDescription>
+  This will permanently delete all claims. This cannot be undone.
+  </DialogDescription>
+  </DialogHeader>
+  <DialogFooter>
+  <Button variant="outline" onClick={() => setIsCleanUpDialogOpen(false)}>Cancel</Button>
+  <Button variant="destructive" onClick={handleCleanUpAll} disabled={deleteClaim.isPending} data-testid="btn-confirm-clean-up-claims">
+  {deleteClaim.isPending ? "Deleting..." : "Delete All Claims"}
+  </Button>
+  </DialogFooter>
+  </DialogContent>
+  </Dialog>
+  </PageHeader>
 
  <div className="flex flex-col sm:flex-row gap-3">
  <Tabs value={filter} onValueChange={(v) => setFilter(v as ClaimFilter)} data-testid="tabs-claims-filter">
