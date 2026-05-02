@@ -37,7 +37,7 @@ export default function VerifyEmailPage() {
  return (
  <div className="min-h-screen bg-surface flex items-center justify-center p-4">
  <div className="w-full max-w-md">
- <div className="card-chunky p-8">
+  <div className="p-8">
  <div className="text-center mb-6">
  <h1 className="text-2xl font-bold gradient-text">Job Ops</h1>
  <p className="text-muted text-sm mt-1">Check your inbox for a verification link</p>

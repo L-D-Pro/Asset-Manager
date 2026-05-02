@@ -1,6 +1,7 @@
 import { useReducedMotion } from 'framer-motion';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import { Button } from "@/components/ui/button";
 import { easing } from '@/lib/animations';
 
 /* ─── Animation variants ─── */
@@ -92,7 +93,7 @@ function Hero() {
  className="mt-16 relative max-w-md mx-auto w-full px-4"
  style={{ animation: shouldReduce ? 'none' : 'float 4s ease-in-out infinite' }}
  >
- <div className="card-chunky bg-background">
+ <div className="bg-background">
  <div className="flex items-center gap-1.5 mb-4 pb-3 border-b border-border/30">
  <div className="w-2.5 h-2.5 rounded-full bg-destructive/60" />
  <div className="w-2.5 h-2.5 rounded-full bg-warning/60" />
@@ -157,7 +158,7 @@ function HowItWorks() {
  className="grid md:grid-cols-3 gap-8"
  >
  {cards.map((card) => (
- <motion.div key={card.title} variants={shouldReduce ? undefined : staggerItem} className="card-chunky p-8 text-center">
+ <motion.div key={card.title} variants={shouldReduce ? undefined : staggerItem} className="p-8 text-center">
  <div className="text-4xl mb-4">{card.emoji}</div>
  <h3 className="text-xl font-bold font-display mb-2">{card.title}</h3>
  <p className="text-muted-foreground leading-relaxed">{card.desc}</p>
@@ -206,7 +207,7 @@ function GamificationTeaser() {
  className="grid md:grid-cols-3 gap-6 mb-16"
  >
  {cards.map((card) => (
- <motion.div key={card.title} variants={shouldReduce ? undefined : staggerItem} className="card-chunky p-8 text-center">
+ <motion.div key={card.title} variants={shouldReduce ? undefined : staggerItem} className="p-8 text-center">
  <div className="text-4xl mb-4">{card.emoji}</div>
  <h3 className="text-lg font-bold font-display mb-2">{card.title}</h3>
  <p className="text-muted-foreground text-sm leading-relaxed">{card.desc}</p>
@@ -251,9 +252,9 @@ function PricingCTA() {
  No credit card required. Join the pilot program.
  </p>
  <div className="mt-8">
- <Link to="/register" className="btn-primary text-lg px-8 py-4">
- Join the Pilot
- </Link>
+  <Button asChild variant="primary" size="lg" className="text-lg">
+  <Link to="/register">Join the Pilot</Link>
+  </Button>
  </div>
  <p className="mt-4 text-sm text-muted-foreground">
  Already a member?{' '}

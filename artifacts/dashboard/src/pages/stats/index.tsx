@@ -103,7 +103,7 @@ export default function StatsPage() {
  return (
  <div className="py-8 space-y-8">
  <h1 className="text-4xl font-bold font-[family-name:var(--font-heading)] text-foreground">Stats</h1>
- <div className="card-chunky flex flex-col items-center justify-center py-12 text-center">
+ <div className="flex flex-col items-center justify-center py-12 text-center">
  <Loader2 className="h-10 w-10 text-muted animate-spin mb-4" />
  <p className="text-foreground font-semibold text-lg">Unable to load stats</p>
  <p className="text-muted text-sm mt-1">Start using the app to earn XP!</p>
@@ -119,7 +119,7 @@ export default function StatsPage() {
  <div className="py-8 space-y-8">
  <h1 className="text-4xl font-bold font-[family-name:var(--font-heading)] text-foreground">Stats</h1>
  <p className="text-muted text-lg">Your gamification journey</p>
- <div className="card-chunky flex flex-col items-center justify-center py-12 text-center">
+ <div className="flex flex-col items-center justify-center py-12 text-center">
  <Trophy className="h-16 w-16 text-muted opacity-40 mb-4" />
  <h2 className="text-xl font-bold text-foreground font-[family-name:var(--font-heading)]">Start your journey!</h2>
  <p className="text-muted text-sm mt-2 max-w-sm">
@@ -152,7 +152,7 @@ export default function StatsPage() {
 
  {/* Level + Streak Overview */}
  <div className="grid gap-4 md:grid-cols-2">
- <div className="card-chunky flex flex-col items-center gap-4">
+ <div className="flex flex-col items-center gap-4">
  <ProgressRing
  progress={levelProgress}
  size={140}
@@ -180,7 +180,7 @@ export default function StatsPage() {
  </div>
 
  {/* Achievements */}
- <div className="card-chunky space-y-4">
+ <div className="space-y-4">
  <div className="flex items-center gap-2">
  <Trophy className="h-5 w-5 text-warning" />
  <h2 className="text-lg font-bold font-[family-name:var(--font-heading)] text-foreground">
@@ -217,7 +217,7 @@ export default function StatsPage() {
  </div>
 
  {/* XP History */}
- <div className="card-chunky space-y-4">
+ <div className="space-y-4">
  <div className="flex items-center gap-2">
  <TrendingUp className="h-5 w-5 text-primary" />
  <h2 className="text-lg font-bold font-[family-name:var(--font-heading)] text-foreground">
@@ -255,19 +255,19 @@ export default function StatsPage() {
 
  {/* Quick Stats */}
  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
- <div className="card-chunky text-center">
+ <div className="text-center">
  <p className="text-2xl font-bold text-foreground font-[family-name:var(--font-heading)]">{stats.currentStreak}</p>
  <p className="text-xs text-muted">Day Streak</p>
  </div>
- <div className="card-chunky text-center">
+ <div className="text-center">
  <p className="text-2xl font-bold text-foreground font-[family-name:var(--font-heading)]">{stats.longestStreak}</p>
  <p className="text-xs text-muted">Longest Streak</p>
  </div>
- <div className="card-chunky text-center">
+ <div className="text-center">
  <p className="text-2xl font-bold text-foreground font-[family-name:var(--font-heading)]">{stats.questsCompleted}</p>
  <p className="text-xs text-muted">Quests Done</p>
  </div>
- <div className="card-chunky text-center">
+ <div className="text-center">
  <p className="text-2xl font-bold text-foreground font-[family-name:var(--font-heading)]">{stats.achievementsUnlocked}</p>
  <p className="text-xs text-muted">Achievements</p>
  </div>

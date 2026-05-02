@@ -157,7 +157,7 @@ export function CommandPalette() {
  onClick={() => setOpen(false)}
  />
  <div className="absolute top-[20%] left-1/2 -translate-x-1/2 w-full max-w-[520px] px-4">
- <div className="card-chunky p-0 overflow-hidden">
+  <div className="p-0 overflow-hidden">
  <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
  <Search className="w-4 h-4 text-muted-foreground shrink-0" />
  <input

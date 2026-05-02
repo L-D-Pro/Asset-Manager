@@ -115,7 +115,7 @@ export default function JobDetail() {
  },
  onSuccess: (data) => {
  toast({ title: "Gap analysis complete" });
- console.log("Gap Analysis Data:", data);
+  // Gap analysis data available in scope if needed for debugging
  },
  onError: (error) =>
  toast({

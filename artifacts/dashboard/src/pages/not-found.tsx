@@ -10,7 +10,7 @@ export default function NotFound() {
 
  return (
  <div className="min-h-screen bg-surface flex items-center justify-center">
- <div className="card-chunky p-12 text-center max-w-md bg-background">
+  <div className="p-12 text-center max-w-md bg-background">
  <motion.div
  initial={{ opacity: 0, y: 20 }}
  animate={{ opacity: 1, y: 0 }}
