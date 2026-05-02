@@ -1174,20 +1174,20 @@ export default function ApplyWizardPage() {
  />
  )}
  <div className="flex flex-col items-center gap-1">
- <div
- className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold font-[family-name:var(--font-heading)] transition-colors ${
- isCompleted
- ? "bg-primary text-white"
- : isActive
- ? "bg-primary text-white ring-4 ring-primary/20"
- : "bg-card/50 backdrop-blur-md border-2 border-border text-muted"
- }`}
- >
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+                  isCompleted
+                    ? "bg-primary text-primary-foreground"
+                    : isActive
+                    ? "bg-primary text-primary-foreground ring-4 ring-primary/20"
+                    : "bg-card/50 backdrop-blur-md border-2 border-border text-muted-foreground"
+                }`}
+              >
  {isCompleted ? "✓" : index + 1}
  </div>
- <span className={`text-[10px] font-semibold capitalize hidden md:block ${
- isActive ? "text-primary" : isFuture ? "text-muted" : "text-foreground"
- }`}>
+              <span className={`text-[10px] font-semibold capitalize hidden md:block ${
+                isActive ? "text-primary" : isFuture ? "text-muted-foreground" : "text-foreground"
+              }`}>
  {name}
  </span>
  </div>

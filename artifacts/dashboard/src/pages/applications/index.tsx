@@ -119,7 +119,7 @@ export default function ApplicationsPage() {
  <div className="space-y-6">
  <div className="flex justify-between items-center">
  <div>
- <h1 className="text-4xl font-bold font-[family-name:var(--font-heading)] text-foreground">Applications</h1>
+ <h1 className="text-4xl font-bold font-sans text-foreground">Applications</h1>
   <p className="text-muted-foreground text-lg">Track submitted applications and pipeline stage.</p>
  </div>
 

@@ -142,7 +142,7 @@ export default function JobDetail() {
  return (
  <div className="flex flex-col items-center justify-center py-20 text-center">
  <span className="text-4xl mb-4">🔍</span>
- <h2 className="text-xl font-bold font-display text-foreground mb-2">Job not found</h2>
+ <h2 className="text-xl font-bold  text-foreground mb-2">Job not found</h2>
  <Link
  to="/jobs"
  className="text-[hsl(var(--primary))] hover:underline font-medium"
@@ -215,7 +215,7 @@ export default function JobDetail() {
  </button>
  <div className="flex items-start justify-between gap-4 flex-wrap">
  <div>
- <h1 className="text-[32px] leading-tight font-bold font-display text-foreground">
+ <h1 className="text-[32px] leading-tight font-bold  text-foreground">
  {job.title}
  </h1>
  <div className="flex items-center gap-3 mt-2 text-muted-foreground flex-wrap">
@@ -251,7 +251,7 @@ export default function JobDetail() {
  transition={{ duration: 0.4, delay: 0.05, ease: [0.22, 1, 0.36, 1] }}
  className="card-glass shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]"
  >
- <h2 className="text-lg font-bold font-display text-foreground mb-5">Score &amp; Match</h2>
+ <h2 className="text-lg font-bold  text-foreground mb-5">Score &amp; Match</h2>
 
  {scoreLoading ? (
  <div className="flex flex-col items-center gap-3 py-4">
@@ -299,7 +299,7 @@ export default function JobDetail() {
  </svg>
  <div className="absolute inset-0 flex items-center justify-center">
  <span
- className="text-3xl font-extrabold font-display text-foreground"
+ className="text-3xl font-extrabold  text-foreground"
  data-testid="job-score"
  >
  {scorePercent}%
@@ -392,7 +392,7 @@ export default function JobDetail() {
  transition={{ duration: 0.4, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
  className="card-glass shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]"
  >
- <h2 className="text-lg font-bold font-display text-foreground mb-4">AI Actions</h2>
+ <h2 className="text-lg font-bold  text-foreground mb-4">AI Actions</h2>
  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
  <AiProgressButton
  variant="secondary"

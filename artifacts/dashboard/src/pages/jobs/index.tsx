@@ -17,6 +17,8 @@ import { getListJobsQueryKey } from "@workspace/api-client-react";
 import { getErrorMessage } from "@/lib/api-errors";
 import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/ui/page-header";
+import { ContentCard } from "@/components/ui/content-card";
 
 const createJobSchema = z.object({
  title: z.string().min(1, "Title is required"),
@@ -94,7 +96,7 @@ function ScoreDot({ jobId, roleProfileId }: { jobId: number; roleProfileId?: num
  return (
  <span
  className={cn(
- "inline-flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold font-display",
+ "inline-flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold",
  colorClass
  )}
  title={`${pct}% match${!score.passesHardFilters ? " — fails hard filters" : ""}`}
@@ -158,17 +160,8 @@ export default function JobsPage() {
  };
 
  return (
- <div className="space-y-8">
- <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
- <div>
- <h1 className="text-[32px] leading-tight font-bold font-display text-foreground">
- Jobs Pipeline
- </h1>
- <p className="text-muted-foreground mt-1">
- Track and manage your job opportunities
- </p>
- </div>
- <div className="flex items-center gap-2 shrink-0">
+ <div className="space-y-6">
+ <PageHeader title="Jobs Pipeline" subtitle="Track and manage your job opportunities">
  {ENABLE_APPLY_WIZARD && (
  <Button variant="outline" size="sm" asChild>
  <Link to="/apply-wizard">
@@ -179,14 +172,14 @@ export default function JobsPage() {
  )}
  <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
  <DialogTrigger asChild>
-              <Button data-testid="btn-add-job">
-                <Plus className="mr-2 h-5 w-5" />
-                Ingest Job
-              </Button>
+ <Button data-testid="btn-add-job">
+ <Plus className="mr-2 h-5 w-5" />
+ Ingest Job
+ </Button>
  </DialogTrigger>
  <DialogContent className="sm:max-w-[600px] rounded-2xl">
  <DialogHeader>
- <DialogTitle className="font-display text-xl">Ingest New Job</DialogTitle>
+ <DialogTitle className="text-xl">Ingest New Job</DialogTitle>
  </DialogHeader>
  <Form {...form}>
  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -263,20 +256,19 @@ export default function JobsPage() {
  )}
  />
  <div className="flex justify-end pt-2">
-              <Button
-                type="submit"
-                disabled={createJob.isPending}
-                data-testid="btn-submit-job"
-              >
-                {createJob.isPending ? "Ingesting..." : "Ingest Job"}
-              </Button>
+ <Button
+ type="submit"
+ disabled={createJob.isPending}
+ data-testid="btn-submit-job"
+ >
+ {createJob.isPending ? "Ingesting..." : "Ingest Job"}
+ </Button>
  </div>
  </form>
  </Form>
  </DialogContent>
  </Dialog>
- </div>
- </div>
+ </PageHeader>
 
  {isLoading ? (
  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -285,17 +277,17 @@ export default function JobsPage() {
  ))}
  </div>
  ) : jobs?.length === 0 ? (
- <div className="flex flex-col items-center justify-center py-20 text-center">
- <span className="text-5xl mb-5">📋</span>
- <h2 className="text-xl font-bold font-display text-foreground mb-2">No jobs yet</h2>
+ <ContentCard className="flex flex-col items-center justify-center py-12 text-center">
+ <Briefcase className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
+ <h2 className="text-xl font-bold text-foreground mb-2">No jobs yet</h2>
  <p className="text-muted-foreground max-w-sm mb-6">
  Start tracking job opportunities by ingesting your first job description.
  </p>
-          <Button onClick={() => setIsDialogOpen(true)}>
-            <Plus className="mr-2 h-5 w-5" />
-            Ingest Your First Job
-          </Button>
- </div>
+ <Button onClick={() => setIsDialogOpen(true)}>
+ <Plus className="mr-2 h-5 w-5" />
+ Ingest Your First Job
+ </Button>
+ </ContentCard>
  ) : (
  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
  {jobs?.map((job, index) => (
@@ -326,7 +318,7 @@ export default function JobsPage() {
  <StatusPill status={job.status} />
  </div>
  <h3
- className="text-xl font-semibold font-display text-foreground mb-4"
+ className="text-xl font-semibold text-foreground mb-4"
  data-testid={`text-job-title-${job.id}`}
  >
  {job.title}

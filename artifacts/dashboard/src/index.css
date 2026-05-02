@@ -176,6 +176,23 @@
     50% { box-shadow: 0 0 20px 4px hsl(25 95% 53% / 0.2); }
   }
 
+  /* Page wrapper — consistent glass container for page content */
+  .page-glass {
+    background-color: hsl(var(--card) / 0.5);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid hsl(var(--border) / 0.5);
+    border-radius: 1.5rem;
+    box-shadow: 0 2px 15px -3px rgba(0, 0, 0, 0.06), 0 10px 20px -2px rgba(0, 0, 0, 0.03);
+    padding: 1.5rem;
+  }
+
+  @media (min-width: 768px) {
+    .page-glass {
+      padding: 2rem;
+    }
+  }
+
   /* Ambient orbs for atmospheric depth */
   .orb-blue {
     position: absolute;
