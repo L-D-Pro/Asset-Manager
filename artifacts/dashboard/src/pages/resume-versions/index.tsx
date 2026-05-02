@@ -5,7 +5,6 @@ import {
  useUpdateResumeVersion,
  getListResumeVersionsQueryKey,
 } from "@workspace/api-client-react";
-import { CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -315,7 +314,7 @@ export default function ResumeVersionsPage() {
  };
 
  return (
- <div className="space-y-8">
+  <div className="space-y-6">
  <PageHeader
  title="Resume Queue"
  subtitle="Review each individual change before approving. Accepted/rejected bullet decisions are recorded on the version record before approval."
@@ -348,12 +347,12 @@ export default function ResumeVersionsPage() {
  const hasPending = pendingCount > 0;
 
  return (
-  <ContentCard key={version.id} data-testid={`card-resume-${version.id}`} className="p-0 rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
- <CardHeader className="pb-3">
+<ContentCard key={version.id} data-testid={`card-resume-${version.id}`} className="p-0">
+  <div className="p-5 pb-3">
  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
  <div className="space-y-1">
  <div className="flex items-center gap-2 flex-wrap">
- <CardTitle>Resume Version #{version.id}</CardTitle>
+          <h3 className="text-lg font-semibold text-card-foreground">Resume Version #{version.id}</h3>
  <Badge variant={
  version.status === "pending_approval" ? "secondary" :
  version.status === "approved" ? "default" : "destructive"
@@ -366,12 +365,12 @@ export default function ResumeVersionsPage() {
  </Badge>
  )}
  </div>
- <CardDescription>
- {version.jobId && (
- <>For <Link to={`/jobs/${version.jobId}`} className="text-primary hover:underline">Job #{version.jobId}</Link> — </>
- )}
- Created {new Date(version.createdAt).toLocaleString()}
- </CardDescription>
+          <p className="text-sm text-muted-foreground">
+          {version.jobId && (
+          <>For <Link to={`/jobs/${version.jobId}`} className="text-primary hover:underline">Job #{version.jobId}</Link> — </>
+          )}
+          Created {new Date(version.createdAt).toLocaleString()}
+          </p>
  </div>
  <div className="flex items-center gap-2">
  {version.status === "pending_approval" && hasDiff && totalDecisions > 0 && (
@@ -423,12 +422,12 @@ export default function ResumeVersionsPage() {
  </Button>
  )}
  </div>
- </div>
- </CardHeader>
+  </div>
+  </div>
  {shouldShowReview && (
  <>
  <Separator />
- <CardContent className="pt-4 space-y-3">
+  <div className="px-5 pt-4 pb-5 space-y-3">
  <DocumentPreview
  content={version.tailoredDocumentText}
  baseResumeVersionId={version.baseResumeVersionId}
@@ -454,7 +453,7 @@ export default function ResumeVersionsPage() {
  />
  </>
  )}
- </CardContent>
+  </div>
  </>
  )}
  </ContentCard>
