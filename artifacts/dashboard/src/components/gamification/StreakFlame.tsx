@@ -68,7 +68,7 @@ function StreakFlame({ days, intensity, className }: StreakFlameProps) {
  className={cn(
  "flex items-center justify-center p-2",
  bgGlow,
- effectiveIntensity === "high" && "animate-[pulse-glow_2s_ease-in-out_infinite]"
+  effectiveIntensity === "high" && "animate-[pulse-glow-orange_2s_ease-in-out_infinite]"
  )}
  >
  <span className={cn(emojiSize, "transition-all duration-500")}>
@@ -79,9 +79,9 @@ function StreakFlame({ days, intensity, className }: StreakFlameProps) {
  className={cn(
  "absolute -top-1 -right-2 rounded-full min-w-[26px] h-[26px] flex items-center justify-center px-1 text-xs font-extrabold text-white font-display",
   days >= 5
-  ? "bg-primary"
+  ? "bg-orange-500"
   : days >= 2
-  ? "bg-primary/70"
+  ? "bg-orange-400"
   : "bg-muted"
  )}
  >

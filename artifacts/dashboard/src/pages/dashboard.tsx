@@ -142,7 +142,7 @@ export default function Dashboard() {
     <div className="card-glass p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
       {/* Left: Greeting */}
       <div>
-        <h1 className="text-3xl md:text-4xl font-extrabold text-foreground leading-tight tracking-tight">
+        <h1 className="text-3xl md:text-4xl font-extrabold leading-tight tracking-tight gradient-text">
           {greeting}
         </h1>
       </div>

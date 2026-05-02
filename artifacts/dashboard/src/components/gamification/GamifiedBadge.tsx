@@ -11,12 +11,12 @@ interface GamifiedBadgeProps {
 }
 
 const tierColors: Record<
- string,
- { border: string; bg: string }
+  string,
+  { border: string; bg: string; glow: string }
 > = {
- bronze: { border: "#CD7F32", bg: "rgba(205,127,50,0.12)" },
- silver: { border: "#C0C0C0", bg: "rgba(192,192,192,0.12)" },
- gold: { border: "hsl(var(--warning))", bg: "rgba(255,200,0,0.12)" },
+  bronze: { border: "#CD7F32", bg: "rgba(205,127,50,0.12)", glow: "0 0 12px rgba(205,127,50,0.3)" },
+  silver: { border: "#C0C0C0", bg: "rgba(192,192,192,0.12)", glow: "0 0 12px rgba(192,192,192,0.3)" },
+  gold: { border: "#F59E0B", bg: "rgba(245,158,11,0.12)", glow: "0 0 16px rgba(245,158,11,0.4)" },
 }
 
 function GamifiedBadge({
@@ -27,7 +27,7 @@ function GamifiedBadge({
  isNew,
  className,
 }: GamifiedBadgeProps) {
- const { border, bg } = tierColors[tier] ?? tierColors.bronze
+  const { border, bg, glow } = tierColors[tier] ?? tierColors.bronze
 
  return (
  <motion.div
@@ -40,12 +40,11 @@ function GamifiedBadge({
  "w-[72px] h-[72px] rounded-full flex items-center justify-center transition-all duration-300",
  !unlocked && "grayscale opacity-40"
  )}
- style={{
- border: `3px solid ${border}`,
- background: unlocked
- ? bg
- : undefined,
- }}
+  style={{
+    border: `3px solid ${border}`,
+    background: unlocked ? bg : undefined,
+    boxShadow: unlocked ? glow : undefined,
+  }}
  >
  <span className="text-2xl">{icon}</span>
  </div>
