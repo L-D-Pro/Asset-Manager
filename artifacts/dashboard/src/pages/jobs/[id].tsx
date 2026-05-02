@@ -249,7 +249,7 @@ export default function JobDetail() {
  initial={shouldReduceMotion ? {} : { opacity: 0, y: 12 }}
  animate={{ opacity: 1, y: 0 }}
  transition={{ duration: 0.4, delay: 0.05, ease: [0.22, 1, 0.36, 1] }}
- className="card-chunky"
+ className="card-glass shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]"
  >
  <h2 className="text-lg font-bold font-display text-foreground mb-5">Score &amp; Match</h2>
 
@@ -390,7 +390,7 @@ export default function JobDetail() {
  initial={shouldReduceMotion ? {} : { opacity: 0, y: 12 }}
  animate={{ opacity: 1, y: 0 }}
  transition={{ duration: 0.4, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
- className="card-chunky bg-surface"
+ className="card-glass shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]"
  >
  <h2 className="text-lg font-bold font-display text-foreground mb-4">AI Actions</h2>
  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -440,7 +440,7 @@ export default function JobDetail() {
  animate={{ opacity: 1, y: 0 }}
  transition={{ duration: 0.4, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
  >
- <div className="card-chunky">
+ <div className="card-glass shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
  <Tabs defaultValue="jd" className="w-full">
  <TabsList className="w-full justify-start gap-1 bg-transparent border-b border-border pb-0 mb-0 rounded-none h-auto">
  <TabsTrigger
@@ -571,7 +571,7 @@ export default function JobDetail() {
  ) : claimMatches && claimMatches.length > 0 ? (
  <div className="space-y-3">
  {claimMatches.map((match, i) => (
- <div key={i} className="p-4 rounded-xl border border-border/70 bg-[hsl(var(--surface))] space-y-2">
+ <div key={i} className="p-4 rounded-xl border border-border/70 bg-card/50 backdrop-blur-md space-y-2 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
  <div className="flex items-start justify-between gap-2">
  <p className="text-sm font-medium leading-snug flex-1 text-foreground">
  {match.claim.summary}

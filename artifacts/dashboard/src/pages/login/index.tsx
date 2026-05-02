@@ -77,9 +77,9 @@ export default function LoginPage() {
  };
 
  return (
- <div className="min-h-screen bg-surface flex items-center justify-center p-4">
- <div className="w-full max-w-md">
- <div className="card-chunky p-8">
+  <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-gradient-to-br from-background via-surface to-background">
+  <div className="w-full max-w-md">
+  <div className="card-glass p-8">
  <div className="text-center mb-6">
  <h1 className="text-2xl font-bold gradient-text">Job Ops</h1>
  <p className="text-muted text-sm mt-1">Sign in to your account</p>
@@ -210,28 +210,32 @@ export default function LoginPage() {
  {loading ? "Verifying…" : "Verify"}
  </Button>
 
- <button
- type="button"
- className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
- onClick={() => {
- setUseRecovery(!useRecovery);
- setError(null);
- }}
- >
- {useRecovery ? "← Use authenticator app instead" : "Lost your phone? Use a recovery code"}
- </button>
+  <Button
+  type="button"
+  variant="ghost"
+  size="sm"
+  className="w-full"
+  onClick={() => {
+  setUseRecovery(!useRecovery);
+  setError(null);
+  }}
+  >
+  {useRecovery ? "← Use authenticator app instead" : "Lost your phone? Use a recovery code"}
+  </Button>
 
- <button
- type="button"
- className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
- onClick={() => {
- setStep("password");
- setError(null);
- setTotpToken("");
- }}
- >
- ← Back to password
- </button>
+  <Button
+  type="button"
+  variant="ghost"
+  size="sm"
+  className="w-full"
+  onClick={() => {
+  setStep("password");
+  setError(null);
+  setTotpToken("");
+  }}
+  >
+  ← Back to password
+  </Button>
  </form>
  </CardContent>
  </motion.div>
@@ -239,14 +243,14 @@ export default function LoginPage() {
  </AnimatePresence>
  </div>
 
- <p className="text-center text-xs text-white/60 mt-6 space-y-2">
- <span>&copy; 2026 Cyrus Sepasi. All rights reserved. Portfolio Studio&trade; is a product of L&amp;D PRO.</span>
- <span className="block space-x-3 mt-1">
- <span className="hover:text-white/80 transition-colors cursor-pointer">Terms of Service</span>
- <span>|</span>
- <span className="hover:text-white/80 transition-colors cursor-pointer">Privacy Policy</span>
- </span>
- </p>
+  <p className="text-center text-xs text-muted-foreground mt-6 space-y-2">
+  <span>&copy; 2026 Cyrus Sepasi. All rights reserved. Portfolio Studio&trade; is a product of L&amp;D PRO.</span>
+  <span className="block space-x-3 mt-1">
+  <span className="hover:text-foreground transition-colors cursor-pointer">Terms of Service</span>
+  <span>|</span>
+  <span className="hover:text-foreground transition-colors cursor-pointer">Privacy Policy</span>
+  </span>
+  </p>
  </div>
  </div>
  );

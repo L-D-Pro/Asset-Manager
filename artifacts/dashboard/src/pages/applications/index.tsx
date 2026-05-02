@@ -239,7 +239,7 @@ export default function ApplicationsPage() {
  <Skeleton className="h-20 w-full" />
  </>
  ) : applications?.length === 0 ? (
- <div className="card-chunky flex flex-col items-center justify-center p-12 text-center">
+ <div className="card-glass flex flex-col items-center justify-center p-12 text-center shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
  <Activity className="h-12 w-12 text-muted mb-4 opacity-50" />
  <h3 className="text-lg font-semibold text-foreground">No applications</h3>
  <p className="text-sm text-muted mt-1 max-w-sm">
@@ -247,7 +247,7 @@ export default function ApplicationsPage() {
  </p>
  </div>
  ) : (
- <div className="border rounded-2xl divide-y bg-card">
+ <div className="border rounded-2xl divide-y bg-card/50 backdrop-blur-md shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
  {applications?.map((app) => (
  <div key={app.id} className="p-4 flex items-center justify-between hover:bg-muted/30 transition-colors" data-testid={`row-app-${app.id}`}>
  <div className="space-y-1">

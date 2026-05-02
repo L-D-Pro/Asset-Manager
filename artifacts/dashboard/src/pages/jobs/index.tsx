@@ -304,7 +304,7 @@ export default function JobsPage() {
  initial={shouldReduceMotion ? {} : { opacity: 0, y: 20 }}
  animate={{ opacity: 1, y: 0 }}
  transition={{ delay: index * 0.05, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
- className="card-chunky cursor-pointer hover:-translate-y-1 transition-all duration-200"
+ className="card-glass cursor-pointer hover:-translate-y-1 transition-all duration-200 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]"
  onClick={() => navigate(`/jobs/${job.id}`)}
  data-testid={`card-job-${job.id}`}
  role="link"

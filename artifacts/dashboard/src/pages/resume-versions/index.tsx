@@ -62,7 +62,7 @@ function DocumentPreview({
  </Badge>
  )}
  </div>
- <div className="rounded-md border bg-muted/20 p-4">
+  <div className="card-glass p-4">
  <pre className="whitespace-pre-wrap break-words text-sm leading-6 font-sans">
  {content}
  </pre>
@@ -176,7 +176,7 @@ function DiffReview({
  return (
  <div className="space-y-3">
  {diffData.summary && (
- <div className="p-3 rounded-md bg-muted/50 border text-sm">
+  <div className="card-glass p-3 text-sm">
  <p className="font-medium text-xs text-muted-foreground mb-1">AI Summary</p>
  <p>{diffData.summary}</p>
  </div>
@@ -325,8 +325,8 @@ export default function ResumeVersionsPage() {
  {isLoading ? (
  <><Skeleton className="h-28 w-full rounded-lg" /><Skeleton className="h-28 w-full rounded-lg" /></>
  ) : versions?.length === 0 ? (
- <ContentCard>
- <div className="flex flex-col items-center justify-center p-12 text-center">
+  <ContentCard className="shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
+  <div className="flex flex-col items-center justify-center p-12 text-center">
  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-muted text-muted-foreground mb-4 border border-border">
  <FileText className="h-8 w-8" />
  </div>
@@ -348,7 +348,7 @@ export default function ResumeVersionsPage() {
  const hasPending = pendingCount > 0;
 
  return (
- <ContentCard key={version.id} data-testid={`card-resume-${version.id}`} className="p-0 rounded-2xl ">
+  <ContentCard key={version.id} data-testid={`card-resume-${version.id}`} className="p-0 rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
  <CardHeader className="pb-3">
  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
  <div className="space-y-1">
@@ -387,19 +387,20 @@ export default function ResumeVersionsPage() {
  )}
  {version.status === "pending_approval" && (
  <>
- <Button
- className="btn-secondary text-destructive"
- size="sm"
- onClick={() => handleReject(version.id)}
+  <Button
+  variant="secondary"
+  className="text-destructive"
+  size="sm"
+  onClick={() => handleReject(version.id)}
  disabled={reject.isPending}
  data-testid={`btn-reject-resume-${version.id}`}
  >
  <X className="mr-1 h-4 w-4" /> Reject
  </Button>
- <Button
- className="btn-primary"
- size="sm"
- onClick={() => handleApprove(version.id, diffData, versionDecisions)}
+  <Button
+  variant="default"
+  size="sm"
+  onClick={() => handleApprove(version.id, diffData, versionDecisions)}
  disabled={approve.isPending || updateResume.isPending}
  data-testid={`btn-approve-resume-${version.id}`}
  >

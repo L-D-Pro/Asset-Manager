@@ -108,9 +108,9 @@ export default function AdminInviteCodesPage() {
 
  if (user?.role !== "admin") {
  return (
- <ContentCard>
- <CardHeader><CardTitle>Access Denied</CardTitle></CardHeader>
- </ContentCard>
+  <ContentCard className="card-glass">
+  <CardHeader><CardTitle>Access Denied</CardTitle></CardHeader>
+  </ContentCard>
  );
  }
 
@@ -121,15 +121,15 @@ export default function AdminInviteCodesPage() {
  subtitle="Generate and manage invite codes for new user registration."
  variant="admin"
  >
- <Button onClick={() => setShowGenerate(true)} disabled={codes.length >= 10} className="btn-primary">
- <Plus className="h-4 w-4 mr-2" />
- Generate Code
- </Button>
+  <Button onClick={() => setShowGenerate(true)} disabled={codes.length >= 10}>
+  <Plus className="h-4 w-4 mr-2" />
+  Generate Code
+  </Button>
  </PageHeader>
 
  {newCode && (
- <ContentCard className="border-success rounded-2xl">
- <CardContent className="pt-6">
+  <ContentCard className="border-success card-glass">
+  <CardContent className="pt-6">
  <div className="flex items-center justify-between">
  <div>
  <p className="text-sm font-medium">New Invite Code</p>
@@ -146,8 +146,8 @@ export default function AdminInviteCodesPage() {
  </ContentCard>
  )}
 
- <ContentCard className="rounded-2xl">
- <CardContent className="p-0">
+  <ContentCard className="card-glass">
+  <CardContent className="p-0">
  {loading ? (
  <div className="p-8 text-center text-muted-foreground">Loading...</div>
  ) : codes.length === 0 ? (
@@ -226,10 +226,10 @@ export default function AdminInviteCodesPage() {
  </div>
  </div>
  <DialogFooter>
- <Button className="btn-ghost" onClick={() => setShowGenerate(false)}>Cancel</Button>
- <Button onClick={handleGenerate} disabled={generating} className="btn-primary">
- {generating ? "Generating..." : "Generate"}
- </Button>
+  <Button variant="ghost" onClick={() => setShowGenerate(false)}>Cancel</Button>
+  <Button onClick={handleGenerate} disabled={generating}>
+  {generating ? "Generating..." : "Generate"}
+  </Button>
  </DialogFooter>
  </DialogContent>
  </Dialog>

@@ -1124,7 +1124,7 @@ export default function ApplyWizardPage() {
  <PageHeader title="Apply Wizard" subtitle="Multi-step AI-powered job application assistant." variant="workflow" />
 
  {savedSessions.length > 0 ? (
- <ContentCard className="border-dashed">
+ <ContentCard className="border-dashed shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
  <CardHeader className="pb-2">
  <CardTitle className="text-base flex items-center gap-2">
  <Save className="h-4 w-4" />
@@ -1180,7 +1180,7 @@ export default function ApplyWizardPage() {
  ? "bg-primary text-white"
  : isActive
  ? "bg-primary text-white ring-4 ring-primary/20"
- : "bg-surface border-2 border-border text-muted"
+ : "bg-card/50 backdrop-blur-md border-2 border-border text-muted"
  }`}
  >
  {isCompleted ? "✓" : index + 1}
@@ -1214,7 +1214,7 @@ export default function ApplyWizardPage() {
  transition={{ duration: 0.3, ease: easing.smooth }}
  >
  {step === "intake" ? (
- <ContentCard className="rounded-2xl">
+ <ContentCard className="rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
  <CardHeader>
  <CardTitle className="flex items-center gap-2">
  <Link2 className="h-5 w-5" />
@@ -1282,7 +1282,7 @@ export default function ApplyWizardPage() {
  <Button
  onClick={handleCreateJob}
  disabled={!intake.title || !intake.company || createJob.isPending}
- className="bg-primary"
+ 
  >
  {createJob.isPending ? "Ingesting..." : "Create Job & Continue"}
  </Button>
@@ -1324,7 +1324,7 @@ export default function ApplyWizardPage() {
  <Download className="h-3.5 w-3.5 mr-1.5" />
  Download Template
  </Button>
- <Button onClick={handleRunBatch} disabled={batchRunning || !batchText.trim()} className="bg-primary">
+ <Button onClick={handleRunBatch} disabled={batchRunning || !batchText.trim()} >
  {batchRunning ? "Running Batch..." : "Run Batch"}
  </Button>
  <Button
@@ -1378,7 +1378,7 @@ export default function ApplyWizardPage() {
  ) : null}
 
  {step === "parse" ? (
- <ContentCard className="rounded-2xl">
+ <ContentCard className="rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
  <CardHeader>
  <CardTitle>2) Parse and Edit JD</CardTitle>
  <CardDescription>
@@ -1435,7 +1435,7 @@ export default function ApplyWizardPage() {
  <Button
  onClick={handleSaveParsedEdits}
  disabled={updateJob.isPending || !intake.rawJdText.trim()}
- className="bg-primary"
+ 
  >
  {updateJob.isPending ? "Saving..." : "Save & Continue"}
  </Button>
@@ -1448,7 +1448,7 @@ export default function ApplyWizardPage() {
  ) : null}
 
  {step === "role" ? (
- <ContentCard className="rounded-2xl">
+ <ContentCard className="rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
  <CardHeader>
  <CardTitle className="flex items-center gap-2">
  <UserCircle className="h-5 w-5" />
@@ -1561,7 +1561,7 @@ export default function ApplyWizardPage() {
  <Button
  onClick={() => setStep("tailor")}
  disabled={selectedRoleProfileId == null || selectedClaimIds.length === 0}
- className="bg-primary"
+ 
  >
  Continue
  </Button>
@@ -1574,7 +1574,7 @@ export default function ApplyWizardPage() {
  ) : null}
 
  {step === "tailor" ? (
- <ContentCard className="rounded-2xl">
+ <ContentCard className="rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
  <CardHeader>
  <CardTitle className="flex items-center gap-2">
  <Wand2 className="h-5 w-5" />
@@ -1735,7 +1735,7 @@ export default function ApplyWizardPage() {
  ? resumeCandidates.length === 0 || coverCandidates.length === 0
  : !resumeVersionId || !coverLetterVersionId
  }
- className="bg-primary"
+ 
  >
  Continue
  </Button>
@@ -1748,7 +1748,7 @@ export default function ApplyWizardPage() {
  ) : null}
 
  {step === "approve" ? (
- <ContentCard className="rounded-2xl">
+ <ContentCard className="rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
  <CardHeader>
  <CardTitle className="flex items-center gap-2">
  <ShieldCheck className="h-5 w-5" />
@@ -1776,7 +1776,7 @@ export default function ApplyWizardPage() {
  </div>
 
  {useCustomComparison && resumeCandidates.length > 0 ? (
- <div className="rounded-md border bg-surface overflow-hidden">
+ <div className="rounded-md border bg-card/50 backdrop-blur-md overflow-hidden shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
  <div className="flex border-b bg-muted/30 overflow-x-auto no-scrollbar">
  {resumeCandidates.map((c) => (
  <button
@@ -1886,7 +1886,7 @@ export default function ApplyWizardPage() {
  </div>
 
  {useCustomComparison && coverCandidates.length > 0 ? (
- <div className="rounded-md border bg-surface overflow-hidden">
+ <div className="rounded-md border bg-card/50 backdrop-blur-md overflow-hidden shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
  <div className="flex border-b bg-muted/30 overflow-x-auto no-scrollbar">
  {coverCandidates.map((c) => (
  <button
@@ -2024,7 +2024,7 @@ export default function ApplyWizardPage() {
  </Button>
  <Button
  size="lg"
- className="px-8 bg-primary"
+ className="px-8"
  onClick={() => setStep("assisted")}
  disabled={resumeVersion?.status !== "approved" || coverLetterVersion?.status !== "approved"}
  >
@@ -2036,7 +2036,7 @@ export default function ApplyWizardPage() {
  ) : null}
 
  {step === "assisted" ? (
- <ContentCard className="rounded-2xl">
+ <ContentCard className="rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
  <CardHeader>
  <CardTitle className="flex items-center gap-2">
  <MousePointerClick className="h-5 w-5" />
@@ -2076,7 +2076,7 @@ export default function ApplyWizardPage() {
  />
 
  <div className="flex flex-wrap items-center gap-3">
- <Button onClick={handleCreateAssistedSession} disabled={createSession.isPending || !assistedForm.platform} className="bg-primary">
+ <Button onClick={handleCreateAssistedSession} disabled={createSession.isPending || !assistedForm.platform} >
  {createSession.isPending ? "Creating Session..." : "Create Assisted Session"}
  </Button>
  {assistedSessionId ? (
@@ -2102,11 +2102,11 @@ export default function ApplyWizardPage() {
  </motion.div>
  </AnimatePresence>
 
- <ContentCard>
- <CardHeader>
- <CardTitle className="flex items-center gap-2">
- <ClipboardCheck className="h-5 w-5" />
- Wizard Summary
+<ContentCard className="shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
+  <CardHeader>
+  <CardTitle className="flex items-center gap-2">
+  <ClipboardCheck className="h-5 w-5" />
+  Wizard Summary
  </CardTitle>
  </CardHeader>
  <CardContent className="grid gap-2 text-sm md:grid-cols-2">
@@ -2139,8 +2139,8 @@ export default function ApplyWizardPage() {
 
 function StatusCard({ title, ok }: { title: string; ok: boolean }) {
  return (
- <ContentCard>
- <CardContent className="p-3 flex items-center justify-between">
+<ContentCard className="shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
+  <CardContent className="p-3 flex items-center justify-between">
  <span className="text-sm font-medium">{title}</span>
  <Badge variant={ok ? "default" : "outline"}>{ok ? "Done" : "Pending"}</Badge>
  </CardContent>

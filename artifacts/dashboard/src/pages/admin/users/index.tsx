@@ -283,10 +283,10 @@ export default function AdminUsersPage() {
  subtitle="Manage user accounts, roles, and access permissions."
  variant="admin"
  >
- <Button onClick={openAdd} className="btn-primary gap-2">
- <Plus className="h-4 w-4" />
- Add User
- </Button>
+  <Button onClick={openAdd} className="gap-2">
+  <Plus className="h-4 w-4" />
+  Add User
+  </Button>
  </PageHeader>
 
  <motion.div variants={fadeIn} initial="hidden" animate="visible" className="flex items-center gap-2">
@@ -299,11 +299,11 @@ export default function AdminUsersPage() {
  />
  </motion.div>
 
- <ContentCard className="rounded-2xl">
- <CardHeader className="pb-3">
- <CardTitle className="text-lg flex items-center gap-2">
- <Users className="h-5 w-5 text-primary" />
- All Users ({filteredUsers.length})
+  <ContentCard className="card-glass">
+  <CardHeader className="pb-3">
+  <CardTitle className="text-lg flex items-center gap-2">
+  <Users className="h-5 w-5 text-primary" />
+  All Users ({filteredUsers.length})
  </CardTitle>
  </CardHeader>
  <CardContent>
@@ -543,13 +543,13 @@ export default function AdminUsersPage() {
  </div>
 
  <DialogFooter>
- <Button className="btn-ghost" onClick={() => setDialogOpen(false)}>
- Cancel
- </Button>
- <Button onClick={handleSave} disabled={saving} className="btn-primary gap-2">
- {saving && <Loader2 className="h-4 w-4 animate-spin" />}
- {editingUser ? "Save Changes" : "Create User"}
- </Button>
+  <Button variant="ghost" onClick={() => setDialogOpen(false)}>
+  Cancel
+  </Button>
+  <Button onClick={handleSave} disabled={saving} className="gap-2">
+  {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+  {editingUser ? "Save Changes" : "Create User"}
+  </Button>
  </DialogFooter>
  </DialogContent>
  </Dialog>
@@ -564,13 +564,13 @@ export default function AdminUsersPage() {
  </DialogDescription>
  </DialogHeader>
  <DialogFooter>
- <Button className="btn-ghost" onClick={() => setDeleteDialogOpen(false)}>
- Cancel
- </Button>
- <Button className="bg-destructive text-white hover:bg-destructive/90 gap-2" onClick={handleDelete} disabled={deleting}>
- {deleting && <Loader2 className="h-4 w-4 animate-spin" />}
- Delete
- </Button>
+  <Button variant="ghost" onClick={() => setDeleteDialogOpen(false)}>
+  Cancel
+  </Button>
+  <Button variant="destructive" className="gap-2" onClick={handleDelete} disabled={deleting}>
+  {deleting && <Loader2 className="h-4 w-4 animate-spin" />}
+  Delete
+  </Button>
  </DialogFooter>
  </DialogContent>
  </Dialog>

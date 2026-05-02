@@ -66,7 +66,7 @@ export default function AiReviewPage() {
  <Metric title="Training Examples" value={stats?.trainingExamples ?? 0} icon={<FlaskConical className="h-4 w-4" />} />
  </div>
 
- <ContentCard className="bg-surface rounded-2xl">
+  <ContentCard className="rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
  <CardHeader>
  <CardTitle>Create Prompt Version</CardTitle>
  <CardDescription>
@@ -144,15 +144,15 @@ export default function AiReviewPage() {
  </ContentCard>
 
  <div className="grid gap-4 lg:grid-cols-2">
- <ContentCard className="rounded-2xl ">
- <CardHeader>
- <CardTitle>Recent AI Events</CardTitle>
+  <ContentCard className="rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
+  <CardHeader>
+  <CardTitle>Recent AI Events</CardTitle>
  <CardDescription>Model, cost, prompt version, and fallback metadata are logged in event metadata.</CardDescription>
  </CardHeader>
  <CardContent className="space-y-3">
  {isLoading ? <p className="text-sm text-muted-foreground">Loading...</p> : null}
  {data?.recentAiEvents.map((event) => (
- <div key={event.id} className="rounded-md border p-3 text-sm">
+  <div key={event.id} className="card-glass p-3 text-sm">
  <div className="flex items-center justify-between gap-3">
  <span className="font-medium">{metadataValue(event.metadata, "taskType") ?? event.nextState}</span>
  <Badge variant={event.eventType === "ai_call_failed" ? "destructive" : "secondary"}>
@@ -167,14 +167,14 @@ export default function AiReviewPage() {
  </CardContent>
  </ContentCard>
 
- <ContentCard className="rounded-2xl ">
- <CardHeader>
- <CardTitle>Prompt Versions</CardTitle>
+  <ContentCard className="rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
+  <CardHeader>
+  <CardTitle>Prompt Versions</CardTitle>
  <CardDescription>Keep old versions immutable and activate only the prompt you want production calls to use.</CardDescription>
  </CardHeader>
  <CardContent className="space-y-3">
  {data?.promptVersions.map((prompt) => (
- <div key={prompt.id} className="rounded-md border p-3 text-sm">
+  <div key={prompt.id} className="card-glass p-3 text-sm">
  <div className="flex items-center justify-between gap-3">
  <span className="font-medium">{prompt.label}</span>
  <Badge variant={prompt.isActive ? "default" : "outline"}>{prompt.taskScope}</Badge>
@@ -193,8 +193,8 @@ export default function AiReviewPage() {
 
 function Metric({ title, value, icon }: { title: string; value: number; icon: React.ReactNode }) {
  return (
- <ContentCard className="">
- <CardContent className="p-4">
+  <ContentCard className="shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
+  <CardContent className="p-4">
  <div className="flex items-center justify-between text-sm text-muted-foreground">
  <span>{title}</span>
  {icon}

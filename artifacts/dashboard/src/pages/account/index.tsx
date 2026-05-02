@@ -70,10 +70,10 @@ function ChangePasswordSection() {
  };
 
  return (
- <ContentCard className="rounded-2xl ">
- <CardHeader>
- <CardTitle className="flex items-center gap-2 text-base">
- <Lock className="h-4 w-4" /> Change Password
+  <ContentCard className="card-glass">
+  <CardHeader>
+  <CardTitle className="flex items-center gap-2 text-base">
+  <Lock className="h-4 w-4" /> Change Password
  </CardTitle>
  <CardDescription>Minimum 12 characters. Use a strong, unique password.</CardDescription>
  </CardHeader>
@@ -120,10 +120,10 @@ function ChangeEmailSection() {
  };
 
  return (
- <ContentCard className="rounded-2xl ">
- <CardHeader>
- <CardTitle className="flex items-center gap-2 text-base">
- <Mail className="h-4 w-4" /> Email Address
+  <ContentCard className="card-glass">
+  <CardHeader>
+  <CardTitle className="flex items-center gap-2 text-base">
+  <Mail className="h-4 w-4" /> Email Address
  </CardTitle>
  <CardDescription>Used for account identification only — not for login.</CardDescription>
  </CardHeader>
@@ -227,11 +227,11 @@ function TwoFactorSection() {
  };
 
  return (
- <ContentCard className="rounded-2xl ">
- <CardHeader>
- <CardTitle className="flex items-center gap-2 text-base">
- <Shield className="h-4 w-4" />
- Two-Factor Authentication
+  <ContentCard className="card-glass">
+  <CardHeader>
+  <CardTitle className="flex items-center gap-2 text-base">
+  <Shield className="h-4 w-4" />
+  Two-Factor Authentication
  {user?.totpEnabled
  ? <Badge className="ml-2 bg-success/10 text-success border-success/30">Enabled</Badge>
  : <Badge variant="secondary" className="ml-2">Disabled</Badge>

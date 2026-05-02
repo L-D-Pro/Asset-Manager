@@ -150,7 +150,7 @@ export default function BaseResumePage() {
  />
 
  <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_360px]">
- <ContentCard className="rounded-2xl bg-surface ">
+ <ContentCard className="rounded-2xl bg-card/50 backdrop-blur-md shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
  <CardHeader className="space-y-3">
  <div className="flex items-start justify-between gap-4">
  <div>
@@ -208,7 +208,7 @@ export default function BaseResumePage() {
  </div>
  <Button
  type="button"
- className="btn-secondary"
+ variant="secondary"
  onClick={handleImport}
  disabled={!uploadFile || importResume.isPending}
  data-testid="btn-import-base-resume"
@@ -236,7 +236,7 @@ export default function BaseResumePage() {
  onClick={handleSave}
  disabled={saveDisabled}
  data-testid="btn-save-base-resume"
- className="btn-primary"
+ variant="default"
  >
  <Save className="mr-2 h-4 w-4" />
  {saveResume.isPending ? "Saving..." : hasCurrentResume ? "Save New Version" : "Save Base Resume"}
@@ -245,7 +245,7 @@ export default function BaseResumePage() {
  </CardContent>
  </ContentCard>
 
- <ContentCard className="rounded-2xl">
+ <ContentCard className="rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
  <CardHeader>
  <CardTitle className="flex items-center gap-2 text-foreground">
  <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10">
@@ -274,7 +274,7 @@ export default function BaseResumePage() {
  {history.map((version) => (
  <div
  key={version.id}
- className="rounded-md border bg-card p-3 space-y-3 "
+ className="rounded-md border bg-card/50 backdrop-blur-md p-3 space-y-3 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]"
  data-testid={`card-base-resume-history-${version.id}`}
  >
  <div className="flex items-start justify-between gap-3">
@@ -290,7 +290,7 @@ export default function BaseResumePage() {
  </p>
  </div>
  <Button
- className="btn-secondary"
+ variant="secondary"
  size="sm"
  disabled={restoreResume.isPending || version.isCurrent}
  onClick={() => handleRestore(version.id)}

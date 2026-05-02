@@ -113,7 +113,7 @@ const NAV_GROUPS: { label: string; emoji: string; items: NavItem[] }[] = [
 ];
 
 export function FloatingSidebar() {
- const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
  const location = useLocation();
  const { user, logout } = useAuth();
   const isAdmin = user?.role === "admin";

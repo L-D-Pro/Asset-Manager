@@ -356,7 +356,7 @@ export default function ClaimsPage() {
 
  <div className="space-y-3">
  {draftReviews.map((draft, index) => (
- <div key={draft.clientId} className="rounded-md border p-4 space-y-3">
+  <div key={draft.clientId} className="card-glass p-4 space-y-3">
  <div className="flex items-center gap-3">
  <Checkbox
  checked={draft.selected}
@@ -585,7 +585,7 @@ export default function ClaimsPage() {
  <Skeleton className="h-24 w-full" />
  </>
  ) : claims?.length === 0 ? (
- <div className="card-chunky flex flex-col items-center justify-center p-12 text-center">
+  <div className="card-glass flex flex-col items-center justify-center p-12 text-center">
  <CheckSquare className="h-12 w-12 text-muted mb-4 opacity-50" />
  <h3 className="text-lg font-semibold text-foreground">No claims</h3>
  <p className="text-sm text-muted mt-1 max-w-sm">
@@ -594,7 +594,7 @@ export default function ClaimsPage() {
  </div>
  ) : (
  claims?.map((claim) => (
- <ContentCard key={claim.id} data-testid={`card-claim-${claim.id}`} className={`rounded-2xl ${!claim.isActive ? "opacity-60" : ""}`}>
+  <ContentCard key={claim.id} data-testid={`card-claim-${claim.id}`} className={`rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)] ${!claim.isActive ? "opacity-60" : ""}`}>
  <CardContent className="p-6">
  <div className="flex items-start justify-between">
  <div className="space-y-2 flex-1 pr-4">

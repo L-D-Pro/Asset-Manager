@@ -115,9 +115,9 @@ function TaskScopePanel({ scope, windowStart, windowEnd }: { scope: TaskScope; w
  />
  </div>
 
- <ContentCard className="rounded-2xl">
- <CardHeader>
- <CardTitle className="flex items-center gap-2">
+  <ContentCard className="rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
+  <CardHeader>
+  <CardTitle className="flex items-center gap-2">
  <TrendingUp className="h-4 w-4" />
  Trend (bucketed)
  </CardTitle>
@@ -159,9 +159,9 @@ function TaskScopePanel({ scope, windowStart, windowEnd }: { scope: TaskScope; w
  </CardContent>
  </ContentCard>
 
- <ContentCard className="rounded-2xl">
- <CardHeader>
- <CardTitle>Prompt-version comparison</CardTitle>
+  <ContentCard className="rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
+  <CardHeader>
+  <CardTitle>Prompt-version comparison</CardTitle>
  <CardDescription>Grouped by promptVersionId ("unknown" means built-in / not captured).</CardDescription>
  </CardHeader>
  <CardContent className="space-y-4">
@@ -250,8 +250,8 @@ function DegradedBanner({ snapshot }: { snapshot: any }) {
 
 function MetricCard({ title, value, description }: { title: string; value: string | number; description?: string }) {
  return (
- <ContentCard className="">
- <CardContent className="p-4">
+  <ContentCard className="shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
+  <CardContent className="p-4">
  <div className="flex items-center justify-between text-sm text-muted-foreground">
  <span>{title}</span>
  </div>

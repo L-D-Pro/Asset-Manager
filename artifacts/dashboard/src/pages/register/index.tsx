@@ -130,13 +130,13 @@ export default function RegisterPage() {
 
  if (registered) {
  return (
- <div className="min-h-screen bg-surface flex items-center justify-center p-4">
- <div className="w-full max-w-md">
- <div className="card-chunky p-8">
- <div className="text-center mb-6">
- <h1 className="text-2xl font-bold gradient-text">Job Ops</h1>
- <p className="text-muted text-sm mt-1">Create Account</p>
- </div>
+  <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-gradient-to-br from-background via-surface to-background">
+  <div className="w-full max-w-md">
+  <div className="card-glass p-8">
+  <div className="text-center mb-6">
+  <h1 className="text-2xl font-bold gradient-text">Job Ops</h1>
+  <p className="text-muted text-sm mt-1">Create Account</p>
+  </div>
  <div className="text-center space-y-4">
  <CheckCircle className="h-12 w-12 text-success mx-auto" />
  <h3 className="text-lg font-semibold text-foreground">Check your email</h3>
@@ -157,13 +157,13 @@ export default function RegisterPage() {
  }
 
  return (
- <div className="min-h-screen bg-surface flex items-center justify-center p-4">
- <div className="w-full max-w-md">
- <div className="card-chunky p-8">
- <div className="text-center mb-6">
- <h1 className="text-2xl font-bold gradient-text">Job Ops</h1>
- <p className="text-muted text-sm mt-1">Get started with Job Ops</p>
- </div>
+  <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-gradient-to-br from-background via-surface to-background">
+  <div className="w-full max-w-md">
+  <div className="card-glass p-8">
+  <div className="text-center mb-6">
+  <h1 className="text-2xl font-bold gradient-text">Job Ops</h1>
+  <p className="text-muted text-sm mt-1">Get started with Job Ops</p>
+  </div>
 
  <CardHeader className="pb-4">
  <CardTitle className="flex items-center gap-2">
@@ -205,12 +205,12 @@ export default function RegisterPage() {
  )}
 
  {waitlistSent ? (
- <div className="rounded border border-success p-3 text-sm">
- <CheckCircle className="h-4 w-4 text-success inline mr-1" />
- You're on the waitlist! We'll email you when spots open.
- </div>
- ) : showWaitlist ? (
- <div className="rounded border p-3 space-y-2">
+  <div className="rounded border border-success p-3 text-sm">
+  <CheckCircle className="h-4 w-4 text-success inline mr-1" />
+  You're on the waitlist! We'll email you when spots open.
+  </div>
+  ) : showWaitlist ? (
+  <div className="rounded border border-border p-3 space-y-2">
  <p className="text-sm font-medium">Join the Waitlist</p>
  <Input
  placeholder="Your name"
@@ -322,8 +322,8 @@ export default function RegisterPage() {
  </div>
  </div>
 
- {showTerms && (
- <div className="rounded border p-3 text-xs text-muted-foreground space-y-2 max-h-40 overflow-y-auto">
+  {showTerms && (
+  <div className="rounded border border-border p-3 text-xs text-muted-foreground space-y-2 max-h-40 overflow-y-auto">
  <p className="font-semibold text-foreground">Job Ops Pilot Program Terms</p>
  <p><strong>Beta Software:</strong> This is pre-release software. Bugs and downtime may occur.</p>
  <p><strong>Data & Privacy:</strong> We collect job application data to improve AI suggestions.</p>
@@ -340,12 +340,12 @@ export default function RegisterPage() {
  </CardContent>
  </div>
 
- <p className="text-center text-xs text-white/60 mt-6">
- Already have an account?{" "}
- <Link to="/login" className="text-white/80 underline hover:text-white">
- Sign in
- </Link>
- </p>
+  <p className="text-center text-xs text-muted-foreground mt-6">
+  Already have an account?{" "}
+  <Link to="/login" className="text-foreground underline hover:text-primary">
+  Sign in
+  </Link>
+  </p>
  </div>
  </div>
  );

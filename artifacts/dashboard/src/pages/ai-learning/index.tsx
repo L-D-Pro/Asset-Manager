@@ -223,91 +223,81 @@ export default function AiLearningPage() {
  )}
 
  {!hasData && !statsLoading && (
- <ContentCard>
- <Card>
- <CardContent className="flex flex-col items-center justify-center py-12 text-center">
- <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
- <h3 className="text-lg font-semibold mb-2">Not Enough Data</h3>
- <p className="text-muted-foreground max-w-md">
- Collect at least 10 applications with outcomes to start
- learning. Your application outcomes
- (accepted/rejected/offer) automatically feed the learning
- engine.
- </p>
- <p className="text-sm text-muted-foreground mt-2">
- Currently: {totalApplications} applications recorded
- </p>
- </CardContent>
- </Card>
- </ContentCard>
+  <div className="card-glass flex flex-col items-center justify-center py-12 text-center">
+  <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
+  <h3 className="text-lg font-semibold mb-2">Not Enough Data</h3>
+  <p className="text-muted-foreground max-w-md">
+  Collect at least 10 applications with outcomes to start
+  learning. Your application outcomes
+  (accepted/rejected/offer) automatically feed the learning
+  engine.
+  </p>
+  <p className="text-sm text-muted-foreground mt-2">
+  Currently: {totalApplications} applications recorded
+  </p>
+  </div>
  )}
 
  {hasData && (
  <>
  <StaggerContainer className="grid gap-4 md:grid-cols-3">
- <ContentCard>
- <Card>
- <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
- <CardTitle className="text-sm font-medium">
- Total Applications
- </CardTitle>
- <TrendingUp className="h-4 w-4 text-muted-foreground" />
- </CardHeader>
- <CardContent>
- <div className="text-2xl font-bold">{totalApplications}</div>
- <p className="text-xs text-muted-foreground">
- Across all variants
- </p>
- </CardContent>
- </Card>
- </ContentCard>
- <ContentCard>
- <Card>
- <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
- <CardTitle className="text-sm font-medium">
- Suggestions
- </CardTitle>
- <Trophy className="h-4 w-4 text-warning" />
- </CardHeader>
- <CardContent>
- <div className="text-2xl font-bold">
- {suggestedComparisons.length}
- </div>
- <p className="text-xs text-muted-foreground">
- Promotions awaiting review
- </p>
- </CardContent>
- </Card>
- </ContentCard>
- <ContentCard>
- <Card>
- <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
- <CardTitle className="text-sm font-medium">
- Auto Promotions
- </CardTitle>
- <CheckCircle className="h-4 w-4 text-success" />
- </CardHeader>
- <CardContent>
- <div className="text-2xl font-bold">
- {autoComparisons.length}
- </div>
- <p className="text-xs text-muted-foreground">
- System-promoted variants
- </p>
- </CardContent>
- </Card>
- </ContentCard>
+  <div className="card-glass p-6">
+  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+  <CardTitle className="text-sm font-medium">
+  Total Applications
+  </CardTitle>
+  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+  </CardHeader>
+  <CardContent>
+  <div className="text-2xl font-bold">{totalApplications}</div>
+  <p className="text-xs text-muted-foreground">
+  Across all variants
+  </p>
+  </CardContent>
+  </div>
+  <div className="card-glass p-6">
+  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+  <CardTitle className="text-sm font-medium">
+  Suggestions
+  </CardTitle>
+  <Trophy className="h-4 w-4 text-warning" />
+  </CardHeader>
+  <CardContent>
+  <div className="text-2xl font-bold">
+  {suggestedComparisons.length}
+  </div>
+  <p className="text-xs text-muted-foreground">
+  Promotions awaiting review
+  </p>
+  </CardContent>
+  </div>
+  <div className="card-glass p-6">
+  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+  <CardTitle className="text-sm font-medium">
+  Auto Promotions
+  </CardTitle>
+  <CheckCircle className="h-4 w-4 text-success" />
+  </CardHeader>
+  <CardContent>
+  <div className="text-2xl font-bold">
+  {autoComparisons.length}
+  </div>
+  <p className="text-xs text-muted-foreground">
+  System-promoted variants
+  </p>
+  </CardContent>
+  </div>
  </StaggerContainer>
 
- <div className="card-chunky">
- <CardHeader>
- <CardTitle>Variant Leaderboard</CardTitle>
- <CardDescription>
- Performance metrics per prompt version and task scope
- </CardDescription>
- </CardHeader>
- <CardContent>
- <Table>
+  <div className="card-glass p-6">
+  <CardHeader>
+  <CardTitle>Variant Leaderboard</CardTitle>
+  <CardDescription>
+  Performance metrics per prompt version and task scope
+  </CardDescription>
+  </CardHeader>
+  <CardContent>
+  <Table>
  <TableHeader>
  <TableRow>
  <TableHead>Variant</TableHead>
@@ -351,179 +341,175 @@ export default function AiLearningPage() {
  </div>
 
  {suggestedComparisons.length > 0 && (
- <div className="card-chunky">
- <CardHeader>
- <CardTitle className="flex items-center gap-2">
- <Trophy className="h-5 w-5 text-warning" />
- Suggested Promotions
- </CardTitle>
- <CardDescription>
- Bayesian comparison results — promote the winning variant
- </CardDescription>
- </CardHeader>
- <CardContent className="space-y-4">
- {suggestedComparisons.map((comp) => {
- const confPct = confidencePercent(comp.confidence);
- return (
- <Card
- key={comp.id}
- className="border-warning/30 rounded-2xl "
- >
- <CardContent className="pt-6">
- <div className="flex items-center justify-between mb-4">
- <div>
- <h4 className="font-semibold">
- {comp.variantAType} #{comp.variantAId} vs #
- {comp.variantBId}
- </h4>
- <p className="text-xs text-muted-foreground">
- {comp.taskScope}
- </p>
- </div>
- <Badge variant={statusVariant(comp.status)}>
- {confPct}% confidence
- </Badge>
- </div>
- <div className="grid grid-cols-2 gap-4 mb-4">
- <div>
- <p className="text-xs text-muted-foreground">
- Winner (A)
- </p>
- <p className="text-lg font-bold">
- {confidencePercent(comp.successRateA)}%
- </p>
- <p className="text-xs text-muted-foreground">
- N={comp.sampleSizeA}
- </p>
- </div>
- <div>
- <p className="text-xs text-muted-foreground">
- Loser (B)
- </p>
- <p className="text-lg font-bold text-muted-foreground">
- {confidencePercent(comp.successRateB)}%
- </p>
- <p className="text-xs text-muted-foreground">
- N={comp.sampleSizeB}
- </p>
- </div>
- </div>
- <div className="w-full bg-muted rounded-full h-2 mb-4">
- <div
- className="bg-warning h-2 rounded-full transition-all"
- style={{ width: `${confPct}%` }}
- />
- </div>
- <Button
- className="bg-primary"
- size="sm"
- onClick={() => promoteMutation.mutate(comp.id)}
- disabled={promoteMutation.isPending}
- >
- Promote Variant #{comp.variantAId}
- </Button>
- </CardContent>
- </Card>
- );
- })}
- </CardContent>
- </div>
+  <div className="card-glass p-6">
+  <CardHeader>
+  <CardTitle className="flex items-center gap-2">
+  <Trophy className="h-5 w-5 text-warning" />
+  Suggested Promotions
+  </CardTitle>
+  <CardDescription>
+  Bayesian comparison results — promote the winning variant
+  </CardDescription>
+  </CardHeader>
+  <CardContent className="space-y-4">
+  {suggestedComparisons.map((comp) => {
+  const confPct = confidencePercent(comp.confidence);
+  return (
+  <div
+  key={comp.id}
+  className="panel-glass border-warning/30 rounded-2xl p-6"
+  >
+  <div className="flex items-center justify-between mb-4">
+  <div>
+  <h4 className="font-semibold">
+  {comp.variantAType} #{comp.variantAId} vs #
+  {comp.variantBId}
+  </h4>
+  <p className="text-xs text-muted-foreground">
+  {comp.taskScope}
+  </p>
+  </div>
+  <Badge variant={statusVariant(comp.status)}>
+  {confPct}% confidence
+  </Badge>
+  </div>
+  <div className="grid grid-cols-2 gap-4 mb-4">
+  <div>
+  <p className="text-xs text-muted-foreground">
+  Winner (A)
+  </p>
+  <p className="text-lg font-bold">
+  {confidencePercent(comp.successRateA)}%
+  </p>
+  <p className="text-xs text-muted-foreground">
+  N={comp.sampleSizeA}
+  </p>
+  </div>
+  <div>
+  <p className="text-xs text-muted-foreground">
+  Loser (B)
+  </p>
+  <p className="text-lg font-bold text-muted-foreground">
+  {confidencePercent(comp.successRateB)}%
+  </p>
+  <p className="text-xs text-muted-foreground">
+  N={comp.sampleSizeB}
+  </p>
+  </div>
+  </div>
+  <div className="w-full bg-muted rounded-full h-2 mb-4">
+  <div
+  className="bg-warning h-2 rounded-full transition-all"
+  style={{ width: `${confPct}%` }}
+  />
+  </div>
+  <Button
+  variant="default"
+  size="sm"
+  onClick={() => promoteMutation.mutate(comp.id)}
+  disabled={promoteMutation.isPending}
+  >
+  Promote Variant #{comp.variantAId}
+  </Button>
+  </div>
+  );
+  })}
+  </CardContent>
+  </div>
  )}
 
  {autoComparisons.length > 0 && (
- <div className="card-chunky">
- <CardHeader>
- <CardTitle className="flex items-center gap-2">
- <CheckCircle className="h-5 w-5 text-success" />
- Auto-Promoted
- </CardTitle>
- <CardDescription>
- System promoted — review and revert if needed
- </CardDescription>
- </CardHeader>
- <CardContent className="space-y-4">
- {autoComparisons.map((comp) => {
- const confPct = confidencePercent(comp.confidence);
- return (
- <Card
- key={comp.id}
- className="border-success/30 rounded-2xl "
- >
- <CardContent className="pt-6">
- <div className="flex items-center justify-between mb-4">
- <div>
- <h4 className="font-semibold">
- {comp.variantAType} #{comp.variantAId} vs #
- {comp.variantBId}
- </h4>
- <p className="text-xs text-muted-foreground">
- {comp.taskScope}
- </p>
- </div>
- <Badge variant="default" className="bg-success">
- Promoted
- </Badge>
- </div>
- <div className="grid grid-cols-2 gap-4 mb-4">
- <div>
- <p className="text-xs text-muted-foreground">
- Promoted (A)
- </p>
- <p className="text-lg font-bold text-success">
- {confidencePercent(comp.successRateA)}%
- </p>
- <p className="text-xs text-muted-foreground">
- N={comp.sampleSizeA}
- </p>
- </div>
- <div>
- <p className="text-xs text-muted-foreground">
- Replaced (B)
- </p>
- <p className="text-lg font-bold text-muted-foreground">
- {confidencePercent(comp.successRateB)}%
- </p>
- <p className="text-xs text-muted-foreground">
- N={comp.sampleSizeB}
- </p>
- </div>
- </div>
- <div className="w-full bg-muted rounded-full h-2 mb-4">
- <div
- className="bg-success h-2 rounded-full transition-all"
- style={{ width: `${confPct}%` }}
- />
- </div>
- {comp.promotedAt && (
- <p className="text-xs text-muted-foreground mb-4">
- Promoted: {new Date(comp.promotedAt).toLocaleString()}
- </p>
- )}
- <Button
- className="bg-primary"
- size="sm"
- onClick={() => revertMutation.mutate(comp.id)}
- disabled={revertMutation.isPending}
- >
- <Undo2 className="h-4 w-4 mr-2" />
- Revert Promotion
- </Button>
- </CardContent>
- </Card>
- );
- })}
- </CardContent>
- </div>
+  <div className="card-glass p-6">
+  <CardHeader>
+  <CardTitle className="flex items-center gap-2">
+  <CheckCircle className="h-5 w-5 text-success" />
+  Auto-Promoted
+  </CardTitle>
+  <CardDescription>
+  System promoted — review and revert if needed
+  </CardDescription>
+  </CardHeader>
+  <CardContent className="space-y-4">
+  {autoComparisons.map((comp) => {
+  const confPct = confidencePercent(comp.confidence);
+  return (
+  <div
+  key={comp.id}
+  className="panel-glass border-success/30 rounded-2xl p-6"
+  >
+  <div className="flex items-center justify-between mb-4">
+  <div>
+  <h4 className="font-semibold">
+  {comp.variantAType} #{comp.variantAId} vs #
+  {comp.variantBId}
+  </h4>
+  <p className="text-xs text-muted-foreground">
+  {comp.taskScope}
+  </p>
+  </div>
+  <Badge variant="default" className="bg-success">
+  Promoted
+  </Badge>
+  </div>
+  <div className="grid grid-cols-2 gap-4 mb-4">
+  <div>
+  <p className="text-xs text-muted-foreground">
+  Promoted (A)
+  </p>
+  <p className="text-lg font-bold text-success">
+  {confidencePercent(comp.successRateA)}%
+  </p>
+  <p className="text-xs text-muted-foreground">
+  N={comp.sampleSizeA}
+  </p>
+  </div>
+  <div>
+  <p className="text-xs text-muted-foreground">
+  Replaced (B)
+  </p>
+  <p className="text-lg font-bold text-muted-foreground">
+  {confidencePercent(comp.successRateB)}%
+  </p>
+  <p className="text-xs text-muted-foreground">
+  N={comp.sampleSizeB}
+  </p>
+  </div>
+  </div>
+  <div className="w-full bg-muted rounded-full h-2 mb-4">
+  <div
+  className="bg-success h-2 rounded-full transition-all"
+  style={{ width: `${confPct}%` }}
+  />
+  </div>
+  {comp.promotedAt && (
+  <p className="text-xs text-muted-foreground mb-4">
+  Promoted: {new Date(comp.promotedAt).toLocaleString()}
+  </p>
+  )}
+  <Button
+  variant="default"
+  size="sm"
+  onClick={() => revertMutation.mutate(comp.id)}
+  disabled={revertMutation.isPending}
+  >
+  <Undo2 className="h-4 w-4 mr-2" />
+  Revert Promotion
+  </Button>
+  </div>
+  );
+  })}
+  </CardContent>
+  </div>
  )}
 
- <div className="card-chunky">
- <CardHeader>
- <CardTitle>Learning Configuration</CardTitle>
- <CardDescription>
- Thresholds and automation settings
- </CardDescription>
- </CardHeader>
- <CardContent className="space-y-4">
+  <div className="card-glass p-6">
+  <CardHeader>
+  <CardTitle>Learning Configuration</CardTitle>
+  <CardDescription>
+  Thresholds and automation settings
+  </CardDescription>
+  </CardHeader>
+  <CardContent className="space-y-4">
  <div className="flex items-center justify-between">
  <Label htmlFor="auto-promote">Auto-Promote Enabled</Label>
  <Switch

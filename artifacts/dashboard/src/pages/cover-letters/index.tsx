@@ -116,8 +116,8 @@ export default function CoverLettersPage() {
  <Skeleton className="h-56 w-full rounded-lg" />
  </>
  ) : versions?.length === 0 ? (
- <ContentCard>
- <div className="flex flex-col items-center justify-center p-12 text-center">
+  <ContentCard className="shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
+  <div className="flex flex-col items-center justify-center p-12 text-center">
  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-muted text-muted-foreground mb-4 border border-border">
  <MessageSquare className="h-8 w-8" />
  </div>
@@ -131,7 +131,7 @@ export default function CoverLettersPage() {
  versions?.map((version) => {
  const annotations = parseAnnotations(version);
  return (
- <ContentCard key={version.id} data-testid={`card-cl-${version.id}`} className="p-0 rounded-2xl ">
+  <ContentCard key={version.id} data-testid={`card-cl-${version.id}`} className="p-0 rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
  <CardHeader className="pb-3">
  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
  <div className="space-y-1">
@@ -154,27 +154,28 @@ export default function CoverLettersPage() {
 
  {version.status === "pending_approval" && (
  <div className="flex items-center gap-2">
- <Button
- className="btn-ghost"
- size="sm"
- onClick={() => { setRevisionTarget(version); setRevisionNote(""); }}
+  <Button
+  variant="ghost"
+  size="sm"
+  onClick={() => { setRevisionTarget(version); setRevisionNote(""); }}
  data-testid={`btn-revision-cl-${version.id}`}
  >
  <RotateCcw className="mr-1 h-4 w-4" /> Request Revision
  </Button>
- <Button
- className="btn-secondary text-destructive"
- size="sm"
- onClick={() => handleReject(version.id)}
+  <Button
+  variant="secondary"
+  className="text-destructive"
+  size="sm"
+  onClick={() => handleReject(version.id)}
  disabled={reject.isPending}
  data-testid={`btn-reject-cl-${version.id}`}
  >
  <X className="mr-1 h-4 w-4" /> Reject
  </Button>
- <Button
- className="btn-primary"
- size="sm"
- onClick={() => handleApprove(version.id)}
+  <Button
+  variant="default"
+  size="sm"
+  onClick={() => handleApprove(version.id)}
  disabled={approve.isPending}
  data-testid={`btn-approve-cl-${version.id}`}
  >
@@ -232,7 +233,7 @@ export default function CoverLettersPage() {
  ))}
  </div>
  ) : (
- <div className="bg-muted p-4 rounded-md border text-sm whitespace-pre-wrap max-h-96 overflow-y-auto">
+  <div className="card-glass p-4 text-sm whitespace-pre-wrap max-h-96 overflow-y-auto">
  {version.draftContent || "No content generated yet."}
  </div>
  )}
@@ -261,9 +262,9 @@ export default function CoverLettersPage() {
  />
  <div className="flex justify-end gap-2">
  <Button variant="outline" onClick={() => { setRevisionTarget(null); setRevisionNote(""); }}>Cancel</Button>
- <Button
- className="bg-destructive text-white hover:bg-destructive/90"
- disabled={reject.isPending || updateCL.isPending}
+  <Button
+  variant="destructive"
+  disabled={reject.isPending || updateCL.isPending}
  onClick={() => revisionTarget && handleReject(revisionTarget.id, revisionNote)}
  data-testid="btn-confirm-revision"
  >

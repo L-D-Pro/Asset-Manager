@@ -329,19 +329,19 @@ export default function RoleProfilesPage() {
  </PageHeader>
 
  {isLoading ? <Skeleton className="h-40 w-full" /> : profiles?.length === 0 ? (
- <ContentCard className="flex flex-col items-center justify-center p-12 text-center border-dashed rounded-2xl">
- <UserCircle className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
- <h3 className="text-lg font-medium">No role profiles yet</h3>
- <p className="text-sm text-muted-foreground mt-1">Create a profile to define scoring criteria for your target roles.</p>
- </ContentCard>
+  <div className="card-glass flex flex-col items-center justify-center p-12 text-center">
+  <UserCircle className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
+  <h3 className="text-lg font-medium text-foreground">No role profiles yet</h3>
+  <p className="text-sm text-muted-foreground mt-1">Create a profile to define scoring criteria for your target roles.</p>
+  </div>
  ) : (
  <div className="grid gap-4 md:grid-cols-2">
  {profiles?.map(p => {
  const hasHardFilters = !!(p.hardFilters && Object.keys(p.hardFilters).length);
  const hasSoftWeights = !!(p.softWeights && Object.keys(p.softWeights).length);
  return (
- <ContentCard key={p.id} data-testid={`card-profile-${p.id}`} className="rounded-2xl ">
- <CardContent className="p-0">
+  <div key={p.id} data-testid={`card-profile-${p.id}`} className="card-glass rounded-2xl overflow-hidden">
+  <div className="p-0">
  <div className="p-5 flex justify-between items-start">
  <div className="flex-1">
  <div className="font-semibold text-lg">{p.name}</div>
@@ -380,8 +380,8 @@ export default function RoleProfilesPage() {
  )}
  </Accordion>
  )}
- </CardContent>
- </ContentCard>
+  </div>
+  </div>
  );
  })}
  </div>
