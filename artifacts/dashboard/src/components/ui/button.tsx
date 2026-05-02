@@ -5,37 +5,41 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
- "inline-flex items-center justify-center gap-2 whitespace-nowrap font-[family-name:var(--font-display)] font-bold transition-all duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[hsl(var(--primary))] disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 rounded-[16px] cursor-pointer select-none",
- {
- variants: {
- variant: {
- default:
- "bg-[hsl(var(--primary))] text-white border-b-[4px] border-[hsl(var(--primary-dark))] hover:bg-[hsl(var(--primary-dark))] active:translate-y-[2px] active:border-b-[2px]",
- primary:
- "bg-[hsl(var(--primary))] text-white border-b-[4px] border-[hsl(var(--primary-dark))] hover:bg-[hsl(var(--primary-dark))] active:translate-y-[2px] active:border-b-[2px]",
- outline:
- "bg-transparent text-[hsl(var(--foreground))] border-2 border-[hsl(var(--border))] border-b-[6px] hover:bg-[hsl(var(--surface))] hover:border-[hsl(var(--primary))]/30 active:translate-y-[2px] active:border-b-[2px]",
- secondary:
- "bg-transparent text-[hsl(var(--primary))] border-2 border-[hsl(var(--border))] border-b-[6px] hover:bg-[hsl(var(--surface))] active:translate-y-[2px] active:border-b-[2px]",
- ghost:
- "bg-transparent text-[hsl(var(--muted))] hover:bg-[hsl(var(--surface))] hover:text-[hsl(var(--foreground))]",
- destructive:
- "bg-[hsl(var(--destructive))] text-white border-b-[4px] border-[hsl(0,100%,50%)] hover:bg-[hsl(0,100%,55%)] active:translate-y-[2px] active:border-b-[2px]",
- link: "text-[hsl(var(--primary))] underline-offset-4 hover:underline h-auto p-0 font-normal rounded-none active:translate-y-0 font-sans",
- },
- size: {
- default: "h-14 px-6 text-base",
- sm: "h-12 px-4 text-sm rounded-xl",
- md: "h-14 px-6 text-base",
- lg: "h-16 px-8 text-lg rounded-[18px]",
- icon: "h-14 w-14 p-0",
- },
- },
- defaultVariants: {
- variant: "default",
- size: "default",
- },
- }
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap font-sans font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[hsl(var(--primary))] disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 rounded-xl cursor-pointer select-none hover:animate-[wiggle_0.4s_ease-in-out]",
+  {
+    variants: {
+      variant: {
+        default:
+          "bg-[hsl(var(--primary))] text-white hover:brightness-110 hover:shadow-[0_4px_16px_-4px_hsl(var(--primary)/0.5)] active:scale-[0.98]",
+        primary:
+          "bg-[hsl(var(--primary))] text-white hover:brightness-110 hover:shadow-[0_4px_16px_-4px_hsl(var(--primary)/0.5)] active:scale-[0.98]",
+        outline:
+          "bg-transparent text-[hsl(var(--foreground))] border border-[hsl(var(--border))] hover:bg-[hsl(var(--primary)/0.06)] hover:border-[hsl(var(--primary)/0.2)] active:scale-[0.98]",
+        secondary:
+          "bg-[hsl(var(--primary)/0.08)] text-[hsl(var(--primary))] border border-[hsl(var(--primary)/0.15)] hover:bg-[hsl(var(--primary)/0.12)] active:scale-[0.98]",
+        ghost:
+          "bg-transparent text-[hsl(var(--muted))] hover:bg-[hsl(var(--foreground)/0.06)] hover:text-[hsl(var(--foreground))]",
+        destructive:
+          "bg-[hsl(var(--destructive))] text-white hover:bg-[hsl(var(--destructive))] hover:brightness-110 active:scale-[0.98]",
+        link: "text-[hsl(var(--primary))] underline-offset-4 hover:underline h-auto p-0 font-normal rounded-none active:scale-100 font-sans",
+        gradient:
+          "gradient-hero text-white shadow-[0_4px_16px_-4px_hsl(var(--primary)/0.5)] hover:brightness-110 hover:shadow-[0_8px_30px_-4px_hsl(var(--primary)/0.6)] active:scale-[0.98]",
+        quest:
+          "bg-[hsl(var(--secondary)/0.15)] text-[hsl(var(--secondary))] border border-[hsl(var(--secondary)/0.3)] hover:bg-[hsl(var(--secondary)/0.22)] active:scale-[0.98]",
+      },
+      size: {
+        default: "h-11 px-5 text-sm",
+        sm: "h-9 px-3 text-xs rounded-lg",
+        md: "h-11 px-5 text-sm",
+        lg: "h-14 px-8 text-base rounded-2xl",
+        icon: "h-11 w-11 p-0",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  }
 )
 
 export interface ButtonProps
