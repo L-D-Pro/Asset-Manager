@@ -1,31 +1,21 @@
-import { useGetApplicationStats, useListJobs } from "@workspace/api-client-react";
-import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
-import { ContentCard } from "@/components/ui/content-card";
-import { AnimatedCard } from "@/components/motion/animated-card";
-import { AnimatedCounter } from "@/components/motion/animated-counter";
-import { StaggerContainer, StaggerItem } from "@/components/motion/stagger-container";
-import { FadeIn } from "@/components/motion/fade-in";
+import { useGamificationStats } from "@/hooks/use-gamification";
+import { XPCard } from "@/components/gamification/XPCard";
+import { StreakFlame } from "@/components/gamification/StreakFlame";
+import { GamifiedBadge } from "@/components/gamification/GamifiedBadge";
+import { GradientButton } from "@/components/gamification/GradientButton";
 import { NextActions } from "@/components/dashboard/next-actions";
-import {
-  ArrowRight,
-  BookOpen,
-  Briefcase,
-  FileText,
-  Quote,
-  Sparkles,
-  TrendingDown,
-  TrendingUp,
-} from "lucide-react";
-import { Link } from "react-router-dom";
-import { format } from "date-fns";
-import { useCallback, useEffect, useState, type CSSProperties } from "react";
-import { Area, AreaChart, ResponsiveContainer } from "recharts";
-import { useResolvedUiConfig } from "@/ui-shell/use-ui-shell-config";
-import { XPCard, StreakFlame, GamifiedBadge, AchievementToaster } from "@/components/gamification";
-import { useGamificationStats, useMarkAchievementSeen } from "@/hooks/use-gamification";
+import { Skeleton } from "@/components/ui/skeleton";
+import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
+
+function getGreeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning!";
+  if (h < 17) return "Good afternoon!";
+  return "Good evening!";
+}
 
 const INSPIRATIONAL_QUOTES = [
   { quote: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
@@ -33,338 +23,267 @@ const INSPIRATIONAL_QUOTES = [
   { quote: "The future depends on what you do today.", author: "Mahatma Gandhi" },
   { quote: "It is never too late to be what you might have been.", author: "George Eliot" },
   { quote: "Believe you can and you're halfway there.", author: "Theodore Roosevelt" },
-  { quote: "Success is not final, failure is not fatal: it is the courage to continue that counts.", author: "Winston Churchill" },
+  {
+    quote: "Success is not final, failure is not fatal: it is the courage to continue that counts.",
+    author: "Winston Churchill",
+  },
 ];
 
-function generateTrend(target: number, count = 7): { value: number }[] {
-  const data: { value: number }[] = [];
-  let current = Math.max(0, target * 0.6);
-  const step = (target - current) / (count - 1);
-  for (let i = 0; i < count; i++) {
-    const noise = (Math.random() - 0.5) * step * 0.4;
-    current = Math.max(0, current + step + noise);
-    data.push({ value: Math.round(current * 10) / 10 });
-  }
-  return data;
-}
+const DEMO_ACHIEVEMENTS = [
+  { name: "First Job", icon: "\uD83D\uDCCB", tier: "bronze" as const, unlocked: true },
+  { name: "Resume Tailored", icon: "\u2702\uFE0F", tier: "silver" as const, unlocked: true },
+  { name: "7 Day Streak", icon: "\uD83D\uDD25", tier: "gold" as const, unlocked: true },
+  { name: "10 Apps Sent", icon: "\uD83D\uDCE8", tier: "silver" as const, unlocked: true },
+  { name: "Interview Landed", icon: "\uD83C\uDFAF", tier: "gold" as const, unlocked: true },
+  { name: "Cover Letter Pro", icon: "\uD83D\uDCDD", tier: "silver" as const, unlocked: false },
+];
 
-function StatCard({
-  title,
-  value,
-  isLoading,
-  prefix = "",
-  suffix = "",
-  decimals = 0,
-  trend,
-  trendUp,
-  color,
-  index,
-}: {
-  title: string;
-  value: number;
-  isLoading: boolean;
-  prefix?: string;
-  suffix?: string;
-  decimals?: number;
-  trend: { value: number }[];
-  trendUp: boolean;
-  color: string;
-  index: number;
-}) {
+const containerVariants = {
+  hidden: {},
+  show: {
+    transition: {
+      staggerChildren: 0.08,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 24 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] },
+  },
+};
+
+function SkeletonRow() {
   return (
-    <AnimatedCard index={index}>
-      <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br from-card via-card to-primary/[0.04] text-card-foreground backdrop-blur-xl shadow-[0_10px_28px_rgba(20,24,33,0.08)] transition-all duration-300 hover:border-primary/35 hover:gamify-shadow hover:shadow-[0_16px_40px_rgba(20,24,33,0.12)]">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-          <CardTitle className="text-xs font-medium uppercase tracking-[0.04em] text-muted-foreground">
-            {title}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {isLoading ? (
-            <Skeleton className="h-8 w-20" />
-          ) : (
-            <div className="flex items-baseline gap-2">
-              <div className="text-2xl font-semibold tracking-normal text-foreground">
-                <AnimatedCounter value={value} prefix={prefix} suffix={suffix} decimals={decimals} />
-              </div>
-              <div className={`flex items-center text-xs font-medium ${trendUp ? "text-primary" : "text-red-500 dark:text-red-300"}`}>
-                {trendUp ? <TrendingUp className="h-3 w-3 mr-0.5" /> : <TrendingDown className="h-3 w-3 mr-0.5" />}
-                {(Math.random() * 8 + 1).toFixed(1)}%
-              </div>
-            </div>
-          )}
-          <div className="h-10 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trend}>
-                <defs>
-                  <linearGradient id={`dash-grad-${index}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={color} stopOpacity={0.24} />
-                    <stop offset="95%" stopColor={color} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <Area
-                  type="monotone"
-                  dataKey="value"
-                  stroke={color}
-                  strokeWidth={2}
-                  fill={`url(#dash-grad-${index})`}
-                  isAnimationActive={!isLoading}
-                  animationDuration={900}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
+    <div className="flex flex-col gap-4">
+      <Skeleton className="h-44 w-full rounded-[20px]" />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Skeleton className="h-56 w-full rounded-[20px]" />
+        <Skeleton className="h-56 w-full rounded-[20px]" />
+        <Skeleton className="h-56 w-full rounded-[20px]" />
       </div>
-    </AnimatedCard>
+      <div className="grid gap-4 md:grid-cols-3">
+        {[1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-32 w-full rounded-2xl" />
+        ))}
+      </div>
+      <Skeleton className="h-32 w-full rounded-[20px]" />
+      <Skeleton className="h-24 w-full rounded-[20px]" />
+    </div>
   );
 }
 
-const statusBadgeMap: Record<string, { variant: "default" | "secondary" | "outline" | "destructive"; className?: string }> = {
-  new: { variant: "secondary" },
-  parsing: { variant: "outline", className: "bg-primary/10 text-primary border-primary/20" },
-  tailoring: { variant: "outline", className: "bg-primary/10 text-primary border-primary/20" },
-  ready: { variant: "outline", className: "bg-primary/10 text-primary border-primary/25" },
-  parsed: { variant: "outline", className: "bg-primary/10 text-primary border-primary/25" },
-  scored: { variant: "outline", className: "bg-primary/10 text-primary border-primary/25" },
-  applied: { variant: "default" },
-  archived: { variant: "destructive" },
-};
-
 export default function Dashboard() {
-  const { data: stats, isLoading: statsLoading } = useGetApplicationStats();
-  const { data: recentJobs, isLoading: jobsLoading } = useListJobs();
-  const uiConfig = useResolvedUiConfig();
-  const [quoteIndex, setQuoteIndex] = useState(0);
-
-  const total = stats?.total || 0;
-  const interviewRate = (stats?.interviewRate || 0) * 100;
-  const responseRate = (stats?.responseRate || 0) * 100;
-  const activeJobs = recentJobs?.filter((j) => j.status !== "archived" && j.status !== "applied").length || 0;
-
-  const { data: gStats, isLoading: gLoading } = useGamificationStats()
-  const markSeen = useMarkAchievementSeen()
-  const [dismissedAchievements, setDismissedAchievements] = useState<Set<number>>(new Set())
-
-  const achievements = gStats?.recentAchievements?.filter(a => !a.seen && !dismissedAchievements.has(a.id)) ?? []
-
-  const handleDismissAchievement = useCallback((id: string) => {
-    const numId = Number(id)
-    markSeen.mutate(numId)
-    setDismissedAchievements(prev => new Set(prev).add(numId))
-  }, [markSeen])
+  const { data: gStats, isLoading, isError, error } = useGamificationStats();
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setQuoteIndex((prev) => (prev + 1) % INSPIRATIONAL_QUOTES.length);
-    }, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    if (isError) {
+      if (error instanceof Error && error.message !== "Failed to fetch gamification stats") {
+        toast({
+          title: "Couldn't load stats",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
+    }
+  }, [isError, error, toast]);
 
-  const today = format(new Date(), "EEEE, MMMM d");
-  const slotItems = uiConfig.slots.dashboardGrid;
-  const slotLookup = new Map(slotItems.map((item) => [item.componentKey, item]));
-  const getOrder = (key: string, fallbackOrder: number) => slotLookup.get(key)?.order ?? fallbackOrder;
-  const isVisible = (key: string) => slotLookup.get(key)?.visibility ?? true;
+  if (isLoading) {
+    return <SkeletonRow />;
+  }
+
+  const greeting = getGreeting();
+  const level = gStats?.currentLevel ?? 1;
+  const currentLevelXp = gStats
+    ? Math.max(0, gStats.totalXp - (gStats.currentLevel - 1) * (gStats.currentLevel - 1) * 100)
+    : 0;
+  const xpForNextLevel = gStats?.xpToNextLevel ?? 100;
+  const totalXp = gStats?.totalXp ?? 0;
+  const streak = gStats?.currentStreak ?? 0;
+
+  const recentAchievements = gStats?.recentAchievements ?? [];
+  const hasAchievements = recentAchievements.length > 0;
+
+  const quoteIdx = Math.floor(Math.random() * INSPIRATIONAL_QUOTES.length);
+  const quote = INSPIRATIONAL_QUOTES[quoteIdx];
 
   return (
-    <div className="flex flex-col gap-5">
-      {!gLoading && gStats && (
-        <div className="mb-8 space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <XPCard
-              level={gStats.currentLevel}
-              currentXp={gStats.totalXp - (gStats.currentLevel - 1) * (gStats.currentLevel - 1) * 100}
-              xpToNext={gStats.xpToNextLevel}
-              totalXp={gStats.totalXp}
-            />
-            <StreakFlame
-              days={gStats.currentStreak}
-            />
-            <div className="grid grid-cols-2 gap-2 content-center">
-              <GamifiedBadge
-                icon="🏆"
-                name={`Achievements: ${gStats.achievementsUnlocked} unlocked`}
-                tier="gold"
-                unlocked
-              />
-              <GamifiedBadge
-                icon="✅"
-                name={`Quests: ${gStats.questsCompleted} completed`}
-                tier="silver"
-                unlocked
-              />
-            </div>
+    <motion.div
+      className="flex flex-col gap-5"
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+    >
+      {/*********** Hero Strip ***********/}
+      <motion.div variants={itemVariants}>
+        <div className="gamify-gradient-primary rounded-[20px] p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          {/* Left: Greeting */}
+          <div>
+            <h1
+              className="text-3xl md:text-[32px] font-display font-extrabold text-white leading-tight"
+              style={{ fontFamily: "Nunito, sans-serif" }}
+            >
+              {greeting}
+            </h1>
           </div>
 
-          <AchievementToaster
-            toasts={achievements.map(a => ({
-              id: String(a.id),
-              icon: a.iconName === "trophy" ? "🏆" : a.iconName === "fire" ? "🔥" : a.iconName === "star" ? "⭐" : "🎯",
-              name: a.name,
-              description: a.description,
-            }))}
-            onDismiss={handleDismissAchievement}
+          {/* Right: Stat tiles */}
+          <div className="flex items-center gap-4 md:gap-8">
+            {/* Level */}
+            <div className="flex flex-col items-center min-w-[72px] bg-white/15 rounded-[16px] px-4 py-3 backdrop-blur-sm">
+              <span className="text-3xl font-extrabold font-display text-white">
+                {level}
+              </span>
+              <span className="text-[11px] text-white/70 font-semibold uppercase tracking-wider mt-0.5">
+                Level
+              </span>
+            </div>
+
+            {/* Streak */}
+            <div className="flex flex-col items-center min-w-[72px] bg-white/15 rounded-[16px] px-4 py-3 backdrop-blur-sm">
+              <span className="text-3xl">{"\uD83D\uDD25"}</span>
+              <span className="text-xl font-extrabold font-display text-white">
+                {streak}
+              </span>
+              <span className="text-[11px] text-white/70 font-semibold uppercase tracking-wider">
+                Day Streak
+              </span>
+            </div>
+
+            {/* Total XP */}
+            <div className="flex flex-col items-center min-w-[72px] bg-white/15 rounded-[16px] px-4 py-3 backdrop-blur-sm">
+              <span className="text-2xl flex items-center gap-1 font-extrabold font-display text-white">
+                {"\u26A1"} {totalXp.toLocaleString()}
+              </span>
+              <span className="text-[11px] text-white/70 font-semibold uppercase tracking-wider mt-0.5">
+                Total XP
+              </span>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/*********** Second Row: XP + Streak + Quick Action ***********/}
+      <motion.div
+        variants={itemVariants}
+        className="grid grid-cols-1 md:grid-cols-3 gap-4"
+      >
+        {/* Left: XPCard */}
+        <XPCard
+          level={level}
+          currentXp={currentLevelXp}
+          xpToNext={xpForNextLevel}
+          totalXp={totalXp}
+        />
+
+        {/* Center: Streak card */}
+        <div className="card-chunky flex flex-col items-center justify-center gap-4">
+          <StreakFlame
+            days={streak}
+            className="!p-0 !shadow-none !border-none !bg-transparent !rounded-none"
           />
+          <p className="text-sm font-semibold text-foreground">
+            Keep it going!{" "}
+            <span className="text-accent">{"\uD83D\uDD25"}</span>
+          </p>
+          {gStats && gStats.longestStreak > 0 && (
+            <p className="text-xs text-muted-foreground">
+              Longest streak: {gStats.longestStreak} days
+            </p>
+          )}
         </div>
-      )}
 
-      {/* Next Actions */}
-      <NextActions />
-
-      {isVisible("dashboard-hero") && (
-        <ContentCard
-          style={{ order: getOrder("dashboard-hero", 0) } as CSSProperties}
-          className="relative overflow-hidden"
-        >
-          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/45 to-transparent" />
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="space-y-1">
-              <p className="text-xs font-medium uppercase tracking-[0.08em] text-primary">Command Center</p>
-              <h1 className="text-2xl font-semibold text-foreground tracking-normal">Welcome back</h1>
-              <p className="text-sm text-muted-foreground">Your job search pipeline, focused for {today}.</p>
-            </div>
-            <div className="flex max-w-xl items-start gap-3 rounded-md border border-border bg-muted/40 px-3 py-2">
-              <Quote className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-              <div>
-                <p className="text-sm leading-relaxed text-foreground">"{INSPIRATIONAL_QUOTES[quoteIndex].quote}"</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">- {INSPIRATIONAL_QUOTES[quoteIndex].author}</p>
-              </div>
-            </div>
+        {/* Right: Quick action card */}
+        <div className="card-chunky flex flex-col items-center justify-center gap-4 text-center">
+          <h3 className="text-lg font-display font-bold text-foreground">
+            Ready to apply?
+          </h3>
+          <div className="flex flex-col gap-3 w-full">
+            <GradientButton
+              variant="primary"
+              size="sm"
+              className="w-full"
+              onClick={() => navigate("/apply-wizard")}
+            >
+              Start Applying
+            </GradientButton>
+            <GradientButton
+              variant="secondary"
+              size="sm"
+              className="w-full"
+              onClick={() => navigate("/jobs")}
+            >
+              Ingest a Job
+            </GradientButton>
           </div>
-        </ContentCard>
-      )}
-
-      {isVisible("dashboard-stats") && (
-        <div style={{ order: getOrder("dashboard-stats", 1) }}>
-          <StaggerContainer className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-            <StaggerItem>
-              <StatCard title="Total Applications" value={total} isLoading={statsLoading} trend={generateTrend(total)} trendUp color="hsl(var(--primary))" index={0} />
-            </StaggerItem>
-            <StaggerItem>
-              <StatCard title="Interview Rate" value={interviewRate} isLoading={statsLoading} suffix="%" decimals={1} trend={generateTrend(interviewRate)} trendUp={interviewRate > 20} color="hsl(var(--primary))" index={1} />
-            </StaggerItem>
-            <StaggerItem>
-              <StatCard title="Response Rate" value={responseRate} isLoading={statsLoading} suffix="%" decimals={1} trend={generateTrend(responseRate)} trendUp={responseRate > 15} color="rgb(245 158 11)" index={2} />
-            </StaggerItem>
-            <StaggerItem>
-              <StatCard title="Active Jobs" value={activeJobs} isLoading={jobsLoading} trend={generateTrend(activeJobs)} trendUp color="hsl(var(--primary))" index={3} />
-            </StaggerItem>
-          </StaggerContainer>
         </div>
-      )}
+      </motion.div>
 
-      {isVisible("dashboard-actions") && (
-        <FadeIn delay={0.1} className="contents">
-          <div style={{ order: getOrder("dashboard-actions", 2) }}>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <Button asChild size="lg" className="h-11 rounded-md font-medium shadow-sm">
-                <Link to="/jobs" className="flex items-center justify-center gap-2">
-                  <Briefcase className="h-4 w-4" />
-                  New Job
-                </Link>
-              </Button>
-              <Button asChild variant="outline" size="lg" className="h-11 rounded-md border-border font-medium hover:border-primary/35 hover:bg-primary/5">
-                <Link to="/resume-versions" className="flex items-center justify-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  Tailor Resume
-                </Link>
-              </Button>
-              <Button asChild variant="outline" size="lg" className="h-11 rounded-md border-border font-medium hover:border-primary/35 hover:bg-primary/5">
-                <Link to="/trends" className="flex items-center justify-center gap-2">
-                  <TrendingUp className="h-4 w-4" />
-                  Market Trends
-                </Link>
-              </Button>
-            </div>
+      {/*********** Third Row: Next Actions ***********/}
+      <motion.div variants={itemVariants}>
+        <NextActions />
+      </motion.div>
+
+      {/*********** Fourth Row: Recent Achievements ***********/}
+      <motion.div variants={itemVariants} className="space-y-4">
+        <h2 className="text-lg font-semibold tracking-tight text-foreground">
+          Recent Achievements
+        </h2>
+
+        {hasAchievements ? (
+          <div className="flex flex-wrap gap-4">
+            {recentAchievements.slice(0, 6).map((a) => (
+              <GamifiedBadge
+                key={a.id}
+                name={a.name}
+                icon={
+                  a.iconName === "trophy"
+                    ? "\uD83C\uDFC6"
+                    : a.iconName === "fire"
+                      ? "\uD83D\uDD25"
+                      : a.iconName === "star"
+                        ? "\u2B50"
+                        : "\uD83C\uDFAF"
+                }
+                tier={
+                  a.slug.includes("streak")
+                    ? "gold"
+                    : a.slug.includes("resume") || a.slug.includes("cover")
+                      ? "silver"
+                      : "bronze"
+                }
+                unlocked
+                isNew={!a.seen}
+              />
+            ))}
           </div>
-        </FadeIn>
-      )}
+        ) : (
+          <div className="card-chunky flex flex-col items-center justify-center py-12 text-center">
+            <span className="text-4xl mb-3">{"\uD83C\uDFC6"}</span>
+            <p className="text-base font-semibold text-foreground">
+              No achievements yet
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Complete actions to earn badges!
+            </p>
+          </div>
+        )}
+      </motion.div>
 
-      {isVisible("dashboard-activity") && (
-        <div style={{ order: getOrder("dashboard-activity", 3) }} className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <FadeIn delay={0.2} className="lg:col-span-2">
-            <ContentCard padding="none" className="h-full">
-              <CardHeader className="flex flex-row items-center justify-between p-5 pb-2">
-                <div>
-                  <CardTitle className="text-base font-semibold text-foreground">Recent Activity</CardTitle>
-                  <p className="mt-0.5 text-sm text-muted-foreground">Latest updates from your job pipeline</p>
-                </div>
-                <Button variant="ghost" size="sm" asChild className="gap-1 text-primary hover:text-primary/85">
-                  <Link to="/jobs">
-                    View all <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </Button>
-              </CardHeader>
-              <CardContent className="p-5 pt-2">
-                {jobsLoading ? (
-                  <div className="space-y-2">
-                    <Skeleton className="h-12 w-full" />
-                    <Skeleton className="h-12 w-full" />
-                    <Skeleton className="h-12 w-full" />
-                  </div>
-                ) : recentJobs && recentJobs.length > 0 ? (
-                  <div className="divide-y divide-border/70">
-                    {recentJobs.slice(0, 5).map((job) => {
-                      const badgeConfig = statusBadgeMap[job.status] || { variant: "outline" as const };
-                      return (
-                        <div key={job.id} className="flex items-center justify-between gap-3 py-3">
-                          <div className="flex min-w-0 items-center gap-3">
-                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                              <Briefcase className="h-4 w-4" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-medium text-foreground">{job.title}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {job.company} - {format(new Date(job.createdAt), "MMM d, yyyy")}
-                              </p>
-                            </div>
-                          </div>
-                          <Badge variant={badgeConfig.variant} className={badgeConfig.className}>
-                            {job.status}
-                          </Badge>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-10 text-center">
-                    <Briefcase className="mb-3 h-10 w-10 text-muted-foreground/35" />
-                    <p className="text-sm text-muted-foreground">No jobs yet.</p>
-                    <Button asChild variant="link" className="mt-1 text-primary">
-                      <Link to="/jobs">Ingest your first job</Link>
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </ContentCard>
-          </FadeIn>
-
-          <FadeIn delay={0.3}>
-            <ContentCard className="h-full border-primary/20 bg-primary/5">
-              <div className="flex h-full flex-col justify-between">
-                <div>
-                  <div className="mb-3 flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-primary" />
-                    <h3 className="text-base font-semibold text-foreground">Daily Inspiration</h3>
-                  </div>
-                  <p className="mb-3 text-sm italic leading-relaxed text-foreground">
-                    "{INSPIRATIONAL_QUOTES[quoteIndex].quote}"
-                  </p>
-                  <p className="text-xs text-muted-foreground">- {INSPIRATIONAL_QUOTES[quoteIndex].author}</p>
-                </div>
-                <div className="mt-5 border-t border-border/70 pt-3">
-                  <Link to="/resources" className="flex items-center gap-2 text-sm font-medium text-primary transition-colors hover:text-primary/85">
-                    <BookOpen className="h-4 w-4" />
-                    Free resources & support
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </Link>
-                </div>
-              </div>
-            </ContentCard>
-          </FadeIn>
+      {/*********** Bottom: Motivational Quote ***********/}
+      <motion.div variants={itemVariants}>
+        <div className="gamify-gradient-subtle card-chunky text-center flex flex-col items-center gap-2">
+          <p className="text-base italic leading-relaxed text-muted-foreground max-w-lg">
+            &ldquo;{quote.quote}&rdquo;
+          </p>
+          <p className="text-xs text-muted-foreground">&mdash; {quote.author}</p>
         </div>
-      )}
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
