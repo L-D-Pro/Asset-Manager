@@ -44,6 +44,7 @@ import AdminUiShellPage from "@/pages/admin/ui-shell";
 import AiLearningPage from "@/pages/ai-learning";
 import TrendsPage from "@/pages/trends";
 import ResourcesPage from "@/pages/resources";
+import StatsPage from "@/pages/stats";
 import NotFound from "@/pages/not-found";
 import { WelcomeModal } from "@/components/onboarding/welcome-modal";
 import { useUiShellState } from "@/ui-shell/use-ui-shell-config";
@@ -141,6 +142,7 @@ function ProtectedRoutes() {
             <Route path="/ai-learning" element={<AiLearningPage />} />
             <Route path="/trends" element={<TrendsPage />} />
             <Route path="/resources" element={<ResourcesPage />} />
+            <Route path="/stats" element={<StatsPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </PageTransition>
