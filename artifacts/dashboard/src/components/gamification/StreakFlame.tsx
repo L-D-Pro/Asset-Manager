@@ -2,98 +2,98 @@ import { cn } from "@/lib/utils"
 import { motion } from "framer-motion"
 
 interface StreakFlameProps {
-  days: number
-  intensity?: "low" | "medium" | "high"
-  className?: string
+ days: number
+ intensity?: "low" | "medium" | "high"
+ className?: string
 }
 
 function getFlameConfig(days: number) {
-  if (days >= 8)
-    return {
-      level: "high" as const,
-      emojiSize: "text-5xl",
-      bgGlow: "shadow-[0_0_24px_rgba(255,140,66,0.4)] rounded-full",
-    }
-  if (days >= 5)
-    return {
-      level: "high" as const,
-      emojiSize: "text-4xl",
-      bgGlow: "shadow-[0_0_16px_rgba(255,140,66,0.3)] rounded-full",
-    }
-  if (days >= 2)
-    return {
-      level: "medium" as const,
-      emojiSize: "text-3xl",
-      bgGlow: "shadow-[0_0_8px_rgba(255,140,66,0.2)] rounded-full",
-    }
-  return {
-    level: "low" as const,
-    emojiSize: "text-2xl opacity-60",
-    bgGlow: "",
-  }
+ if (days >= 8)
+ return {
+ level: "high" as const,
+ emojiSize: "text-5xl",
+ bgGlow: "rounded-full",
+ }
+ if (days >= 5)
+ return {
+ level: "high" as const,
+ emojiSize: "text-4xl",
+ bgGlow: "rounded-full",
+ }
+ if (days >= 2)
+ return {
+ level: "medium" as const,
+ emojiSize: "text-3xl",
+ bgGlow: "rounded-full",
+ }
+ return {
+ level: "low" as const,
+ emojiSize: "text-2xl opacity-60",
+ bgGlow: "",
+ }
 }
 
 function StreakFlame({ days, intensity, className }: StreakFlameProps) {
-  const { level, emojiSize, bgGlow } = getFlameConfig(days)
-  const effectiveIntensity = intensity ?? level
+ const { level, emojiSize, bgGlow } = getFlameConfig(days)
+ const effectiveIntensity = intensity ?? level
 
-  const floatAnimation = days >= 8
-  const glowPulse = days >= 5
+ const floatAnimation = days >= 8
+ const glowPulse = days >= 5
 
-  return (
-    <div
-      className={cn(
-        "card-chunky flex flex-col items-center justify-center gap-3",
-        className
-      )}
-    >
-      <motion.div
-        className="relative flex items-center justify-center"
-        animate={
-          floatAnimation
-            ? { y: [0, -6, 0] }
-            : glowPulse
-              ? { scale: [1, 1.05, 1] }
-              : {}
-        }
-        transition={
-          floatAnimation
-            ? { duration: 3, repeat: Infinity, ease: "easeInOut" }
-            : glowPulse
-              ? { duration: 2, repeat: Infinity, ease: "easeInOut" }
-              : {}
-        }
-      >
-        <div
-          className={cn(
-            "flex items-center justify-center p-2",
-            bgGlow,
-            effectiveIntensity === "high" && "animate-[pulse-glow_2s_ease-in-out_infinite]"
-          )}
-        >
-          <span className={cn(emojiSize, "transition-all duration-500")}>
-            🔥
-          </span>
-        </div>
-        <span
-          className={cn(
-            "absolute -top-1 -right-2 rounded-full min-w-[26px] h-[26px] flex items-center justify-center px-1 text-xs font-extrabold text-white font-display shadow-lg",
-            days >= 5
-              ? "bg-accent"
-              : days >= 2
-                ? "bg-[hsl(var(--accent-dark))]"
-                : "bg-muted"
-          )}
-        >
-          {days}
-        </span>
-      </motion.div>
+ return (
+ <div
+ className={cn(
+ "card-chunky flex flex-col items-center justify-center gap-3",
+ className
+ )}
+ >
+ <motion.div
+ className="relative flex items-center justify-center"
+ animate={
+ floatAnimation
+ ? { y: [0, -6, 0] }
+ : glowPulse
+ ? { scale: [1, 1.05, 1] }
+ : {}
+ }
+ transition={
+ floatAnimation
+ ? { duration: 3, repeat: Infinity, ease: "easeInOut" }
+ : glowPulse
+ ? { duration: 2, repeat: Infinity, ease: "easeInOut" }
+ : {}
+ }
+ >
+ <div
+ className={cn(
+ "flex items-center justify-center p-2",
+ bgGlow,
+ effectiveIntensity === "high" && "animate-[pulse-glow_2s_ease-in-out_infinite]"
+ )}
+ >
+ <span className={cn(emojiSize, "transition-all duration-500")}>
+ 🔥
+ </span>
+ </div>
+ <span
+ className={cn(
+ "absolute -top-1 -right-2 rounded-full min-w-[26px] h-[26px] flex items-center justify-center px-1 text-xs font-extrabold text-white font-display",
+ days >= 5
+ ? "bg-accent"
+ : days >= 2
+ ? "bg-[hsl(var(--accent-dark))]"
+ : "bg-muted"
+ )}
+ >
+ {days}
+ </span>
+ </motion.div>
 
-      <span className="text-sm font-bold text-foreground font-display">
-        {days} day streak
-      </span>
-    </div>
-  )
+ <span className="text-sm font-bold text-foreground font-display">
+ {days} day streak
+ </span>
+ </div>
+ )
 }
 
 export { StreakFlame }

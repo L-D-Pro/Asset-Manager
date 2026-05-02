@@ -1,70 +1,70 @@
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
+ Card,
+ CardContent,
+ CardHeader,
+ CardTitle,
 } from "@/components/ui/card";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+ Table,
+ TableBody,
+ TableCell,
+ TableHead,
+ TableHeader,
+ TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Award } from "lucide-react";
 import type { MarketAnalysis } from "@workspace/api-client-react";
 
 interface CertificationsTableProps {
-  certifications: MarketAnalysis["certifications"];
+ certifications: MarketAnalysis["certifications"];
 }
 
 export function CertificationsTable({
-  certifications,
+ certifications,
 }: CertificationsTableProps) {
-  const demandColors: Record<string, string> = {
-    high: "bg-green-100 text-green-800",
-    medium: "bg-yellow-100 text-yellow-800",
-    low: "bg-gray-100 text-gray-800",
-  };
+ const demandColors: Record<string, string> = {
+ high: "bg-green-100 text-green-800",
+ medium: "bg-yellow-100 text-yellow-800",
+ low: "bg-gray-100 text-gray-800",
+ };
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Award className="h-5 w-5 text-primary" />
-          In-Demand Certifications
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Certification</TableHead>
-              <TableHead>Provider</TableHead>
-              <TableHead>Demand</TableHead>
-              <TableHead>Value</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {certifications.map((cert) => (
-              <TableRow key={cert.name}>
-                <TableCell className="font-medium">{cert.name}</TableCell>
-                <TableCell>{cert.provider}</TableCell>
-                <TableCell>
-                  <Badge className={demandColors[cert.demand]}>
-                    {cert.demand}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  {cert.estimatedValue}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
-  );
+ return (
+ <Card>
+ <CardHeader>
+ <CardTitle className="flex items-center gap-2">
+ <Award className="h-5 w-5 text-primary" />
+ In-Demand Certifications
+ </CardTitle>
+ </CardHeader>
+ <CardContent>
+ <Table>
+ <TableHeader>
+ <TableRow>
+ <TableHead>Certification</TableHead>
+ <TableHead>Provider</TableHead>
+ <TableHead>Demand</TableHead>
+ <TableHead>Value</TableHead>
+ </TableRow>
+ </TableHeader>
+ <TableBody>
+ {certifications.map((cert) => (
+ <TableRow key={cert.name}>
+ <TableCell className="font-medium">{cert.name}</TableCell>
+ <TableCell>{cert.provider}</TableCell>
+ <TableCell>
+ <Badge className={demandColors[cert.demand]}>
+ {cert.demand}
+ </Badge>
+ </TableCell>
+ <TableCell className="text-sm text-muted-foreground">
+ {cert.estimatedValue}
+ </TableCell>
+ </TableRow>
+ ))}
+ </TableBody>
+ </Table>
+ </CardContent>
+ </Card>
+ );
 }

@@ -1,80 +1,46 @@
-import { cn } from "@/lib/utils"
-import { motion } from "framer-motion"
+import { forwardRef } from "react";
+import { Slot } from "@radix-ui/react-slot";
+import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
 
-interface GradientButtonProps {
-  children: React.ReactNode
-  onClick?: () => void
-  className?: string
-  size?: "sm" | "md" | "lg"
-  disabled?: boolean
-  loading?: boolean
-  variant?: "primary" | "secondary" | "ghost"
-  type?: "button" | "submit"
+interface GradientButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "onDrag"> {
+  variant?: "primary" | "secondary" | "ghost" | "quest";
+  size?: "default" | "sm" | "lg";
+  loading?: boolean;
+  asChild?: boolean;
 }
 
-const sizeMap = {
-  sm: "h-12 px-5 text-sm",
-  md: "h-14 px-7 text-base",
-  lg: "h-16 px-10 text-lg",
-}
-
-function GradientButton({
-  children,
-  onClick,
-  className,
-  size = "md",
-  disabled,
-  loading,
-  variant = "primary",
-  type = "button",
-}: GradientButtonProps) {
-  const variantClass =
-    variant === "primary"
-      ? "btn-primary"
-      : variant === "secondary"
-        ? "btn-secondary"
-        : "btn-ghost"
-
-  return (
-    <motion.button
-      type={type}
-      onClick={onClick}
-      disabled={disabled || loading}
-      whileTap={disabled || loading ? undefined : { scale: 0.96 }}
-      className={cn(
-        variantClass,
-        sizeMap[size],
-        (disabled || loading) && "opacity-60 shadow-none cursor-not-allowed",
-        className
-      )}
-    >
-      {loading ? (
-        <svg
-          className="animate-spin h-5 w-5"
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-        >
-          <circle
-            className="opacity-25"
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            strokeWidth="4"
-          />
-          <path
-            className="opacity-75"
-            fill="currentColor"
-            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-          />
-        </svg>
-      ) : (
-        children
-      )}
-    </motion.button>
-  )
-}
-
-export { GradientButton }
-export type { GradientButtonProps }
+const GradientButton = forwardRef<HTMLButtonElement, GradientButtonProps>(
+  ({ className, variant = "primary", size = "default", loading, asChild, children, ...props }, ref) => {
+    const Comp = asChild ? Slot : motion.button;
+    const base = cn(
+      "inline-flex items-center justify-center font-bold font-nunito tracking-tight",
+      "border-none border-b-[4px] rounded-2xl cursor-pointer",
+      "transition-all duration-100 ease-out",
+      variant === "primary" && "bg-primary text-primary-foreground border-b-primary-dark",
+      variant === "secondary" && "bg-transparent text-foreground border-2 border-border hover:border-primary hover:bg-surface",
+      variant === "ghost" && "bg-transparent text-foreground border-none hover:bg-surface",
+      variant === "quest" && "bg-accent text-primary-foreground border-b-accent-dark",
+      size === "default" && "h-12 px-6 text-base",
+      size === "sm" && "h-9 px-4 text-sm",
+      size === "lg" && "h-14 px-8 text-lg",
+      "active:border-b-[2px] active:translate-y-[2px]",
+      (props.disabled || loading) && "opacity-60 cursor-not-allowed",
+      className
+    );
+    return (
+      <Comp ref={ref as any} className={base} whileTap={asChild ? undefined : { y: 2 }} {...(props as any)}>
+        {loading ? (
+          <svg className="mr-2 h-4 w-4 animate-spin" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+        ) : null}
+        {children}
+      </Comp>
+    );
+  }
+);
+GradientButton.displayName = "GradientButton";
+export { GradientButton };
+export type { GradientButtonProps };
