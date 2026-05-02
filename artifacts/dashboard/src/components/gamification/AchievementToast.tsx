@@ -1,61 +1,58 @@
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { cn } from "@/lib/utils"
+import { motion } from "framer-motion"
 
 interface AchievementToastProps {
-  icon: string
   name: string
-  description: string
+  icon: string
+  tier?: "bronze" | "silver" | "gold"
   onDismiss: () => void
 }
 
-function AchievementToast({ icon, name, description, onDismiss }: AchievementToastProps) {
-  const [visible, setVisible] = useState(false)
-
+function AchievementToast({
+  name,
+  icon,
+  tier = "gold",
+  onDismiss,
+}: AchievementToastProps) {
   useEffect(() => {
-    requestAnimationFrame(() => setVisible(true))
-    const timer = setTimeout(() => {
-      setVisible(false)
-      setTimeout(onDismiss, 300)
-    }, 5000)
+    const timer = setTimeout(onDismiss, 4000)
     return () => clearTimeout(timer)
-  }, [])
+  }, [onDismiss])
 
   return (
-    <div className={cn(
-      "pointer-events-auto flex items-center gap-3 rounded-2xl border-2 border-amber-400/50 bg-card p-4 shadow-2xl transition-all duration-300",
-      visible ? "translate-x-0 opacity-100" : "translate-x-full opacity-0"
-    )}>
-      <span className="text-3xl animate-bounce">{icon}</span>
-      <div>
-        <p className="text-sm font-bold text-amber-500">Achievement Unlocked!</p>
-        <p className="text-sm font-semibold text-foreground">{name}</p>
-        <p className="text-xs text-muted-foreground">{description}</p>
+    <motion.div
+      initial={{ x: 80, opacity: 0, scale: 0.95 }}
+      animate={{ x: 0, opacity: 1, scale: 1 }}
+      exit={{ x: 80, opacity: 0, scale: 0.95 }}
+      transition={{ type: "spring", duration: 0.5 }}
+      className={cn(
+        "card-chunky flex items-center gap-3 p-4",
+        "bg-primary text-white border-0"
+      )}
+      style={{ boxShadow: "0 6px 0 rgba(0,0,0,0.15)" }}
+    >
+      <motion.span
+        className="text-2xl shrink-0"
+        animate={{ scale: [1, 1.2, 1] }}
+        transition={{ duration: 0.5, delay: 0.2 }}
+      >
+        {icon}
+      </motion.span>
+      <div className="flex-1 min-w-0">
+        <p className="text-[11px] font-extrabold uppercase tracking-wider opacity-80">
+          Achievement Unlocked!
+        </p>
+        <p className="text-sm font-bold truncate">{name}</p>
       </div>
-    </div>
+      <button
+        onClick={onDismiss}
+        className="shrink-0 text-white/60 hover:text-white text-lg leading-none w-6 h-6 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
+      >
+        ×
+      </button>
+    </motion.div>
   )
 }
 
-interface AchievementToasterProps {
-  toasts: Array<{ id: string; icon: string; name: string; description: string }>
-  onDismiss: (id: string) => void
-}
-
-function AchievementToaster({ toasts, onDismiss }: AchievementToasterProps) {
-  if (toasts.length === 0) return null
-
-  return (
-    <div className="fixed top-4 right-4 z-[100] flex flex-col gap-2 max-w-sm">
-      {toasts.map((t) => (
-        <AchievementToast
-          key={t.id}
-          icon={t.icon}
-          name={t.name}
-          description={t.description}
-          onDismiss={() => onDismiss(t.id)}
-        />
-      ))}
-    </div>
-  )
-}
-
-export { AchievementToast, AchievementToaster }
+export { AchievementToast }

@@ -173,26 +173,26 @@ export default function Dashboard() {
         <div className="mb-8 space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <XPCard
+              level={gStats.currentLevel}
+              currentXp={gStats.totalXp - (gStats.currentLevel - 1) * (gStats.currentLevel - 1) * 100}
+              xpToNext={gStats.xpToNextLevel}
               totalXp={gStats.totalXp}
-              currentLevel={gStats.currentLevel}
-              xpToNextLevel={gStats.xpToNextLevel}
             />
             <StreakFlame
-              streak={gStats.currentStreak}
-              longestStreak={gStats.longestStreak}
+              days={gStats.currentStreak}
             />
             <div className="grid grid-cols-2 gap-2 content-center">
               <GamifiedBadge
                 icon="🏆"
-                name="Achievements"
-                description={`${gStats.achievementsUnlocked} unlocked`}
-                variant="gold"
+                name={`Achievements: ${gStats.achievementsUnlocked} unlocked`}
+                tier="gold"
+                unlocked
               />
               <GamifiedBadge
                 icon="✅"
-                name="Quests"
-                description={`${gStats.questsCompleted} completed`}
-                variant="silver"
+                name={`Quests: ${gStats.questsCompleted} completed`}
+                tier="silver"
+                unlocked
               />
             </div>
           </div>

@@ -1,47 +1,97 @@
 import { cn } from "@/lib/utils"
+import { motion } from "framer-motion"
 
 interface StreakFlameProps {
-  streak: number
-  longestStreak: number
+  days: number
+  intensity?: "low" | "medium" | "high"
   className?: string
 }
 
-function getFlameIntensity(streak: number): string {
-  if (streak >= 30) return "scale-125 drop-shadow-[0_0_18px_#f59e0b]"
-  if (streak >= 7) return "scale-110 drop-shadow-[0_0_12px_#f59e0b]"
-  if (streak >= 3) return "scale-105 drop-shadow-[0_0_6px_#f59e0b]"
-  return ""
+function getFlameConfig(days: number) {
+  if (days >= 8)
+    return {
+      level: "high" as const,
+      emojiSize: "text-5xl",
+      bgGlow: "shadow-[0_0_24px_rgba(255,140,66,0.4)] rounded-full",
+    }
+  if (days >= 5)
+    return {
+      level: "high" as const,
+      emojiSize: "text-4xl",
+      bgGlow: "shadow-[0_0_16px_rgba(255,140,66,0.3)] rounded-full",
+    }
+  if (days >= 2)
+    return {
+      level: "medium" as const,
+      emojiSize: "text-3xl",
+      bgGlow: "shadow-[0_0_8px_rgba(255,140,66,0.2)] rounded-full",
+    }
+  return {
+    level: "low" as const,
+    emojiSize: "text-2xl opacity-60",
+    bgGlow: "",
+  }
 }
 
-function StreakFlame({ streak, longestStreak, className }: StreakFlameProps) {
+function StreakFlame({ days, intensity, className }: StreakFlameProps) {
+  const { level, emojiSize, bgGlow } = getFlameConfig(days)
+  const effectiveIntensity = intensity ?? level
+
+  const floatAnimation = days >= 8
+  const glowPulse = days >= 5
+
   return (
-    <div className={cn(
-      "flex items-center gap-3 rounded-2xl border border-border/50 bg-card p-4 backdrop-blur-sm",
-      className
-    )}>
-      <span className={cn(
-        "text-4xl transition-all duration-500",
-        streak > 0 ? "animate-pulse" : "opacity-30 grayscale",
-        getFlameIntensity(streak)
-      )}>
-        🔥
-      </span>
-      <div>
-        <div className="flex items-baseline gap-1.5">
-          <span className={cn(
-            "text-2xl font-black tabular-nums",
-            streak > 0 ? "text-amber-500" : "text-muted-foreground"
-          )}>
-            {streak}
-          </span>
-          <span className="text-sm font-medium text-muted-foreground">
-            {streak === 1 ? "day" : "days"}
+    <div
+      className={cn(
+        "card-chunky flex flex-col items-center justify-center gap-3",
+        className
+      )}
+    >
+      <motion.div
+        className="relative flex items-center justify-center"
+        animate={
+          floatAnimation
+            ? { y: [0, -6, 0] }
+            : glowPulse
+              ? { scale: [1, 1.05, 1] }
+              : {}
+        }
+        transition={
+          floatAnimation
+            ? { duration: 3, repeat: Infinity, ease: "easeInOut" }
+            : glowPulse
+              ? { duration: 2, repeat: Infinity, ease: "easeInOut" }
+              : {}
+        }
+      >
+        <div
+          className={cn(
+            "flex items-center justify-center p-2",
+            bgGlow,
+            effectiveIntensity === "high" && "animate-[pulse-glow_2s_ease-in-out_infinite]"
+          )}
+        >
+          <span className={cn(emojiSize, "transition-all duration-500")}>
+            🔥
           </span>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Longest: {longestStreak} days
-        </p>
-      </div>
+        <span
+          className={cn(
+            "absolute -top-1 -right-2 rounded-full min-w-[26px] h-[26px] flex items-center justify-center px-1 text-xs font-extrabold text-white font-display shadow-lg",
+            days >= 5
+              ? "bg-accent"
+              : days >= 2
+                ? "bg-[hsl(var(--accent-dark))]"
+                : "bg-muted"
+          )}
+        >
+          {days}
+        </span>
+      </motion.div>
+
+      <span className="text-sm font-bold text-foreground font-display">
+        {days} day streak
+      </span>
     </div>
   )
 }

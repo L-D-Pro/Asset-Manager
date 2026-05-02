@@ -1,38 +1,64 @@
 import { cn } from "@/lib/utils"
+import { motion } from "framer-motion"
 
 interface GamifiedBadgeProps {
-  icon: string
   name: string
-  description?: string
-  variant?: "gold" | "silver" | "bronze"
+  icon: string
+  tier?: "bronze" | "silver" | "gold"
+  unlocked?: boolean
   isNew?: boolean
   className?: string
 }
 
-const variantStyles = {
-  gold: "border-amber-400 bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-200",
-  silver: "border-slate-300 bg-slate-50 dark:bg-slate-900/30 text-slate-700 dark:text-slate-300",
-  bronze: "border-orange-300 bg-orange-50 dark:bg-orange-950/30 text-orange-800 dark:text-orange-200",
+const tierColors: Record<
+  string,
+  { border: string; bg: string }
+> = {
+  bronze: { border: "#CD7F32", bg: "rgba(205,127,50,0.12)" },
+  silver: { border: "#C0C0C0", bg: "rgba(192,192,192,0.12)" },
+  gold: { border: "hsl(var(--warning))", bg: "rgba(255,200,0,0.12)" },
 }
 
-function GamifiedBadge({ icon, name, description, variant = "bronze", isNew, className }: GamifiedBadgeProps) {
+function GamifiedBadge({
+  name,
+  icon,
+  tier = "bronze",
+  unlocked = true,
+  isNew,
+  className,
+}: GamifiedBadgeProps) {
+  const { border, bg } = tierColors[tier] ?? tierColors.bronze
+
   return (
-    <div className={cn(
-      "relative flex flex-col items-center gap-1.5 rounded-2xl border-2 p-4 text-center transition-all hover:scale-105",
-      variantStyles[variant],
-      className
-    )}>
-      {isNew && (
-        <span className="absolute -top-2 -right-2 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground animate-pulse">
-          NEW
-        </span>
-      )}
-      <span className="text-3xl">{icon}</span>
-      <span className="text-xs font-bold leading-tight">{name}</span>
-      {description && (
-        <span className="text-[10px] leading-tight opacity-70">{description}</span>
-      )}
-    </div>
+    <motion.div
+      whileTap={{ scale: 0.92 }}
+      className={cn("flex flex-col items-center gap-2", className)}
+    >
+      <div className="relative">
+        <div
+          className={cn(
+            "w-[72px] h-[72px] rounded-full flex items-center justify-center transition-all duration-300",
+            !unlocked && "grayscale opacity-40"
+          )}
+          style={{
+            border: `3px solid ${border}`,
+            background: unlocked
+              ? `linear-gradient(135deg, ${bg} 0%, transparent 100%)`
+              : undefined,
+          }}
+        >
+          <span className="text-2xl">{icon}</span>
+        </div>
+        {isNew && (
+          <span className="absolute -top-2 -right-5 rounded-full bg-primary px-2 py-0.5 text-[10px] font-extrabold text-white font-display animate-[pulse-glow_2s_ease-in-out_infinite] shadow-md">
+            NEW
+          </span>
+        )}
+      </div>
+      <span className="text-xs font-bold text-foreground text-center leading-tight max-w-[80px]">
+        {name}
+      </span>
+    </motion.div>
   )
 }
 
