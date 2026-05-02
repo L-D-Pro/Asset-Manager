@@ -1,9 +1,10 @@
 import {
- useListResumeVersions,
- useApproveResumeVersion,
- useRejectResumeVersion,
- useUpdateResumeVersion,
- getListResumeVersionsQueryKey,
+  useListResumeVersions,
+  useApproveResumeVersion,
+  useRejectResumeVersion,
+  useUpdateResumeVersion,
+  useDeleteResumeVersion,
+  getListResumeVersionsQueryKey,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,7 +13,15 @@ import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { PageHeader } from "@/components/ui/page-header";
 import { ContentCard } from "@/components/ui/content-card";
-import { FileText, Check, X, ExternalLink, Plus, Minus, ArrowLeftRight, ThumbsUp, ThumbsDown, AlertCircle } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { FileText, Check, X, ExternalLink, Plus, Minus, ArrowLeftRight, ThumbsUp, ThumbsDown, AlertCircle, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -149,11 +158,11 @@ function ChangeItem({
  title="Reject this change"
  data-testid={`btn-reject-change-${changeKey}`}
  >
- <ThumbsDown className="h-3.5 w-3.5 text-destructive" />
- </button>
- </div>
- </li>
- );
+  <ThumbsDown className="h-3.5 w-3.5 text-destructive" />
+  </button>
+  </div>
+  </li>
+  );
 }
 
 function DiffReview({
@@ -239,13 +248,25 @@ function DiffReview({
 }
 
 export default function ResumeVersionsPage() {
- const { data: versions, isLoading } = useListResumeVersions();
- const approve = useApproveResumeVersion();
- const reject = useRejectResumeVersion();
- const updateResume = useUpdateResumeVersion();
- const { toast } = useToast();
- const queryClient = useQueryClient();
- const [decisions, setDecisions] = useState<Record<number, VersionDecisions>>({});
+  const { data: versions, isLoading } = useListResumeVersions();
+  const approve = useApproveResumeVersion();
+  const reject = useRejectResumeVersion();
+  const updateResume = useUpdateResumeVersion();
+  const deleteVersion = useDeleteResumeVersion();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [decisions, setDecisions] = useState<Record<number, VersionDecisions>>({});
+  const [expandedVersions, setExpandedVersions] = useState<Set<number>>(new Set());
+  const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
+
+  const toggleVersion = (id: number) => {
+    setExpandedVersions(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
  const getDecisions = (versionId: number, diffData: DiffData): VersionDecisions => {
  if (!decisions[versionId]) return buildInitialDecisions(versionId, diffData);
@@ -298,20 +319,36 @@ export default function ResumeVersionsPage() {
  }
  };
 
- const handleReject = (id: number) => {
- reject.mutate({ id, data: {} }, {
- onSuccess: () => {
- toast({ title: "Resume version rejected" });
- queryClient.invalidateQueries({ queryKey: getListResumeVersionsQueryKey() });
- },
- onError: (error) =>
- toast({
- title: "Failed to reject resume version",
- description: getErrorMessage(error, "Please try again."),
- variant: "destructive",
- })
- });
- };
+  const handleReject = (id: number) => {
+    reject.mutate({ id, data: {} }, {
+      onSuccess: () => {
+        toast({ title: "Resume version rejected" });
+        queryClient.invalidateQueries({ queryKey: getListResumeVersionsQueryKey() });
+      },
+      onError: (error) =>
+        toast({
+          title: "Failed to reject resume version",
+          description: getErrorMessage(error, "Please try again."),
+          variant: "destructive",
+        })
+    });
+  };
+
+  const handleDelete = (id: number) => {
+    deleteVersion.mutate({ id }, {
+      onSuccess: () => {
+        toast({ title: "Resume version deleted" });
+        setDeleteTarget(null);
+        queryClient.invalidateQueries({ queryKey: getListResumeVersionsQueryKey() });
+      },
+      onError: (error) =>
+        toast({
+          title: "Failed to delete resume version",
+          description: getErrorMessage(error, "Please try again."),
+          variant: "destructive",
+        })
+    });
+  };
 
  return (
   <div className="space-y-6">
@@ -372,66 +409,91 @@ export default function ResumeVersionsPage() {
           Created {new Date(version.createdAt).toLocaleString()}
           </p>
  </div>
- <div className="flex items-center gap-2">
- {version.status === "pending_approval" && hasDiff && totalDecisions > 0 && (
- <Button
- variant="ghost"
- size="sm"
- className="text-xs"
- onClick={() => handleAcceptAll(version.id, diffData)}
- data-testid={`btn-accept-all-${version.id}`}
- >
- Accept All
- </Button>
- )}
- {version.status === "pending_approval" && (
- <>
-  <Button
-  variant="secondary"
-  className="text-destructive"
-  size="sm"
-  onClick={() => handleReject(version.id)}
- disabled={reject.isPending}
- data-testid={`btn-reject-resume-${version.id}`}
- >
- <X className="mr-1 h-4 w-4" /> Reject
- </Button>
-  <Button
-  variant="default"
-  size="sm"
-  onClick={() => handleApprove(version.id, diffData, versionDecisions)}
- disabled={approve.isPending || updateResume.isPending}
- data-testid={`btn-approve-resume-${version.id}`}
- >
- <Check className="mr-1 h-4 w-4" /> Approve
- </Button>
- </>
- )}
- {version.status === "approved" && (
- <Button variant="secondary" size="sm" asChild>
- <a href={`/api/resume-versions/${version.id}/export`} target="_blank" rel="noopener noreferrer">
- Export DOCX <ExternalLink className="ml-1 h-3 w-3" />
- </a>
- </Button>
- )}
- {version.fileUrl && (
- <Button variant="secondary" size="sm" asChild>
- <a href={version.fileUrl} target="_blank" rel="noopener noreferrer">
- View <ExternalLink className="ml-1 h-3 w-3" />
- </a>
- </Button>
- )}
- </div>
+          <div className="flex items-center gap-2">
+                {hasDocument && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => toggleVersion(version.id)}
+                    data-testid={`btn-toggle-content-${version.id}`}
+                  >
+                    {expandedVersions.has(version.id) ? (
+                      <><ChevronUp className="mr-1 h-4 w-4" /> Hide Content</>
+                    ) : (
+                      <><ChevronDown className="mr-1 h-4 w-4" /> View Content</>
+                    )}
+                  </Button>
+                )}
+                {version.status === "pending_approval" && hasDiff && totalDecisions > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs"
+                    onClick={() => handleAcceptAll(version.id, diffData)}
+                    data-testid={`btn-accept-all-${version.id}`}
+                  >
+                    Accept All
+                  </Button>
+                )}
+                {version.status === "pending_approval" && (
+                  <>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setDeleteTarget(version.id)}
+                      disabled={deleteVersion.isPending}
+                      data-testid={`btn-delete-resume-${version.id}`}
+                    >
+                      <Trash2 className="mr-1 h-4 w-4" /> Delete
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      className="text-destructive"
+                      size="sm"
+                      onClick={() => handleReject(version.id)}
+                      disabled={reject.isPending}
+                      data-testid={`btn-reject-resume-${version.id}`}
+                    >
+                      <X className="mr-1 h-4 w-4" /> Reject
+                    </Button>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => handleApprove(version.id, diffData, versionDecisions)}
+                      disabled={approve.isPending || updateResume.isPending}
+                      data-testid={`btn-approve-resume-${version.id}`}
+                    >
+                      <Check className="mr-1 h-4 w-4" /> Approve
+                    </Button>
+                  </>
+                )}
+                {version.status === "approved" && (
+                  <Button variant="secondary" size="sm" asChild>
+                    <a href={`/api/resume-versions/${version.id}/export`} target="_blank" rel="noopener noreferrer">
+                      Export DOCX <ExternalLink className="ml-1 h-3 w-3" />
+                    </a>
+                  </Button>
+                )}
+                {version.fileUrl && (
+                  <Button variant="secondary" size="sm" asChild>
+                    <a href={version.fileUrl} target="_blank" rel="noopener noreferrer">
+                      View <ExternalLink className="ml-1 h-3 w-3" />
+                    </a>
+                  </Button>
+                )}
+              </div>
   </div>
   </div>
- {shouldShowReview && (
- <>
- <Separator />
-  <div className="px-5 pt-4 pb-5 space-y-3">
- <DocumentPreview
- content={version.tailoredDocumentText}
- baseResumeVersionId={version.baseResumeVersionId}
- />
+              {shouldShowReview && (
+                <>
+                  <Separator />
+                  <div className="px-5 pt-4 pb-5 space-y-3">
+                    {expandedVersions.has(version.id) && (
+                      <DocumentPreview
+                        content={version.tailoredDocumentText}
+                        baseResumeVersionId={version.baseResumeVersionId}
+                      />
+                    )}
  {version.status === "pending_approval" && hasDiff && hasPending && (
  <Alert variant="default" className="border-warning/40 bg-warning/10">
  <AlertCircle className="h-4 w-4 text-warning" />
@@ -456,11 +518,34 @@ export default function ResumeVersionsPage() {
   </div>
  </>
  )}
- </ContentCard>
- );
- })
- )}
- </div>
- </div>
- );
+  </ContentCard>
+  );
+  })
+  )}
+  </div>
+      <Dialog open={deleteTarget !== null} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Resume Version</DialogTitle>
+            <DialogDescription>
+              Are you sure? This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="secondary" size="sm" onClick={() => setDeleteTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => { if (deleteTarget != null) handleDelete(deleteTarget); }}
+              disabled={deleteVersion.isPending}
+            >
+              {deleteVersion.isPending ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+  </div>
+  );
 }
