@@ -119,7 +119,7 @@ export default function AdminInviteCodesPage() {
       <PageHeader
         title="Invite Codes"
         subtitle="Generate and manage invite codes for new user registration."
-        gradient="from-slate-700 to-slate-600"
+        variant="admin"
       >
         <Button onClick={() => setShowGenerate(true)} disabled={codes.length >= 10}>
           <Plus className="h-4 w-4 mr-2" />
@@ -128,7 +128,7 @@ export default function AdminInviteCodesPage() {
       </PageHeader>
 
       {newCode && (
-        <ContentCard className="border-green-500">
+        <ContentCard className="border-success gamify-radius-chunky">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
@@ -146,7 +146,7 @@ export default function AdminInviteCodesPage() {
         </ContentCard>
       )}
 
-      <ContentCard>
+      <ContentCard className="gamify-radius-chunky">
         <CardContent className="p-0">
           {loading ? (
             <div className="p-8 text-center text-muted-foreground">Loading...</div>
@@ -199,7 +199,7 @@ export default function AdminInviteCodesPage() {
       </ContentCard>
 
       <Dialog open={showGenerate} onOpenChange={setShowGenerate}>
-        <DialogContent>
+        <DialogContent className="gamify-radius-chunky">
           <DialogHeader>
             <DialogTitle>Generate Invite Code</DialogTitle>
           </DialogHeader>

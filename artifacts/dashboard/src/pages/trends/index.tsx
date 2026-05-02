@@ -109,7 +109,7 @@ export default function TrendsPage() {
               </div>
             )}
 
-            <Tabs defaultValue="overview" className="space-y-4">
+            <Tabs defaultValue="overview" className="space-y-4 gamify-radius-chunky">
               <TabsList>
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="skills">Skills</TabsTrigger>
@@ -121,7 +121,7 @@ export default function TrendsPage() {
               <TabsContent value="overview">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <MarketOverviewCard overview={analysis.marketOverview} />
-                  <Card>
+                  <Card className="gamify-shadow">
                     <CardHeader>
                       <CardTitle className="text-lg">
                         Salary Insights

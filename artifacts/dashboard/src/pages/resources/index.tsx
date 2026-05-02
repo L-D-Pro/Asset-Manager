@@ -169,7 +169,7 @@ export default function ResourcesPage() {
     <div className="space-y-8 max-w-5xl">
       <div>
         <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <Heart className="h-6 w-6 text-rose-500" />
+          <Heart className="h-6 w-6 text-destructive" />
           Resources
         </h1>
         <p className="text-muted-foreground mt-1">
@@ -181,7 +181,7 @@ export default function ResourcesPage() {
         {RESOURCE_SECTIONS.map((section) => (
           <StaggerItem key={section.title}>
             <FadeIn>
-              <Card>
+              <Card className="gamify-radius-chunky gamify-shadow">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <section.icon className="h-5 w-5 text-primary" />

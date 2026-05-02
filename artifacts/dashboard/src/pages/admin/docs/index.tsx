@@ -20,11 +20,11 @@ export default function AdminDocsPage() {
       <PageHeader
         title="Admin Documentation"
         subtitle="Technical documentation for deployment, database, and system configuration."
-        gradient="from-slate-700 to-slate-600"
+        variant="admin"
       />
 
       <div className="space-y-8">
-        <ContentCard>
+        <ContentCard className="gamify-radius-chunky gamify-shadow">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Shield className="h-5 w-5" />
@@ -43,7 +43,7 @@ export default function AdminDocsPage() {
           </CardContent>
         </ContentCard>
 
-        <ContentCard>
+        <ContentCard className="gamify-radius-chunky gamify-shadow">
           <CardHeader>
             <CardTitle>Database</CardTitle>
             <CardDescription>Key tables relevant to administration</CardDescription>
@@ -68,7 +68,7 @@ export default function AdminDocsPage() {
           </CardContent>
         </ContentCard>
 
-        <ContentCard>
+        <ContentCard className="gamify-radius-chunky gamify-shadow">
           <CardHeader>
             <CardTitle>Admin Operations</CardTitle>
             <CardDescription>Common tasks for platform administrators</CardDescription>
@@ -98,7 +98,7 @@ corepack pnpm --filter @workspace/db run compat`}</pre>
           </CardContent>
         </ContentCard>
 
-        <ContentCard>
+        <ContentCard className="gamify-radius-chunky gamify-shadow">
           <CardHeader>
             <CardTitle>Environment Variables</CardTitle>
             <CardDescription>Sensitive configuration (do not commit)</CardDescription>
@@ -116,7 +116,7 @@ corepack pnpm --filter @workspace/db run compat`}</pre>
           </CardContent>
         </ContentCard>
 
-        <ContentCard>
+        <ContentCard className="gamify-radius-chunky gamify-shadow">
           <CardHeader>
             <CardTitle>Security Notes</CardTitle>
           </CardHeader>
@@ -130,7 +130,7 @@ corepack pnpm --filter @workspace/db run compat`}</pre>
           </CardContent>
         </ContentCard>
 
-        <ContentCard>
+        <ContentCard className="gamify-radius-chunky gamify-shadow">
           <CardHeader>
             <CardTitle>Troubleshooting</CardTitle>
           </CardHeader>

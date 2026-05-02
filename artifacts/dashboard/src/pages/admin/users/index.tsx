@@ -281,7 +281,7 @@ export default function AdminUsersPage() {
       <PageHeader
         title="User Management"
         subtitle="Manage user accounts, roles, and access permissions."
-        gradient="from-slate-700 to-slate-600"
+        variant="admin"
       >
         <Button onClick={openAdd} className="gap-2">
           <Plus className="h-4 w-4" />
@@ -299,7 +299,7 @@ export default function AdminUsersPage() {
         />
       </motion.div>
 
-      <ContentCard>
+      <ContentCard className="gamify-radius-chunky">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
             <Users className="h-5 w-5 text-primary" />
@@ -382,7 +382,7 @@ export default function AdminUsersPage() {
 
       {/* Add / Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md gamify-radius-chunky">
           <DialogHeader>
             <DialogTitle>{editingUser ? "Edit User" : "Add User"}</DialogTitle>
             <DialogDescription>
@@ -533,7 +533,7 @@ export default function AdminUsersPage() {
                         </button>
                       </div>
                     </div>
-                    <p className="text-xs text-amber-600 mt-1">
+                    <p className="text-xs text-warning mt-1">
                       Copy this password now — it won't be shown again.
                     </p>
                   </motion.div>

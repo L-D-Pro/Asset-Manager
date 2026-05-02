@@ -9,9 +9,9 @@ export default function TermsOfServicePage() {
         <Link to="/" className="text-sm text-muted-foreground hover:text-foreground mb-8 inline-block">&larr; Back to Home</Link>
 
         <div className="space-y-8">
-          <PageHeader title="Terms of Service" subtitle="Last updated: 2026" gradient="from-slate-600 to-slate-500" />
+          <PageHeader title="Terms of Service" subtitle="Last updated: 2026" variant="quiet" />
 
-          <ContentCard className="p-8 prose max-w-none">
+          <ContentCard className="p-8 prose max-w-none gamify-radius-chunky">
             <div className="prose prose-sm prose-neutral dark:prose-invert max-w-none space-y-8">
           <section>
             <h2>1. Purpose of the Pilot</h2>

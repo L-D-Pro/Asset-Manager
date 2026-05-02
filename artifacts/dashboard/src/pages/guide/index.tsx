@@ -66,7 +66,7 @@ export default function GuidePage() {
       </div>
 
       <FadeIn>
-        <Card>
+        <Card className="gamify-radius-chunky">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />
@@ -94,10 +94,10 @@ export default function GuidePage() {
       </FadeIn>
 
       <FadeIn>
-        <Card>
+        <Card className="gamify-radius-chunky gamify-shadow">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Lightbulb className="h-5 w-5 text-amber-500" />
+              <Lightbulb className="h-5 w-5 text-warning" />
               Pro Tips
             </CardTitle>
             <CardDescription>Small habits that make a big difference.</CardDescription>
@@ -130,7 +130,7 @@ export default function GuidePage() {
       </FadeIn>
 
       <FadeIn>
-        <Card>
+        <Card className="gamify-radius-chunky">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <HelpCircle className="h-5 w-5 text-primary" />

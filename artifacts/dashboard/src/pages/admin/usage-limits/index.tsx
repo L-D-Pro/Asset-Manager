@@ -96,10 +96,10 @@ export default function AdminUsageLimitsPage() {
       <PageHeader
         title="Usage Limits"
         subtitle="Configure AI usage quotas and rate limits per user role."
-        gradient="from-slate-700 to-slate-600"
+        variant="admin"
       />
 
-      <ContentCard>
+      <ContentCard className="gamify-radius-chunky">
         <CardContent className="p-0">
           {loading ? (
             <div className="p-8 text-center text-muted-foreground">Loading...</div>
@@ -161,7 +161,7 @@ export default function AdminUsageLimitsPage() {
       </ContentCard>
 
       <Dialog open={!!editUser} onOpenChange={() => setEditUser(null)}>
-        <DialogContent>
+        <DialogContent className="gamify-radius-chunky">
           <DialogHeader>
             <DialogTitle>Edit Usage Limit</DialogTitle>
           </DialogHeader>

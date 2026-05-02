@@ -70,7 +70,7 @@ function ChangePasswordSection() {
   };
 
   return (
-    <ContentCard>
+    <ContentCard className="gamify-radius-chunky gamify-shadow">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <Lock className="h-4 w-4" /> Change Password
@@ -80,7 +80,7 @@ function ChangePasswordSection() {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertDescription>{error}</AlertDescription></Alert>}
-          {success && <Alert className="border-green-300 bg-green-50 text-green-800"><CheckCircle2 className="h-4 w-4" /><AlertDescription>{success}</AlertDescription></Alert>}
+          {success && <Alert className="border-success/30 bg-success/10 text-success"><CheckCircle2 className="h-4 w-4" /><AlertDescription>{success}</AlertDescription></Alert>}
           <div className="space-y-2">
             <Label htmlFor="current-pw">Current password</Label>
             <Input id="current-pw" type="password" value={current} onChange={e => setCurrent(e.target.value)} required disabled={loading} autoComplete="current-password" />
@@ -120,7 +120,7 @@ function ChangeEmailSection() {
   };
 
   return (
-    <ContentCard>
+    <ContentCard className="gamify-radius-chunky gamify-shadow">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <Mail className="h-4 w-4" /> Email Address
@@ -130,7 +130,7 @@ function ChangeEmailSection() {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertDescription>{error}</AlertDescription></Alert>}
-          {success && <Alert className="border-green-300 bg-green-50 text-green-800"><CheckCircle2 className="h-4 w-4" /><AlertDescription>{success}</AlertDescription></Alert>}
+          {success && <Alert className="border-success/30 bg-success/10 text-success"><CheckCircle2 className="h-4 w-4" /><AlertDescription>{success}</AlertDescription></Alert>}
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} required disabled={loading} autoComplete="email" />
@@ -227,13 +227,13 @@ function TwoFactorSection() {
   };
 
   return (
-    <ContentCard>
+    <ContentCard className="gamify-radius-chunky gamify-shadow">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <Shield className="h-4 w-4" />
           Two-Factor Authentication
           {user?.totpEnabled
-            ? <Badge className="ml-2 bg-green-100 text-green-800 border-green-300">Enabled</Badge>
+            ? <Badge className="ml-2 bg-success/10 text-success border-success/30">Enabled</Badge>
             : <Badge variant="secondary" className="ml-2">Disabled</Badge>
           }
         </CardTitle>
@@ -260,7 +260,7 @@ function TwoFactorSection() {
         {setupData && (
           <div className="space-y-4">
             {setup.success && (
-              <Alert className="border-blue-300 bg-blue-50 text-blue-800">
+              <Alert className="border-primary/30 bg-primary/10 text-primary">
                 <AlertDescription>{setup.success}</AlertDescription>
               </Alert>
             )}
@@ -303,15 +303,15 @@ function TwoFactorSection() {
         {/* Recovery codes just generated */}
         {recoveryCodes && (
           <div className="space-y-3">
-            {enable.success && <Alert className="border-green-300 bg-green-50 text-green-800"><CheckCircle2 className="h-4 w-4" /><AlertDescription>{enable.success}</AlertDescription></Alert>}
-            {regen.success && <Alert className="border-green-300 bg-green-50 text-green-800"><CheckCircle2 className="h-4 w-4" /><AlertDescription>{regen.success}</AlertDescription></Alert>}
-            <div className="bg-yellow-50 border border-yellow-300 rounded p-3">
-              <p className="text-sm font-semibold text-yellow-800 mb-2">
+            {enable.success && <Alert className="border-success/30 bg-success/10 text-success"><CheckCircle2 className="h-4 w-4" /><AlertDescription>{enable.success}</AlertDescription></Alert>}
+            {regen.success && <Alert className="border-success/30 bg-success/10 text-success"><CheckCircle2 className="h-4 w-4" /><AlertDescription>{regen.success}</AlertDescription></Alert>}
+            <div className="bg-warning/10 border border-warning/30 rounded p-3">
+              <p className="text-sm font-semibold text-warning mb-2">
                 Save these recovery codes now — they won't be shown again
               </p>
               <div className="grid grid-cols-2 gap-1">
                 {recoveryCodes.map((code, i) => (
-                  <code key={i} className="font-mono text-sm bg-white border rounded px-2 py-1 select-all">
+                  <code key={i} className="font-mono text-sm bg-muted border border-border rounded px-2 py-1 select-all">
                     {code}
                   </code>
                 ))}
@@ -384,7 +384,7 @@ function TwoFactorSection() {
               </p>
               <form onSubmit={confirmDisable} className="space-y-3">
                 {disable.error && <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertDescription>{disable.error}</AlertDescription></Alert>}
-                {disable.success && <Alert className="border-green-300 bg-green-50 text-green-800"><CheckCircle2 className="h-4 w-4" /><AlertDescription>{disable.success}</AlertDescription></Alert>}
+                {disable.success && <Alert className="border-success/30 bg-success/10 text-success"><CheckCircle2 className="h-4 w-4" /><AlertDescription>{disable.success}</AlertDescription></Alert>}
                 <div className="space-y-2">
                   <Label htmlFor="disable-token">Enter current TOTP code to disable</Label>
                   <Input
@@ -426,8 +426,8 @@ export default function AccountPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-8">
-      <PageHeader title="Account" subtitle="Manage your profile, security settings, and preferences." gradient="from-indigo-600 via-indigo-500 to-violet-500">
-        <Button variant="outline" onClick={handleLogout} className="bg-white/20 border-white/40 text-white hover:bg-white/30">
+      <PageHeader title="Account" subtitle="Manage your profile, security settings, and preferences." variant="admin">
+        <Button variant="outline" onClick={handleLogout} className="rounded-md border-border hover:border-primary/35 hover:bg-primary/5">
           Sign out
         </Button>
       </PageHeader>

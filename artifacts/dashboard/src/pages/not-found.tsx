@@ -9,7 +9,7 @@ export default function NotFound() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-indigo-500 to-violet-500 flex items-center justify-center">
+    <div className="min-h-screen gamify-gradient-primary flex items-center justify-center">
       <ContentCard className="p-12 text-center max-w-md shadow-2xl border-white/20">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -22,8 +22,8 @@ export default function NotFound() {
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.1, duration: 0.4, ease: easing.snappy }}
           >
-            <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-amber-50 border border-amber-200">
-              <AlertTriangle className="h-10 w-10 text-amber-500" />
+            <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-warning/10 border border-warning/30">
+              <AlertTriangle className="h-10 w-10 text-warning" />
             </div>
           </motion.div>
 
