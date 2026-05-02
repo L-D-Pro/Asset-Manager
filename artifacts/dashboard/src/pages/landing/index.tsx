@@ -51,7 +51,7 @@ function Hero() {
  initial={shouldReduce ? {} : { opacity: 0, y: 24 }}
  animate={shouldReduce ? {} : { opacity: 1, y: 0 }}
  transition={{ duration: 0.6, delay: 0.1 }}
-            className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground leading-[1.1]"
+            className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground leading-tight"
  >
  Level Up Your Job Search
  </motion.h1>
@@ -73,13 +73,13 @@ function Hero() {
  >
  <Link
  to="/register"
-            className="inline-flex items-center gap-2 text-base font-bold  bg-white text-primary hover:bg-white/90 transition-all px-6 py-3 rounded-2xl hover:-translate-y-0.5"
+            className="inline-flex items-center gap-2 text-base font-bold bg-card text-primary hover:bg-white/90 transition-all px-6 py-3 rounded-2xl hover:-translate-y-0.5"
  >
  Get Started Free
  </Link>
  <button
  onClick={scrollToHow}
- className="inline-flex items-center gap-2 text-base font-bold  text-white border-2 border-white/50 hover:bg-white/10 transition-colors px-6 py-3 rounded-2xl cursor-pointer"
+  className="inline-flex items-center gap-2 text-base font-bold text-primary-foreground border-2 border-white/50 hover:bg-white/10 transition-colors px-6 py-3 rounded-2xl cursor-pointer"
  >
  See How It Works
  </button>
@@ -102,7 +102,7 @@ function Hero() {
  </div>
  <div>
  <div className="flex items-center justify-between mb-1">
- <span className="text-sm font-bold ">Level 12</span>
+  <span className="text-sm font-bold">Level 12</span>
  <span className="text-xs text-muted-foreground">2,450 / 3,000 XP</span>
  </div>
  <div className="h-3 bg-surface rounded-full overflow-hidden border border-border/50">
@@ -116,8 +116,8 @@ function Hero() {
  ['7', 'Day Streak'],
  ].map(([val, label]) => (
  <div key={label} className="bg-surface rounded-xl p-3 text-center">
- <div className="text-lg font-bold  text-primary">{val}</div>
- <div className="text-[10px] text-muted-foreground leading-tight">{label}</div>
+  <div className="text-lg font-bold text-primary">{val}</div>
+  <div className="text-xs text-muted-foreground leading-tight">{label}</div>
  </div>
  ))}
  </div>
@@ -160,7 +160,7 @@ function HowItWorks() {
  {cards.map((card) => (
  <motion.div key={card.title} variants={shouldReduce ? undefined : staggerItem} className="p-8 text-center">
  <div className="text-4xl mb-4">{card.emoji}</div>
- <h3 className="text-xl font-bold  mb-2">{card.title}</h3>
+  <h3 className="text-xl font-bold mb-2">{card.title}</h3>
  <p className="text-muted-foreground leading-relaxed">{card.desc}</p>
  </motion.div>
  ))}
@@ -209,7 +209,7 @@ function GamificationTeaser() {
  {cards.map((card) => (
  <motion.div key={card.title} variants={shouldReduce ? undefined : staggerItem} className="p-8 text-center">
  <div className="text-4xl mb-4">{card.emoji}</div>
- <h3 className="text-lg font-bold  mb-2">{card.title}</h3>
+  <h3 className="text-lg font-bold mb-2">{card.title}</h3>
  <p className="text-muted-foreground text-sm leading-relaxed">{card.desc}</p>
  </motion.div>
  ))}
@@ -224,7 +224,7 @@ function GamificationTeaser() {
  >
  {stats.map((stat) => (
  <div key={stat.label} className="text-center">
- <div className="text-2xl md:text-3xl font-bold  text-primary">{stat.value}</div>
+  <div className="text-2xl md:text-3xl font-bold text-primary">{stat.value}</div>
  <div className="text-sm text-muted-foreground mt-1">{stat.label}</div>
  </div>
  ))}

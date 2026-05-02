@@ -162,7 +162,7 @@ export default function StatsPage() {
                 className="h-full rounded-full transition-all duration-700"
                 style={{
                   width: `${levelProgress}%`,
-                  background: "linear-gradient(90deg, hsl(217 91% 60%) 0%, hsl(25 95% 53%) 100%)",
+                  background: "linear-gradient(90deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%)",
                 }}
               />
             </div>
