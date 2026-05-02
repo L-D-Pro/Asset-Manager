@@ -945,6 +945,90 @@ export function useListBaseResumeHistory<
 }
 
 /**
+ * @summary Delete a base resume version
+ */
+export const getDeleteBaseResumeVersionUrl = (id: number) => {
+  return `/api/base-resume/${id}`;
+};
+
+export const deleteBaseResumeVersion = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteBaseResumeVersionUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteBaseResumeVersionMutationOptions = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteBaseResumeVersion>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteBaseResumeVersion>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteBaseResumeVersion"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteBaseResumeVersion>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteBaseResumeVersion(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteBaseResumeVersionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteBaseResumeVersion>>
+>;
+
+export type DeleteBaseResumeVersionMutationError = ErrorType<NotFoundResponse>;
+
+/**
+ * @summary Delete a base resume version
+ */
+export const useDeleteBaseResumeVersion = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteBaseResumeVersion>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteBaseResumeVersion>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteBaseResumeVersionMutationOptions(options));
+};
+
+/**
  * @summary Restore a historical base resume version as the new current version
  */
 export const getRestoreBaseResumeVersionUrl = (id: number) => {
@@ -6789,7 +6873,7 @@ export const getGetApplicationSessionQueryKey = (id: number) => {
 
 export const getGetApplicationSessionQueryOptions = <
   TData = Awaited<ReturnType<typeof getApplicationSession>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<NotFoundResponse>,
 >(
   id: number,
   options?: {
@@ -6825,7 +6909,7 @@ export const getGetApplicationSessionQueryOptions = <
 export type GetApplicationSessionQueryResult = NonNullable<
   Awaited<ReturnType<typeof getApplicationSession>>
 >;
-export type GetApplicationSessionQueryError = ErrorType<unknown>;
+export type GetApplicationSessionQueryError = ErrorType<NotFoundResponse>;
 
 /**
  * @summary Get assisted application session with fields and actions
@@ -6833,7 +6917,7 @@ export type GetApplicationSessionQueryError = ErrorType<unknown>;
 
 export function useGetApplicationSession<
   TData = Awaited<ReturnType<typeof getApplicationSession>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<NotFoundResponse>,
 >(
   id: number,
   options?: {
@@ -6853,6 +6937,90 @@ export function useGetApplicationSession<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Delete an assisted application session
+ */
+export const getDeleteApplicationSessionUrl = (id: number) => {
+  return `/api/application-sessions/${id}`;
+};
+
+export const deleteApplicationSession = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteApplicationSessionUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteApplicationSessionMutationOptions = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteApplicationSession>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteApplicationSession>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteApplicationSession"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteApplicationSession>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteApplicationSession(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteApplicationSessionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteApplicationSession>>
+>;
+
+export type DeleteApplicationSessionMutationError = ErrorType<NotFoundResponse>;
+
+/**
+ * @summary Delete an assisted application session
+ */
+export const useDeleteApplicationSession = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteApplicationSession>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteApplicationSession>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteApplicationSessionMutationOptions(options));
+};
 
 /**
  * @summary Create assisted application form field

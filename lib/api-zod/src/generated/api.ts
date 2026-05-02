@@ -164,6 +164,13 @@ export const ListBaseResumeHistoryResponse = zod.array(
 );
 
 /**
+ * @summary Delete a base resume version
+ */
+export const DeleteBaseResumeVersionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
  * @summary Restore a historical base resume version as the new current version
  */
 export const RestoreBaseResumeVersionParams = zod.object({
@@ -2175,6 +2182,13 @@ export const GetApplicationSessionResponse = zod.object({
       updatedAt: zod.coerce.date(),
     }),
   ),
+});
+
+/**
+ * @summary Delete an assisted application session
+ */
+export const DeleteApplicationSessionParams = zod.object({
+  id: zod.coerce.number(),
 });
 
 /**

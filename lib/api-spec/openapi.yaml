@@ -211,6 +211,19 @@ paths:
                 items:
                   $ref: "#/components/schemas/BaseResumeVersion"
 
+  /base-resume/{id}:
+    delete:
+      operationId: deleteBaseResumeVersion
+      tags: [base-resume]
+      summary: Delete a base resume version
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /base-resume/{id}/restore:
     post:
       operationId: restoreBaseResumeVersion
@@ -1511,6 +1524,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApplicationSessionDetail"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteApplicationSession
+      tags: [assisted-apply]
+      summary: Delete an assisted application session
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /application-sessions/{id}/fields:
     post:

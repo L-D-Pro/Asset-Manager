@@ -6,6 +6,7 @@ import {
   ListBaseResumeHistoryResponse,
   CreateBaseResumeBody,
   RestoreBaseResumeVersionParams,
+  DeleteBaseResumeVersionParams,
 } from "@workspace/api-zod";
 import {
   extractTextFromDocumentFile,
@@ -159,6 +160,26 @@ router.post("/base-resume/:id/restore", async (req, res): Promise<void> => {
   });
 
   res.status(201).json(GetBaseResumeResponse.parse(row));
+});
+
+router.delete("/base-resume/:id", async (req, res): Promise<void> => {
+  const params = DeleteBaseResumeVersionParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const [row] = await db
+    .delete(baseResumeVersionsTable)
+    .where(eq(baseResumeVersionsTable.id, params.data.id))
+    .returning();
+
+  if (!row) {
+    res.status(404).json({ error: "Base resume version not found" });
+    return;
+  }
+
+  res.sendStatus(204);
 });
 
 export default router;
