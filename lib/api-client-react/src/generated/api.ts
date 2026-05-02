@@ -97,6 +97,7 @@ import type {
   ScoreJobParams,
   SiteAdapter,
   TailorResumeBody,
+  UiShellConfigResponse,
   UpdateAiModelConfigBody,
   UpdateAiPromptVersionBody,
   UpdateApplicationBody,
@@ -107,6 +108,7 @@ import type {
   UpdateJobBody,
   UpdateResumeVersionBody,
   UpdateRoleProfileBody,
+  UpsertUiShellConfigBody,
   WizardSession,
 } from "./api.schemas";
 
@@ -5255,6 +5257,265 @@ export const useDeleteAiModelConfig = <
   TContext
 > => {
   return useMutation(getDeleteAiModelConfigMutationOptions(options));
+};
+
+/**
+ * @summary Get UI shell config for an app
+ */
+export const getGetUiShellConfigUrl = (appKey: string) => {
+  return `/api/admin/ui-shell-configs/${appKey}`;
+};
+
+export const getUiShellConfig = async (
+  appKey: string,
+  options?: RequestInit,
+): Promise<UiShellConfigResponse> => {
+  return customFetch<UiShellConfigResponse>(getGetUiShellConfigUrl(appKey), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetUiShellConfigQueryKey = (appKey: string) => {
+  return [`/api/admin/ui-shell-configs/${appKey}`] as const;
+};
+
+export const getGetUiShellConfigQueryOptions = <
+  TData = Awaited<ReturnType<typeof getUiShellConfig>>,
+  TError = ErrorType<NotFoundResponse>,
+>(
+  appKey: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getUiShellConfig>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetUiShellConfigQueryKey(appKey);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getUiShellConfig>>
+  > = ({ signal }) => getUiShellConfig(appKey, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!appKey,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getUiShellConfig>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetUiShellConfigQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getUiShellConfig>>
+>;
+export type GetUiShellConfigQueryError = ErrorType<NotFoundResponse>;
+
+/**
+ * @summary Get UI shell config for an app
+ */
+
+export function useGetUiShellConfig<
+  TData = Awaited<ReturnType<typeof getUiShellConfig>>,
+  TError = ErrorType<NotFoundResponse>,
+>(
+  appKey: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getUiShellConfig>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetUiShellConfigQueryOptions(appKey, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create or update UI shell config for an app
+ */
+export const getUpsertUiShellConfigUrl = (appKey: string) => {
+  return `/api/admin/ui-shell-configs/${appKey}`;
+};
+
+export const upsertUiShellConfig = async (
+  appKey: string,
+  upsertUiShellConfigBody: UpsertUiShellConfigBody,
+  options?: RequestInit,
+): Promise<UiShellConfigResponse> => {
+  return customFetch<UiShellConfigResponse>(getUpsertUiShellConfigUrl(appKey), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(upsertUiShellConfigBody),
+  });
+};
+
+export const getUpsertUiShellConfigMutationOptions = <
+  TError = ErrorType<BadRequestResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof upsertUiShellConfig>>,
+    TError,
+    { appKey: string; data: BodyType<UpsertUiShellConfigBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof upsertUiShellConfig>>,
+  TError,
+  { appKey: string; data: BodyType<UpsertUiShellConfigBody> },
+  TContext
+> => {
+  const mutationKey = ["upsertUiShellConfig"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof upsertUiShellConfig>>,
+    { appKey: string; data: BodyType<UpsertUiShellConfigBody> }
+  > = (props) => {
+    const { appKey, data } = props ?? {};
+
+    return upsertUiShellConfig(appKey, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpsertUiShellConfigMutationResult = NonNullable<
+  Awaited<ReturnType<typeof upsertUiShellConfig>>
+>;
+export type UpsertUiShellConfigMutationBody = BodyType<UpsertUiShellConfigBody>;
+export type UpsertUiShellConfigMutationError = ErrorType<BadRequestResponse>;
+
+/**
+ * @summary Create or update UI shell config for an app
+ */
+export const useUpsertUiShellConfig = <
+  TError = ErrorType<BadRequestResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof upsertUiShellConfig>>,
+    TError,
+    { appKey: string; data: BodyType<UpsertUiShellConfigBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof upsertUiShellConfig>>,
+  TError,
+  { appKey: string; data: BodyType<UpsertUiShellConfigBody> },
+  TContext
+> => {
+  return useMutation(getUpsertUiShellConfigMutationOptions(options));
+};
+
+/**
+ * @summary Reset UI shell config to empty defaults for an app
+ */
+export const getResetUiShellConfigUrl = (appKey: string) => {
+  return `/api/admin/ui-shell-configs/${appKey}/reset`;
+};
+
+export const resetUiShellConfig = async (
+  appKey: string,
+  options?: RequestInit,
+): Promise<UiShellConfigResponse> => {
+  return customFetch<UiShellConfigResponse>(getResetUiShellConfigUrl(appKey), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getResetUiShellConfigMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resetUiShellConfig>>,
+    TError,
+    { appKey: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof resetUiShellConfig>>,
+  TError,
+  { appKey: string },
+  TContext
+> => {
+  const mutationKey = ["resetUiShellConfig"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof resetUiShellConfig>>,
+    { appKey: string }
+  > = (props) => {
+    const { appKey } = props ?? {};
+
+    return resetUiShellConfig(appKey, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ResetUiShellConfigMutationResult = NonNullable<
+  Awaited<ReturnType<typeof resetUiShellConfig>>
+>;
+
+export type ResetUiShellConfigMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Reset UI shell config to empty defaults for an app
+ */
+export const useResetUiShellConfig = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resetUiShellConfig>>,
+    TError,
+    { appKey: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof resetUiShellConfig>>,
+  TError,
+  { appKey: string },
+  TContext
+> => {
+  return useMutation(getResetUiShellConfigMutationOptions(options));
 };
 
 /**

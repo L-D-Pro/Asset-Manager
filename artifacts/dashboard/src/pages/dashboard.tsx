@@ -2,12 +2,17 @@ import { useGamificationStats } from "@/hooks/use-gamification";
 import { XPCard } from "@/components/gamification/XPCard";
 import { StreakFlame } from "@/components/gamification/StreakFlame";
 import { GamifiedBadge } from "@/components/gamification/GamifiedBadge";
+import { QuestCard } from "@/components/gamification/QuestCard";
+import { LeaderboardStrip } from "@/components/gamification/LeaderboardStrip";
+import { MascotAvatar } from "@/components/gamification/MascotAvatar";
+import { FloatingXP } from "@/components/gamification/FloatingXP";
+import { SpeechBubble } from "@/components/gamification/SpeechBubble";
 import { NextActions } from "@/components/dashboard/next-actions";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 
 function getGreeting(): string {
@@ -81,7 +86,20 @@ export default function Dashboard() {
  const navigate = useNavigate();
  const { toast } = useToast();
 
- useEffect(() => {
+  const [floatingXp, setFloatingXp] = useState<Array<{ id: number; xp: number }>>([]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const id = Date.now();
+      setFloatingXp((prev) => [...prev, { id, xp: Math.floor(Math.random() * 5) + 1 }]);
+      setTimeout(() => {
+        setFloatingXp((prev) => prev.filter((f) => f.id !== id));
+      }, 2500);
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
  if (isError) {
  if (error instanceof Error && error.message !== "Failed to fetch gamification stats") {
  toast({
@@ -119,171 +137,226 @@ export default function Dashboard() {
  initial="hidden"
  animate="show"
  >
- {/*********** Hero Strip ***********/}
- <motion.div variants={itemVariants}>
-        <div className="bg-surface border-2 border-border rounded-2xl p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          {/* Left: Greeting */}
-              <div>
-                <h1
-                  className="text-3xl md:text-[32px] font-display font-extrabold text-foreground leading-tight"
-                  style={{ fontFamily: "Nunito, sans-serif" }}
-                >
- {greeting}
- </h1>
- </div>
+  {/* Hero Strip */}
+  <motion.div variants={itemVariants}>
+    <div className="card-glass p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+      {/* Left: Greeting */}
+      <div>
+        <h1 className="text-3xl md:text-4xl font-extrabold text-foreground leading-tight tracking-tight">
+          {greeting}
+        </h1>
+      </div>
 
- {/* Right: Stat tiles */}
- <div className="flex items-center gap-4 md:gap-8">
- {/* Level */}
- <div className="flex flex-col items-center min-w-[72px] bg-background rounded-2xl border border-border px-4 py-3">
-              <span className="text-3xl font-extrabold font-display text-foreground">
-                    {level}
-                  </span>
-                  <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider mt-0.5">
- Level
- </span>
- </div>
+      {/* Right: Stat tiles */}
+      <div className="flex items-center gap-4 md:gap-6">
+        {/* Level */}
+        <div className="flex flex-col items-center min-w-[80px] panel-glass px-5 py-4">
+          <span className="text-3xl font-extrabold text-foreground tracking-tight">
+            {level}
+          </span>
+          <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-1">
+            Level
+          </span>
+        </div>
 
- {/* Streak */}
- <div className="flex flex-col items-center min-w-[72px] bg-background rounded-2xl border border-border px-4 py-3">
- <span className="text-3xl">{"\uD83D\uDD25"}</span>
-                  <span className="text-xl font-extrabold font-display text-foreground">
-                    {streak}
-                  </span>
-                  <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider">
- Day Streak
- </span>
- </div>
+        {/* Streak */}
+        <div className="flex flex-col items-center min-w-[80px] panel-glass px-5 py-4">
+          <span className="text-2xl">{"\uD83D\uDD25"}</span>
+          <span className="text-xl font-extrabold text-foreground tracking-tight">
+            {streak}
+          </span>
+          <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
+            Day Streak
+          </span>
+        </div>
 
- {/* Total XP */}
- <div className="flex flex-col items-center min-w-[72px] bg-background rounded-2xl border border-border px-4 py-3">
-                  <span className="text-2xl flex items-center gap-1 font-extrabold font-display text-foreground">
-                    {"\u26A1"} {totalXp.toLocaleString()}
-                  </span>
-                  <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider mt-0.5">
- Total XP
- </span>
- </div>
- </div>
- </div>
- </motion.div>
+        {/* Total XP */}
+        <div className="flex flex-col items-center min-w-[80px] panel-glass px-5 py-4">
+          <span className="text-lg flex items-center gap-1 font-extrabold text-foreground tracking-tight">
+            {"\u26A1"} {totalXp.toLocaleString()}
+          </span>
+          <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-1">
+            Total XP
+          </span>
+        </div>
+      </div>
+    </div>
+  </motion.div>
 
- {/*********** Second Row: XP + Streak + Quick Action ***********/}
- <motion.div
- variants={itemVariants}
- className="grid grid-cols-1 md:grid-cols-3 gap-4"
- >
- {/* Left: XPCard */}
- <XPCard
- level={level}
- currentXp={currentLevelXp}
- xpToNext={xpForNextLevel}
- totalXp={totalXp}
- />
+  {/* Speech Bubble */}
+  <motion.div variants={itemVariants}>
+    <div className="flex justify-center">
+      <SpeechBubble
+        message={[
+          "Welcome back! Your next level is within reach 🔥",
+          "You're doing great! Keep that streak alive ⚡",
+          "Time to crush some applications today! 💪",
+          "Every application gets you closer to your dream job 🎯",
+        ][Math.floor(Math.random() * 4)]}
+        show={true}
+      />
+    </div>
+  </motion.div>
 
- {/* Center: Streak card */}
- <div className="card-chunky flex flex-col items-center justify-center gap-4">
- <StreakFlame
- days={streak}
- className="!p-0 !shadow-none !border-none !bg-transparent !rounded-none"
- />
- <p className="text-sm font-semibold text-foreground">
- Keep it going!{" "}
- <span className="text-accent">{"\uD83D\uDD25"}</span>
- </p>
- {gStats && gStats.longestStreak > 0 && (
- <p className="text-xs text-muted-foreground">
- Longest streak: {gStats.longestStreak} days
- </p>
- )}
- </div>
+  {/* Second Row: XP + Streak + Quick Action */}
+  <motion.div
+    variants={itemVariants}
+    className="grid grid-cols-1 md:grid-cols-3 gap-5"
+  >
+    {/* Left: XPCard */}
+    <XPCard
+      level={level}
+      currentXp={currentLevelXp}
+      xpToNext={xpForNextLevel}
+      totalXp={totalXp}
+    />
 
- {/* Right: Quick action card */}
- <div className="card-chunky flex flex-col items-center justify-center gap-4 text-center">
- <h3 className="text-lg font-display font-bold text-foreground">
- Ready to apply?
- </h3>
- <div className="flex flex-col gap-3 w-full">
-            <Button
-              variant="default"
-              size="sm"
-              className="w-full"
-              onClick={() => navigate("/apply-wizard")}
-            >
-              Start Applying
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              className="w-full"
-              onClick={() => navigate("/jobs")}
-            >
-              Ingest a Job
-            </Button>
- </div>
- </div>
- </motion.div>
+    {/* Center: Streak card */}
+    <div className="card-glass flex flex-col items-center justify-center gap-4 p-6">
+      <StreakFlame
+        days={streak}
+        className="!p-0 !shadow-none !border-none !bg-transparent !rounded-none"
+      />
+      <p className="text-sm font-semibold text-foreground">
+        Keep it going!{" "}
+        <span className="text-primary">{"\uD83D\uDD25"}</span>
+      </p>
+      {gStats && gStats.longestStreak > 0 && (
+        <p className="text-xs text-muted-foreground">
+          Longest streak: {gStats.longestStreak} days
+        </p>
+      )}
+    </div>
+
+    {/* Right: Quick action card */}
+    <div className="card-glass flex flex-col items-center justify-center gap-4 p-6 text-center">
+      <h3 className="text-lg font-bold text-foreground tracking-tight">
+        Ready to apply?
+      </h3>
+      <div className="flex flex-col gap-3 w-full">
+        <Button
+          variant="default"
+          size="sm"
+          className="w-full"
+          onClick={() => navigate("/apply-wizard")}
+        >
+          Start Applying
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="w-full"
+          onClick={() => navigate("/jobs")}
+        >
+          Ingest a Job
+        </Button>
+      </div>
+    </div>
+  </motion.div>
 
  {/*********** Third Row: Next Actions ***********/}
  <motion.div variants={itemVariants}>
  <NextActions />
- </motion.div>
+  </motion.div>
 
- {/*********** Fourth Row: Recent Achievements ***********/}
- <motion.div variants={itemVariants} className="space-y-4">
- <h2 className="text-lg font-semibold tracking-tight text-foreground">
- Recent Achievements
- </h2>
+  {/* Quest Cards */}
+  <motion.div variants={itemVariants}>
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <QuestCard
+        title="Tailor a Resume"
+        description="Use the Apply Wizard"
+        progress={0}
+        reward="+50 XP"
+        emoji="📄"
+      />
+      <QuestCard
+        title="Review 3 Jobs"
+        description="Check your pipeline"
+        progress={0}
+        reward="+30 XP"
+        emoji="🔍"
+      />
+      <QuestCard
+        title="Draft a Cover Letter"
+        description="Stand out to employers"
+        progress={0}
+        reward="+40 XP"
+        emoji="✍️"
+      />
+    </div>
+  </motion.div>
 
- {hasAchievements ? (
- <div className="flex flex-wrap gap-4">
- {recentAchievements.slice(0, 6).map((a) => (
- <GamifiedBadge
- key={a.id}
- name={a.name}
- icon={
- a.iconName === "trophy"
- ? "\uD83C\uDFC6"
- : a.iconName === "fire"
- ? "\uD83D\uDD25"
- : a.iconName === "star"
- ? "\u2B50"
- : "\uD83C\uDFAF"
- }
- tier={
- a.slug.includes("streak")
- ? "gold"
- : a.slug.includes("resume") || a.slug.includes("cover")
- ? "silver"
- : "bronze"
- }
- unlocked
- isNew={!a.seen}
- />
- ))}
- </div>
- ) : (
- <div className="card-chunky flex flex-col items-center justify-center py-12 text-center">
- <span className="text-4xl mb-3">{"\uD83C\uDFC6"}</span>
- <p className="text-base font-semibold text-foreground">
- No achievements yet
- </p>
- <p className="mt-1 text-sm text-muted-foreground">
- Complete actions to earn badges!
- </p>
- </div>
- )}
- </motion.div>
+  {/* Leaderboard */}
+  <motion.div variants={itemVariants}>
+    <LeaderboardStrip
+      entries={[
+        { name: "You", xp: totalXp, isYou: true },
+        { name: "Alex", xp: Math.max(0, totalXp - 150) },
+        { name: "Jordan", xp: Math.max(0, totalXp - 350) },
+      ]}
+    />
+  </motion.div>
 
- {/*********** Bottom: Motivational Quote ***********/}
- <motion.div variants={itemVariants}>
- <div className="bg-surface card-chunky text-center flex flex-col items-center gap-2">
- <p className="text-base italic leading-relaxed text-muted-foreground max-w-lg">
- &ldquo;{quote.quote}&rdquo;
- </p>
- <p className="text-xs text-muted-foreground">&mdash; {quote.author}</p>
- </div>
- </motion.div>
+  {/* Fourth Row: Recent Achievements */}
+  <motion.div variants={itemVariants} className="space-y-4">
+    <h2 className="text-lg font-bold tracking-tight text-foreground">
+      Recent Achievements
+    </h2>
+
+    {hasAchievements ? (
+      <div className="flex flex-wrap gap-4">
+        {recentAchievements.slice(0, 6).map((a) => (
+          <GamifiedBadge
+            key={a.id}
+            name={a.name}
+            icon={
+              a.iconName === "trophy"
+                ? "\uD83C\uDFC6"
+                : a.iconName === "fire"
+                ? "\uD83D\uDD25"
+                : a.iconName === "star"
+                ? "\u2B50"
+                : "\uD83C\uDFAF"
+            }
+            tier={
+              a.slug.includes("streak")
+                ? "gold"
+                : a.slug.includes("resume") || a.slug.includes("cover")
+                ? "silver"
+                : "bronze"
+            }
+            unlocked
+            isNew={!a.seen}
+          />
+        ))}
+      </div>
+    ) : (
+      <div className="card-glass flex flex-col items-center justify-center py-12 text-center">
+        <span className="text-4xl mb-3">{"\uD83C\uDFC6"}</span>
+        <p className="text-base font-semibold text-foreground">
+          No achievements yet
+        </p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Complete actions to earn badges!
+        </p>
+      </div>
+    )}
+  </motion.div>
+
+  {/* Bottom: Motivational Quote */}
+  <motion.div variants={itemVariants}>
+    <div className="card-glass text-center flex flex-col items-center gap-2 p-6">
+      <p className="text-base italic leading-relaxed text-muted-foreground max-w-lg">
+        &ldquo;{quote.quote}&rdquo;
+      </p>
+      <p className="text-xs text-muted-foreground">&mdash; {quote.author}</p>
+    </div>
+  </motion.div>
+
+  {floatingXp.map((f) => (
+    <FloatingXP key={f.id} xp={f.xp} />
+  ))}
+  <MascotAvatar />
  </motion.div>
  );
 }

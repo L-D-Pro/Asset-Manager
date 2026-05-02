@@ -1,0 +1,19 @@
+:root {
+  --bg-primary: #f5f7fb;
+  --bg-glass: #eef3fb;
+  --surface-card: #ffffff;
+  --surface-elevated: #fbfcff;
+  --border-subtle: #dde4f0;
+  --border-strong: #ced8e8;
+  --text-main: #141821;
+  --text-subtle: #516178;
+  --brand-primary: #2a61ff;
+  --brand-accent: #1f87ff;
+  --ring-focus: #2a61ff;
+  --shadow-soft: 0 1px 1px rgb(0 0 0 / 0.04);
+  --shadow-float: 0 14px 44px rgb(0 0 0 / 0.12);
+  --shape-radius-sm: 12px;
+  --shape-radius-md: 16px;
+  --shape-radius-lg: 22px;
+  --glass-blur: 24px;
+}

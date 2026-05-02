@@ -1521,6 +1521,86 @@ export interface JobBoardSource {
   lastError?: string;
 }
 
+export type ThemeDefinitionMode =
+  (typeof ThemeDefinitionMode)[keyof typeof ThemeDefinitionMode];
+
+export const ThemeDefinitionMode = {
+  light: "light",
+  dark: "dark",
+} as const;
+
+export interface ThemePalette {
+  bgPrimary: string;
+  bgGlass: string;
+  textMain: string;
+  textSubtle?: string;
+  brandPrimary: string;
+  brandAccent?: string;
+  borderSubtle?: string;
+  borderStrong?: string;
+}
+
+export interface ThemeDefinition {
+  id: string;
+  name: string;
+  mode: ThemeDefinitionMode;
+  palette: ThemePalette;
+}
+
+export type UIConfigVersion =
+  (typeof UIConfigVersion)[keyof typeof UIConfigVersion];
+
+export const UIConfigVersion = {
+  NUMBER_1: 1,
+} as const;
+
+export type UISlotItemProps = { [key: string]: unknown };
+
+export interface UISlotItem {
+  id: string;
+  componentKey: string;
+  /** @minimum 0 */
+  order: number;
+  visibility: boolean;
+  label: string;
+  locked?: boolean;
+  props?: UISlotItemProps;
+}
+
+export type UIConfigSlots = {
+  navbar: UISlotItem[];
+  sidebar: UISlotItem[];
+  dashboardGrid: UISlotItem[];
+};
+
+export interface UIConfig {
+  version: UIConfigVersion;
+  appKey: string;
+  themeID: string;
+  slots: UIConfigSlots;
+  updatedAt: string;
+  /** @nullable */
+  updatedBy: number | null;
+}
+
+export interface UiShellConfigResponse {
+  id: number;
+  appKey: string;
+  themeID: string;
+  themeDefinitions: ThemeDefinition[];
+  uiConfig: UIConfig;
+  /** @nullable */
+  updatedByAdminId?: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UpsertUiShellConfigBody {
+  themeID: string;
+  themeDefinitions: ThemeDefinition[];
+  uiConfig: UIConfig;
+}
+
 /**
  * Bad request
  */

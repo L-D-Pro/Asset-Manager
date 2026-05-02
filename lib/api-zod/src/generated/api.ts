@@ -1344,6 +1344,348 @@ export const DeleteAiModelConfigParams = zod.object({
 });
 
 /**
+ * @summary Get UI shell config for an app
+ */
+export const GetUiShellConfigParams = zod.object({
+  appKey: zod.coerce.string(),
+});
+
+export const getUiShellConfigResponseUiConfigSlotsNavbarItemOrderMin = 0;
+
+export const getUiShellConfigResponseUiConfigSlotsSidebarItemOrderMin = 0;
+
+export const getUiShellConfigResponseUiConfigSlotsDashboardGridItemOrderMin = 0;
+
+export const GetUiShellConfigResponse = zod.object({
+  id: zod.number(),
+  appKey: zod.string(),
+  themeID: zod.string(),
+  themeDefinitions: zod.array(
+    zod.object({
+      id: zod.string(),
+      name: zod.string(),
+      mode: zod.enum(["light", "dark"]),
+      palette: zod.object({
+        bgPrimary: zod.string(),
+        bgGlass: zod.string(),
+        textMain: zod.string(),
+        textSubtle: zod.string().optional(),
+        brandPrimary: zod.string(),
+        brandAccent: zod.string().optional(),
+        borderSubtle: zod.string().optional(),
+        borderStrong: zod.string().optional(),
+      }),
+    }),
+  ),
+  uiConfig: zod.object({
+    version: zod.literal(1),
+    appKey: zod.string(),
+    themeID: zod.string(),
+    slots: zod.object({
+      navbar: zod.array(
+        zod.object({
+          id: zod.string(),
+          componentKey: zod.string(),
+          order: zod
+            .number()
+            .min(getUiShellConfigResponseUiConfigSlotsNavbarItemOrderMin),
+          visibility: zod.boolean(),
+          label: zod.string(),
+          locked: zod.boolean().optional(),
+          props: zod.record(zod.string(), zod.unknown()).optional(),
+        }),
+      ),
+      sidebar: zod.array(
+        zod.object({
+          id: zod.string(),
+          componentKey: zod.string(),
+          order: zod
+            .number()
+            .min(getUiShellConfigResponseUiConfigSlotsSidebarItemOrderMin),
+          visibility: zod.boolean(),
+          label: zod.string(),
+          locked: zod.boolean().optional(),
+          props: zod.record(zod.string(), zod.unknown()).optional(),
+        }),
+      ),
+      dashboardGrid: zod.array(
+        zod.object({
+          id: zod.string(),
+          componentKey: zod.string(),
+          order: zod
+            .number()
+            .min(
+              getUiShellConfigResponseUiConfigSlotsDashboardGridItemOrderMin,
+            ),
+          visibility: zod.boolean(),
+          label: zod.string(),
+          locked: zod.boolean().optional(),
+          props: zod.record(zod.string(), zod.unknown()).optional(),
+        }),
+      ),
+    }),
+    updatedAt: zod.string(),
+    updatedBy: zod.number().nullable(),
+  }),
+  updatedByAdminId: zod.number().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Create or update UI shell config for an app
+ */
+export const UpsertUiShellConfigParams = zod.object({
+  appKey: zod.coerce.string(),
+});
+
+export const upsertUiShellConfigBodyUiConfigSlotsNavbarItemOrderMin = 0;
+
+export const upsertUiShellConfigBodyUiConfigSlotsSidebarItemOrderMin = 0;
+
+export const upsertUiShellConfigBodyUiConfigSlotsDashboardGridItemOrderMin = 0;
+
+export const UpsertUiShellConfigBody = zod.object({
+  themeID: zod.string(),
+  themeDefinitions: zod.array(
+    zod.object({
+      id: zod.string(),
+      name: zod.string(),
+      mode: zod.enum(["light", "dark"]),
+      palette: zod.object({
+        bgPrimary: zod.string(),
+        bgGlass: zod.string(),
+        textMain: zod.string(),
+        textSubtle: zod.string().optional(),
+        brandPrimary: zod.string(),
+        brandAccent: zod.string().optional(),
+        borderSubtle: zod.string().optional(),
+        borderStrong: zod.string().optional(),
+      }),
+    }),
+  ),
+  uiConfig: zod.object({
+    version: zod.literal(1),
+    appKey: zod.string(),
+    themeID: zod.string(),
+    slots: zod.object({
+      navbar: zod.array(
+        zod.object({
+          id: zod.string(),
+          componentKey: zod.string(),
+          order: zod
+            .number()
+            .min(upsertUiShellConfigBodyUiConfigSlotsNavbarItemOrderMin),
+          visibility: zod.boolean(),
+          label: zod.string(),
+          locked: zod.boolean().optional(),
+          props: zod.record(zod.string(), zod.unknown()).optional(),
+        }),
+      ),
+      sidebar: zod.array(
+        zod.object({
+          id: zod.string(),
+          componentKey: zod.string(),
+          order: zod
+            .number()
+            .min(upsertUiShellConfigBodyUiConfigSlotsSidebarItemOrderMin),
+          visibility: zod.boolean(),
+          label: zod.string(),
+          locked: zod.boolean().optional(),
+          props: zod.record(zod.string(), zod.unknown()).optional(),
+        }),
+      ),
+      dashboardGrid: zod.array(
+        zod.object({
+          id: zod.string(),
+          componentKey: zod.string(),
+          order: zod
+            .number()
+            .min(upsertUiShellConfigBodyUiConfigSlotsDashboardGridItemOrderMin),
+          visibility: zod.boolean(),
+          label: zod.string(),
+          locked: zod.boolean().optional(),
+          props: zod.record(zod.string(), zod.unknown()).optional(),
+        }),
+      ),
+    }),
+    updatedAt: zod.string(),
+    updatedBy: zod.number().nullable(),
+  }),
+});
+
+export const upsertUiShellConfigResponseUiConfigSlotsNavbarItemOrderMin = 0;
+
+export const upsertUiShellConfigResponseUiConfigSlotsSidebarItemOrderMin = 0;
+
+export const upsertUiShellConfigResponseUiConfigSlotsDashboardGridItemOrderMin = 0;
+
+export const UpsertUiShellConfigResponse = zod.object({
+  id: zod.number(),
+  appKey: zod.string(),
+  themeID: zod.string(),
+  themeDefinitions: zod.array(
+    zod.object({
+      id: zod.string(),
+      name: zod.string(),
+      mode: zod.enum(["light", "dark"]),
+      palette: zod.object({
+        bgPrimary: zod.string(),
+        bgGlass: zod.string(),
+        textMain: zod.string(),
+        textSubtle: zod.string().optional(),
+        brandPrimary: zod.string(),
+        brandAccent: zod.string().optional(),
+        borderSubtle: zod.string().optional(),
+        borderStrong: zod.string().optional(),
+      }),
+    }),
+  ),
+  uiConfig: zod.object({
+    version: zod.literal(1),
+    appKey: zod.string(),
+    themeID: zod.string(),
+    slots: zod.object({
+      navbar: zod.array(
+        zod.object({
+          id: zod.string(),
+          componentKey: zod.string(),
+          order: zod
+            .number()
+            .min(upsertUiShellConfigResponseUiConfigSlotsNavbarItemOrderMin),
+          visibility: zod.boolean(),
+          label: zod.string(),
+          locked: zod.boolean().optional(),
+          props: zod.record(zod.string(), zod.unknown()).optional(),
+        }),
+      ),
+      sidebar: zod.array(
+        zod.object({
+          id: zod.string(),
+          componentKey: zod.string(),
+          order: zod
+            .number()
+            .min(upsertUiShellConfigResponseUiConfigSlotsSidebarItemOrderMin),
+          visibility: zod.boolean(),
+          label: zod.string(),
+          locked: zod.boolean().optional(),
+          props: zod.record(zod.string(), zod.unknown()).optional(),
+        }),
+      ),
+      dashboardGrid: zod.array(
+        zod.object({
+          id: zod.string(),
+          componentKey: zod.string(),
+          order: zod
+            .number()
+            .min(
+              upsertUiShellConfigResponseUiConfigSlotsDashboardGridItemOrderMin,
+            ),
+          visibility: zod.boolean(),
+          label: zod.string(),
+          locked: zod.boolean().optional(),
+          props: zod.record(zod.string(), zod.unknown()).optional(),
+        }),
+      ),
+    }),
+    updatedAt: zod.string(),
+    updatedBy: zod.number().nullable(),
+  }),
+  updatedByAdminId: zod.number().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Reset UI shell config to empty defaults for an app
+ */
+export const ResetUiShellConfigParams = zod.object({
+  appKey: zod.coerce.string(),
+});
+
+export const resetUiShellConfigResponseUiConfigSlotsNavbarItemOrderMin = 0;
+
+export const resetUiShellConfigResponseUiConfigSlotsSidebarItemOrderMin = 0;
+
+export const resetUiShellConfigResponseUiConfigSlotsDashboardGridItemOrderMin = 0;
+
+export const ResetUiShellConfigResponse = zod.object({
+  id: zod.number(),
+  appKey: zod.string(),
+  themeID: zod.string(),
+  themeDefinitions: zod.array(
+    zod.object({
+      id: zod.string(),
+      name: zod.string(),
+      mode: zod.enum(["light", "dark"]),
+      palette: zod.object({
+        bgPrimary: zod.string(),
+        bgGlass: zod.string(),
+        textMain: zod.string(),
+        textSubtle: zod.string().optional(),
+        brandPrimary: zod.string(),
+        brandAccent: zod.string().optional(),
+        borderSubtle: zod.string().optional(),
+        borderStrong: zod.string().optional(),
+      }),
+    }),
+  ),
+  uiConfig: zod.object({
+    version: zod.literal(1),
+    appKey: zod.string(),
+    themeID: zod.string(),
+    slots: zod.object({
+      navbar: zod.array(
+        zod.object({
+          id: zod.string(),
+          componentKey: zod.string(),
+          order: zod
+            .number()
+            .min(resetUiShellConfigResponseUiConfigSlotsNavbarItemOrderMin),
+          visibility: zod.boolean(),
+          label: zod.string(),
+          locked: zod.boolean().optional(),
+          props: zod.record(zod.string(), zod.unknown()).optional(),
+        }),
+      ),
+      sidebar: zod.array(
+        zod.object({
+          id: zod.string(),
+          componentKey: zod.string(),
+          order: zod
+            .number()
+            .min(resetUiShellConfigResponseUiConfigSlotsSidebarItemOrderMin),
+          visibility: zod.boolean(),
+          label: zod.string(),
+          locked: zod.boolean().optional(),
+          props: zod.record(zod.string(), zod.unknown()).optional(),
+        }),
+      ),
+      dashboardGrid: zod.array(
+        zod.object({
+          id: zod.string(),
+          componentKey: zod.string(),
+          order: zod
+            .number()
+            .min(
+              resetUiShellConfigResponseUiConfigSlotsDashboardGridItemOrderMin,
+            ),
+          visibility: zod.boolean(),
+          label: zod.string(),
+          locked: zod.boolean().optional(),
+          props: zod.record(zod.string(), zod.unknown()).optional(),
+        }),
+      ),
+    }),
+    updatedAt: zod.string(),
+    updatedBy: zod.number().nullable(),
+  }),
+  updatedByAdminId: zod.number().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
  * @summary Get AI review overview
  */
 export const GetAiReviewOverviewResponse = zod.object({

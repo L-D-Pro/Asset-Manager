@@ -42,6 +42,8 @@ tags:
     description: Market research and trend analysis
   - name: job-board
     description: Aggregated job board listings
+  - name: ui-shell-configs
+    description: Theme and layout orchestration config
 
 paths:
   /healthz:
@@ -1154,6 +1156,59 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /admin/ui-shell-configs/{appKey}:
+    get:
+      operationId: getUiShellConfig
+      tags: [ui-shell-configs]
+      summary: Get UI shell config for an app
+      parameters:
+        - $ref: "#/components/parameters/AppKey"
+      responses:
+        "200":
+          description: UI shell config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UiShellConfigResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      operationId: upsertUiShellConfig
+      tags: [ui-shell-configs]
+      summary: Create or update UI shell config for an app
+      parameters:
+        - $ref: "#/components/parameters/AppKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertUiShellConfigBody"
+      responses:
+        "200":
+          description: Saved UI shell config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UiShellConfigResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /admin/ui-shell-configs/{appKey}/reset:
+    post:
+      operationId: resetUiShellConfig
+      tags: [ui-shell-configs]
+      summary: Reset UI shell config to empty defaults for an app
+      parameters:
+        - $ref: "#/components/parameters/AppKey"
+      responses:
+        "200":
+          description: Reset UI shell config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UiShellConfigResponse"
+
   # ── AI Learning ────────────────────────────────────────────────────────────
   /ai-review/overview:
     get:
@@ -1885,6 +1940,12 @@ components:
       required: true
       schema:
         type: integer
+    AppKey:
+      name: appKey
+      in: path
+      required: true
+      schema:
+        type: string
 
   responses:
     BadRequest:
@@ -4308,3 +4369,161 @@ components:
         - name
         - feedUrl
         - sourceType
+
+    UiShellConfigResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        appKey:
+          type: string
+        themeID:
+          type: string
+        themeDefinitions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ThemeDefinition"
+        uiConfig:
+          $ref: "#/components/schemas/UIConfig"
+        updatedByAdminId:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - appKey
+        - themeID
+        - themeDefinitions
+        - uiConfig
+        - createdAt
+        - updatedAt
+
+    UpsertUiShellConfigBody:
+      type: object
+      properties:
+        themeID:
+          type: string
+        themeDefinitions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ThemeDefinition"
+        uiConfig:
+          $ref: "#/components/schemas/UIConfig"
+      required:
+        - themeID
+        - themeDefinitions
+        - uiConfig
+
+    ThemeDefinition:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        mode:
+          type: string
+          enum: [light, dark]
+        palette:
+          $ref: "#/components/schemas/ThemePalette"
+      required:
+        - id
+        - name
+        - mode
+        - palette
+
+    ThemePalette:
+      type: object
+      properties:
+        bgPrimary:
+          type: string
+        bgGlass:
+          type: string
+        textMain:
+          type: string
+        textSubtle:
+          type: string
+        brandPrimary:
+          type: string
+        brandAccent:
+          type: string
+        borderSubtle:
+          type: string
+        borderStrong:
+          type: string
+      required:
+        - bgPrimary
+        - bgGlass
+        - textMain
+        - brandPrimary
+
+    UISlotItem:
+      type: object
+      properties:
+        id:
+          type: string
+        componentKey:
+          type: string
+        order:
+          type: integer
+          minimum: 0
+        visibility:
+          type: boolean
+        label:
+          type: string
+        locked:
+          type: boolean
+        props:
+          type: object
+          additionalProperties: true
+      required:
+        - id
+        - componentKey
+        - order
+        - visibility
+        - label
+
+    UIConfig:
+      type: object
+      properties:
+        version:
+          type: integer
+          enum: [1]
+        appKey:
+          type: string
+        themeID:
+          type: string
+        slots:
+          type: object
+          properties:
+            navbar:
+              type: array
+              items:
+                $ref: "#/components/schemas/UISlotItem"
+            sidebar:
+              type: array
+              items:
+                $ref: "#/components/schemas/UISlotItem"
+            dashboardGrid:
+              type: array
+              items:
+                $ref: "#/components/schemas/UISlotItem"
+          required:
+            - navbar
+            - sidebar
+            - dashboardGrid
+        updatedAt:
+          type: string
+        updatedBy:
+          type: ["integer", "null"]
+      required:
+        - version
+        - appKey
+        - themeID
+        - slots
+        - updatedAt
+        - updatedBy

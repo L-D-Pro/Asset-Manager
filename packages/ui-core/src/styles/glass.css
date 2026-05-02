@@ -1,0 +1,15 @@
+.ui-glass-panel {
+  background: color-mix(in srgb, var(--bg-glass) 72%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 70%, transparent);
+  backdrop-filter: blur(var(--glass-blur));
+  border-radius: var(--shape-radius-lg);
+  box-shadow: var(--shadow-soft);
+}
+
+.ui-shell-card {
+  background: var(--surface-card);
+  color: var(--text-main);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--shape-radius-md);
+  box-shadow: var(--shadow-soft);
+}

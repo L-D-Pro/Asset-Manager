@@ -40,13 +40,13 @@ function StreakFlame({ days, intensity, className }: StreakFlameProps) {
  const floatAnimation = days >= 8
  const glowPulse = days >= 5
 
- return (
- <div
- className={cn(
- "card-chunky flex flex-col items-center justify-center gap-3",
- className
- )}
- >
+  return (
+    <div
+      className={cn(
+        "card-glass flex flex-col items-center justify-center gap-3 p-6",
+        className
+      )}
+    >
  <motion.div
  className="relative flex items-center justify-center"
  animate={
@@ -78,11 +78,11 @@ function StreakFlame({ days, intensity, className }: StreakFlameProps) {
  <span
  className={cn(
  "absolute -top-1 -right-2 rounded-full min-w-[26px] h-[26px] flex items-center justify-center px-1 text-xs font-extrabold text-white font-display",
- days >= 5
- ? "bg-accent"
- : days >= 2
- ? "bg-[hsl(var(--accent-dark))]"
- : "bg-muted"
+  days >= 5
+  ? "bg-primary"
+  : days >= 2
+  ? "bg-primary/70"
+  : "bg-muted"
  )}
  >
  {days}
