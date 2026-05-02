@@ -66,7 +66,7 @@ export default function AiReviewPage() {
  <Metric title="Training Examples" value={stats?.trainingExamples ?? 0} icon={<FlaskConical className="h-4 w-4" />} />
  </div>
 
-  <ContentCard className="rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
+  <ContentCard className="rounded-2xl shadow-sm">
  <CardHeader>
  <CardTitle>Create Prompt Version</CardTitle>
  <CardDescription>
@@ -144,7 +144,7 @@ export default function AiReviewPage() {
  </ContentCard>
 
  <div className="grid gap-4 lg:grid-cols-2">
-  <ContentCard className="rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
+  <ContentCard className="rounded-2xl shadow-sm">
   <CardHeader>
   <CardTitle>Recent AI Events</CardTitle>
  <CardDescription>Model, cost, prompt version, and fallback metadata are logged in event metadata.</CardDescription>
@@ -167,7 +167,7 @@ export default function AiReviewPage() {
  </CardContent>
  </ContentCard>
 
-  <ContentCard className="rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
+  <ContentCard className="rounded-2xl shadow-sm">
   <CardHeader>
   <CardTitle>Prompt Versions</CardTitle>
  <CardDescription>Keep old versions immutable and activate only the prompt you want production calls to use.</CardDescription>
@@ -193,7 +193,7 @@ export default function AiReviewPage() {
 
 function Metric({ title, value, icon }: { title: string; value: number; icon: React.ReactNode }) {
  return (
-  <ContentCard className="shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
+  <ContentCard className="shadow-sm">
   <CardContent className="p-4">
  <div className="flex items-center justify-between text-sm text-muted-foreground">
  <span>{title}</span>

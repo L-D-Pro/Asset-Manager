@@ -285,7 +285,7 @@ export default function BaseResumePage() {
   value={contentText}
   onChange={(event) => setContentText(event.target.value)}
   placeholder="Paste your full plain-text resume here..."
-  className="min-h-[460px] resize-y font-mono text-sm leading-6"
+  className="min-h-[28rem] resize-y font-mono text-sm leading-6"
   data-testid="textarea-base-resume"
   />
   <div className="flex items-center justify-between gap-3">
@@ -344,7 +344,7 @@ export default function BaseResumePage() {
   No saved resume versions yet.
   </div>
   ) : (
-  <ScrollArea className="h-[580px] pr-3">
+  <ScrollArea className="h-[36rem] pr-3">
   <div className="space-y-3">
   {history.map((version) => (
   <div
@@ -401,7 +401,7 @@ export default function BaseResumePage() {
 
   {/* Single Delete Confirmation */}
   <Dialog open={deleteTarget !== null} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
-    <DialogContent className="sm:max-w-[425px] rounded-2xl">
+    <DialogContent className="sm:max-w-md rounded-2xl">
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2 text-xl">
           <AlertTriangle className="h-5 w-5 text-destructive" />
@@ -428,7 +428,7 @@ export default function BaseResumePage() {
 
   {/* Bulk Clean Up Confirmation */}
   <Dialog open={isBulkDeleteOpen} onOpenChange={setIsBulkDeleteOpen}>
-    <DialogContent className="sm:max-w-[425px] rounded-2xl">
+    <DialogContent className="sm:max-w-md rounded-2xl">
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2 text-xl">
           <AlertTriangle className="h-5 w-5 text-destructive" />

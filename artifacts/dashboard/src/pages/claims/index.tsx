@@ -306,7 +306,7 @@ export default function ClaimsPage() {
  AI Draft Claims
  </Button>
  </DialogTrigger>
- <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+ <DialogContent className="max-w-4xl max-h-[90dvh] overflow-y-auto">
  <DialogHeader>
  <DialogTitle>AI Draft Claims</DialogTitle>
  <DialogDescription>
@@ -645,7 +645,7 @@ export default function ClaimsPage() {
  </div>
  ) : (
  claims?.map((claim) => (
-  <ContentCard key={claim.id} data-testid={`card-claim-${claim.id}`} className={`rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)] ${!claim.isActive ? "opacity-60" : ""}`}>
+  <ContentCard key={claim.id} data-testid={`card-claim-${claim.id}`} className={`rounded-2xl shadow-sm ${!claim.isActive ? "opacity-60" : ""}`}>
  <CardContent className="p-6">
  <div className="flex items-start justify-between">
  <div className="space-y-2 flex-1 pr-4">

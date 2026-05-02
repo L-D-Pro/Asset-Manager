@@ -249,7 +249,7 @@ export default function ApplicationsPage() {
  </p>
  </div>
  ) : (
- <div className="border rounded-2xl divide-y bg-card/50 backdrop-blur-md shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
+ <div className="border rounded-2xl divide-y bg-card/50 backdrop-blur-md shadow-sm">
  {applications?.map((app) => (
  <div key={app.id} className="p-4 flex items-center justify-between hover:bg-muted/30 transition-colors" data-testid={`row-app-${app.id}`}>
  <div className="space-y-1">

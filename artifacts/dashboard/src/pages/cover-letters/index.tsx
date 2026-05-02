@@ -260,7 +260,7 @@ export default function CoverLettersPage() {
                           data-testid={`cl-para-${version.id}-${i}`}
                         >
                           <div className="flex items-center gap-2 mb-2">
-                            <span className={`text-[10px] font-semibold uppercase rounded px-1.5 py-0.5 ${ROLE_LABEL_COLORS[para.role] || "text-muted-foreground bg-muted"}`}>
+                            <span className={`text-xs font-semibold uppercase rounded px-1.5 py-0.5 ${ROLE_LABEL_COLORS[para.role] || "text-muted-foreground bg-muted"}`}>
                               {para.role}
                             </span>
                             {para.claimIds.length > 0 && (
@@ -271,7 +271,7 @@ export default function CoverLettersPage() {
                                   return (
                                     <span
                                       key={cid}
-                                      className="text-[10px] bg-primary/10 text-primary rounded px-1.5 py-0.5"
+                                      className="text-xs bg-primary/10 text-primary rounded px-1.5 py-0.5"
                                       title={claim?.summary}
                                     >
                                       {claim ? claim.summary.slice(0, 30) + (claim.summary.length > 30 ? "…" : "") : `Claim #${cid}`}

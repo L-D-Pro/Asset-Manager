@@ -228,7 +228,7 @@ export default function RoleProfilesPage() {
  <DialogTrigger asChild>
  <Button data-testid="btn-add-profile"><Plus className="mr-2 h-4 w-4"/>New Profile</Button>
  </DialogTrigger>
- <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+ <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto">
  <DialogHeader>
  <DialogTitle>{editingId ? "Edit Role Profile" : "New Role Profile"}</DialogTitle>
  <DialogDescription>
