@@ -1,14 +1,9 @@
 import { useListJobs, useCreateJob, useScoreJob, useListRoleProfiles, getScoreJobQueryKey, type RoleProfile } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
+import { GradientButton } from "@/components/gamification/GradientButton";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PageHeader } from "@/components/ui/page-header";
-import { ContentCard } from "@/components/ui/content-card";
-import { StatusBadge } from "@/components/ui/status-badge";
-import { EmptyState } from "@/components/ui/empty-state";
-import { StaggerContainer, StaggerItem } from "@/components/motion/stagger-container";
 import { Link, useNavigate } from "react-router-dom";
-import { Plus, Briefcase, MapPin, Building, ExternalLink, Sparkles } from "lucide-react";
-import { format } from "date-fns";
+import { Plus, Briefcase, MapPin, Sparkles, ArrowRight } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -21,6 +16,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { getListJobsQueryKey } from "@workspace/api-client-react";
 import { getErrorMessage } from "@/lib/api-errors";
+import { motion, useReducedMotion } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 const createJobSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -32,10 +29,51 @@ const createJobSchema = z.object({
 
 const ENABLE_APPLY_WIZARD = import.meta.env.VITE_ENABLE_APPLY_WIZARD === "true";
 
-function JobScoreChip({ jobId, roleProfileId, profileName }: { jobId: number; roleProfileId?: number; profileName?: string }) {
-  if (!roleProfileId) {
-    return null;
-  }
+const statusStyles: Record<string, string> = {
+  new: "bg-muted/40 text-foreground/80 border-border",
+  parsing: "bg-warning/15 text-[hsl(var(--warning))] border-warning/30",
+  tailoring: "bg-warning/15 text-[hsl(var(--warning))] border-warning/30",
+  drafting: "bg-warning/15 text-[hsl(var(--warning))] border-warning/30",
+  scored: "bg-secondary/15 text-[hsl(var(--secondary))] border-secondary/30",
+  applied: "bg-primary/15 text-[hsl(var(--primary))] border-primary/30",
+  parse_failed: "bg-destructive/15 text-[hsl(var(--destructive))] border-destructive/30",
+  ready: "bg-primary/15 text-[hsl(var(--primary))] border-primary/30",
+  parsed: "bg-primary/15 text-[hsl(var(--primary))] border-primary/30",
+  rejected: "bg-destructive/15 text-[hsl(var(--destructive))] border-destructive/30",
+  archived: "bg-destructive/15 text-[hsl(var(--destructive))] border-destructive/30",
+};
+
+const statusLabels: Record<string, string> = {
+  new: "New",
+  parsing: "Processing",
+  tailoring: "Processing",
+  drafting: "Processing",
+  scored: "Scored",
+  applied: "Applied",
+  parse_failed: "Failed",
+  ready: "Ready",
+  parsed: "Parsed",
+  rejected: "Rejected",
+  archived: "Archived",
+};
+
+function StatusPill({ status }: { status: string }) {
+  const classes = statusStyles[status] ?? "bg-muted/40 text-foreground/80 border-border";
+  const label = statusLabels[status] ?? status;
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center text-xs font-semibold uppercase tracking-wider rounded-full px-3 py-1 border",
+        classes
+      )}
+    >
+      {label}
+    </span>
+  );
+}
+
+function ScoreDot({ jobId, roleProfileId }: { jobId: number; roleProfileId?: number }) {
+  if (!roleProfileId) return null;
 
   const { data: score } = useScoreJob(jobId, roleProfileId ? { roleProfileId } : undefined, {
     query: {
@@ -47,31 +85,32 @@ function JobScoreChip({ jobId, roleProfileId, profileName }: { jobId: number; ro
   if (!score) return null;
 
   const pct = Math.round(score.score);
-  const color =
+  const colorClass =
     pct >= 70
-      ? "text-success dark:text-success border-success/25 bg-success/10"
+      ? "text-[hsl(var(--primary))] bg-primary/10"
       : pct >= 40
-      ? "text-warning dark:text-warning border-warning/25 bg-warning/10"
-      : "text-destructive dark:text-destructive border-destructive/25 bg-destructive/10";
+        ? "text-[hsl(var(--warning))] bg-warning/10"
+        : "text-[hsl(var(--destructive))] bg-destructive/10";
 
   return (
     <span
-      className={`text-xs font-bold border rounded px-1.5 py-0.5 ${color}`}
-      title={`${profileName ? `${profileName}: ` : ""}match score${!score.passesHardFilters ? " — fails hard filters" : ""}`}
-      data-testid={`job-score-chip-${jobId}${roleProfileId ? `-${roleProfileId}` : ""}`}
+      className={cn(
+        "inline-flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold font-display",
+        colorClass
+      )}
+      title={`${pct}% match${!score.passesHardFilters ? " — fails hard filters" : ""}`}
     >
-      {profileName && <span className="font-normal mr-1">{profileName}</span>}
-      {pct}%{!score.passesHardFilters ? " ✗" : ""}
+      {pct}
     </span>
   );
 }
 
-function JobScoreChips({ jobId, profiles }: { jobId: number; profiles: RoleProfile[] }) {
+function ScoreDots({ jobId, profiles }: { jobId: number; profiles: RoleProfile[] }) {
   if (profiles.length === 0) return null;
   return (
-    <div className="flex gap-1 flex-wrap">
-      {profiles.map(p => (
-        <JobScoreChip key={p.id} jobId={jobId} roleProfileId={p.id} profileName={p.name} />
+    <div className="flex items-center gap-1">
+      {profiles.slice(0, 2).map(p => (
+        <ScoreDot key={p.id} jobId={jobId} roleProfileId={p.id ?? undefined} />
       ))}
     </div>
   );
@@ -85,6 +124,7 @@ export default function JobsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const shouldReduceMotion = useReducedMotion();
 
   const form = useForm<z.infer<typeof createJobSchema>>({
     resolver: zodResolver(createJobSchema),
@@ -118,24 +158,20 @@ export default function JobsPage() {
     );
   };
 
-  const statusLabel = (status: string) => {
-    switch (status) {
-      case "parsing": case "tailoring": return "Processing";
-      case "ready": case "parsed": case "scored": return "Ready";
-      default: return status.charAt(0).toUpperCase() + status.slice(1);
-    }
-  };
-
   return (
     <div className="space-y-8">
-      <PageHeader
-        title="Jobs Pipeline"
-        subtitle="Manage and parse your job opportunities."
-        variant="data"
-      >
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <div>
+          <h1 className="text-[32px] leading-tight font-bold font-display text-foreground">
+            Jobs Pipeline
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Track and manage your job opportunities
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
           {ENABLE_APPLY_WIZARD && (
-            <Button variant="outline" size="sm" asChild className="rounded-md border-border hover:border-primary/35 hover:bg-primary/5">
+            <Button variant="outline" size="sm" asChild>
               <Link to="/apply-wizard">
                 <Sparkles className="mr-2 h-4 w-4" />
                 Open Wizard
@@ -144,18 +180,14 @@ export default function JobsPage() {
           )}
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button
-                size="sm"
-                data-testid="btn-add-job"
-                className="rounded-md font-semibold shadow-sm"
-              >
-                <Plus className="mr-2 h-4 w-4" />
+              <GradientButton data-testid="btn-add-job">
+                <Plus className="mr-2 h-5 w-5" />
                 Ingest Job
-              </Button>
+              </GradientButton>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px]">
+            <DialogContent className="sm:max-w-[600px] gamify-radius-chunky">
               <DialogHeader>
-                <DialogTitle>Ingest New Job</DialogTitle>
+                <DialogTitle className="font-display text-xl">Ingest New Job</DialogTitle>
               </DialogHeader>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -231,107 +263,102 @@ export default function JobsPage() {
                       </FormItem>
                     )}
                   />
-                  <div className="flex justify-end pt-4">
-                    <Button
+                  <div className="flex justify-end pt-2">
+                    <GradientButton
                       type="submit"
-                      disabled={createJob.isPending}
+                      loading={createJob.isPending}
                       data-testid="btn-submit-job"
-                      className="rounded-md shadow-sm"
                     >
                       {createJob.isPending ? "Ingesting..." : "Ingest Job"}
-                    </Button>
+                    </GradientButton>
                   </div>
                 </form>
               </Form>
             </DialogContent>
           </Dialog>
         </div>
-      </PageHeader>
+      </div>
 
-      <StaggerContainer className="grid gap-4">
-        {isLoading ? (
-          <>
-            <Skeleton className="h-28 w-full rounded-lg" />
-            <Skeleton className="h-28 w-full rounded-lg" />
-            <Skeleton className="h-28 w-full rounded-lg" />
-          </>
-        ) : jobs?.length === 0 ? (
-          <ContentCard>
-            <EmptyState
-              icon={<Briefcase className="h-8 w-8" />}
-              title="No jobs yet"
-              description="Ingest your first job description to start the parsing and tailoring pipeline."
-              action={{ label: "Ingest Job", onClick: () => setIsDialogOpen(true) }}
-            />
-          </ContentCard>
-        ) : (
-          jobs?.map((job, index) => (
-            <StaggerItem key={job.id}>
-              <div
-                className="cursor-pointer"
-                data-testid={`card-job-${job.id}`}
-                role="link"
-                tabIndex={0}
-                onClick={() => navigate(`/jobs/${job.id}`)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    navigate(`/jobs/${job.id}`);
-                  }
-                }}
-              >
-                <ContentCard index={index} className="gamify-radius-chunky gamify-shadow">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-2 flex-wrap">
-                        <h3 className="font-semibold text-lg text-foreground" data-testid={`text-job-title-${job.id}`}>
-                          {job.title}
-                        </h3>
-                        <StatusBadge status={statusLabel(job.status)} />
-                        <JobScoreChips jobId={job.id} profiles={roleProfiles} />
-                      </div>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
-                        <div className="flex items-center gap-1.5">
-                          <Building className="h-3.5 w-3.5" />
-                          <span data-testid={`text-job-company-${job.id}`}>{job.company}</span>
-                        </div>
-                        {job.location && (
-                          <div className="flex items-center gap-1.5">
-                            <MapPin className="h-3.5 w-3.5" />
-                            <span data-testid={`text-job-location-${job.id}`}>{job.location}</span>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-1.5">
-                          <span>Added {format(new Date(job.createdAt), "MMM d, yyyy")}</span>
-                        </div>
-                        {job.parsedRequiredSkills && job.parsedRequiredSkills.length > 0 && (
-                          <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20">
-                            {job.parsedRequiredSkills.length} skills
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-end gap-2 shrink-0 ml-4">
-                      {job.sourceUrl && (
-                        <a
-                          href={job.sourceUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs flex items-center gap-1 text-primary hover:text-primary/85 font-medium transition-colors"
-                          onClick={(e) => e.stopPropagation()}
-                          data-testid={`link-job-source-${job.id}`}
-                        >
-                          Original Post <ExternalLink className="h-3 w-3" />
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                </ContentCard>
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[1, 2, 3, 4].map(i => (
+            <Skeleton key={i} className="h-44 w-full rounded-[20px]" />
+          ))}
+        </div>
+      ) : jobs?.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <span className="text-5xl mb-5">📋</span>
+          <h2 className="text-xl font-bold font-display text-foreground mb-2">No jobs yet</h2>
+          <p className="text-muted-foreground max-w-sm mb-6">
+            Start tracking job opportunities by ingesting your first job description.
+          </p>
+          <GradientButton onClick={() => setIsDialogOpen(true)}>
+            <Plus className="mr-2 h-5 w-5" />
+            Ingest Your First Job
+          </GradientButton>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {jobs?.map((job, index) => (
+            <motion.div
+              key={job.id}
+              initial={shouldReduceMotion ? {} : { opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+              className="card-chunky cursor-pointer hover:-translate-y-1 hover:shadow-[0_8px_0_hsl(var(--border))] transition-all duration-200"
+              onClick={() => navigate(`/jobs/${job.id}`)}
+              data-testid={`card-job-${job.id}`}
+              role="link"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  navigate(`/jobs/${job.id}`);
+                }
+              }}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <span
+                  className="text-sm text-muted-foreground"
+                  data-testid={`text-job-company-${job.id}`}
+                >
+                  {job.company}
+                </span>
+                <StatusPill status={job.status} />
               </div>
-            </StaggerItem>
-          ))
-        )}
-      </StaggerContainer>
+              <h3
+                className="text-xl font-semibold font-display text-foreground mb-4"
+                data-testid={`text-job-title-${job.id}`}
+              >
+                {job.title}
+              </h3>
+              <div className="flex items-center gap-3">
+                {roleProfiles.length > 0 && (
+                  <ScoreDots jobId={job.id} profiles={roleProfiles} />
+                )}
+                {job.location && (
+                  <span className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <MapPin className="h-3.5 w-3.5" />
+                    <span data-testid={`text-job-location-${job.id}`}>{job.location}</span>
+                  </span>
+                )}
+                <div className="flex-1" />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1 text-muted-foreground hover:text-foreground"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/jobs/${job.id}`);
+                  }}
+                >
+                  View <ArrowRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
