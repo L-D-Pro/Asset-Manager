@@ -247,6 +247,54 @@ Intended progression:
 4. Correlate outcomes with prompts, models, claims, and documents.
 5. Consider fine-tuning only after enough approved, terms-safe examples exist.
 
+## Quality Validation Layer (May 2026)
+
+### Best Practices Integration
+
+Before each AI call, the pipeline loads quality rules from the `best_practices` table and injects them into the system prompt:
+
+```typescript
+const bestPractices = await loadOrCreateBestPractices("general");
+const rulesText = formatBestPracticesForPrompt(bestPractices);
+const fullSystemPrompt = SYSTEM_PROMPT + "\n\nQUALITY STANDARDS:\n" + rulesText;
+```
+
+### Post-Generation Validation
+
+After AI returns output, these checks run:
+
+| Check | Description | Action on Failure |
+|-------|-------------|-------------------|
+| `checkNoMarkdown()` | Detects bold, italic, headers, lists, code | Reject output, store for debugging |
+| `checkNoGenericFiller()` | Detects 19 generic phrases | Reject output |
+| `checkQuantifiedImpact()` | Requires numbers in resume bullets | Reject output |
+| `checkCoverLetterLength()` | Enforces 250-400 words | Reject output |
+
+### Resume-to-Profile Pipeline
+
+`POST /resume-to-profile` analyzes the base resume and auto-generates a role profile:
+
+1. Fetch latest base resume (`isCurrent = true`)
+2. Call AI with `taskType: "resume_analysis"`
+3. Parse JSON into `roleProfilesTable` schema
+4. Insert with `isActive: true`
+
+### Semantic Scoring
+
+`POST /jobs/:id/resume-score` compares resume vs job:
+
+- Skill matching (exact/synonym/related/missing)
+- Experience years comparison
+- Education equivalent detection
+- Keyword presence
+- Gap analysis with actionable suggestions
+
+### Files
+- `artifacts/api-server/src/lib/best-practices.ts` — Service
+- `artifacts/api-server/src/lib/pipelines/validation.ts` — Validators
+- `artifacts/api-server/src/lib/semantic-scoring.ts` — Scoring engine
+- `artifacts/api-server/src/lib/prompts/gap-analysis.ts` — Gap prompt builder
+
 ## Safety Boundaries
 
 The app must not:

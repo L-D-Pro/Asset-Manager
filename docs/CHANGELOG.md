@@ -5,6 +5,35 @@ All notable changes to the Job Ops platform.
 ## Unreleased
 
 ### Added
+
+#### AI Quality Improvements (May 2, 2026)
+- **Best Practices Engine** (`/admin/best-practices`): DB-backed rules system for controlling AI output quality. 6 default rules: no markdown, no generic filler, quantified impact, cover letter length, job tailoring, business problem addressing.
+- **Resume-to-Profile Pipeline** (`POST /resume-to-profile`): Auto-generate role profiles from base resume using AI analysis.
+- **Semantic Resume Scoring** (`POST /jobs/:id/resume-score`): Compare resume against job with skill/experience/education matching, gap analysis, and actionable suggestions. Updated existing `GET /jobs/:id/score` with `?useResume=true` param.
+- **Quality Validation Layer**: Post-generation checks for markdown formatting, generic filler phrases, quantified impact, and cover letter length. Violations stored for debugging.
+- **Improved AI Prompts**: Resume and cover letter prompts now include formatting rules, quality requirements, comparison instructions, and resume context. Best practices are injected into prompts before AI calls.
+
+#### UI/UX Improvements (May 2, 2026)
+- **3D Interactive Cards**: `TiltCard` component with mouse-tracking parallax, spring physics, and colored gradient backgrounds. Applied to dashboard hero, XP card, streak card, and quick actions.
+- **Atmospheric Depth**: Ambient blue/purple/orb orbs with slow pulse animations behind dashboard content. Glassmorphism cards at 70% white with backdrop blur.
+- **Complete UI Polish**: All 26+ pages standardized with glassmorphism (`ContentCard`), semantic Tailwind classes (no hardcoded HSL), and canonical `PageHeader` components.
+- **Delete/Cleanup Everywhere**: Individual delete buttons on all user content pages (Jobs, Resume Versions, Cover Letters, Base Resume, Assisted Apply). Bulk "Clean Up" buttons for rejected/pending items.
+- **Resume Queue Visibility**: Fixed content detection to show generated resume text via "View Content" toggle.
+
+#### Gamification (Completed Earlier)
+- **Gamification Engine**: XP, streaks, achievements, quests system with 7 DB tables.
+- **Gamified Components**: GradientButton, ProgressRing, XPCard, StreakFlame, GamifiedBadge, QuestCard, AchievementToast.
+- **Dashboard Integration**: Gamification strip with XP bar, streak flame, achievement badges, and quest cards.
+
+### Fixed
+- Resume formatting: AI no longer outputs markdown (`**bold**`, `*italic*`, etc.)
+- Cover letter length: Enforced 250-400 word range
+- Generic filler: Detected and flagged 19 common phrases
+- Quantified impact: Every resume bullet must contain numbers/percentages
+- Job Detail page: Added PageHeader, semantic classes, proper padding
+- All pages: Removed arbitrary Tailwind values, hardcoded colors, legacy font references
+
+### Previous Features
 - **Trends & Market Research Hub** (`/trends`): AI-powered market analysis for any job title, including skills demand, certifications, salary insights, and personalized action plans.
 - **Job Board Aggregation**: Background RSS/Atom feed aggregator that collects real job listings from configured sources. Configure via `JOB_SOURCE_CONFIG` env var.
 - **Trends Cache**: 24-hour caching of AI-generated market research to reduce API costs.
