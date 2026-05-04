@@ -154,122 +154,154 @@ Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed
   const practicesText = formatBestPracticesForPrompt(bestPractices);
   const augmentedSystemPrompt = SYSTEM_PROMPT + practicesText;
 
-  const result = await callAI({
-    taskType: "resume_tailoring",
-    systemPrompt: augmentedSystemPrompt,
-    userPrompt:
-      `Tailor the base resume for this job.\n\n` +
-      `Base Resume (current source of truth):\n${baseResumeVersion.contentText}\n\n` +
-      `${jobContext}\n\nAvailable claims (use ONLY these):\n${claimsContext}`,
-    jobId: job.id,
-    modelOverride: options?.modelOverride,
-  });
+  const MAX_RETRIES = 2;
+  let attempt = 0;
+  let lastQualityViolation: QualityViolation | null = null;
+  let lastResult: Awaited<ReturnType<typeof callAI>> | null = null;
+  let parsed: TailoringResult | null = null;
+  let validatedBullets: NonNullable<ReturnType<typeof validateBullet>>[] = [];
 
-  const parsed = parseJsonResponse<TailoringResult>(result.content);
+  while (attempt <= MAX_RETRIES) {
+    const correctionNote =
+      lastQualityViolation && attempt > 0
+        ? `\n\n[SELF-CORRECTION — attempt ${attempt + 1} of ${MAX_RETRIES + 1}]\nYour previous output failed quality validation:\n${lastQualityViolation.violations.map((v) => `- ${v}`).join("\n")}\nFix ALL of these issues and regenerate the complete output.`
+        : "";
 
-  if (
-    !parsed ||
-    typeof parsed.documentText !== "string" ||
-    parsed.documentText.trim() === "" ||
-    !Array.isArray(parsed.bullets)
-  ) {
+    lastResult = await callAI({
+      taskType: "resume_tailoring",
+      systemPrompt: augmentedSystemPrompt,
+      userPrompt:
+        `Tailor the base resume for this job.\n\n` +
+        `Base Resume (current source of truth):\n${baseResumeVersion.contentText}\n\n` +
+        `${jobContext}\n\nAvailable claims (use ONLY these):\n${claimsContext}` +
+        correctionNote,
+      jobId: job.id,
+      modelOverride: options?.modelOverride,
+    });
+
+    parsed = parseJsonResponse<TailoringResult>(lastResult.content);
+
+    if (
+      !parsed ||
+      typeof parsed.documentText !== "string" ||
+      parsed.documentText.trim() === "" ||
+      !Array.isArray(parsed.bullets)
+    ) {
+      logger.error(
+        { jobId: job.id, raw: lastResult.content.slice(0, 500) },
+        "AI returned unparseable JSON for resume tailoring — storing failed version",
+      );
+      const [row] = await db
+        .insert(resumeVersionsTable)
+        .values({
+          jobId: job.id,
+          label: "AI tailored — generation failed",
+          status: "pending_approval",
+          baseResumeVersionId: baseResumeVersion.id,
+          runId: lastResult.runId,
+          eventLogId: lastResult.eventLogId,
+          claimIds: [],
+          tailoredBullets: [],
+          tailoredDocumentText: null,
+          rawContent: lastResult.content,
+          notes: "AI output could not be parsed as structured JSON. Review raw content and regenerate.",
+        })
+        .returning();
+      return row!;
+    }
+
+    validatedBullets = parsed.bullets
+      .map((b) => validateBullet(b, selectedClaims))
+      .filter((b): b is NonNullable<typeof b> => b !== null);
+
+    try {
+      assertMinimumContent(validatedBullets, lastResult.content, "resume bullets");
+    } catch (err) {
+      if (err instanceof TruthLockViolation) {
+        logger.error(
+          { jobId: job.id, ...err.details },
+          "Truth lock violation: zero valid bullets — storing failed version",
+        );
+        const [row] = await db
+          .insert(resumeVersionsTable)
+          .values({
+            jobId: job.id,
+            label: "AI tailored — truth lock failure",
+            status: "pending_approval",
+            baseResumeVersionId: baseResumeVersion.id,
+            runId: lastResult.runId,
+            eventLogId: lastResult.eventLogId,
+            claimIds: [],
+            tailoredBullets: [],
+            tailoredDocumentText: parsed.documentText as string,
+            rawContent: lastResult.content,
+            notes: `Truth lock failure: ${err.message}. All AI-generated bullets cited claim IDs not in the selected set. Review claims and regenerate.`,
+          })
+          .returning();
+        return row!;
+      }
+      throw err;
+    }
+
+    // ─── Best Practices Quality Validation ───
+    try {
+      validateResumeQuality(parsed.documentText as string, validatedBullets);
+      lastQualityViolation = null;
+      break; // passed — exit retry loop
+    } catch (err) {
+      if (err instanceof QualityViolation) {
+        lastQualityViolation = err;
+        logger.warn(
+          { jobId: job.id, attempt: attempt + 1, violations: err.violations },
+          "Resume quality violation — retrying",
+        );
+        attempt++;
+      } else {
+        throw err;
+      }
+    }
+  }
+
+  // After retry loop: if still failing quality, store failed record
+  if (lastQualityViolation) {
     logger.error(
-      { jobId: job.id, raw: result.content.slice(0, 500) },
-      "AI returned unparseable JSON for resume tailoring — storing failed version",
+      { jobId: job.id, violations: lastQualityViolation.violations },
+      "Resume quality validation failed after all retries — storing failed version",
     );
     const [row] = await db
       .insert(resumeVersionsTable)
       .values({
         jobId: job.id,
-        label: "AI tailored — generation failed",
+        label: "AI tailored — quality check failed",
         status: "pending_approval",
         baseResumeVersionId: baseResumeVersion.id,
-        runId: result.runId,
-        eventLogId: result.eventLogId,
-        claimIds: [],
-        tailoredBullets: [],
-        tailoredDocumentText: null,
-        rawContent: result.content,
-        notes: "AI output could not be parsed as structured JSON. Review raw content and regenerate.",
+        runId: lastResult!.runId,
+        eventLogId: lastResult!.eventLogId,
+        claimIds: [...new Set(validatedBullets.flatMap((b) => b.claimIds))],
+        tailoredBullets: validatedBullets as unknown as Record<string, unknown>[],
+        tailoredDocumentText: parsed!.documentText as string,
+        rawContent: lastResult!.content,
+        notes: `Quality check failed after ${MAX_RETRIES + 1} attempts:\n${lastQualityViolation.violations.join("\n")}\n\nThe AI output violated best practices. Review and regenerate, or adjust your claims.`,
       })
       .returning();
     return row!;
   }
 
-  const validatedBullets = parsed.bullets
-    .map((b) => validateBullet(b, selectedClaims))
-    .filter((b): b is NonNullable<typeof b> => b !== null);
-
-  try {
-    assertMinimumContent(validatedBullets, result.content, "resume bullets");
-  } catch (err) {
-    if (err instanceof TruthLockViolation) {
-      logger.error(
-        { jobId: job.id, ...err.details },
-        "Truth lock violation: zero valid bullets after validation — storing failed version",
-      );
-      const [row] = await db
-        .insert(resumeVersionsTable)
-        .values({
-          jobId: job.id,
-          label: "AI tailored — truth lock failure",
-          status: "pending_approval",
-          baseResumeVersionId: baseResumeVersion.id,
-          runId: result.runId,
-          eventLogId: result.eventLogId,
-          claimIds: [],
-          tailoredBullets: [],
-          tailoredDocumentText: parsed.documentText,
-          rawContent: result.content,
-          notes: `Truth lock failure: ${err.message}. All AI-generated bullets cited claim IDs not in the selected set. Review claims and regenerate.`,
-        })
-        .returning();
-      return row!;
-    }
-    throw err;
-  }
-
-  // ─── Best Practices Quality Validation ───
-  try {
-    validateResumeQuality(parsed.documentText as string, validatedBullets);
-  } catch (err) {
-    if (err instanceof QualityViolation) {
-      logger.error(
-        { jobId: job.id, violations: err.violations },
-        "Quality violation in resume output — storing failed version",
-      );
-      const [row] = await db
-        .insert(resumeVersionsTable)
-        .values({
-          jobId: job.id,
-          label: "AI tailored — quality check failed",
-          status: "pending_approval",
-          baseResumeVersionId: baseResumeVersion.id,
-          runId: result.runId,
-          eventLogId: result.eventLogId,
-          claimIds: [...new Set(validatedBullets.flatMap((b) => b.claimIds))],
-          tailoredBullets: validatedBullets as unknown as Record<string, unknown>[],
-          tailoredDocumentText: parsed.documentText as string,
-          rawContent: result.content,
-          notes: `Quality check failed:\n${err.violations.join("\n")}\n\nThe AI output violated best practices. Review and regenerate, or adjust your claims to include more quantified achievements.`,
-        })
-        .returning();
-      return row!;
-    }
-    throw err;
-  }
+  // At this point parsed and lastResult are guaranteed non-null (loop exited via break after passing quality check)
+  const finalParsed = parsed!;
+  const finalResult = lastResult!;
 
   const usedClaimIds = [...new Set(validatedBullets.flatMap((b) => b.claimIds))];
   const diffData = {
-    addedBullets: parsed.addedBullets ?? [],
-    removedBullets: parsed.removedBullets ?? [],
-    reorderedSections: parsed.reorderedSections ?? [],
-    summary: parsed.summary ?? "",
+    addedBullets: finalParsed.addedBullets ?? [],
+    removedBullets: finalParsed.removedBullets ?? [],
+    reorderedSections: finalParsed.reorderedSections ?? [],
+    summary: finalParsed.summary ?? "",
     generatedAt: new Date().toISOString(),
-    modelName: result.modelName,
-    bulletsTotal: parsed.bullets.length,
+    modelName: finalResult.modelName,
+    bulletsTotal: finalParsed.bullets?.length ?? 0,
     bulletsPassedValidation: validatedBullets.length,
-    bulletsDiscarded: parsed.bullets.length - validatedBullets.length,
+    bulletsDiscarded: (finalParsed.bullets?.length ?? 0) - validatedBullets.length,
   };
 
   const sanitizedBullets = validatedBullets.map((b) => ({
@@ -277,7 +309,7 @@ Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed
     text: stripClaimIdRefs(b.text),
   }));
 
-  const sanitizedDocumentText = stripClaimIdRefs(parsed.documentText as string);
+  const sanitizedDocumentText = stripClaimIdRefs(finalParsed.documentText as string);
 
   const [row] = await db
     .insert(resumeVersionsTable)
@@ -286,13 +318,13 @@ Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed
       label: `AI tailored — ${new Date().toLocaleDateString()}`,
       status: "pending_approval",
       baseResumeVersionId: baseResumeVersion.id,
-      runId: result.runId,
-      eventLogId: result.eventLogId,
+      runId: finalResult.runId,
+      eventLogId: finalResult.eventLogId,
       claimIds: usedClaimIds,
       tailoredDocumentText: sanitizedDocumentText,
       tailoredBullets: sanitizedBullets as unknown as Record<string, unknown>[],
       diffData: diffData as unknown as Record<string, unknown>,
-      notes: parsed.summary ?? "AI-generated resume tailoring",
+      notes: finalParsed.summary ?? "AI-generated resume tailoring",
     })
     .returning();
 
@@ -300,9 +332,9 @@ Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed
     {
       jobId: job.id,
       resumeVersionId: row!.id,
-      bulletsGenerated: parsed.bullets.length,
+      bulletsGenerated: finalParsed.bullets?.length ?? 0,
       bulletsValid: validatedBullets.length,
-      discarded: parsed.bullets.length - validatedBullets.length,
+      discarded: (finalParsed.bullets?.length ?? 0) - validatedBullets.length,
     },
     "Resume tailor pipeline completed",
   );
