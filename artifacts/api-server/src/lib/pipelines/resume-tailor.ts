@@ -6,7 +6,7 @@ import {
 import { eq } from "drizzle-orm";
 import { callAI, parseJsonResponse } from "../ai-client";
 import { matchClaimsToJob } from "../scoring";
-import { validateBullet, assertMinimumContent, TruthLockViolation, stripClaimIdRefs, validateResumeQuality, QualityViolation } from "./validation";
+import { validateBullet, assertMinimumContent, TruthLockViolation, stripClaimIdRefs, validateResumeQuality, validateSemanticQuality, QualityViolation } from "./validation";
 import { logger } from "../logger";
 import { loadOrCreateBestPractices, formatBestPracticesForPrompt } from "../best-practices";
 import type { Job, Claim } from "@workspace/db";
@@ -248,6 +248,7 @@ Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed
     // ─── Best Practices Quality Validation ───
     try {
       validateResumeQuality(parsed.documentText as string, validatedBullets);
+      await validateSemanticQuality(parsed.documentText as string, jobContext, job.id);
       lastQualityViolation = null;
       break; // passed — exit retry loop
     } catch (err) {

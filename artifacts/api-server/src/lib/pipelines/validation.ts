@@ -1,5 +1,6 @@
 import { logger } from "../logger";
 import type { Claim } from "@workspace/db";
+import { callAI, parseJsonResponse } from "../ai-client";
 
 /**
  * Thrown when AI output fails quality validation — specifically when best practices
@@ -297,6 +298,58 @@ export function validateResumeQuality(
     throw new QualityViolation(
       `Resume failed quality validation: ${violations.length} violations`,
       violations,
+      documentText,
+    );
+  }
+}
+
+const SEMANTIC_QUALITY_SYSTEM_PROMPT = `You are a strict quality-control reviewer for job application documents.
+Your job is to check whether a document meets the following criteria:
+1. TAILORED — the document clearly targets THIS specific job, not a generic version. Look for the company name, role title, or specific JD keywords.
+2. BUSINESS_PROBLEM — at least one bullet or paragraph addresses a concrete business problem the candidate solved (not just a task performed).
+3. NO_HALLUCINATION — every specific claim (metric, product name, technology) reads as plausible and specific, not vague or contradictory.
+
+Return ONLY valid JSON:
+{ "passes": boolean, "violations": ["violation 1", ...] }
+
+If all checks pass, return { "passes": true, "violations": [] }.
+If any check fails, return { "passes": false, "violations": ["Descriptive violation message", ...] }.`;
+
+/**
+ * Runs a lightweight AI self-check for semantic quality rules that regex cannot enforce.
+ * Checks tailoring specificity, business-problem framing, and hallucination signals.
+ * Throws QualityViolation if the AI finds violations.
+ * Non-fatal on AI call failure — logs a warning and returns without throwing.
+ */
+export async function validateSemanticQuality(
+  documentText: string,
+  jobContext: string,
+  jobId?: number,
+): Promise<void> {
+  let result;
+  try {
+    result = await callAI({
+      taskType: "quality_check",
+      systemPrompt: SEMANTIC_QUALITY_SYSTEM_PROMPT,
+      userPrompt: `JOB CONTEXT:\n${jobContext.slice(0, 1000)}\n\nDOCUMENT TO REVIEW:\n${documentText.slice(0, 3000)}`,
+      jobId,
+    });
+  } catch (err) {
+    logger.warn({ err, jobId }, "Semantic quality check AI call failed — skipping");
+    return;
+  }
+
+  const parsed = parseJsonResponse<{ passes: boolean; violations: string[] }>(result.content);
+  if (!parsed) {
+    logger.warn({ jobId, raw: result.content.slice(0, 300) }, "Semantic quality check returned unparseable response — skipping");
+    return;
+  }
+
+  if (!parsed.passes && parsed.violations?.length > 0) {
+    logger.warn({ jobId, violations: parsed.violations }, "Semantic quality violations detected");
+    throw new QualityViolation(
+      `Semantic quality check failed: ${parsed.violations.length} violations`,
+      parsed.violations,
       documentText,
     );
   }
