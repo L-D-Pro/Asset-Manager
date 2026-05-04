@@ -1,5 +1,4 @@
 import { BookOpen, Lightbulb, HelpCircle, ArrowRight, FileText, Briefcase, Brain, MessageSquare, Sparkles } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { ContentCard } from "@/components/ui/content-card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -65,90 +64,84 @@ export default function GuidePage() {
   />
 
   <FadeIn>
-  <ContentCard padding="none">
-  <CardHeader>
-  <CardTitle className="flex items-center gap-2">
-  <Sparkles className="h-5 w-5 text-primary" />
+  <ContentCard>
+  <div className="mb-4">
+  <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
+  <Sparkles className="h-5 w-5 text-primary shrink-0" />
   Getting Started
- </CardTitle>
- <CardDescription>Follow these four steps to make your first application.</CardDescription>
- </CardHeader>
- <CardContent>
- <div className="space-y-4">
- {GETTING_STARTED.map((item, i) => (
- <Link key={i} to={item.to} className="flex items-start gap-4 rounded-lg border p-4 hover:bg-muted/50 transition-colors group">
- <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
- <span className="text-sm font-bold">{i + 1}</span>
- </div>
- <div className="flex-1 min-w-0">
- <p className="font-medium text-sm group-hover:text-primary transition-colors">{item.step}</p>
- <p className="text-sm text-muted-foreground">{item.desc}</p>
- </div>
- <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1.5 group-hover:translate-x-0.5 transition-transform" />
- </Link>
- ))}
- </div>
- </CardContent>
- </ContentCard>
+  </h2>
+  <p className="text-sm text-muted-foreground mt-0.5">Follow these four steps to make your first application.</p>
+  </div>
+  <div className="space-y-2">
+  {GETTING_STARTED.map((item, i) => (
+  <Link key={i} to={item.to} className="flex items-start gap-4 rounded-xl px-4 py-3 hover:bg-muted/60 transition-colors group">
+  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+  <span className="text-sm font-bold">{i + 1}</span>
+  </div>
+  <div className="flex-1 min-w-0">
+  <p className="font-medium text-sm group-hover:text-primary transition-colors">{item.step}</p>
+  <p className="text-sm text-muted-foreground">{item.desc}</p>
+  </div>
+  <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1.5 group-hover:translate-x-0.5 transition-transform" />
+  </Link>
+  ))}
+  </div>
+  </ContentCard>
  </FadeIn>
 
   <FadeIn>
-  <ContentCard padding="none">
-  <CardHeader>
-  <CardTitle className="flex items-center gap-2">
-  <Lightbulb className="h-5 w-5 text-warning" />
+  <ContentCard>
+  <div className="mb-4">
+  <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
+  <Lightbulb className="h-5 w-5 text-warning shrink-0" />
   Pro Tips
- </CardTitle>
- <CardDescription>Small habits that make a big difference.</CardDescription>
- </CardHeader>
- <CardContent>
- <ul className="space-y-3 text-sm text-muted-foreground">
- <li className="flex items-start gap-2">
- <span className="font-bold text-foreground">Keep your base resume updated.</span>
- {" "}Every tailored resume starts here. The better your base, the better the output.
- </li>
- <li className="flex items-start gap-2">
- <span className="font-bold text-foreground">Build claims for everything.</span>
- {" "}The more claims you have, the more material the AI has to personalize cover letters.
- </li>
- <li className="flex items-start gap-2">
- <span className="font-bold text-foreground">Review before using.</span>
- {" "}Always read AI-generated drafts carefully. The AI can make mistakes — you are the final editor.
- </li>
- <li className="flex items-start gap-2">
- <span className="font-bold text-foreground">Log your outcomes.</span>
- {" "}Mark applications with their result (interview, offer, rejected). This feeds the AI Learning system.
- </li>
- <li className="flex items-start gap-2">
- <span className="font-bold text-foreground">Use the Trends page.</span>
- {" "}Check market data and salary ranges before applying to ensure the role is a good fit.
- </li>
- </ul>
- </CardContent>
- </ContentCard>
+  </h2>
+  <p className="text-sm text-muted-foreground mt-0.5">Small habits that make a big difference.</p>
+  </div>
+  <ul className="space-y-3 text-sm text-muted-foreground">
+  <li className="flex items-start gap-2">
+  <span className="font-bold text-foreground">Keep your base resume updated.</span>
+  {" "}Every tailored resume starts here. The better your base, the better the output.
+  </li>
+  <li className="flex items-start gap-2">
+  <span className="font-bold text-foreground">Build claims for everything.</span>
+  {" "}The more claims you have, the more material the AI has to personalize cover letters.
+  </li>
+  <li className="flex items-start gap-2">
+  <span className="font-bold text-foreground">Review before using.</span>
+  {" "}Always read AI-generated drafts carefully. The AI can make mistakes — you are the final editor.
+  </li>
+  <li className="flex items-start gap-2">
+  <span className="font-bold text-foreground">Log your outcomes.</span>
+  {" "}Mark applications with their result (interview, offer, rejected). This feeds the AI Learning system.
+  </li>
+  <li className="flex items-start gap-2">
+  <span className="font-bold text-foreground">Use the Trends page.</span>
+  {" "}Check market data and salary ranges before applying to ensure the role is a good fit.
+  </li>
+  </ul>
+  </ContentCard>
  </FadeIn>
 
   <FadeIn>
-  <ContentCard padding="none">
-  <CardHeader>
-  <CardTitle className="flex items-center gap-2">
-  <HelpCircle className="h-5 w-5 text-primary" />
+  <ContentCard>
+  <div className="mb-4">
+  <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
+  <HelpCircle className="h-5 w-5 text-primary shrink-0" />
   Frequently Asked Questions
- </CardTitle>
- </CardHeader>
- <CardContent>
- <Accordion type="single" collapsible className="w-full">
- {FAQ_ITEMS.map((item, i) => (
- <AccordionItem key={i} value={`faq-${i}`}>
- <AccordionTrigger className="text-sm font-medium text-left">{item.q}</AccordionTrigger>
- <AccordionContent className="text-sm text-muted-foreground leading-relaxed">
- {item.a}
- </AccordionContent>
- </AccordionItem>
- ))}
- </Accordion>
- </CardContent>
- </ContentCard>
+  </h2>
+  </div>
+  <Accordion type="single" collapsible className="w-full">
+  {FAQ_ITEMS.map((item, i) => (
+  <AccordionItem key={i} value={`faq-${i}`}>
+  <AccordionTrigger className="text-sm font-medium text-left">{item.q}</AccordionTrigger>
+  <AccordionContent className="text-sm text-muted-foreground leading-relaxed">
+  {item.a}
+  </AccordionContent>
+  </AccordionItem>
+  ))}
+  </Accordion>
+  </ContentCard>
  </FadeIn>
 
  <p className="text-center text-xs text-muted-foreground pb-8">
