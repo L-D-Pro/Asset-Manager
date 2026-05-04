@@ -47,6 +47,18 @@ interface VariantComparison {
  revertedAt: string | null;
 }
 
+interface OutcomeStat {
+ taskScope: string;
+ totalEvaluations: number;
+ approved: number;
+ rejected: number;
+ pending: number;
+ approvalRate: number;
+ avgTruthfulnessScore: number | null;
+ avgRelevanceScore: number | null;
+ activeTrainingExamples: number;
+}
+
 interface LearningConfig {
  id: number;
  autoPromoteEnabled: boolean;
@@ -99,6 +111,11 @@ export default function AiLearningPage() {
  const { data: config } = useQuery<LearningConfig>({
  queryKey: ["ai-learning-config"],
  queryFn: () => fetch(`${API_BASE}/config`).then((r) => r.json()),
+ });
+
+ const { data: outcomeStats } = useQuery<OutcomeStat[]>({
+ queryKey: ["ai-learning-outcome-stats"],
+ queryFn: () => fetch(`${API_BASE}/outcome-stats`).then((r) => r.json()),
  });
 
  const recomputeMutation = useMutation({
@@ -182,6 +199,7 @@ export default function AiLearningPage() {
  });
 
  const hasData = stats && stats.length > 0;
+ const hasOutcomeData = outcomeStats && outcomeStats.length > 0;
  const suggestedComparisons =
  comparisons?.filter((c) => c.status === "suggested") ?? [];
  const autoComparisons =
@@ -585,6 +603,66 @@ export default function AiLearningPage() {
  </div>
  </>
  )}
+
+ {/* Outcome Analytics Section */}
+ <ContentCard>
+ <div className="flex items-center gap-2 mb-4">
+ <TrendingUp className="h-5 w-5 text-primary" />
+ <SectionHeader
+ title="Outcome Analytics"
+ description="Approval rates, quality scores, and active training examples per task scope."
+ />
+ </div>
+ {hasOutcomeData ? (
+ <Table>
+ <TableHeader>
+ <TableRow>
+ <TableHead>Task Scope</TableHead>
+ <TableHead className="text-right">Evaluations</TableHead>
+ <TableHead className="text-right">Approval Rate</TableHead>
+ <TableHead className="text-right">Approved</TableHead>
+ <TableHead className="text-right">Rejected</TableHead>
+ <TableHead className="text-right">Avg Truthfulness</TableHead>
+ <TableHead className="text-right">Avg Relevance</TableHead>
+ <TableHead className="text-right">Training Examples</TableHead>
+ </TableRow>
+ </TableHeader>
+ <TableBody>
+ {outcomeStats!.map((stat) => (
+ <TableRow key={stat.taskScope}>
+ <TableCell className="font-mono text-sm">{stat.taskScope}</TableCell>
+ <TableCell className="text-right">{stat.totalEvaluations}</TableCell>
+ <TableCell className="text-right">
+ <span
+ className={cn(
+ "font-semibold",
+ stat.approvalRate >= 70 ? "text-green-600" : stat.approvalRate >= 40 ? "text-yellow-600" : "text-red-600",
+ )}
+ >
+ {stat.approvalRate}%
+ </span>
+ </TableCell>
+ <TableCell className="text-right text-green-600">{stat.approved}</TableCell>
+ <TableCell className="text-right text-red-600">{stat.rejected}</TableCell>
+ <TableCell className="text-right">{stat.avgTruthfulnessScore ?? "—"}</TableCell>
+ <TableCell className="text-right">{stat.avgRelevanceScore ?? "—"}</TableCell>
+ <TableCell className="text-right">
+ <Badge variant={stat.activeTrainingExamples > 0 ? "default" : "secondary"}>
+ {stat.activeTrainingExamples}
+ </Badge>
+ </TableCell>
+ </TableRow>
+ ))}
+ </TableBody>
+ </Table>
+ ) : (
+ <div className="py-8 text-center text-muted-foreground">
+ <CheckCircle className="h-8 w-8 mx-auto mb-2 opacity-40" />
+ <p className="text-sm">No evaluations recorded yet. Approve or reject resume and cover letter versions to start building outcome data.</p>
+ </div>
+ )}
+ </ContentCard>
+
  </div>
  );
 }

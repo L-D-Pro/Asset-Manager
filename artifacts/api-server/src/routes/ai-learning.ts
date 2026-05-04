@@ -702,4 +702,61 @@ router.put("/ai-learning/config", async (req, res): Promise<void> => {
   }
 });
 
+router.get("/ai-learning/outcome-stats", async (req, res): Promise<void> => {
+  const query = z.object({ taskScope: z.string().optional() }).safeParse(req.query);
+  if (!query.success) {
+    res.status(400).json({ error: query.error.message });
+    return;
+  }
+
+  const rows = await db
+    .select()
+    .from(aiRunEvaluationsTable)
+    .where(
+      query.data.taskScope
+        ? eq(aiRunEvaluationsTable.taskScope, query.data.taskScope)
+        : undefined,
+    )
+    .orderBy(desc(aiRunEvaluationsTable.createdAt));
+
+  const byScope = new Map<string, { approved: number; rejected: number; pending: number; avgTruthfulness: number; avgRelevance: number; total: number }>();
+
+  for (const row of rows) {
+    if (!byScope.has(row.taskScope)) {
+      byScope.set(row.taskScope, { approved: 0, rejected: 0, pending: 0, avgTruthfulness: 0, avgRelevance: 0, total: 0 });
+    }
+    const stat = byScope.get(row.taskScope)!;
+    stat.total++;
+    if (row.approvalOutcome === "approved") stat.approved++;
+    else if (row.approvalOutcome === "rejected") stat.rejected++;
+    else stat.pending++;
+    if (row.truthfulnessScore != null) stat.avgTruthfulness += row.truthfulnessScore;
+    if (row.relevanceScore != null) stat.avgRelevance += row.relevanceScore;
+  }
+
+  const trainingCounts = await db
+    .select()
+    .from(aiTrainingExamplesTable)
+    .where(eq(aiTrainingExamplesTable.isActive, true));
+
+  const trainingByScope = new Map<string, number>();
+  for (const ex of trainingCounts) {
+    trainingByScope.set(ex.taskScope, (trainingByScope.get(ex.taskScope) ?? 0) + 1);
+  }
+
+  const result = Array.from(byScope.entries()).map(([scope, stat]) => ({
+    taskScope: scope,
+    totalEvaluations: stat.total,
+    approved: stat.approved,
+    rejected: stat.rejected,
+    pending: stat.pending,
+    approvalRate: stat.total > 0 ? Math.round((stat.approved / stat.total) * 100) : 0,
+    avgTruthfulnessScore: stat.total > 0 ? Math.round(stat.avgTruthfulness / stat.total) : null,
+    avgRelevanceScore: stat.total > 0 ? Math.round(stat.avgRelevance / stat.total) : null,
+    activeTrainingExamples: trainingByScope.get(scope) ?? 0,
+  }));
+
+  res.json(result);
+});
+
 export default router;
