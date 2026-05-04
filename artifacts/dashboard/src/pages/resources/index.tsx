@@ -1,5 +1,4 @@
 import { BookOpen, Heart, ExternalLink, GraduationCap, LifeBuoy, Shield } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { ContentCard } from "@/components/ui/content-card";
 import { FadeIn } from "@/components/motion/fade-in";
@@ -178,37 +177,35 @@ export default function ResourcesPage() {
  {RESOURCE_SECTIONS.map((section) => (
   <StaggerItem key={section.title}>
   <FadeIn>
-  <ContentCard padding="none">
-  <CardHeader>
- <CardTitle className="flex items-center gap-2 text-lg">
- <section.icon className="h-5 w-5 text-primary" />
+  <ContentCard>
+  <div className="mb-4">
+ <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
+ <section.icon className="h-5 w-5 text-primary shrink-0" />
  {section.title}
- </CardTitle>
- <CardDescription>{section.description}</CardDescription>
- </CardHeader>
- <CardContent>
- <ul className="space-y-4">
+ </h2>
+ <p className="text-sm text-muted-foreground mt-0.5">{section.description}</p>
+  </div>
+  <ul className="space-y-2">
  {section.links.map((link) => (
  <li key={link.name}>
  <a
  href={link.url}
  target="_blank"
  rel="noopener noreferrer"
- className="group block rounded-lg border p-4 hover:bg-muted/50 transition-colors"
+ className="group flex items-start justify-between gap-3 rounded-xl px-4 py-3 hover:bg-muted/60 transition-colors"
  >
- <div className="flex items-start justify-between gap-2">
- <span className="font-medium text-sm group-hover:text-primary transition-colors">
+ <div className="min-w-0">
+ <span className="font-medium text-sm text-foreground group-hover:text-primary transition-colors">
  {link.name}
  </span>
- <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+ <p className="text-sm text-muted-foreground mt-0.5 leading-snug">{link.description}</p>
  </div>
- <p className="text-sm text-muted-foreground mt-1">{link.description}</p>
+ <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-1" />
  </a>
  </li>
  ))}
- </ul>
- </CardContent>
- </ContentCard>
+  </ul>
+  </ContentCard>
  </FadeIn>
  </StaggerItem>
  ))}
