@@ -6,6 +6,7 @@ import { QuestCard } from "@/components/gamification/QuestCard";
 import { LeaderboardStrip } from "@/components/gamification/LeaderboardStrip";
 import { MascotAvatar } from "@/components/gamification/MascotAvatar";
 import { TiltCard } from "@/components/gamification/TiltCard";
+import { MotivationalQuoteCard } from "@/components/gamification/MotivationalQuoteCard";
 import { FloatingXP } from "@/components/gamification/FloatingXP";
 import { SpeechBubble } from "@/components/gamification/SpeechBubble";
 import { NextActions } from "@/components/dashboard/next-actions";
@@ -22,18 +23,6 @@ function getGreeting(): string {
  if (h < 17) return "Good afternoon!";
  return "Good evening!";
 }
-
-const INSPIRATIONAL_QUOTES = [
- { quote: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
- { quote: "Opportunities don't happen. You create them.", author: "Chris Grosser" },
- { quote: "The future depends on what you do today.", author: "Mahatma Gandhi" },
- { quote: "It is never too late to be what you might have been.", author: "George Eliot" },
- { quote: "Believe you can and you're halfway there.", author: "Theodore Roosevelt" },
- {
- quote: "Success is not final, failure is not fatal: it is the courage to continue that counts.",
- author: "Winston Churchill",
- },
-];
 
 const DEMO_ACHIEVEMENTS = [
  { name: "First Job", icon: "\uD83D\uDCCB", tier: "bronze" as const, unlocked: true },
@@ -128,9 +117,6 @@ export default function Dashboard() {
  const recentAchievements = gStats?.recentAchievements ?? [];
  const hasAchievements = recentAchievements.length > 0;
 
- const quoteIdx = Math.floor(Math.random() * INSPIRATIONAL_QUOTES.length);
- const quote = INSPIRATIONAL_QUOTES[quoteIdx];
-
  return (
  <motion.div
  className="flex flex-col gap-5"
@@ -184,19 +170,9 @@ export default function Dashboard() {
     </TiltCard>
   </motion.div>
 
-  {/* Speech Bubble */}
+  {/* Motivational Quote Card — 2nd card */}
   <motion.div variants={itemVariants}>
-    <div className="flex justify-center">
-      <SpeechBubble
-        message={[
-          "Welcome back! Your next level is within reach 🔥",
-          "You're doing great! Keep that streak alive ⚡",
-          "Time to crush some applications today! 💪",
-          "Every application gets you closer to your dream job 🎯",
-        ][Math.floor(Math.random() * 4)]}
-        show={true}
-      />
-    </div>
+    <MotivationalQuoteCard />
   </motion.div>
 
   {/* Second Row: XP + Streak + Quick Action */}
@@ -344,16 +320,6 @@ export default function Dashboard() {
         </p>
       </div>
     )}
-  </motion.div>
-
-  {/* Bottom: Motivational Quote */}
-  <motion.div variants={itemVariants}>
-    <div className="card-glass text-center flex flex-col items-center gap-2 p-6">
-      <p className="text-base italic leading-relaxed text-muted-foreground max-w-lg">
-        &ldquo;{quote.quote}&rdquo;
-      </p>
-      <p className="text-xs text-muted-foreground">&mdash; {quote.author}</p>
-    </div>
   </motion.div>
 
   {floatingXp.map((f) => (
