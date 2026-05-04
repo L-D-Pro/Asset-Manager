@@ -1,6 +1,7 @@
 import { FloatingSidebar } from "@/components/navigation/floating-sidebar";
 import { BottomNav } from "@/components/navigation/bottom-nav";
 import { CommandPalette } from "@/components/navigation/command-palette";
+import { Link } from "react-router-dom";
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -15,6 +16,14 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
         <div className="mx-auto max-w-5xl">
           {children}
         </div>
+        <footer className="mx-auto max-w-5xl mt-12 mb-4 text-center text-xs text-muted-foreground space-y-1">
+          <p>&copy; 2026 Cyrus Sepasi. All rights reserved. Portfolio Studio&trade; is a product of L&amp;D PRO.</p>
+          <p className="space-x-3">
+            <Link to="/terms-of-service" className="hover:text-foreground transition-colors">Terms of Service</Link>
+            <span>|</span>
+            <Link to="/privacy-policy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
+          </p>
+        </footer>
       </main>
       <BottomNav />
       <CommandPalette />
