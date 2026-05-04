@@ -1,5 +1,5 @@
-import { and, eq } from "drizzle-orm";
-import { db, aiPromptVersionsTable } from "@workspace/db";
+import { and, eq, desc } from "drizzle-orm";
+import { db, aiPromptVersionsTable, aiTrainingExamplesTable } from "@workspace/db";
 import { logger } from "./logger";
 
 export interface ResolvedPrompt {
@@ -16,6 +16,35 @@ export interface ResolvedPrompt {
  * placeholder is missing, the template is prepended as extra instruction so
  * existing pipeline prompts still provide the runtime context.
  */
+async function fetchFewShotExamples(taskScope: string): Promise<string> {
+  try {
+    const examples = await db
+      .select({
+        approvedOutput: aiTrainingExamplesTable.approvedOutput,
+      })
+      .from(aiTrainingExamplesTable)
+      .where(
+        and(
+          eq(aiTrainingExamplesTable.taskScope, taskScope),
+          eq(aiTrainingExamplesTable.isActive, true),
+        ),
+      )
+      .orderBy(desc(aiTrainingExamplesTable.qualityScore))
+      .limit(2);
+
+    if (examples.length === 0) return "";
+
+    const lines = examples.map(
+      (ex, i) =>
+        `--- APPROVED EXAMPLE ${i + 1} (use as quality reference) ---\n${ex.approvedOutput.slice(0, 1500)}\n--- END EXAMPLE ${i + 1} ---`,
+    );
+
+    return `\n\nFEW-SHOT QUALITY EXAMPLES (these are real approved outputs — match this quality level):\n${lines.join("\n\n")}\n\nNow produce output for the following:`;
+  } catch {
+    return ""; // non-fatal — proceed without few-shot
+  }
+}
+
 export async function resolvePromptForTask(
   taskScope: string,
   fallbackSystemPrompt: string,
@@ -50,9 +79,10 @@ export async function resolvePromptForTask(
   }
 
   if (!row) {
+    const fewShot = await fetchFewShotExamples(taskScope);
     return {
       systemPrompt: fallbackSystemPrompt,
-      userPrompt: fallbackUserPrompt,
+      userPrompt: fewShot ? `${fallbackUserPrompt}${fewShot}` : fallbackUserPrompt,
       promptVersionId: null,
       promptLabel: null,
     };
