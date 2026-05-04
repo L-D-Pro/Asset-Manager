@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and } from "drizzle-orm";
-import { db, resumeVersionsTable, eventLogsTable, aiRunEvaluationsTable } from "@workspace/db";
+import { db, resumeVersionsTable, eventLogsTable, aiRunEvaluationsTable, aiTrainingExamplesTable } from "@workspace/db";
 import {
   ListResumeVersionsQueryParams,
   ListResumeVersionsResponse,
@@ -226,6 +226,29 @@ router.post("/resume-versions/:id/approve", async (req, res): Promise<void> => {
 
     return updated!;
   });
+
+  // Promote approved output to training examples (feeds few-shot self-healing loop)
+  if (row.runId && row.tailoredDocumentText) {
+    db.insert(aiTrainingExamplesTable)
+      .values({
+        taskScope: "resume_tailoring",
+        sourceEntityType: "resume_version",
+        sourceEntityId: row.id,
+        inputSnapshot: {
+          jobId: row.jobId,
+          claimIds: row.claimIds,
+          baseResumeVersionId: row.baseResumeVersionId,
+        },
+        approvedOutput: row.tailoredDocumentText,
+        notes: `Auto-promoted from approved resume version ${row.id}`,
+        qualityScore: 80,
+        isActive: true,
+        metadata: { runId: row.runId },
+      })
+      .catch((trainErr: unknown) =>
+        req.log.warn({ trainErr }, "Failed to promote resume version to training examples — non-fatal"),
+      );
+  }
 
   req.log.info({ id: params.data.id }, "Resume version approved");
   res.json(ApproveResumeVersionResponse.parse(row));

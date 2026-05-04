@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and } from "drizzle-orm";
-import { db, coverLetterVersionsTable, eventLogsTable, aiRunEvaluationsTable } from "@workspace/db";
+import { db, coverLetterVersionsTable, eventLogsTable, aiRunEvaluationsTable, aiTrainingExamplesTable } from "@workspace/db";
 import {
   ListCoverLetterVersionsQueryParams,
   ListCoverLetterVersionsResponse,
@@ -226,6 +226,28 @@ router.post("/cover-letter-versions/:id/approve", async (req, res): Promise<void
 
     return updated!;
   });
+
+  // Promote approved output to training examples (feeds few-shot self-healing loop)
+  if (row.runId && row.draftContent) {
+    db.insert(aiTrainingExamplesTable)
+      .values({
+        taskScope: "cover_letter",
+        sourceEntityType: "cover_letter_version",
+        sourceEntityId: row.id,
+        inputSnapshot: {
+          jobId: row.jobId,
+          claimIds: row.claimIds,
+        },
+        approvedOutput: row.draftContent,
+        notes: `Auto-promoted from approved cover letter version ${row.id}`,
+        qualityScore: 80,
+        isActive: true,
+        metadata: { runId: row.runId },
+      })
+      .catch((trainErr: unknown) =>
+        req.log.warn({ trainErr }, "Failed to promote cover letter version to training examples — non-fatal"),
+      );
+  }
 
   req.log.info({ id: params.data.id }, "Cover letter version approved");
   res.json(ApproveCoverLetterVersionResponse.parse(row));
