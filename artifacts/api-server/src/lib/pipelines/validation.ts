@@ -254,7 +254,7 @@ export function checkNoGenericFiller(text: string): string[] {
 export function checkCoverLetterLength(text: string): string[] {
   const wordCount = text.trim().split(/\s+/).length;
   const violations: string[] = [];
-  if (wordCount < 200) {
+  if (wordCount < 250) {
     violations.push(`Cover letter too short: ${wordCount} words (minimum 250)`);
   } else if (wordCount > 500) {
     violations.push(`Cover letter too long: ${wordCount} words (maximum 400)`);
