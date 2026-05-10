@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
-import { eq, and } from "drizzle-orm";
-import { db, feedbackSignalsTable, applicationsTable, eventLogsTable, resumeVersionsTable } from "@workspace/db";
+import { eq, and, desc, sql } from "drizzle-orm";
+import { db, feedbackSignalsTable, applicationsTable, eventLogsTable, resumeVersionsTable, coverLetterVersionsTable, aiLearningConfigTable } from "@workspace/db";
+import { runRecompute } from "../lib/learning-processor";
 import {
   ListFeedbackSignalsQueryParams,
   ListFeedbackSignalsResponse,
@@ -100,10 +101,71 @@ router.post("/feedback-signals", async (req, res): Promise<void> => {
     return;
   }
 
+  // Enrich attributionData with AI call metadata resolved from the lineage chain
+  const enrichment: {
+    promptVersionId?: number;
+    modelName?: string;
+    taskScope?: string;
+    selectedClaimIds?: number[];
+  } = {};
+
+  // 1. Query the AI call event log for this run
+  const [aiCallLog] = await db
+    .select({ metadata: eventLogsTable.metadata })
+    .from(eventLogsTable)
+    .where(
+      and(
+        eq(eventLogsTable.runId, runId),
+        eq(eventLogsTable.entityType, "ai_call"),
+        eq(eventLogsTable.eventType, "ai_call"),
+      ),
+    )
+    .orderBy(desc(eventLogsTable.id))
+    .limit(1);
+
+  if (aiCallLog) {
+    const meta = aiCallLog.metadata as Record<string, unknown>;
+    enrichment.modelName = meta.modelName as string | undefined;
+    enrichment.taskScope = meta.taskType as string | undefined;
+    enrichment.promptVersionId = meta.promptVersionId as number | undefined;
+  }
+
+  // 2. Query resume version claimIds
+  if (parsed.data.resumeVersionId) {
+    const [rv] = await db
+      .select({ claimIds: resumeVersionsTable.claimIds })
+      .from(resumeVersionsTable)
+      .where(eq(resumeVersionsTable.id, parsed.data.resumeVersionId));
+    enrichment.selectedClaimIds = rv?.claimIds ?? [];
+  }
+
+  // 3. Query cover letter version claimIds (if coverLetterVersionId present in raw body)
+  const coverLetterVersionId = (req.body as Record<string, unknown>)?.coverLetterVersionId as number | undefined;
+  if (coverLetterVersionId) {
+    const [clv] = await db
+      .select({ claimIds: coverLetterVersionsTable.claimIds })
+      .from(coverLetterVersionsTable)
+      .where(eq(coverLetterVersionsTable.id, coverLetterVersionId));
+    if (clv?.claimIds?.length) {
+      const merged = new Set([...(enrichment.selectedClaimIds ?? []), ...clv.claimIds]);
+      enrichment.selectedClaimIds = Array.from(merged);
+    }
+  }
+
+  // Build the enriched attributionData from collected metadata
+  const attributionData: Record<string, unknown> = {
+    ...(parsed.data.attributionData as Record<string, unknown> ?? {}),
+    resumeVersionId: parsed.data.resumeVersionId ?? null,
+  };
+  if (enrichment.promptVersionId != null) attributionData.promptVersionId = enrichment.promptVersionId;
+  if (enrichment.modelName) attributionData.modelName = enrichment.modelName;
+  if (enrichment.taskScope) attributionData.taskScope = enrichment.taskScope;
+  if (enrichment.selectedClaimIds?.length) attributionData.selectedClaimIds = enrichment.selectedClaimIds;
+
   const row = await db.transaction(async (tx) => {
     const [inserted] = await tx
       .insert(feedbackSignalsTable)
-      .values({ ...parsed.data, runId })
+      .values({ ...parsed.data, runId, attributionData })
       .returning();
 
     if (newStatus && existingApp) {
@@ -146,6 +208,32 @@ router.post("/feedback-signals", async (req, res): Promise<void> => {
   }
 
   res.status(201).json(GetFeedbackSignalResponse.parse(row));
+
+  // Auto-recompute check (fire-and-forget)
+  setImmediate(async () => {
+    try {
+      const [config] = await db
+        .select({
+          autoRecomputeEnabled: aiLearningConfigTable.autoRecomputeEnabled,
+          minSampleSize: aiLearningConfigTable.minSampleSize,
+        })
+        .from(aiLearningConfigTable)
+        .limit(1);
+
+      if (!config?.autoRecomputeEnabled) return;
+
+      const [{ count }] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(feedbackSignalsTable)
+        .where(sql`${feedbackSignalsTable.processedAt} IS NULL`);
+
+      if (count >= (config.minSampleSize ?? 10)) {
+        await runRecompute(db);
+      }
+    } catch (err) {
+      console.error("Auto-recompute failed (non-blocking):", err);
+    }
+  });
 });
 
 router.get("/feedback-signals/:id", async (req, res): Promise<void> => {
@@ -187,6 +275,34 @@ router.patch("/feedback-signals/:id", async (req, res): Promise<void> => {
     return;
   }
   res.json(UpdateFeedbackSignalResponse.parse(row));
+
+  // Auto-recompute if outcome changed
+  if (parsed.data.outcome) {
+    setImmediate(async () => {
+      try {
+        const [config] = await db
+          .select({
+            autoRecomputeEnabled: aiLearningConfigTable.autoRecomputeEnabled,
+            minSampleSize: aiLearningConfigTable.minSampleSize,
+          })
+          .from(aiLearningConfigTable)
+          .limit(1);
+
+        if (!config?.autoRecomputeEnabled) return;
+
+        const [{ count }] = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(feedbackSignalsTable)
+          .where(sql`${feedbackSignalsTable.processedAt} IS NULL`);
+
+        if (count >= (config.minSampleSize ?? 10)) {
+          await runRecompute(db);
+        }
+      } catch (err) {
+        console.error("Auto-recompute failed (non-blocking):", err);
+      }
+    });
+  }
 });
 
 router.delete("/feedback-signals/:id", async (req, res): Promise<void> => {

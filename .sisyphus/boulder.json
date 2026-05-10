@@ -1,0 +1,23 @@
+{
+"active_plan":  null,
+  "started_at": "2026-05-10T06:17:28.230Z",
+  "session_ids": [
+    "ses_1efb2090dffeYb0UgOoXnJP5It",
+    "ses_1eef0b579ffeRNJj09Tuq4PVZ8",
+    "ses_1eef0936cffehyJfW4kIRRvato",
+    "ses_1eef0318fffefxCt5kt0mL62G5",
+    "ses_1eeeffb8affeZ8W9PNtNUhfpqn",
+    "ses_1eeefc9b2ffezVTmpuutBoYtZu"
+  ],
+  "session_origins": {
+    "ses_1efb2090dffeYb0UgOoXnJP5It": "direct",
+    "ses_1eef0b579ffeRNJj09Tuq4PVZ8": "appended",
+    "ses_1eef0936cffehyJfW4kIRRvato": "appended",
+    "ses_1eef0318fffefxCt5kt0mL62G5": "appended",
+    "ses_1eeeffb8affeZ8W9PNtNUhfpqn": "appended",
+    "ses_1eeefc9b2ffezVTmpuutBoYtZu": "appended"
+  },
+  "plan_name": "ai-self-evolution-pipeline",
+  "agent": "atlas",
+  "task_sessions": {}
+}

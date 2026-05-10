@@ -40,7 +40,7 @@ ${claims.map(c => `- ${c.summary}`).join("\n")}
   `.trim();
 
   const aiResult = await callAI({
-    taskType: "default",
+    taskType: "gap_analysis",
     systemPrompt: SYSTEM_PROMPT,
     userPrompt,
     jobId: job.id,

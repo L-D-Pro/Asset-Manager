@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Brain, RefreshCw, TrendingUp, Trophy, AlertCircle, CheckCircle, Undo2 } from "lucide-react";
+import { Brain, RefreshCw, TrendingUp, Trophy, AlertCircle, CheckCircle, Undo2, HeartPulse, Users, Activity } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { ContentCard } from "@/components/ui/content-card";
 import { SectionHeader } from "@/components/ui/section-header";
@@ -68,6 +68,18 @@ interface LearningConfig {
  recomputeScheduleCron: string;
 }
 
+interface AiLearningHealth {
+ autoPromoteEnabled: boolean;
+ confidenceThreshold: string;
+ minSampleSize: number;
+ unprocessedSignalCount: number;
+ totalVariantStats: number;
+ totalComparisons: number;
+ suggestedComparisons: number;
+ autoPromotedComparisons: number;
+ overallStatus: "healthy" | "warning" | "degraded";
+}
+
 const API_BASE = "/api/ai-learning";
 
 function statusVariant(
@@ -113,12 +125,22 @@ export default function AiLearningPage() {
  queryFn: () => fetch(`${API_BASE}/config`).then((r) => r.json()),
  });
 
- const { data: outcomeStats } = useQuery<OutcomeStat[]>({
- queryKey: ["ai-learning-outcome-stats"],
- queryFn: () => fetch(`${API_BASE}/outcome-stats`).then((r) => r.json()),
- });
+  const { data: outcomeStats } = useQuery<OutcomeStat[]>({
+  queryKey: ["ai-learning-outcome-stats"],
+  queryFn: () => fetch(`${API_BASE}/outcome-stats`).then((r) => r.json()),
+  });
 
- const recomputeMutation = useMutation({
+  const { data: promptVersions } = useQuery<any[]>({
+  queryKey: ["ai-prompt-versions"],
+  queryFn: () => fetch("/api/ai-prompt-versions").then((r) => r.json()),
+  });
+
+  const { data: health } = useQuery<AiLearningHealth>({
+  queryKey: ["ai-learning-health"],
+  queryFn: () => fetch(`${API_BASE}/health`).then((r) => r.json()),
+  });
+
+  const recomputeMutation = useMutation({
  mutationFn: () =>
  fetch(`${API_BASE}/recompute`, { method: "POST" }).then((r) => r.json()),
  onSuccess: () => {
@@ -660,9 +682,239 @@ export default function AiLearningPage() {
  <CheckCircle className="h-8 w-8 mx-auto mb-2 opacity-40" />
  <p className="text-sm">No evaluations recorded yet. Approve or reject resume and cover letter versions to start building outcome data.</p>
  </div>
- )}
- </ContentCard>
+  )}
+   </ContentCard>
 
- </div>
+   {/* Health Overview */}
+   {health && (
+    <div className="card-glass p-6">
+      <CardHeader className="px-0 pb-4">
+        <div className="flex items-center gap-2">
+          <Activity className="h-5 w-5" />
+          <CardTitle className="text-lg font-semibold">Health Overview</CardTitle>
+        </div>
+        <CardDescription>Loop health check and system status.</CardDescription>
+      </CardHeader>
+      <CardContent className="px-0 space-y-4">
+        <div className="flex items-center gap-3">
+          <Badge variant={
+            health.overallStatus === "healthy" ? "default" :
+            health.overallStatus === "warning" ? "secondary" : "destructive"
+          } className="capitalize">
+            {health.overallStatus}
+          </Badge>
+          <span className="text-sm text-muted-foreground">
+            {health.overallStatus === "healthy"
+              ? "All systems operating normally"
+              : health.overallStatus === "warning"
+              ? "Low data volume — collect more signals"
+              : "High backlog — run recompute"}
+          </span>
+        </div>
+        <div className="grid gap-4 md:grid-cols-4">
+          <div className="rounded-lg border bg-card/50 p-4">
+            <p className="text-sm font-medium text-muted-foreground mb-1">Unprocessed</p>
+            <div className="text-2xl font-bold">{health.unprocessedSignalCount}</div>
+          </div>
+          <div className="rounded-lg border bg-card/50 p-4">
+            <p className="text-sm font-medium text-muted-foreground mb-1">Variant Stats</p>
+            <div className="text-2xl font-bold">{health.totalVariantStats}</div>
+          </div>
+          <div className="rounded-lg border bg-card/50 p-4">
+            <p className="text-sm font-medium text-muted-foreground mb-1">Comparisons</p>
+            <div className="text-2xl font-bold">{health.totalComparisons}</div>
+          </div>
+          <div className="rounded-lg border bg-card/50 p-4">
+            <p className="text-sm font-medium text-muted-foreground mb-1">Suggested</p>
+            <div className="text-2xl font-bold">{health.suggestedComparisons}</div>
+          </div>
+        </div>
+      </CardContent>
+    </div>
+  )}
+
+   {/* Loop Status Section */}
+  <div className="card-glass p-6">
+  <CardHeader className="flex flex-row items-center gap-2 space-y-0 px-0 pb-4">
+  <HeartPulse className="h-5 w-5 text-primary" />
+  <div>
+  <CardTitle className="text-lg font-semibold">Loop Status</CardTitle>
+  <CardDescription>
+  Feedback signal processing health and data distribution.
+  </CardDescription>
+  </div>
+  </CardHeader>
+  <CardContent className="px-0 space-y-6">
+  <div className="grid gap-4 md:grid-cols-3">
+  <div className="rounded-lg border bg-card/50 p-4">
+  <p className="text-sm font-medium text-muted-foreground mb-1">
+  Unprocessed Signals
+  </p>
+  <div className="text-2xl font-bold text-yellow-600">
+  {stats?.reduce((sum, s) => sum + s.pending, 0) ?? 0}
+  </div>
+  <p className="text-xs text-muted-foreground mt-1">
+  Waiting for recompute
+  </p>
+  </div>
+  <div className="rounded-lg border bg-card/50 p-4">
+  <p className="text-sm font-medium text-muted-foreground mb-1">
+  Processed Signals
+  </p>
+  <div className="text-2xl font-bold text-green-600">
+  {stats?.reduce((sum, s) => sum + s.successes + s.failures, 0) ?? 0}
+  </div>
+  <p className="text-xs text-muted-foreground mt-1">
+  Successfully analyzed
+  </p>
+  </div>
+  <div className="rounded-lg border bg-card/50 p-4">
+  <p className="text-sm font-medium text-muted-foreground mb-1">
+  Total Signals
+  </p>
+  <div className="text-2xl font-bold">
+  {stats?.reduce((sum, s) => sum + s.successes + s.failures + s.pending, 0) ?? 0}
+  </div>
+  <p className="text-xs text-muted-foreground mt-1">
+  All feedback received
+  </p>
+  </div>
+  </div>
+
+  <div className="space-y-4">
+  <div className="flex items-center justify-between">
+  <h4 className="text-sm font-semibold">Variant Breakdown</h4>
+  {stats?.some((s) => s.lastComputedAt) && (
+  <span className="text-xs text-muted-foreground">
+  Last recompute:{" "}
+  {new Date(
+  Math.max(...stats.filter(s => s.lastComputedAt).map(s => new Date(s.lastComputedAt!).getTime()))
+  ).toLocaleString()}
+  </span>
+  )}
+  </div>
+  <Table>
+  <TableHeader>
+  <TableRow>
+  <TableHead>Type</TableHead>
+  <TableHead className="text-right">Successes</TableHead>
+  <TableHead className="text-right">Failures</TableHead>
+  <TableHead className="text-right">Pending</TableHead>
+  <TableHead className="text-right">Total Sample</TableHead>
+  </TableRow>
+  </TableHeader>
+  <TableBody>
+  {["prompt", "model"].map((type) => {
+  const typeStats = stats?.filter(s => s.variantType === type) ?? [];
+  const successes = typeStats.reduce((sum, s) => sum + s.successes, 0);
+  const failures = typeStats.reduce((sum, s) => sum + s.failures, 0);
+  const pending = typeStats.reduce((sum, s) => sum + s.pending, 0);
+  const total = successes + failures;
+
+  if (typeStats.length === 0) {
+  return (
+  <TableRow key={type}>
+  <TableCell className="font-medium capitalize">{type}</TableCell>
+  <TableCell colSpan={4} className="text-right text-muted-foreground italic">No data</TableCell>
+  </TableRow>
+  );
+  }
+
+  return (
+  <TableRow key={type}>
+  <TableCell className="font-medium capitalize">{type}</TableCell>
+  <TableCell className="text-right">{successes}</TableCell>
+  <TableCell className="text-right">{failures}</TableCell>
+  <TableCell className="text-right">{pending}</TableCell>
+  <TableCell className="text-right font-bold">{total}</TableCell>
+  </TableRow>
+  );
+  })}
+  </TableBody>
+  </Table>
+
+  {config && (
+  (() => {
+  const promptTotal = stats?.filter(s => s.variantType === "prompt").reduce((sum, s) => sum + s.successes + s.failures, 0) ?? 0;
+  const modelTotal = stats?.filter(s => s.variantType === "model").reduce((sum, s) => sum + s.successes + s.failures, 0) ?? 0;
+  
+  if (promptTotal < config.minSampleSize && modelTotal < config.minSampleSize) {
+  return (
+  <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 flex items-start gap-3">
+  <AlertCircle className="h-5 w-5 text-yellow-600 shrink-0 mt-0.5" />
+  <div>
+  <p className="text-sm font-medium text-yellow-800">Waiting for more data</p>
+  <p className="text-xs text-yellow-700">
+  Current samples (Prompt: {promptTotal}, Model: {modelTotal}) are below the minimum threshold of {config.minSampleSize}. Suggestions will become more accurate as more signals are processed.
+  </p>
+  </div>
+  </div>
+  );
+  }
+  return null;
+  })()
+  )}
+  </div>
+  </CardContent>
+  </div>
+
+  {/* Agent Roles Section */}
+  <ContentCard>
+  <div className="flex items-center gap-2 mb-4">
+  <Users className="h-5 w-5 text-primary" />
+  <SectionHeader
+  title="Agent Roles"
+  description="Agent role definitions with personality, goals, and skill tags."
+  />
+  </div>
+  {promptVersions?.some((pv) => pv.roleLabel) ? (
+  <div className="grid gap-6 md:grid-cols-2">
+  {promptVersions
+  .filter((pv: any) => pv.roleLabel)
+  .map((pv: any) => (
+  <div key={pv.id} className="card-glass rounded-xl p-5 space-y-3">
+  <div className="flex items-center justify-between">
+  <div className="flex items-center gap-2">
+  <h3 className="font-semibold text-base">{pv.roleLabel}</h3>
+  <Badge variant="outline" className="text-xs">{pv.taskScope}</Badge>
+  </div>
+  <Badge variant={pv.isActive ? "default" : "secondary"} className="text-xs">
+  {pv.isActive ? "Active" : "Inactive"} v{pv.version}
+  </Badge>
+  </div>
+  {pv.personality && (
+  <div>
+  <p className="text-xs font-medium text-muted-foreground mb-1">Personality</p>
+  <p className="text-sm text-muted-foreground line-clamp-3">{pv.personality}</p>
+  </div>
+  )}
+  {pv.goals && (
+  <div>
+  <p className="text-xs font-medium text-muted-foreground mb-1">Goals</p>
+  <p className="text-sm text-muted-foreground line-clamp-3">{pv.goals}</p>
+  </div>
+  )}
+  {pv.skillTags?.length > 0 && (
+  <div>
+  <p className="text-xs font-medium text-muted-foreground mb-1">Skill Tags</p>
+  <div className="flex flex-wrap gap-1.5">
+  {pv.skillTags.map((tag: string) => (
+  <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+  ))}
+  </div>
+  </div>
+  )}
+  </div>
+  ))}
+  </div>
+  ) : (
+  <div className="py-8 text-center text-muted-foreground">
+  <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-40" />
+  <p className="text-sm">Agent roles will appear here once prompt versions are seeded. Run the DB migration to populate role definitions.</p>
+  </div>
+  )}
+  </ContentCard>
+
+  </div>
  );
 }

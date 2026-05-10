@@ -44,6 +44,8 @@ tags:
     description: Aggregated job board listings
   - name: ui-shell-configs
     description: Theme and layout orchestration config
+  - name: best-practices
+    description: AI-suggested and curated best practices for job applications
 
 paths:
   /healthz:
@@ -1040,6 +1042,12 @@ paths:
       operationId: createFeedbackSignal
       tags: [feedback-signals]
       summary: Create a feedback signal
+      description: |-
+        Records an outcome signal for a submitted application.
+
+        **Wave 3 auto-evaluation**: If the signal outcome is `offer` or `hired` (positive) or `rejected` (negative),
+        the server may automatically queue an AI evaluation of the associated output to build training data.
+        This behavior is controlled by `ai_learning_config.autoPromoteEnabled`.
       requestBody:
         required: true
         content:
@@ -1074,6 +1082,13 @@ paths:
       operationId: updateFeedbackSignal
       tags: [feedback-signals]
       summary: Update a feedback signal
+      description: |-
+        Updates an existing feedback signal's outcome, signal type, notes, or attribution data.
+
+        **Auto-recompute trigger**: When the outcome or signal type changes, the server may mark
+        the signal as unprocessed (clearing `processedAt`) so it is picked up by the next
+        `/ai-learning/recompute` run. This ensures the Bayesian comparison engine re-evaluates
+        variant performance with the corrected data.
       parameters:
         - $ref: "#/components/parameters/Id"
       requestBody:
@@ -1444,6 +1459,111 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AiTrainingExample"
+
+  /ai-training-examples/suggested:
+    get:
+      operationId: listSuggestedAiTrainingExamples
+      tags: [ai-learning]
+      summary: List suggested AI training examples
+      description: |-
+        Returns inactive (`isActive: false`) and candidate training examples that have
+        been identified by Wave 3 auto-evaluation. These are training examples generated
+        from approved/rejected AI outputs that are awaiting review.
+      parameters:
+        - name: taskScope
+          in: query
+          schema:
+            type: string
+        - name: sourceEntityType
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Suggested training examples
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AiTrainingExample"
+
+  /ai-learning/health:
+    get:
+      operationId: getAiLearningHealth
+      tags: [ai-learning]
+      summary: Get AI learning loop health metrics
+      description: |-
+        Returns vital health indicators for the self-evolution pipeline:
+        unprocessed signal counts, variant comparison status, auto-promote configuration,
+        and overall health assessment (healthy / warning / degraded).
+      responses:
+        "200":
+          description: AI learning loop health metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiLearningHealth"
+
+  /ai-learning/recompute:
+    post:
+      operationId: recomputeAiLearning
+      tags: [ai-learning]
+      summary: Trigger recompute of variant stats and Bayesian comparisons
+      description: |-
+        Processes all unprocessed feedback signals to compute/update variant stats
+        (both prompt and model variants), then runs pairwise Bayesian comparisons.
+        Returns extended stats including model variant counts and comparison results.
+
+        If `autoPromoteEnabled` is active in `ai_learning_config`, winning variants
+        are automatically promoted (prompt versions set to active, model configs prioritized).
+        Human approval is still required in suggest mode.
+      parameters:
+        - name: unprocessedOnly
+          in: query
+          schema:
+            type: boolean
+            default: true
+          description: If true (default), only process signals where processedAt IS NULL.
+            If false, recompute all signals regardless of processed state.
+      responses:
+        "200":
+          description: Recompute result with variant stats and comparison counts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiRecomputeResponse"
+        "500":
+          description: Recompute failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /ai-learning/leaderboard:
+    get:
+      operationId: getAiLearningLeaderboard
+      tags: [ai-learning]
+      summary: Get variant leaderboard with model variant support
+      description: |-
+        Returns ranked variant performance across prompt versions and model configs.
+        Each entry includes success/failure counts, success rate, cost data, and label
+        resolution (prompt label or model name). Supports filtering by taskScope.
+      parameters:
+        - name: taskScope
+          in: query
+          schema:
+            type: string
+          description: Filter by task scope (e.g., resume_tailor, cover_letter_draft)
+      responses:
+        "200":
+          description: Ranked leaderboard entries with variant labels
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AiLearningLeaderboardEntry"
 
   # ── Assisted Apply ─────────────────────────────────────────────────────────
   /site-adapters:
@@ -1916,6 +2036,32 @@ paths:
           description: Deleted
         "404":
           $ref: "#/components/responses/NotFound"
+
+  # ── Best Practices ─────────────────────────────────────────────────────────
+  /best-practices/suggested:
+    get:
+      operationId: listSuggestedBestPractices
+      tags: [best-practices]
+      summary: List AI-suggested best practices
+      description: |-
+        Returns AI-generated best practice items that have been suggested but not yet
+        promoted into the active best practices configuration. These are queued for
+        human review and can be promoted or rejected.
+      parameters:
+        - name: domain
+          in: query
+          schema:
+            type: string
+            default: general
+      responses:
+        "200":
+          description: Suggested best practice items pending review
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SuggestedBestPractice"
 
   # ── Trends ─────────────────────────────────────────────────────────────────
   /trends/research:
@@ -3532,6 +3678,181 @@ components:
       required:
         - taskScope
         - approvedOutput
+
+    # ── AI Learning Health ────────────────────────────────────────────────────
+    AiLearningHealth:
+      type: object
+      properties:
+        autoPromoteEnabled:
+          type: boolean
+          description: Whether automatic variant promotion is active
+        confidenceThreshold:
+          type: string
+          description: Bayesian confidence threshold for auto-promotion
+        minSampleSize:
+          type: integer
+          description: Minimum sample size required before promotions are considered
+        minImprovementMargin:
+          type: string
+          description: Minimum success-rate improvement margin for promotion
+        recomputeScheduleCron:
+          type: string
+          description: Cron expression for scheduled recompute runs
+        unprocessedSignalCount:
+          type: integer
+          description: Number of feedback signals awaiting processing
+        totalVariantStats:
+          type: integer
+          description: Total number of variant stat records
+        totalComparisons:
+          type: integer
+          description: Total number of pairwise variant comparisons
+        suggestedComparisons:
+          type: integer
+          description: Comparisons awaiting human promotion review
+        autoPromotedComparisons:
+          type: integer
+          description: Comparisons that were automatically promoted
+        overallStatus:
+          type: string
+          enum: [healthy, warning, degraded]
+          description: Health assessment — warning if no data, degraded if errors detected
+      required:
+        - autoPromoteEnabled
+        - confidenceThreshold
+        - minSampleSize
+        - unprocessedSignalCount
+        - totalVariantStats
+        - totalComparisons
+        - suggestedComparisons
+        - autoPromotedComparisons
+        - overallStatus
+
+    # ── AI Learning Leaderboard ───────────────────────────────────────────────
+    AiLearningLeaderboardEntry:
+      type: object
+      properties:
+        rank:
+          type: integer
+          description: Leaderboard rank position (1-based)
+        variantType:
+          type: string
+          enum: [prompt, model]
+          description: Whether this entry compares a prompt version or model config
+        variantId:
+          type: integer
+          description: ID of the prompt version or model config
+        label:
+          type: ["string", "null"]
+          description: Human-readable label (prompt label or model name)
+        taskScope:
+          type: string
+          description: Task scope this variant belongs to
+        successRate:
+          type: number
+          description: Success rate as a decimal (successes / (successes + failures))
+        successes:
+          type: integer
+        failures:
+          type: integer
+        pending:
+          type: integer
+        totalCostUsd:
+          type: string
+          description: Total cost in USD for this variant
+        avgCostPerApp:
+          type: string
+          description: Average cost per application for this variant
+        lastComputedAt:
+          type: ["string", "null"]
+          format: date-time
+          description: When stats for this variant were last computed
+      required:
+        - rank
+        - variantType
+        - variantId
+        - taskScope
+        - successRate
+        - successes
+        - failures
+        - pending
+
+    # ── AI Recompute Response ─────────────────────────────────────────────────
+    AiRecomputeResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          description: Whether the recompute completed successfully
+        statsCount:
+          type: integer
+          description: Number of variant stats computed/updated (includes both prompt and model variants)
+        comparisonsConducted:
+          type: integer
+          description: Number of pairwise Bayesian comparisons performed
+        modelVariantCount:
+          type: integer
+          description: Number of model variant stats computed
+        promptVariantCount:
+          type: integer
+          description: Number of prompt variant stats computed
+        signalCount:
+          type: integer
+          description: Number of feedback signals processed in this recompute
+      required:
+        - ok
+        - statsCount
+        - comparisonsConducted
+
+    # ── Best Practices ────────────────────────────────────────────────────────
+    BestPracticesItem:
+      type: object
+      properties:
+        description:
+          type: string
+          description: The best practice guideline text
+        source:
+          type: string
+          enum: [ai, hardcoded, hybrid]
+          description: Origin of this practice — ai-generated, hardcoded, or hybrid
+        rationale:
+          type: ["string", "null"]
+          description: Why this practice matters
+        frequency:
+          type: integer
+          description: How many times this practice has been encountered/reinforced
+      required:
+        - description
+        - source
+
+    SuggestedBestPractice:
+      type: object
+      properties:
+        description:
+          type: string
+          description: The AI-suggested best practice guideline text
+        source:
+          type: string
+          enum: [ai, hardcoded, hybrid]
+          description: Origin (always 'ai' for suggested items)
+        rationale:
+          type: ["string", "null"]
+          description: AI-generated rationale for this suggestion
+        frequency:
+          type: integer
+          description: How many times this pattern was observed in approved outputs
+        status:
+          type: string
+          enum: [suggested, active, rejected]
+          description: Review status — suggested items are pending human inspection
+        suggestedAt:
+          type: ["string", "null"]
+          format: date-time
+          description: When this suggestion was generated
+      required:
+        - description
+        - source
+        - status
 
     SiteAdapter:
       type: object

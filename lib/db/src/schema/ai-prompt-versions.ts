@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   pgTable,
   text,
@@ -30,6 +31,10 @@ export const aiPromptVersionsTable = pgTable(
     notes: text("notes"),
     isActive: boolean("is_active").notNull().default(false),
     metadata: jsonb("metadata").notNull().default({}),
+    personality: text("personality"),
+    goals: text("goals"),
+    skillTags: text("skill_tags").array().default(sql`'{}'`),
+    roleLabel: text("role_label"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

@@ -9,7 +9,6 @@ import {
   aiRunEvaluationsTable,
   aiTrainingExamplesTable,
   eventLogsTable,
-  feedbackSignalsTable,
   aiModelConfigsTable,
   insertAiPromptVersionSchema,
   insertAiRunEvaluationSchema,
@@ -18,11 +17,11 @@ import {
   aiVariantComparisonsTable,
   aiLearningConfigTable,
   updateAiLearningConfigSchema,
+  feedbackSignalsTable,
 } from "@workspace/db";
 
 import { aiMetricsSnapshotRouter } from "./ai-metrics-snapshot";
-import { compareVariants, isWinner, confidence } from "../lib/bayesian-compare";
-import { aggregateVariantStats } from "../lib/learning-aggregator";
+import { runRecompute } from "../lib/learning-processor";
 
 const router: IRouter = Router();
 const IdParams = z.object({ id: z.coerce.number().int().positive() });
@@ -247,180 +246,7 @@ router.post("/ai-training-examples", async (req, res): Promise<void> => {
 
 router.post("/ai-learning/recompute", async (_req, res): Promise<void> => {
   try {
-    const result = await db.transaction(async (tx) => {
-      const [config] = await tx
-        .select()
-        .from(aiLearningConfigTable)
-        .limit(1);
-
-      const thresholds = {
-        confidence: parseFloat(config?.confidenceThreshold ?? "0.95"),
-        minSampleSize: config?.minSampleSize ?? 10,
-        minImprovementMargin: parseFloat(config?.minImprovementMargin ?? "0.05"),
-      };
-
-      const signals = await tx
-        .select()
-        .from(feedbackSignalsTable)
-        .where(sql`${feedbackSignalsTable.processedAt} IS NULL`);
-
-      const stats = aggregateVariantStats(signals);
-
-      for (const stat of stats) {
-        const [prompt] = await tx
-          .select({ taskScope: aiPromptVersionsTable.taskScope })
-          .from(aiPromptVersionsTable)
-          .where(eq(aiPromptVersionsTable.id, stat.variantId));
-
-        const taskScope = prompt?.taskScope;
-        if (!taskScope) continue;
-
-        await tx
-          .insert(aiVariantStatsTable)
-          .values({
-            variantType: stat.variantType,
-            variantId: stat.variantId,
-            taskScope,
-            successes: stat.successes,
-            failures: stat.failures,
-            pending: stat.pending,
-            totalCostUsd: "0",
-            avgCostPerApp: "0",
-            lastComputedAt: new Date(),
-          })
-          .onConflictDoUpdate({
-            target: [
-              aiVariantStatsTable.variantType,
-              aiVariantStatsTable.variantId,
-              aiVariantStatsTable.taskScope,
-            ],
-            set: {
-              successes: stat.successes,
-              failures: stat.failures,
-              pending: stat.pending,
-              lastComputedAt: new Date(),
-            },
-          });
-      }
-
-      const allStats = await tx.select().from(aiVariantStatsTable);
-
-      const byScope = new Map<string, typeof allStats>();
-      for (const s of allStats) {
-        if (!byScope.has(s.taskScope)) byScope.set(s.taskScope, []);
-        byScope.get(s.taskScope)!.push(s);
-      }
-
-      for (const [scope, scopeStats] of byScope) {
-        await tx
-          .delete(aiVariantComparisonsTable)
-          .where(eq(aiVariantComparisonsTable.taskScope, scope));
-
-        for (let i = 0; i < scopeStats.length; i++) {
-          for (let j = i + 1; j < scopeStats.length; j++) {
-            const statA = scopeStats[i];
-            const statB = scopeStats[j];
-
-            const a = { successes: statA.successes, failures: statA.failures };
-            const b = { successes: statB.successes, failures: statB.failures };
-
-            const probA = compareVariants(a, b, 10000);
-            const conf = Math.max(probA, 1 - probA);
-
-            const rateA =
-              a.successes + a.failures > 0
-                ? a.successes / (a.successes + a.failures)
-                : 0;
-            const rateB =
-              b.successes + b.failures > 0
-                ? b.successes / (b.successes + b.failures)
-                : 0;
-
-            const aWins = isWinner(a, b, thresholds);
-            const bWins = isWinner(b, a, thresholds);
-
-            let status: string;
-            if (aWins || bWins) {
-              status = config?.autoPromoteEnabled
-                ? "auto_promoted"
-                : "suggested";
-            } else {
-              status = "pending";
-            }
-
-            const [variantAId, variantABig, variantAType, rateABig, sampleSizeABig] =
-              statA.variantId < statB.variantId
-                ? [statA.variantId, a, statA.variantType, rateA, a.successes + a.failures]
-                : [statB.variantId, b, statB.variantType, rateB, b.successes + b.failures];
-            const [variantBId, variantBBig, variantBType, rateBBig, sampleSizeBBig] =
-              statA.variantId < statB.variantId
-                ? [statB.variantId, b, statB.variantType, rateB, b.successes + b.failures]
-                : [statA.variantId, a, statA.variantType, rateA, a.successes + a.failures];
-
-            const normalizedProbA =
-              statA.variantId < statB.variantId ? probA : 1 - probA;
-
-            const [inserted] = await tx.insert(aiVariantComparisonsTable).values({
-              taskScope: scope,
-              variantAId,
-              variantAType,
-              variantBId,
-              variantBType,
-              probabilityA: normalizedProbA.toString(),
-              confidence: conf.toString(),
-              successRateA: rateABig.toString(),
-              successRateB: rateBBig.toString(),
-              sampleSizeA: sampleSizeABig,
-              sampleSizeB: sampleSizeBBig,
-              status,
-            }).returning();
-
-            if (status === "auto_promoted" && inserted) {
-              const probWinner = parseFloat(inserted.probabilityA);
-              const winnerId = probWinner >= 0.5 ? inserted.variantAId : inserted.variantBId;
-              const winnerType = probWinner >= 0.5 ? inserted.variantAType : inserted.variantBType;
-
-              if (winnerType === "prompt") {
-                await tx
-                  .update(aiPromptVersionsTable)
-                  .set({ isActive: false })
-                  .where(eq(aiPromptVersionsTable.taskScope, scope));
-
-                await tx
-                  .update(aiPromptVersionsTable)
-                  .set({ isActive: true })
-                  .where(eq(aiPromptVersionsTable.id, winnerId));
-              }
-
-              await tx.insert(eventLogsTable).values({
-                entityType: "ai_variant_comparison",
-                entityId: inserted.id,
-                eventType: "variant_promoted",
-                previousState: "pending",
-                nextState: "auto_promoted",
-                metadata: {
-                  winnerId,
-                  winnerType,
-                  taskScope: scope,
-                  probabilityA: inserted.probabilityA,
-                },
-                actorType: "system",
-              });
-            }
-          }
-        }
-      }
-
-      if (signals.length > 0) {
-        await tx
-          .update(feedbackSignalsTable)
-          .set({ processedAt: new Date() })
-          .where(sql`${feedbackSignalsTable.processedAt} IS NULL`);
-      }
-
-      return { ok: true, statsCount: stats.length };
-    });
-
+    const result = await runRecompute(db);
     res.json(result);
   } catch (error) {
     console.error("Recompute failed:", error);
@@ -757,6 +583,60 @@ router.get("/ai-learning/outcome-stats", async (req, res): Promise<void> => {
   }));
 
   res.json(result);
+});
+
+router.get("/ai-learning/health", async (_req, res): Promise<void> => {
+  try {
+    const [config] = await db.select().from(aiLearningConfigTable).limit(1);
+    const [signalCount] = await db
+      .select({ count: sql`count(*)::int` })
+      .from(feedbackSignalsTable)
+      .where(sql`${feedbackSignalsTable.processedAt} IS NULL`);
+    const unprocessedSignalCount = Number(signalCount?.count ?? 0);
+    const [statsCount] = await db
+      .select({ count: sql`count(*)::int` })
+      .from(aiVariantStatsTable);
+    const totalVariantStats = Number(statsCount?.count ?? 0);
+    const [compCount] = await db
+      .select({ count: sql`count(*)::int` })
+      .from(aiVariantComparisonsTable);
+    const totalComparisons = Number(compCount?.count ?? 0);
+    const [suggestedCount] = await db
+      .select({ count: sql`count(*)::int` })
+      .from(aiVariantComparisonsTable)
+      .where(sql`${aiVariantComparisonsTable.status} = 'suggested'`);
+    const suggestedComparisons = Number(suggestedCount?.count ?? 0);
+    const [autoPromotedCount] = await db
+      .select({ count: sql`count(*)::int` })
+      .from(aiVariantComparisonsTable)
+      .where(sql`${aiVariantComparisonsTable.status} = 'auto_promoted'`);
+    const autoPromotedComparisons = Number(autoPromotedCount?.count ?? 0);
+
+    let overallStatus: "healthy" | "warning" | "degraded" = "healthy";
+    if (totalComparisons === 0 && unprocessedSignalCount === 0) {
+      overallStatus = "warning";
+    }
+    if (unprocessedSignalCount > 50) {
+      overallStatus = "degraded";
+    }
+
+    res.json({
+      autoPromoteEnabled: config?.autoPromoteEnabled ?? false,
+      confidenceThreshold: config?.confidenceThreshold ?? "0.95",
+      minSampleSize: config?.minSampleSize ?? 10,
+      minImprovementMargin: config?.minImprovementMargin ?? "0.05",
+      recomputeScheduleCron: config?.recomputeScheduleCron ?? undefined,
+      unprocessedSignalCount,
+      totalVariantStats,
+      totalComparisons,
+      suggestedComparisons,
+      autoPromotedComparisons,
+      overallStatus,
+    });
+  } catch (error) {
+    console.error("Health check failed:", error);
+    res.status(500).json({ error: "Health check failed" });
+  }
 });
 
 export default router;

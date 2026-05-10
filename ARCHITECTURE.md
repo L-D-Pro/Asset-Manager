@@ -1,6 +1,6 @@
 # Architecture
 
-Last updated: April 20, 2026
+Last updated: May 10, 2026
 
 ## Workspace Layout
 
@@ -63,7 +63,7 @@ Generated packages:
 Primary operational domains:
 
 - Job search: `role_profiles`, `jobs`, `claims`, `base_resume_versions`, `resume_versions`, `cover_letter_versions`, `applications`
-- Audit/learning: `event_logs`, `feedback_signals`, `ai_model_configs`, `ai_prompt_versions`, `ai_run_evaluations`, `ai_training_examples`
+- Audit/learning: `event_logs`, `feedback_signals`, `ai_model_configs`, `ai_prompt_versions`, `ai_run_evaluations`, `ai_training_examples`, `ai_variant_stats`, `ai_variant_comparisons`, `ai_learning_config`
 - Assisted apply: `site_adapters`, `application_sessions`, `application_form_fields`, `application_actions`
 - Freelance copilot: `freelance_profiles`, `project_sources`, `freelance_projects`, `proposal_versions`, `proposal_outcomes`, `client_message_templates`
 - Auth/session: `admin_users`, `session`
@@ -77,7 +77,7 @@ Pipeline or route
   v
 callAI(taskType, systemPrompt, userPrompt)
   |
-  | resolve active ai_prompt_versions row if present
+  | resolve active ai_prompt_versions row if present (agent role with personality/goals/skills)
   | select active ai_model_configs row and fallback chain
   v
 OpenRouter chat.completions.create()
@@ -87,8 +87,53 @@ OpenRouter chat.completions.create()
 Pipeline validates/parses output
   |
   v
-Pending review record
+Pending review record (resume_versions / cover_letter_versions / proposal_versions)
+  |
+  | approve → auto-create ai_run_evaluation + ai_training_example suggestion
+  | reject → auto-create ai_run_evaluation
+  v
+feedback_signals (outcome: offer, rejection, etc.)
+  |
+  | attributionData auto-populated from event_log lineage
+  | auto-recompute triggered when unprocessed >= minSampleSize
+  v
+learning-processor.runRecompute() → aggregateVariantStats (prompt + model variants)
+  |
+  v
+Bayesian comparison → ai_variant_comparisons (P(A > B), confidence)
+  |
+  v
+Promote suggestions (human approval gate for prompts; manual for models)
 ```
+
+### Learning Loop Architecture
+
+The learning loop is a closed feedback system spanning 7+ tables:
+
+1. **AI generates output** (resume, cover letter, etc.) → recorded in `event_logs` with lineage
+2. **User approves/rejects** → auto-creates `ai_run_evaluation` with rubric scores
+3. **Application outcomes** recorded as `feedback_signals` with enriched `attributionData` (prompt version, model, claim IDs)
+4. **`learning-processor.runRecompute()`** aggregates signals into `ai_variant_stats` for BOTH prompt and model variants
+5. **Bayesian comparison engine** computes win probabilities → `ai_variant_comparisons`
+6. **Dashboard** shows leaderboard with promote suggestions, gated on confidence threshold (0.95), min sample size (10), and min improvement margin (0.05)
+7. **Configuration** via `ai_learning_config` controls auto-recompute, auto-evaluate, auto-train-suggest, and comparison thresholds
+
+### Agent Specialization
+
+Pipeline prompts externalized into `ai_prompt_versions` as DB-seeded agent roles:
+
+| Role | Task Scope | Pipeline |
+|------|-----------|----------|
+| Resume Expert | `resume_tailoring` | resume-tailor.ts |
+| Cover Letter Strategist | `cover_letter` | cover-letter-draft.ts |
+| Application Analyst (JD Parser) | `jd_parsing` | jd-parse.ts |
+| Claim Generator | `claim_generation` | claim-generation.ts |
+| Proposal Drafter | `proposal_drafting` | proposal-draft.ts |
+| Market Researcher | `market_research` | market-research.ts |
+| Gap Analyst | `gap_analysis` | gap-analysis.ts |
+| Job Researcher | `job_research` | job-research.ts |
+
+Each role has personality, goals, and skill tags configured in the database. The prompt-router resolves the active version at call time, falling back to the in-code `SYSTEM_PROMPT` constant when no DB version exists.
 
 Current AI-producing flows:
 
@@ -175,6 +220,8 @@ corepack pnpm --filter @workspace/db run compat
 
 This executes `lib/db/runtime-compat.sql` - a consolidated compatibility patch that creates missing tables/columns for:
 - M002 lineage columns (`run_id`, `event_log_id`)
-- `ai_prompt_versions` and `ai_run_evaluations` tables
+- `ai_prompt_versions` role metadata columns (`role_label`, `personality`, `goals`, `skill_tags`)
+- `ai_learning_config` auto-feature flags (`auto_recompute_enabled`, `auto_evaluate_enabled`, `auto_train_suggest_enabled`)
+- Agent role prompt version seeding (8 task scopes with personality/goals/skills)
 - Assisted Apply tables (`site_adapters`, `application_sessions`, etc.)
 - Freelance Copilot tables (`freelance_profiles`, `proposal_versions`, etc.)

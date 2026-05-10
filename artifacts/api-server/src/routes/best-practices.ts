@@ -42,4 +42,11 @@ router.post("/best-practices/refresh", async (req: JobOpsRequest, res): Promise<
   res.json(config);
 });
 
+router.get("/best-practices/suggested", async (req: JobOpsRequest, res): Promise<void> => {
+  const domain = (req.query.domain as string) || "general";
+  const config = await loadOrCreateBestPractices(domain);
+  const suggested = config.items.filter((item) => item.source === "ai");
+  res.json(suggested);
+});
+
 export default router;

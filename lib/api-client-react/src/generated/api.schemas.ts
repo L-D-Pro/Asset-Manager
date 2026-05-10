@@ -937,6 +937,170 @@ export interface CreateAiTrainingExampleBody {
   metadata?: CreateAiTrainingExampleBodyMetadata;
 }
 
+/**
+ * Health assessment — warning if no data, degraded if errors detected
+ */
+export type AiLearningHealthOverallStatus =
+  (typeof AiLearningHealthOverallStatus)[keyof typeof AiLearningHealthOverallStatus];
+
+export const AiLearningHealthOverallStatus = {
+  healthy: "healthy",
+  warning: "warning",
+  degraded: "degraded",
+} as const;
+
+export interface AiLearningHealth {
+  /** Whether automatic variant promotion is active */
+  autoPromoteEnabled: boolean;
+  /** Bayesian confidence threshold for auto-promotion */
+  confidenceThreshold: string;
+  /** Minimum sample size required before promotions are considered */
+  minSampleSize: number;
+  /** Minimum success-rate improvement margin for promotion */
+  minImprovementMargin?: string;
+  /** Cron expression for scheduled recompute runs */
+  recomputeScheduleCron?: string;
+  /** Number of feedback signals awaiting processing */
+  unprocessedSignalCount: number;
+  /** Total number of variant stat records */
+  totalVariantStats: number;
+  /** Total number of pairwise variant comparisons */
+  totalComparisons: number;
+  /** Comparisons awaiting human promotion review */
+  suggestedComparisons: number;
+  /** Comparisons that were automatically promoted */
+  autoPromotedComparisons: number;
+  /** Health assessment — warning if no data, degraded if errors detected */
+  overallStatus: AiLearningHealthOverallStatus;
+}
+
+/**
+ * Whether this entry compares a prompt version or model config
+ */
+export type AiLearningLeaderboardEntryVariantType =
+  (typeof AiLearningLeaderboardEntryVariantType)[keyof typeof AiLearningLeaderboardEntryVariantType];
+
+export const AiLearningLeaderboardEntryVariantType = {
+  prompt: "prompt",
+  model: "model",
+} as const;
+
+export interface AiLearningLeaderboardEntry {
+  /** Leaderboard rank position (1-based) */
+  rank: number;
+  /** Whether this entry compares a prompt version or model config */
+  variantType: AiLearningLeaderboardEntryVariantType;
+  /** ID of the prompt version or model config */
+  variantId: number;
+  /**
+   * Human-readable label (prompt label or model name)
+   * @nullable
+   */
+  label?: string | null;
+  /** Task scope this variant belongs to */
+  taskScope: string;
+  /** Success rate as a decimal (successes / (successes + failures)) */
+  successRate: number;
+  successes: number;
+  failures: number;
+  pending: number;
+  /** Total cost in USD for this variant */
+  totalCostUsd?: string;
+  /** Average cost per application for this variant */
+  avgCostPerApp?: string;
+  /**
+   * When stats for this variant were last computed
+   * @nullable
+   */
+  lastComputedAt?: string | null;
+}
+
+export interface AiRecomputeResponse {
+  /** Whether the recompute completed successfully */
+  ok: boolean;
+  /** Number of variant stats computed/updated (includes both prompt and model variants) */
+  statsCount: number;
+  /** Number of pairwise Bayesian comparisons performed */
+  comparisonsConducted: number;
+  /** Number of model variant stats computed */
+  modelVariantCount?: number;
+  /** Number of prompt variant stats computed */
+  promptVariantCount?: number;
+  /** Number of feedback signals processed in this recompute */
+  signalCount?: number;
+}
+
+/**
+ * Origin of this practice — ai-generated, hardcoded, or hybrid
+ */
+export type BestPracticesItemSource =
+  (typeof BestPracticesItemSource)[keyof typeof BestPracticesItemSource];
+
+export const BestPracticesItemSource = {
+  ai: "ai",
+  hardcoded: "hardcoded",
+  hybrid: "hybrid",
+} as const;
+
+export interface BestPracticesItem {
+  /** The best practice guideline text */
+  description: string;
+  /** Origin of this practice — ai-generated, hardcoded, or hybrid */
+  source: BestPracticesItemSource;
+  /**
+   * Why this practice matters
+   * @nullable
+   */
+  rationale?: string | null;
+  /** How many times this practice has been encountered/reinforced */
+  frequency?: number;
+}
+
+/**
+ * Origin (always 'ai' for suggested items)
+ */
+export type SuggestedBestPracticeSource =
+  (typeof SuggestedBestPracticeSource)[keyof typeof SuggestedBestPracticeSource];
+
+export const SuggestedBestPracticeSource = {
+  ai: "ai",
+  hardcoded: "hardcoded",
+  hybrid: "hybrid",
+} as const;
+
+/**
+ * Review status — suggested items are pending human inspection
+ */
+export type SuggestedBestPracticeStatus =
+  (typeof SuggestedBestPracticeStatus)[keyof typeof SuggestedBestPracticeStatus];
+
+export const SuggestedBestPracticeStatus = {
+  suggested: "suggested",
+  active: "active",
+  rejected: "rejected",
+} as const;
+
+export interface SuggestedBestPractice {
+  /** The AI-suggested best practice guideline text */
+  description: string;
+  /** Origin (always 'ai' for suggested items) */
+  source: SuggestedBestPracticeSource;
+  /**
+   * AI-generated rationale for this suggestion
+   * @nullable
+   */
+  rationale?: string | null;
+  /** How many times this pattern was observed in approved outputs */
+  frequency?: number;
+  /** Review status — suggested items are pending human inspection */
+  status: SuggestedBestPracticeStatus;
+  /**
+   * When this suggestion was generated
+   * @nullable
+   */
+  suggestedAt?: string | null;
+}
+
 export type SiteAdapterMetadata = { [key: string]: unknown };
 
 export interface SiteAdapter {
@@ -1768,6 +1932,29 @@ export const GetAiMetricsSnapshotMetricsVersion = {
 export type ListAiTrainingExamplesParams = {
   taskScope?: string;
   isActive?: boolean;
+};
+
+export type ListSuggestedAiTrainingExamplesParams = {
+  taskScope?: string;
+  sourceEntityType?: string;
+};
+
+export type RecomputeAiLearningParams = {
+  /**
+   * If true (default), only process signals where processedAt IS NULL. If false, recompute all signals regardless of processed state.
+   */
+  unprocessedOnly?: boolean;
+};
+
+export type GetAiLearningLeaderboardParams = {
+  /**
+   * Filter by task scope (e.g., resume_tailor, cover_letter_draft)
+   */
+  taskScope?: string;
+};
+
+export type ListSuggestedBestPracticesParams = {
+  domain?: string;
 };
 
 export type ListJobBoardListingsParams = {

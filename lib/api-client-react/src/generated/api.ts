@@ -17,9 +17,12 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  AiLearningHealth,
+  AiLearningLeaderboardEntry,
   AiMetricsSnapshotResponse,
   AiModelConfig,
   AiPromptVersion,
+  AiRecomputeResponse,
   AiReviewOverview,
   AiRunEvaluation,
   AiTrainingExample,
@@ -66,6 +69,7 @@ import type {
   FeedbackSignal,
   FreelanceProfile,
   FreelanceProject,
+  GetAiLearningLeaderboardParams,
   GetAiMetricsSnapshotParams,
   HealthStatus,
   ImportBaseResumeBody,
@@ -85,11 +89,14 @@ import type {
   ListJobBoardListingsParams,
   ListJobsParams,
   ListResumeVersionsParams,
+  ListSuggestedAiTrainingExamplesParams,
+  ListSuggestedBestPracticesParams,
   NotFoundResponse,
   ParseJobBody,
   ProjectSource,
   ProposalOutcome,
   ProposalVersion,
+  RecomputeAiLearningParams,
   ResearchTrendsBody,
   ResearchTrendsResponse,
   ResumeScoreResult,
@@ -97,6 +104,7 @@ import type {
   RoleProfile,
   ScoreJobParams,
   SiteAdapter,
+  SuggestedBestPractice,
   TailorResumeBody,
   UiShellConfigResponse,
   UpdateAiModelConfigBody,
@@ -4644,6 +4652,11 @@ export function useListFeedbackSignals<
 }
 
 /**
+ * Records an outcome signal for a submitted application.
+
+**Wave 3 auto-evaluation**: If the signal outcome is `offer` or `hired` (positive) or `rejected` (negative),
+the server may automatically queue an AI evaluation of the associated output to build training data.
+This behavior is controlled by `ai_learning_config.autoPromoteEnabled`.
  * @summary Create a feedback signal
  */
 export const getCreateFeedbackSignalUrl = () => {
@@ -4818,6 +4831,12 @@ export function useGetFeedbackSignal<
 }
 
 /**
+ * Updates an existing feedback signal's outcome, signal type, notes, or attribution data.
+
+**Auto-recompute trigger**: When the outcome or signal type changes, the server may mark
+the signal as unprocessed (clearing `processedAt`) so it is picked up by the next
+`/ai-learning/recompute` run. This ensures the Bayesian comparison engine re-evaluates
+variant performance with the corrected data.
  * @summary Update a feedback signal
  */
 export const getUpdateFeedbackSignalUrl = (id: number) => {
@@ -6522,6 +6541,408 @@ export const useCreateAiTrainingExample = <
 > => {
   return useMutation(getCreateAiTrainingExampleMutationOptions(options));
 };
+
+/**
+ * Returns inactive (`isActive: false`) and candidate training examples that have
+been identified by Wave 3 auto-evaluation. These are training examples generated
+from approved/rejected AI outputs that are awaiting review.
+ * @summary List suggested AI training examples
+ */
+export const getListSuggestedAiTrainingExamplesUrl = (
+  params?: ListSuggestedAiTrainingExamplesParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/ai-training-examples/suggested?${stringifiedParams}`
+    : `/api/ai-training-examples/suggested`;
+};
+
+export const listSuggestedAiTrainingExamples = async (
+  params?: ListSuggestedAiTrainingExamplesParams,
+  options?: RequestInit,
+): Promise<AiTrainingExample[]> => {
+  return customFetch<AiTrainingExample[]>(
+    getListSuggestedAiTrainingExamplesUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListSuggestedAiTrainingExamplesQueryKey = (
+  params?: ListSuggestedAiTrainingExamplesParams,
+) => {
+  return [
+    `/api/ai-training-examples/suggested`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getListSuggestedAiTrainingExamplesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listSuggestedAiTrainingExamples>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListSuggestedAiTrainingExamplesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listSuggestedAiTrainingExamples>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getListSuggestedAiTrainingExamplesQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listSuggestedAiTrainingExamples>>
+  > = ({ signal }) =>
+    listSuggestedAiTrainingExamples(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listSuggestedAiTrainingExamples>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListSuggestedAiTrainingExamplesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listSuggestedAiTrainingExamples>>
+>;
+export type ListSuggestedAiTrainingExamplesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List suggested AI training examples
+ */
+
+export function useListSuggestedAiTrainingExamples<
+  TData = Awaited<ReturnType<typeof listSuggestedAiTrainingExamples>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListSuggestedAiTrainingExamplesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listSuggestedAiTrainingExamples>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListSuggestedAiTrainingExamplesQueryOptions(
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Returns vital health indicators for the self-evolution pipeline:
+unprocessed signal counts, variant comparison status, auto-promote configuration,
+and overall health assessment (healthy / warning / degraded).
+ * @summary Get AI learning loop health metrics
+ */
+export const getGetAiLearningHealthUrl = () => {
+  return `/api/ai-learning/health`;
+};
+
+export const getAiLearningHealth = async (
+  options?: RequestInit,
+): Promise<AiLearningHealth> => {
+  return customFetch<AiLearningHealth>(getGetAiLearningHealthUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetAiLearningHealthQueryKey = () => {
+  return [`/api/ai-learning/health`] as const;
+};
+
+export const getGetAiLearningHealthQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAiLearningHealth>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAiLearningHealth>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetAiLearningHealthQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getAiLearningHealth>>
+  > = ({ signal }) => getAiLearningHealth({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAiLearningHealth>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetAiLearningHealthQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAiLearningHealth>>
+>;
+export type GetAiLearningHealthQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get AI learning loop health metrics
+ */
+
+export function useGetAiLearningHealth<
+  TData = Awaited<ReturnType<typeof getAiLearningHealth>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAiLearningHealth>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAiLearningHealthQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Processes all unprocessed feedback signals to compute/update variant stats
+(both prompt and model variants), then runs pairwise Bayesian comparisons.
+Returns extended stats including model variant counts and comparison results.
+
+If `autoPromoteEnabled` is active in `ai_learning_config`, winning variants
+are automatically promoted (prompt versions set to active, model configs prioritized).
+Human approval is still required in suggest mode.
+ * @summary Trigger recompute of variant stats and Bayesian comparisons
+ */
+export const getRecomputeAiLearningUrl = (
+  params?: RecomputeAiLearningParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/ai-learning/recompute?${stringifiedParams}`
+    : `/api/ai-learning/recompute`;
+};
+
+export const recomputeAiLearning = async (
+  params?: RecomputeAiLearningParams,
+  options?: RequestInit,
+): Promise<AiRecomputeResponse> => {
+  return customFetch<AiRecomputeResponse>(getRecomputeAiLearningUrl(params), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getRecomputeAiLearningMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof recomputeAiLearning>>,
+    TError,
+    { params?: RecomputeAiLearningParams },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof recomputeAiLearning>>,
+  TError,
+  { params?: RecomputeAiLearningParams },
+  TContext
+> => {
+  const mutationKey = ["recomputeAiLearning"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof recomputeAiLearning>>,
+    { params?: RecomputeAiLearningParams }
+  > = (props) => {
+    const { params } = props ?? {};
+
+    return recomputeAiLearning(params, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RecomputeAiLearningMutationResult = NonNullable<
+  Awaited<ReturnType<typeof recomputeAiLearning>>
+>;
+
+export type RecomputeAiLearningMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Trigger recompute of variant stats and Bayesian comparisons
+ */
+export const useRecomputeAiLearning = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof recomputeAiLearning>>,
+    TError,
+    { params?: RecomputeAiLearningParams },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof recomputeAiLearning>>,
+  TError,
+  { params?: RecomputeAiLearningParams },
+  TContext
+> => {
+  return useMutation(getRecomputeAiLearningMutationOptions(options));
+};
+
+/**
+ * Returns ranked variant performance across prompt versions and model configs.
+Each entry includes success/failure counts, success rate, cost data, and label
+resolution (prompt label or model name). Supports filtering by taskScope.
+ * @summary Get variant leaderboard with model variant support
+ */
+export const getGetAiLearningLeaderboardUrl = (
+  params?: GetAiLearningLeaderboardParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/ai-learning/leaderboard?${stringifiedParams}`
+    : `/api/ai-learning/leaderboard`;
+};
+
+export const getAiLearningLeaderboard = async (
+  params?: GetAiLearningLeaderboardParams,
+  options?: RequestInit,
+): Promise<AiLearningLeaderboardEntry[]> => {
+  return customFetch<AiLearningLeaderboardEntry[]>(
+    getGetAiLearningLeaderboardUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetAiLearningLeaderboardQueryKey = (
+  params?: GetAiLearningLeaderboardParams,
+) => {
+  return [`/api/ai-learning/leaderboard`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetAiLearningLeaderboardQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAiLearningLeaderboard>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetAiLearningLeaderboardParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAiLearningLeaderboard>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetAiLearningLeaderboardQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getAiLearningLeaderboard>>
+  > = ({ signal }) =>
+    getAiLearningLeaderboard(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAiLearningLeaderboard>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetAiLearningLeaderboardQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAiLearningLeaderboard>>
+>;
+export type GetAiLearningLeaderboardQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get variant leaderboard with model variant support
+ */
+
+export function useGetAiLearningLeaderboard<
+  TData = Awaited<ReturnType<typeof getAiLearningLeaderboard>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetAiLearningLeaderboardParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAiLearningLeaderboard>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAiLearningLeaderboardQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary List site adapters
@@ -8939,6 +9360,118 @@ export const useDeleteWizardSession = <
 > => {
   return useMutation(getDeleteWizardSessionMutationOptions(options));
 };
+
+/**
+ * Returns AI-generated best practice items that have been suggested but not yet
+promoted into the active best practices configuration. These are queued for
+human review and can be promoted or rejected.
+ * @summary List AI-suggested best practices
+ */
+export const getListSuggestedBestPracticesUrl = (
+  params?: ListSuggestedBestPracticesParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/best-practices/suggested?${stringifiedParams}`
+    : `/api/best-practices/suggested`;
+};
+
+export const listSuggestedBestPractices = async (
+  params?: ListSuggestedBestPracticesParams,
+  options?: RequestInit,
+): Promise<SuggestedBestPractice[]> => {
+  return customFetch<SuggestedBestPractice[]>(
+    getListSuggestedBestPracticesUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListSuggestedBestPracticesQueryKey = (
+  params?: ListSuggestedBestPracticesParams,
+) => {
+  return [
+    `/api/best-practices/suggested`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getListSuggestedBestPracticesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listSuggestedBestPractices>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListSuggestedBestPracticesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listSuggestedBestPractices>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListSuggestedBestPracticesQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listSuggestedBestPractices>>
+  > = ({ signal }) =>
+    listSuggestedBestPractices(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listSuggestedBestPractices>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListSuggestedBestPracticesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listSuggestedBestPractices>>
+>;
+export type ListSuggestedBestPracticesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List AI-suggested best practices
+ */
+
+export function useListSuggestedBestPractices<
+  TData = Awaited<ReturnType<typeof listSuggestedBestPractices>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListSuggestedBestPracticesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listSuggestedBestPractices>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListSuggestedBestPracticesQueryOptions(
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Research market trends for a job title

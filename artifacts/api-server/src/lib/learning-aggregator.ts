@@ -1,10 +1,11 @@
 interface RawSignal {
   outcome: string;
   promptVersionId: number | null;
+  modelName?: string | null;
 }
 
 interface AggregatedStat {
-  variantType: "prompt";
+  variantType: "prompt" | "model";
   variantId: number;
   successes: number;
   failures: number;
@@ -14,31 +15,65 @@ interface AggregatedStat {
 const POSITIVE_OUTCOMES = new Set(["offer", "hired"]);
 const NEGATIVE_OUTCOMES = new Set(["rejected"]);
 
+/** Hash a model name string into a stable 32-bit signed integer for use as variantId. */
+function hashModelName(name: string): number {
+  let hash = 5381;
+  for (let i = 0; i < name.length; i++) {
+    hash = ((hash << 5) + hash + name.charCodeAt(i)) | 0;
+  }
+  return hash;
+}
+
 export function aggregateVariantStats(signals: RawSignal[]): AggregatedStat[] {
   const map = new Map<string, AggregatedStat>();
 
   for (const signal of signals) {
-    if (signal.promptVersionId == null) continue;
+    // Prompt variant aggregation (unchanged logic)
+    if (signal.promptVersionId != null) {
+      const key = `prompt:${signal.promptVersionId}`;
+      let entry = map.get(key);
+      if (!entry) {
+        entry = {
+          variantType: "prompt",
+          variantId: signal.promptVersionId,
+          successes: 0,
+          failures: 0,
+          pending: 0,
+        };
+        map.set(key, entry);
+      }
 
-    const key = `prompt:${signal.promptVersionId}`;
-    let entry = map.get(key);
-    if (!entry) {
-      entry = {
-        variantType: "prompt",
-        variantId: signal.promptVersionId,
-        successes: 0,
-        failures: 0,
-        pending: 0,
-      };
-      map.set(key, entry);
+      if (POSITIVE_OUTCOMES.has(signal.outcome)) {
+        entry.successes++;
+      } else if (NEGATIVE_OUTCOMES.has(signal.outcome)) {
+        entry.failures++;
+      } else {
+        entry.pending++;
+      }
     }
 
-    if (POSITIVE_OUTCOMES.has(signal.outcome)) {
-      entry.successes++;
-    } else if (NEGATIVE_OUTCOMES.has(signal.outcome)) {
-      entry.failures++;
-    } else {
-      entry.pending++;
+    // Model variant aggregation (new)
+    if (signal.modelName != null) {
+      const key = `model:${signal.modelName}`;
+      let entry = map.get(key);
+      if (!entry) {
+        entry = {
+          variantType: "model",
+          variantId: hashModelName(signal.modelName),
+          successes: 0,
+          failures: 0,
+          pending: 0,
+        };
+        map.set(key, entry);
+      }
+
+      if (POSITIVE_OUTCOMES.has(signal.outcome)) {
+        entry.successes++;
+      } else if (NEGATIVE_OUTCOMES.has(signal.outcome)) {
+        entry.failures++;
+      } else {
+        entry.pending++;
+      }
     }
   }
 

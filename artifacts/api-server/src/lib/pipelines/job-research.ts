@@ -53,7 +53,7 @@ Based on the above, provide the strategic analysis in JSON format.
   `.trim();
 
   const aiResult = await callAI({
-    taskType: "default", // or a specific "job_research" task if configured
+    taskType: "job_research",
     systemPrompt: SYSTEM_PROMPT,
     userPrompt,
     jobId,

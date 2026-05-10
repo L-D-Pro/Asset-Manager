@@ -1240,6 +1240,11 @@ export const ListFeedbackSignalsResponse = zod.array(
 );
 
 /**
+ * Records an outcome signal for a submitted application.
+
+**Wave 3 auto-evaluation**: If the signal outcome is `offer` or `hired` (positive) or `rejected` (negative),
+the server may automatically queue an AI evaluation of the associated output to build training data.
+This behavior is controlled by `ai_learning_config.autoPromoteEnabled`.
  * @summary Create a feedback signal
  */
 export const CreateFeedbackSignalBody = zod.object({
@@ -1272,6 +1277,12 @@ export const GetFeedbackSignalResponse = zod.object({
 });
 
 /**
+ * Updates an existing feedback signal's outcome, signal type, notes, or attribution data.
+
+**Auto-recompute trigger**: When the outcome or signal type changes, the server may mark
+the signal as unprocessed (clearing `processedAt`) so it is picked up by the next
+`/ai-learning/recompute` run. This ensures the Bayesian comparison engine re-evaluates
+variant performance with the corrected data.
  * @summary Update a feedback signal
  */
 export const UpdateFeedbackSignalParams = zod.object({
@@ -2063,6 +2074,177 @@ export const CreateAiTrainingExampleBody = zod.object({
 });
 
 /**
+ * Returns inactive (`isActive: false`) and candidate training examples that have
+been identified by Wave 3 auto-evaluation. These are training examples generated
+from approved/rejected AI outputs that are awaiting review.
+ * @summary List suggested AI training examples
+ */
+export const ListSuggestedAiTrainingExamplesQueryParams = zod.object({
+  taskScope: zod.coerce.string().optional(),
+  sourceEntityType: zod.coerce.string().optional(),
+});
+
+export const ListSuggestedAiTrainingExamplesResponseItem = zod.object({
+  id: zod.number(),
+  taskScope: zod.string(),
+  sourceEntityType: zod.string().nullish(),
+  sourceEntityId: zod.number().nullish(),
+  evaluationId: zod.number().nullish(),
+  inputSnapshot: zod.object({}).passthrough(),
+  approvedOutput: zod.string(),
+  rejectedOutput: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  qualityScore: zod.number().nullish(),
+  isActive: zod.boolean(),
+  metadata: zod.object({}).passthrough(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListSuggestedAiTrainingExamplesResponse = zod.array(
+  ListSuggestedAiTrainingExamplesResponseItem,
+);
+
+/**
+ * Returns vital health indicators for the self-evolution pipeline:
+unprocessed signal counts, variant comparison status, auto-promote configuration,
+and overall health assessment (healthy / warning / degraded).
+ * @summary Get AI learning loop health metrics
+ */
+export const GetAiLearningHealthResponse = zod.object({
+  autoPromoteEnabled: zod
+    .boolean()
+    .describe("Whether automatic variant promotion is active"),
+  confidenceThreshold: zod
+    .string()
+    .describe("Bayesian confidence threshold for auto-promotion"),
+  minSampleSize: zod
+    .number()
+    .describe("Minimum sample size required before promotions are considered"),
+  minImprovementMargin: zod
+    .string()
+    .optional()
+    .describe("Minimum success-rate improvement margin for promotion"),
+  recomputeScheduleCron: zod
+    .string()
+    .optional()
+    .describe("Cron expression for scheduled recompute runs"),
+  unprocessedSignalCount: zod
+    .number()
+    .describe("Number of feedback signals awaiting processing"),
+  totalVariantStats: zod
+    .number()
+    .describe("Total number of variant stat records"),
+  totalComparisons: zod
+    .number()
+    .describe("Total number of pairwise variant comparisons"),
+  suggestedComparisons: zod
+    .number()
+    .describe("Comparisons awaiting human promotion review"),
+  autoPromotedComparisons: zod
+    .number()
+    .describe("Comparisons that were automatically promoted"),
+  overallStatus: zod
+    .enum(["healthy", "warning", "degraded"])
+    .describe(
+      "Health assessment — warning if no data, degraded if errors detected",
+    ),
+});
+
+/**
+ * Processes all unprocessed feedback signals to compute/update variant stats
+(both prompt and model variants), then runs pairwise Bayesian comparisons.
+Returns extended stats including model variant counts and comparison results.
+
+If `autoPromoteEnabled` is active in `ai_learning_config`, winning variants
+are automatically promoted (prompt versions set to active, model configs prioritized).
+Human approval is still required in suggest mode.
+ * @summary Trigger recompute of variant stats and Bayesian comparisons
+ */
+export const recomputeAiLearningQueryUnprocessedOnlyDefault = true;
+
+export const RecomputeAiLearningQueryParams = zod.object({
+  unprocessedOnly: zod.coerce
+    .boolean()
+    .default(recomputeAiLearningQueryUnprocessedOnlyDefault)
+    .describe(
+      "If true (default), only process signals where processedAt IS NULL. If false, recompute all signals regardless of processed state.",
+    ),
+});
+
+export const RecomputeAiLearningResponse = zod.object({
+  ok: zod.boolean().describe("Whether the recompute completed successfully"),
+  statsCount: zod
+    .number()
+    .describe(
+      "Number of variant stats computed\/updated (includes both prompt and model variants)",
+    ),
+  comparisonsConducted: zod
+    .number()
+    .describe("Number of pairwise Bayesian comparisons performed"),
+  modelVariantCount: zod
+    .number()
+    .optional()
+    .describe("Number of model variant stats computed"),
+  promptVariantCount: zod
+    .number()
+    .optional()
+    .describe("Number of prompt variant stats computed"),
+  signalCount: zod
+    .number()
+    .optional()
+    .describe("Number of feedback signals processed in this recompute"),
+});
+
+/**
+ * Returns ranked variant performance across prompt versions and model configs.
+Each entry includes success/failure counts, success rate, cost data, and label
+resolution (prompt label or model name). Supports filtering by taskScope.
+ * @summary Get variant leaderboard with model variant support
+ */
+export const GetAiLearningLeaderboardQueryParams = zod.object({
+  taskScope: zod.coerce
+    .string()
+    .optional()
+    .describe("Filter by task scope (e.g., resume_tailor, cover_letter_draft)"),
+});
+
+export const GetAiLearningLeaderboardResponseItem = zod.object({
+  rank: zod.number().describe("Leaderboard rank position (1-based)"),
+  variantType: zod
+    .enum(["prompt", "model"])
+    .describe("Whether this entry compares a prompt version or model config"),
+  variantId: zod.number().describe("ID of the prompt version or model config"),
+  label: zod
+    .string()
+    .nullish()
+    .describe("Human-readable label (prompt label or model name)"),
+  taskScope: zod.string().describe("Task scope this variant belongs to"),
+  successRate: zod
+    .number()
+    .describe(
+      "Success rate as a decimal (successes \/ (successes + failures))",
+    ),
+  successes: zod.number(),
+  failures: zod.number(),
+  pending: zod.number(),
+  totalCostUsd: zod
+    .string()
+    .optional()
+    .describe("Total cost in USD for this variant"),
+  avgCostPerApp: zod
+    .string()
+    .optional()
+    .describe("Average cost per application for this variant"),
+  lastComputedAt: zod.coerce
+    .date()
+    .nullish()
+    .describe("When stats for this variant were last computed"),
+});
+export const GetAiLearningLeaderboardResponse = zod.array(
+  GetAiLearningLeaderboardResponseItem,
+);
+
+/**
  * @summary List site adapters
  */
 export const ListSiteAdaptersResponseItem = zod.object({
@@ -2643,6 +2825,47 @@ export const GetWizardSessionResponse = zod.object({
 export const DeleteWizardSessionParams = zod.object({
   id: zod.coerce.number(),
 });
+
+/**
+ * Returns AI-generated best practice items that have been suggested but not yet
+promoted into the active best practices configuration. These are queued for
+human review and can be promoted or rejected.
+ * @summary List AI-suggested best practices
+ */
+export const listSuggestedBestPracticesQueryDomainDefault = `general`;
+
+export const ListSuggestedBestPracticesQueryParams = zod.object({
+  domain: zod.coerce
+    .string()
+    .default(listSuggestedBestPracticesQueryDomainDefault),
+});
+
+export const ListSuggestedBestPracticesResponseItem = zod.object({
+  description: zod
+    .string()
+    .describe("The AI-suggested best practice guideline text"),
+  source: zod
+    .enum(["ai", "hardcoded", "hybrid"])
+    .describe("Origin (always 'ai' for suggested items)"),
+  rationale: zod
+    .string()
+    .nullish()
+    .describe("AI-generated rationale for this suggestion"),
+  frequency: zod
+    .number()
+    .optional()
+    .describe("How many times this pattern was observed in approved outputs"),
+  status: zod
+    .enum(["suggested", "active", "rejected"])
+    .describe("Review status — suggested items are pending human inspection"),
+  suggestedAt: zod.coerce
+    .date()
+    .nullish()
+    .describe("When this suggestion was generated"),
+});
+export const ListSuggestedBestPracticesResponse = zod.array(
+  ListSuggestedBestPracticesResponseItem,
+);
 
 /**
  * @summary Research market trends for a job title

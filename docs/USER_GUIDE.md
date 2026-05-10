@@ -2,7 +2,7 @@
 
 > Internal/private tool only. Job Ops is a single-user, human-in-the-loop job application operations platform. It is not a mass auto-apply bot. Every AI output must be reviewed before use.
 
-Last updated: April 29, 2026
+Last updated: May 10, 2026
 
 ## 1. What Job Ops Does
 
@@ -37,7 +37,7 @@ The app is ready for private testing after the latest schema is pushed to the co
 | Jobs Pipeline | Ready | Manual JD ingest, parse, score, claim matches |
 | Resume tailoring | Ready | Uses current base resume + claims, creates full tailored draft |
 | Cover letters | Ready | Claim-attributed draft paragraphs with approval gate |
-| AI Review | Foundation ready | Prompt versions, evaluations, training examples, overview |
+| AI Learning | Ready | Closed-loop feedback, Bayesian A/B testing (prompts + models), variant leaderboard, auto-recompute, agent roles, health monitoring |
 | Assisted Apply | Foundation ready | Safe session/action scaffolding only; no browser worker yet |
 | Freelance Copilot | Foundation ready | Profiles, projects, scoring, proposal draft queue |
 | Trends & Market Research | Ready | AI market analysis, skills/certs/trends, job board aggregation |
@@ -516,3 +516,70 @@ Later:
 - Outcome analytics correlating claims, prompts, models, and interviews/offers.
 - Official API integrations where allowed.
 - Fine-tuning only after enough approved examples exist.
+
+## 11. AI Learning Dashboard
+
+The AI Learning Dashboard (`/dashboard/ai-learning`) is the control center for the self-evolution pipeline. It shows how the AI is improving over time and lets you manage prompt versions, model configurations, and agent roles.
+
+### 11.1 Access
+
+Navigate to **AI Learning** from the dashboard sidebar. Requires admin authentication.
+
+### 11.2 Health Overview
+
+The top section shows system health:
+- **Status badge**: Healthy (green) / Warning (yellow) / Degraded (red) based on data flow
+- **Unprocessed signals**: Count of feedback signals waiting to be incorporated into learning
+- **Variant stats**: Total aggregated performance records across all task scopes
+- **Comparisons**: Bayesian A/B test results between prompt versions and models
+- **Suggested promotions**: Winning variants ready for your approval
+
+### 11.3 Loop Status
+
+Shows the state of the feedback → learning → improvement loop:
+- **Signal counts**: Processed vs unprocessed feedback signals
+- **Last recompute**: When the Bayesian engine last ran
+- **Variant breakdown**: Performance stats per variant type (prompt vs model) across all task scopes
+- **Waiting state**: A notice appears when not enough data has accumulated (below `minSampleSize`)
+
+### 11.4 Agent Roles
+
+Displays all 8 AI agent roles as cards:
+- **Resume Expert**, **Cover Letter Strategist**, **Application Analyst** (JD Parser)
+- **Claim Generator**, **Proposal Drafter**, **Market Researcher**
+- **Gap Analyst**, **Job Researcher**
+
+Each card shows:
+- Role label and task scope badge
+- Active/inactive status
+- **Personality**: The agent's behavioral instructions
+- **Goals**: What the agent optimizes for
+- **Skill tags**: Specific capabilities (e.g., "ats-optimization", "tone-matching")
+
+Agent roles are configured in the database via `ai_prompt_versions` and can be edited through the API.
+
+### 11.5 Variant Leaderboard
+
+A performance ranking table showing:
+- **Variant**: Prompt version label or model name
+- **Type**: "prompt" or "model"
+- **Task scope**: Which pipeline the variant serves
+- **Successes / Failures / Pending**: Outcome counts from feedback signals
+- **Success rate**: Percentage of positive outcomes
+- **Sample size**: Total evaluations (must exceed `minSampleSize` for comparison)
+- **Active badge**: Whether this variant is currently in use
+
+### 11.6 Recompute Now
+
+The **Recompute Now** button manually triggers the Bayesian learning engine:
+- Queries all unprocessed feedback signals
+- Aggregates performance stats by variant (prompt AND model)
+- Runs Bayesian comparisons between variants
+- Marks signals as processed
+- Updates the leaderboard and promotion suggestions
+
+Auto-recompute can be enabled via **Learning Configuration** (`autoRecomputeEnabled`). When enabled, creating feedback signals automatically triggers recompute when enough unprocessed signals accumulate (threshold: `minSampleSize`).
+
+### 11.7 Promote Suggestions
+
+When a variant statistically outperforms its peers (confidence > 95%, sample size ≥ 10, improvement margin > 5%), it appears as a **promotion suggestion**. You must manually approve promotions — the system never auto-promotes without your consent. Model promotions require extra care as they impact cost and latency.

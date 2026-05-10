@@ -6,6 +6,16 @@ All notable changes to the Job Ops platform.
 
 ### Added
 
+#### AI Self-Evolution Pipeline (May 10, 2026)
+- **Closed Learning Loop**: Feedback signals now flow through attribution → aggregation → Bayesian comparison → auto-recompute. `feedback_signals` `attributionData` auto-populated from lineage chain (runId → event_logs → promptVersionId). Signals auto-processed when unprocessed count meets minimum sample size (configurable `autoRecomputeEnabled`).
+- **Model Variant A/B Testing**: `learning-aggregator.ts` extended to track both prompt AND model variants. Bayesian comparison runs per (taskScope, variantType) composite groups — enabling model-level optimization alongside prompt tuning.
+- **Agent Specialization (8 roles)**: DB-seeded agent roles with personality, goals, and skill tags: Resume Expert, Cover Letter Strategist, Application Analyst, Claim Generator, Proposal Drafter, Market Researcher, Gap Analyst, Job Researcher. Pipeline prompts externalized into `ai_prompt_versions` with agent metadata visible in dashboard.
+- **Self-Healing Intelligence**: Auto-generated evaluations from approval/rejection flows (resume/cover letter versions auto-create `ai_run_evaluations`). Auto-suggested training examples from high-scoring approved outputs. Best-practice auto-suggestion when rejection rate exceeds 30% for a task scope.
+- **Learning Loop Dashboard** (`/ai-learning`): New Loop Status section showing signal counts, variant-type breakdown, and last recompute timestamp. Agent Roles gallery displaying personality, goals, skill tags, and active status for all 8 agents. Health Overview card with healthy/warning/degraded status indicators.
+- **Health & Monitoring**: `GET /ai-learning/health` endpoint returning overall status, unprocessed signal count, variant stats, and comparison counts.
+- **Pipeline Task Scopes**: `gap-analysis.ts` and `job-research.ts` assigned dedicated task scopes (`gap_analysis`, `job_research`) for independent optimization and agent assignment.
+- **Config Flags**: `autoRecomputeEnabled`, `autoEvaluateEnabled`, `autoTrainSuggestEnabled` added to `ai_learning_config` for granular self-healing control.
+
 #### AI Quality Improvements (May 2, 2026)
 - **Best Practices Engine** (`/admin/best-practices`): DB-backed rules system for controlling AI output quality. 6 default rules: no markdown, no generic filler, quantified impact, cover letter length, job tailoring, business problem addressing.
 - **Resume-to-Profile Pipeline** (`POST /resume-to-profile`): Auto-generate role profiles from base resume using AI analysis.
