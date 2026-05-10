@@ -113,7 +113,7 @@ export default function GuidePage() {
   </li>
   <li className="flex items-start gap-2">
   <span className="font-bold text-foreground">Log your outcomes.</span>
-  {" "}Mark applications with their result (interview, offer, rejected). This feeds the AI Learning system.
+  {" "}Mark applications with canonical outcomes (interview, offer, hired, rejected, ghosted, no response). This feeds the AI Learning system.
   </li>
   <li className="flex items-start gap-2">
   <span className="font-bold text-foreground">Use the Trends page.</span>

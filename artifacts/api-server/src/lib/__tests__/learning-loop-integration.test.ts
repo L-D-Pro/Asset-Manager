@@ -170,6 +170,31 @@ describe("Learning Loop Integration Tests", () => {
       const modelStats = result.filter((r) => r.variantType === "model");
       expect(modelStats).toHaveLength(2);
     });
+
+    it("separates model stats by task scope and prefers model config id when present", () => {
+      const mockSignals = [
+        {
+          outcome: "offer",
+          promptVersionId: 1,
+          modelName: "openai/gpt-4.1-mini",
+          taskScope: "resume_tailoring",
+          modelConfigId: 11,
+        },
+        {
+          outcome: "rejected",
+          promptVersionId: 2,
+          modelName: "openai/gpt-4.1-mini",
+          taskScope: "cover_letter",
+          modelConfigId: 22,
+        },
+      ];
+
+      const result = aggregateVariantStats(mockSignals);
+      const modelStats = result.filter((r) => r.variantType === "model");
+      expect(modelStats).toHaveLength(2);
+      expect(modelStats.some((s) => s.variantId === 11 && s.taskScope === "resume_tailoring")).toBe(true);
+      expect(modelStats.some((s) => s.variantId === 22 && s.taskScope === "cover_letter")).toBe(true);
+    });
   });
 
   describe("Test 1: Complete happy path (with mocked DB)", () => {

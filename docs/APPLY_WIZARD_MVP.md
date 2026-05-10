@@ -1,6 +1,6 @@
 # Apply Wizard MVP
 
-The Apply Wizard is a guided, single-window flow for taking one job from intake to assisted-apply preparation.
+The Apply Wizard is a guided, single-window flow for taking one job from intake to assisted/manual apply completion.
 
 ## Enable the feature
 
@@ -48,6 +48,8 @@ If the feature flag is disabled, the route still exists and renders a disabled n
    - Approve/reject resume and cover letter versions
 6. **Assisted Apply**
    - Create assisted apply session (`/application-sessions`)
+   - Create linked `applications` record (`applyMode: assisted`, `status: draft`)
+   - Mark final submission manually (`status: submitted`, `appliedAt`, confirmation reference, notes)
 
 ## Safety and control
 
@@ -55,8 +57,10 @@ If the feature flag is disabled, the route still exists and renders a disabled n
 - No auto submission to external platforms
 - Final submit remains manual
 - Assisted session records enforce assist-only policy metadata
+- Application submission state is explicitly user-confirmed in the wizard
 - Comparison metadata is logged for audit (`event_logs`)
-- Only promoted winners are kept in normal resume/cover approval queues
+- Compare candidates are retained as `comparison_candidate` rows for traceability
+- Only promoted winners are moved into normal resume/cover approval queues
 
 ## AI model behavior in wizard
 
@@ -83,3 +87,8 @@ If the feature flag is disabled, the route still exists and renders a disabled n
    - Resume Version ID
    - Cover Letter Version ID
    - Assisted Session ID
+   - Application ID
+11. Mark submission in wizard and verify:
+   - Application status becomes `submitted`
+   - Applied date persists
+   - Confirmation reference persists

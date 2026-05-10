@@ -2,11 +2,14 @@ interface RawSignal {
   outcome: string;
   promptVersionId: number | null;
   modelName?: string | null;
+  taskScope?: string | null;
+  modelConfigId?: number | null;
 }
 
 interface AggregatedStat {
   variantType: "prompt" | "model";
   variantId: number;
+  taskScope?: string | null;
   successes: number;
   failures: number;
   pending: number;
@@ -54,12 +57,15 @@ export function aggregateVariantStats(signals: RawSignal[]): AggregatedStat[] {
 
     // Model variant aggregation (new)
     if (signal.modelName != null) {
-      const key = `model:${signal.modelName}`;
+      const modelVariantId = signal.modelConfigId ?? hashModelName(signal.modelName);
+      const scoped = signal.taskScope ?? "unknown";
+      const key = `model:${scoped}:${modelVariantId}`;
       let entry = map.get(key);
       if (!entry) {
         entry = {
           variantType: "model",
-          variantId: hashModelName(signal.modelName),
+          variantId: modelVariantId,
+          taskScope: signal.taskScope ?? null,
           successes: 0,
           failures: 0,
           pending: 0,

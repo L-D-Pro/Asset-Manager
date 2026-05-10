@@ -119,7 +119,7 @@ export default function LoginPage() {
  autoComplete="username"
  value={username}
  onChange={e => setUsername(e.target.value)}
- placeholder="admin"
+ placeholder="Enter your username"
  required
  disabled={loading}
  autoFocus

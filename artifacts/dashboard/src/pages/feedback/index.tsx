@@ -29,11 +29,20 @@ const signalSchema = z.object({
 });
 
 const SIGNAL_COLORS: Record<string, string> = {
- response: "bg-primary/10 text-primary",
- interview: "bg-success/10 text-success",
- offer: "bg-success/10 text-success",
- rejection: "bg-destructive/10 text-destructive",
+  response: "bg-primary/10 text-primary",
+  interview: "bg-success/10 text-success",
+  offer: "bg-success/10 text-success",
+  rejection: "bg-destructive/10 text-destructive",
 };
+
+const OUTCOME_OPTIONS = [
+  { value: "interview", label: "Interview" },
+  { value: "offer", label: "Offer" },
+  { value: "hired", label: "Hired" },
+  { value: "rejected", label: "Rejected" },
+  { value: "ghosted", label: "Ghosted" },
+  { value: "no_response", label: "No Response" },
+];
 
 export default function FeedbackPage() {
  const { data: signals, isLoading } = useListFeedbackSignals();
@@ -48,7 +57,7 @@ export default function FeedbackPage() {
  applicationId: 0,
  resumeVersionId: 0,
  signalType: "response",
- outcome: "positive",
+ outcome: "interview",
  notes: "",
  },
  });
@@ -58,7 +67,7 @@ export default function FeedbackPage() {
  onSuccess: () => {
  toast({ title: "Feedback logged" });
  setIsDialogOpen(false);
- form.reset({ applicationId: 0, resumeVersionId: 0, signalType: "response", outcome: "positive", notes: "" });
+ form.reset({ applicationId: 0, resumeVersionId: 0, signalType: "response", outcome: "interview", notes: "" });
  queryClient.invalidateQueries({ queryKey: getListFeedbackSignalsQueryKey() });
  },
  onError: (error) =>
@@ -128,9 +137,9 @@ export default function FeedbackPage() {
  </SelectTrigger>
  </FormControl>
  <SelectContent>
- <SelectItem value="positive">Positive</SelectItem>
- <SelectItem value="neutral">Neutral</SelectItem>
- <SelectItem value="negative">Negative</SelectItem>
+ {OUTCOME_OPTIONS.map((option) => (
+ <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+ ))}
  </SelectContent>
  </Select>
  </FormItem>

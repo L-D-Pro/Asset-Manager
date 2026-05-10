@@ -11,6 +11,21 @@ export interface CreateFeedbackSignalBody {
   applicationId: number;
   /** @nullable */
   resumeVersionId?: number | null;
+  /** @nullable */
+  coverLetterVersionId?: number | null;
+  /** @nullable */
+  jobId?: number | null;
+  /** @nullable */
+  roleProfileId?: number | null;
+  /** @nullable */
+  baseResumeVersionId?: number | null;
+  /** @nullable */
+  promptVersionId?: number | null;
+  /** @nullable */
+  modelName?: string | null;
+  selectedClaimIds?: number[];
+  /** @nullable */
+  finalResult?: string | null;
   outcome: string;
   signalType: string;
   /** @nullable */

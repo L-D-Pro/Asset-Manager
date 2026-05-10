@@ -6,6 +6,7 @@ import {
   aiVariantStatsTable,
   aiVariantComparisonsTable,
   aiLearningConfigTable,
+  aiModelConfigsTable,
   eventLogsTable,
 } from "@workspace/db";
 import { compareVariants, isWinner } from "./bayesian-compare";
@@ -42,7 +43,47 @@ export async function runRecompute(
       .from(feedbackSignalsTable)
       .where(sql`${feedbackSignalsTable.processedAt} IS NULL`);
 
-    const stats = aggregateVariantStats(signals);
+    const modelLookup = new Map<string, { modelConfigId: number | null; taskScope: string | null }>();
+    for (const signal of signals) {
+      if (!signal.modelName) continue;
+      const meta = (signal.attributionData as Record<string, unknown> | null) ?? {};
+      const metaScope = typeof meta.taskScope === "string" ? meta.taskScope : null;
+      const key = `${metaScope ?? ""}::${signal.modelName}`;
+      if (modelLookup.has(key)) continue;
+
+      const configured = metaScope
+        ? await tx
+            .select({ id: aiModelConfigsTable.id, taskScope: aiModelConfigsTable.taskScope })
+            .from(aiModelConfigsTable)
+            .where(and(eq(aiModelConfigsTable.modelName, signal.modelName), eq(aiModelConfigsTable.taskScope, metaScope)))
+            .orderBy(aiModelConfigsTable.priority)
+            .limit(1)
+        : await tx
+            .select({ id: aiModelConfigsTable.id, taskScope: aiModelConfigsTable.taskScope })
+            .from(aiModelConfigsTable)
+            .where(eq(aiModelConfigsTable.modelName, signal.modelName))
+            .orderBy(aiModelConfigsTable.priority)
+            .limit(1);
+
+      modelLookup.set(key, {
+        modelConfigId: configured[0]?.id ?? null,
+        taskScope: configured[0]?.taskScope ?? metaScope,
+      });
+    }
+
+    const normalizedSignals = signals.map((signal) => {
+      const meta = (signal.attributionData as Record<string, unknown> | null) ?? {};
+      const metaScope = typeof meta.taskScope === "string" ? meta.taskScope : null;
+      const key = `${metaScope ?? ""}::${signal.modelName ?? ""}`;
+      const modelResolved = signal.modelName ? modelLookup.get(key) : undefined;
+      return {
+        ...signal,
+        taskScope: modelResolved?.taskScope ?? metaScope,
+        modelConfigId: modelResolved?.modelConfigId ?? null,
+      };
+    });
+
+    const stats = aggregateVariantStats(normalizedSignals);
     const signalIds = signals.map((s) => s.id);
 
     for (const stat of stats) {
@@ -54,6 +95,8 @@ export async function runRecompute(
           .from(aiPromptVersionsTable)
           .where(eq(aiPromptVersionsTable.id, stat.variantId));
         taskScope = prompt?.taskScope;
+      } else if (stat.variantType === "model") {
+        taskScope = stat.taskScope ?? undefined;
       }
 
       if (!taskScope) continue;
@@ -188,6 +231,16 @@ export async function runRecompute(
                 .update(aiPromptVersionsTable)
                 .set({ isActive: true })
                 .where(eq(aiPromptVersionsTable.id, winnerId));
+            } else if (winnerType === "model") {
+              await tx
+                .update(aiModelConfigsTable)
+                .set({ isActive: false, priority: 1 })
+                .where(eq(aiModelConfigsTable.taskScope, scope));
+
+              await tx
+                .update(aiModelConfigsTable)
+                .set({ isActive: true, priority: 0 })
+                .where(eq(aiModelConfigsTable.id, winnerId));
             }
 
             await tx.insert(eventLogsTable).values({

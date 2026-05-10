@@ -1,5 +1,6 @@
 import { db, aiLearningConfigTable } from "@workspace/db";
 import { logger } from "./logger";
+import { runRecompute } from "./learning-processor";
 
 let cron: ((expression: string, fn: () => void) => void) | null = null;
 let currentJob: unknown = null;
@@ -21,18 +22,10 @@ async function loadConfig() {
   return config;
 }
 
-async function runRecompute() {
+async function runRecomputeCycle() {
   try {
     logger.info("Learning scheduler: starting recompute cycle");
-    const response = await fetch("http://localhost:" + (process.env.PORT || "5000") + "/api/ai-learning/recompute", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-    });
-    if (!response.ok) {
-      logger.warn({ status: response.status }, "Learning scheduler: recompute returned non-OK");
-      return;
-    }
-    const data = (await response.json()) as { ok: boolean; statsCount: number };
+    const data = await runRecompute(db);
     logger.info({ statsCount: data.statsCount }, "Learning scheduler: recompute completed");
   } catch (error) {
     logger.error({ error }, "Learning scheduler: recompute failed");
@@ -53,7 +46,7 @@ export async function startLearningScheduler(): Promise<void> {
   logger.info({ expression }, "Learning scheduler: starting with cron expression");
 
   currentJob = cron(expression, () => {
-    runRecompute().catch((err) => {
+    runRecomputeCycle().catch((err) => {
       logger.error({ error: String(err) }, "Learning scheduler: scheduled recompute threw");
     });
   });

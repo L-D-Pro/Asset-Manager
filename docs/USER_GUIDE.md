@@ -241,9 +241,9 @@ The foundation for self-learning:
 - Creates prompt versions.
 - Tracks active prompt versions by task.
 - Stores AI run evaluations.
-- Stores curated training examples for future few-shot prompts/evals/fine-tuning.
+- Stores curated training examples for future few-shot prompt/evaluation reuse.
 
-This is not fine-tuning yet. It is prompt/version/evaluation learning.
+This is not fine-tuning. It is prompt/model optimization with evaluation and few-shot example reuse.
 
 ### Assisted Apply
 
@@ -254,6 +254,7 @@ Tracks safe, human-approved application assistance sessions.
 Current behavior:
 
 - Creates session audit records.
+- Supports assisted/manual apply boundary: Job Ops prepares materials and tracks submission metadata, but you submit externally.
 - Tracks platform, target URL, current step, and human checkpoint.
 - Logs future fields/actions through API scaffolding.
 
@@ -317,16 +318,16 @@ Example:
 
 ## 5. AI Strategy
 
-Job Ops does not currently fine-tune a model. It improves AI behavior through:
+Job Ops does not fine-tune models. It improves AI behavior through:
 
 1. Better inputs: base resume, claims, role profiles, job text, project text.
 2. Prompt versions: task-specific prompt templates can override built-in prompts.
 3. Model routing: each task can use a different OpenRouter model.
 4. Evaluations: AI outputs can be reviewed and scored.
-5. Training examples: approved or human-edited outputs can be curated for future use.
-6. Feedback signals: real-world outcomes are stored for future correlation.
+5. Training examples: approved or human-edited outputs can be curated for future few-shot reuse.
+6. Feedback signals: real-world outcomes are stored and aggregated for Bayesian variant comparison.
 
-Fine-tuning should wait until there are enough high-quality, human-approved examples and terms-safe training data.
+This learning loop intentionally avoids weight updates; it optimizes prompts/models and retrieval-style examples.
 
 ## 6. Assisted Apply Policy
 

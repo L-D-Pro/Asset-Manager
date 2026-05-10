@@ -359,6 +359,16 @@ async function promoteWinner(
         .update(aiPromptVersionsTable)
         .set({ isActive: true })
         .where(eq(aiPromptVersionsTable.id, winnerId));
+    } else if (winnerType === "model") {
+      await tx
+        .update(aiModelConfigsTable)
+        .set({ isActive: false, priority: 1 })
+        .where(eq(aiModelConfigsTable.taskScope, comparison.taskScope));
+
+      await tx
+        .update(aiModelConfigsTable)
+        .set({ isActive: true, priority: 0 })
+        .where(eq(aiModelConfigsTable.id, winnerId));
     }
 
     await tx
@@ -461,6 +471,16 @@ router.post(
           .update(aiPromptVersionsTable)
           .set({ isActive: true })
           .where(eq(aiPromptVersionsTable.id, loserId));
+      } else if (loserType === "model") {
+        await tx
+          .update(aiModelConfigsTable)
+          .set({ isActive: false, priority: 1 })
+          .where(eq(aiModelConfigsTable.taskScope, comparison.taskScope));
+
+        await tx
+          .update(aiModelConfigsTable)
+          .set({ isActive: true, priority: 0 })
+          .where(eq(aiModelConfigsTable.id, loserId));
       }
 
       await tx

@@ -64,7 +64,8 @@ const compareBodySchema = z.object({
 
 const promoteBodySchema = z.object({
   claimIds: z.array(z.number()).optional(),
-  model: modelOverrideSchema,
+  model: modelOverrideSchema.optional(),
+  candidateVersionId: z.number().int().positive().optional(),
 });
 
 router.get("/jobs", async (req, res): Promise<void> => {
@@ -497,8 +498,13 @@ router.post("/jobs/:id/compare/resume", async (req: JobOpsRequest, res): Promise
         body.data.claimIds,
         { modelOverride: model },
       );
+      await db
+        .update(resumeVersionsTable)
+        .set({ status: "comparison_candidate" })
+        .where(eq(resumeVersionsTable.id, version.id));
 
       candidates.push({
+        versionId: version.id,
         modelName: model.modelName,
         provider: model.provider ?? "openrouter",
         status: "succeeded",
@@ -507,8 +513,6 @@ router.post("/jobs/:id/compare/resume", async (req: JobOpsRequest, res): Promise
         runId: version.runId ?? null,
         eventLogId: version.eventLogId ?? null,
       });
-
-      await db.delete(resumeVersionsTable).where(eq(resumeVersionsTable.id, version.id));
     } catch (error) {
       candidates.push({
         modelName: model.modelName,
@@ -588,8 +592,13 @@ router.post("/jobs/:id/compare/cover-letter", async (req: JobOpsRequest, res): P
         body.data.claimIds,
         { modelOverride: model },
       );
+      await db
+        .update(coverLetterVersionsTable)
+        .set({ status: "comparison_candidate" })
+        .where(eq(coverLetterVersionsTable.id, version.id));
 
       candidates.push({
+        versionId: version.id,
         modelName: model.modelName,
         provider: model.provider ?? "openrouter",
         status: "succeeded",
@@ -598,8 +607,6 @@ router.post("/jobs/:id/compare/cover-letter", async (req: JobOpsRequest, res): P
         runId: version.runId ?? null,
         eventLogId: version.eventLogId ?? null,
       });
-
-      await db.delete(coverLetterVersionsTable).where(eq(coverLetterVersionsTable.id, version.id));
     } catch (error) {
       candidates.push({
         modelName: model.modelName,
@@ -657,6 +664,53 @@ router.post("/jobs/:id/compare/promote-resume", async (req, res): Promise<void> 
     .select()
     .from(claimsTable)
     .where(eq(claimsTable.isActive, true));
+
+  if (body.data.candidateVersionId != null) {
+    const [candidate] = await db
+      .select()
+      .from(resumeVersionsTable)
+      .where(eq(resumeVersionsTable.id, body.data.candidateVersionId));
+    if (!candidate || candidate.jobId !== job.id) {
+      res.status(404).json({ error: "Resume comparison candidate not found for this job" });
+      return;
+    }
+    if (candidate.status !== "comparison_candidate") {
+      res.status(409).json({ error: "Only comparison candidates can be promoted" });
+      return;
+    }
+
+    const [promoted] = await db
+      .update(resumeVersionsTable)
+      .set({ status: "pending_approval" })
+      .where(eq(resumeVersionsTable.id, candidate.id))
+      .returning();
+
+    await db.insert(eventLogsTable).values({
+      entityType: "resume_version",
+      entityId: promoted!.id,
+      jobId: job.id,
+      runId: promoted!.runId ?? null,
+      eventType: "wizard_compare_promote_resume",
+      previousState: "comparison_candidate",
+      nextState: "pending_approval",
+      actorType: "user",
+      metadata: {
+        candidateVersionId: promoted!.id,
+        model: body.data.model ?? null,
+        claimIds: body.data.claimIds ?? [],
+        resumeVersionId: promoted!.id,
+        eventLogId: promoted!.eventLogId ?? null,
+      },
+    });
+
+    res.status(201).json(GetResumeVersionResponse.parse(promoted));
+    return;
+  }
+
+  if (!body.data.model) {
+    res.status(400).json({ error: "Either model or candidateVersionId is required" });
+    return;
+  }
 
   try {
     const version = await runResumeTailorPipeline(
@@ -720,6 +774,53 @@ router.post("/jobs/:id/compare/promote-cover-letter", async (req, res): Promise<
     .from(claimsTable)
     .where(eq(claimsTable.isActive, true));
 
+  if (body.data.candidateVersionId != null) {
+    const [candidate] = await db
+      .select()
+      .from(coverLetterVersionsTable)
+      .where(eq(coverLetterVersionsTable.id, body.data.candidateVersionId));
+    if (!candidate || candidate.jobId !== job.id) {
+      res.status(404).json({ error: "Cover letter comparison candidate not found for this job" });
+      return;
+    }
+    if (candidate.status !== "comparison_candidate") {
+      res.status(409).json({ error: "Only comparison candidates can be promoted" });
+      return;
+    }
+
+    const [promoted] = await db
+      .update(coverLetterVersionsTable)
+      .set({ status: "pending_approval" })
+      .where(eq(coverLetterVersionsTable.id, candidate.id))
+      .returning();
+
+    await db.insert(eventLogsTable).values({
+      entityType: "cover_letter_version",
+      entityId: promoted!.id,
+      jobId: job.id,
+      runId: promoted!.runId ?? null,
+      eventType: "wizard_compare_promote_cover_letter",
+      previousState: "comparison_candidate",
+      nextState: "pending_approval",
+      actorType: "user",
+      metadata: {
+        candidateVersionId: promoted!.id,
+        model: body.data.model ?? null,
+        claimIds: body.data.claimIds ?? [],
+        coverLetterVersionId: promoted!.id,
+        eventLogId: promoted!.eventLogId ?? null,
+      },
+    });
+
+    res.status(201).json(GetCoverLetterVersionResponse.parse(promoted));
+    return;
+  }
+
+  if (!body.data.model) {
+    res.status(400).json({ error: "Either model or candidateVersionId is required" });
+    return;
+  }
+
   let roleProfile = null;
   if (job.roleProfileId) {
     const [rp] = await db
@@ -732,10 +833,10 @@ router.post("/jobs/:id/compare/promote-cover-letter", async (req, res): Promise<
   const version = await runCoverLetterPipeline(
     job,
     roleProfile,
-    allClaims,
-    body.data.claimIds,
-    { modelOverride: body.data.model },
-  );
+      allClaims,
+      body.data.claimIds,
+      { modelOverride: body.data.model },
+    );
 
   await db.insert(eventLogsTable).values({
     entityType: "cover_letter_version",

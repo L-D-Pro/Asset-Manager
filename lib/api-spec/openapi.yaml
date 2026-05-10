@@ -3155,6 +3155,24 @@ components:
           type: integer
         resumeVersionId:
           type: ["integer", "null"]
+        coverLetterVersionId:
+          type: ["integer", "null"]
+        jobId:
+          type: ["integer", "null"]
+        roleProfileId:
+          type: ["integer", "null"]
+        baseResumeVersionId:
+          type: ["integer", "null"]
+        promptVersionId:
+          type: ["integer", "null"]
+        modelName:
+          type: ["string", "null"]
+        selectedClaimIds:
+          type: array
+          items:
+            type: integer
+        finalResult:
+          type: ["string", "null"]
         outcome:
           type: string
         signalType:

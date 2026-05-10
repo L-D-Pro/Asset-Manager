@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
- approveCoverLetterVersion,
- approveResumeVersion,
- createJob as createJobRequest,
- draftCoverLetter as draftCoverLetterRequest,
- getJobClaimMatches,
- parseJobDescription,
- tailorJobResume as tailorJobResumeRequest,
+  approveCoverLetterVersion,
+  approveResumeVersion,
+  createApplication as createApplicationRequest,
+  createJob as createJobRequest,
+  draftCoverLetter as draftCoverLetterRequest,
+  getJobClaimMatches,
+  parseJobDescription,
+  tailorJobResume as tailorJobResumeRequest,
+  updateApplication as updateApplicationRequest,
  updateJob as updateJobRequest,
  useApproveCoverLetterVersion,
  useApproveResumeVersion,
@@ -92,6 +94,7 @@ type ModelCatalogItem = {
 };
 
 type CompareCandidate = {
+ versionId?: number;
  modelName: string;
  provider: string;
  status: "succeeded" | "failed";
@@ -170,6 +173,9 @@ export default function ApplyWizardPage() {
  const [resumeVersionId, setResumeVersionId] = useState<number | null>(null);
  const [coverLetterVersionId, setCoverLetterVersionId] = useState<number | null>(null);
  const [assistedSessionId, setAssistedSessionId] = useState<number | null>(null);
+ const [applicationId, setApplicationId] = useState<number | null>(null);
+ const [submissionRef, setSubmissionRef] = useState("");
+ const [submissionDate, setSubmissionDate] = useState(() => new Date().toISOString().slice(0, 10));
  const [batchText, setBatchText] = useState("");
  const [batchRuns, setBatchRuns] = useState<BatchRun[]>([]);
  const [batchRunning, setBatchRunning] = useState(false);
@@ -509,6 +515,9 @@ export default function ApplyWizardPage() {
  resumeVersionId,
  coverLetterVersionId,
  assistedSessionId,
+ applicationId,
+ submissionRef,
+ submissionDate,
  assistedForm,
  batchText,
  batchRuns,
@@ -567,6 +576,9 @@ export default function ApplyWizardPage() {
  if (s.resumeVersionId) setResumeVersionId(s.resumeVersionId as number);
  if (s.coverLetterVersionId) setCoverLetterVersionId(s.coverLetterVersionId as number);
  if (s.assistedSessionId) setAssistedSessionId(s.assistedSessionId as number);
+ if (s.applicationId) setApplicationId(s.applicationId as number);
+ if (s.submissionRef) setSubmissionRef(s.submissionRef as string);
+ if (s.submissionDate) setSubmissionDate(s.submissionDate as string);
  if (s.assistedForm) setAssistedForm(s.assistedForm as typeof assistedForm);
  if (s.batchText) setBatchText(s.batchText as string);
  if (s.useCustomComparison != null) setUseCustomComparison(s.useCustomComparison as boolean);
@@ -1026,16 +1038,22 @@ export default function ApplyWizardPage() {
  };
 
  const handlePromoteResumeWinner = async () => {
- if (!jobId || !selectedResumeWinner) return;
- setPromoting("resume");
- try {
- const version = await requestJson<{ id: number }>(`/api/jobs/${jobId}/compare/promote-resume`, {
- method: "POST",
- body: JSON.stringify({
- claimIds: selectedClaimIds,
- model: { provider: "openrouter", modelName: selectedResumeWinner },
- }),
- });
+  if (!jobId || !selectedResumeWinner) return;
+  const winner = resumeCandidates.find((c) => c.modelName === selectedResumeWinner && c.status === "succeeded");
+  if (!winner?.versionId) {
+    toast({ title: "Winner candidate is missing version data", variant: "destructive" });
+    return;
+  }
+  setPromoting("resume");
+  try {
+  const version = await requestJson<{ id: number }>(`/api/jobs/${jobId}/compare/promote-resume`, {
+  method: "POST",
+  body: JSON.stringify({
+   claimIds: selectedClaimIds,
+   model: { provider: "openrouter", modelName: selectedResumeWinner },
+   candidateVersionId: winner.versionId,
+  }),
+  });
  setResumeVersionId(version.id);
  toast({ title: `Promoted resume winner (#${version.id})` });
  } catch (error) {
@@ -1050,16 +1068,22 @@ export default function ApplyWizardPage() {
  };
 
  const handlePromoteCoverWinner = async () => {
- if (!jobId || !selectedCoverWinner) return;
- setPromoting("cover");
- try {
- const version = await requestJson<{ id: number }>(`/api/jobs/${jobId}/compare/promote-cover-letter`, {
- method: "POST",
- body: JSON.stringify({
- claimIds: selectedClaimIds,
- model: { provider: "openrouter", modelName: selectedCoverWinner },
- }),
- });
+  if (!jobId || !selectedCoverWinner) return;
+  const winner = coverCandidates.find((c) => c.modelName === selectedCoverWinner && c.status === "succeeded");
+  if (!winner?.versionId) {
+    toast({ title: "Winner candidate is missing version data", variant: "destructive" });
+    return;
+  }
+  setPromoting("cover");
+  try {
+  const version = await requestJson<{ id: number }>(`/api/jobs/${jobId}/compare/promote-cover-letter`, {
+  method: "POST",
+  body: JSON.stringify({
+   claimIds: selectedClaimIds,
+   model: { provider: "openrouter", modelName: selectedCoverWinner },
+   candidateVersionId: winner.versionId,
+  }),
+  });
  setCoverLetterVersionId(version.id);
  toast({ title: `Promoted cover winner (#${version.id})` });
  } catch (error) {
@@ -1150,8 +1174,8 @@ export default function ApplyWizardPage() {
  };
 
  const handleCreateAssistedSession = () => {
- if (!jobId) return;
- createSession.mutate(
+ if (!jobId || !resumeVersionId || !coverLetterVersionId) return;
+  createSession.mutate(
  {
  data: {
  platform: assistedForm.platform,
@@ -1167,11 +1191,29 @@ export default function ApplyWizardPage() {
  },
  },
  },
- {
- onSuccess: (session) => {
- setAssistedSessionId(session.id);
- toast({ title: `Assisted session created (#${session.id})` });
- },
+  {
+  onSuccess: (session) => {
+  (async () => {
+    setAssistedSessionId(session.id);
+    const createdApp = await createApplicationRequest({
+      jobId,
+      resumeVersionId,
+      coverLetterVersionId,
+      applyMode: "assisted",
+      status: "draft",
+      platform: assistedForm.platform || null,
+      notes: assistedForm.notes || null,
+    });
+    setApplicationId(createdApp.id);
+    toast({ title: `Assisted session created (#${session.id}) and linked to application #${createdApp.id}` });
+  })().catch((error) => {
+    toast({
+      title: "Assisted session created, but failed to create application record",
+      description: getErrorMessage(error, "Open Applications and create one manually."),
+      variant: "destructive",
+    });
+  });
+  },
  onError: (error) =>
  toast({
  title: "Failed to create assisted session",
@@ -1179,7 +1221,26 @@ export default function ApplyWizardPage() {
  variant: "destructive",
  }),
  },
- );
+  );
+ };
+
+ const handleMarkSubmitted = async () => {
+ if (!applicationId) return;
+ try {
+  await updateApplicationRequest(applicationId, {
+   status: "submitted",
+   appliedAt: submissionDate ? new Date(`${submissionDate}T12:00:00.000Z`).toISOString() : null,
+   confirmationRef: submissionRef || null,
+   notes: assistedForm.notes || null,
+  });
+  toast({ title: `Application #${applicationId} marked submitted` });
+ } catch (error) {
+  toast({
+   title: "Failed to mark submitted",
+   description: getErrorMessage(error, "Try again from Applications page."),
+   variant: "destructive",
+  });
+ }
  };
 
  return (
@@ -1708,14 +1769,14 @@ export default function ApplyWizardPage() {
  <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 flex items-start gap-2">
  <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
  <p className="text-sm text-destructive">
- No claims in your ledger. Go back to Step 3 to add claims — without them, generation will produce your unmodified base resume.
+ No claims in your ledger. Add claims in Step 3 first; otherwise generation stays in assist-only mode and may return minimally tailored drafts.
  </p>
  </div>
  ) : selectedClaimIds.length === 0 ? (
  <div className="rounded-md border border-warning/40 bg-warning/10 p-3 flex items-start gap-2">
  <AlertCircle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
  <p className="text-sm">
- No specific claims selected — the AI will auto-select the most relevant from your {activeClaims.length} active claim{activeClaims.length === 1 ? "" : "s"}.
+ No specific claims selected. The AI will auto-select from your {activeClaims.length} active claim{activeClaims.length === 1 ? "" : "s"}.
  </p>
  </div>
  ) : (
@@ -2148,9 +2209,9 @@ export default function ApplyWizardPage() {
  </div>
  ) : (
  <div className="text-sm whitespace-pre-wrap leading-relaxed">
- {coverLetterVersionId ? "No tailored content available." : "Generate a cover letter in Step 4 first."}
- </div>
- )}
+  {coverLetterVersionId ? (coverLetterVersion?.draftContent || "No tailored content available.") : "Generate a cover letter in Step 4 first."}
+  </div>
+  )}
  </div>
  <div className="flex gap-2">
  <Button
@@ -2235,15 +2296,41 @@ export default function ApplyWizardPage() {
  />
 
  <div className="flex flex-wrap items-center gap-3">
- <Button onClick={handleCreateAssistedSession} disabled={createSession.isPending || !assistedForm.platform} >
- {createSession.isPending ? "Creating Session..." : "Create Assisted Session"}
- </Button>
+  <Button onClick={handleCreateAssistedSession} disabled={createSession.isPending || !assistedForm.platform || !resumeVersionId || !coverLetterVersionId} >
+  {createSession.isPending ? "Creating Session..." : "Create Assisted Session"}
+  </Button>
  {assistedSessionId ? (
  <Badge>
  Session #{assistedSessionId} ready - <Link className="underline ml-1" to="/assisted-apply">open</Link>
  </Badge>
  ) : null}
- </div>
+  </div>
+
+  {applicationId ? (
+  <div className="rounded-md border p-3 space-y-3">
+  <p className="text-sm font-medium">Mark final submission (manual action completed)</p>
+  <div className="grid gap-3 md:grid-cols-2">
+  <Input
+  type="date"
+  value={submissionDate}
+  onChange={(e) => setSubmissionDate(e.target.value)}
+  />
+  <Input
+  placeholder="Confirmation/reference ID"
+  value={submissionRef}
+  onChange={(e) => setSubmissionRef(e.target.value)}
+  />
+  </div>
+  <div className="flex items-center gap-2">
+  <Button variant="secondary" onClick={handleMarkSubmitted}>
+  Mark Submitted
+  </Button>
+  <Badge>
+  Application #{applicationId} - <Link className="underline ml-1" to="/applications">open</Link>
+  </Badge>
+  </div>
+  </div>
+  ) : null}
 
  <div className="flex justify-between">
  <Button variant="outline" onClick={() => setStep("approve")}>Back</Button>
@@ -2286,10 +2373,14 @@ export default function ApplyWizardPage() {
  Cover Letter Version: <strong>{coverLetterVersionId ?? "-"}</strong>
  {coverLetterVersionId ? <Link className="ml-2 text-primary underline" to="/cover-letters">open queue</Link> : null}
  </p>
- <p>
- Assisted Session: <strong>{assistedSessionId ?? "-"}</strong>
- {assistedSessionId ? <Link className="ml-2 text-primary underline" to="/assisted-apply">open</Link> : null}
- </p>
+  <p>
+  Application: <strong>{applicationId ?? "-"}</strong>
+  {applicationId ? <Link className="ml-2 text-primary underline" to="/applications">open</Link> : null}
+  </p>
+  <p>
+  Assisted Session: <strong>{assistedSessionId ?? "-"}</strong>
+  {assistedSessionId ? <Link className="ml-2 text-primary underline" to="/assisted-apply">open</Link> : null}
+  </p>
  </CardContent>
  </ContentCard>
  </div>

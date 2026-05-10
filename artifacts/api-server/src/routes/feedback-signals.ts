@@ -70,8 +70,13 @@ router.post("/feedback-signals", async (req, res): Promise<void> => {
     runId = row?.runId ?? null;
   }
 
-  // Note: coverLetterVersionId is not currently part of CreateFeedbackSignalBody.
-  // Once added to the API schema, we can additionally source run_id from cover_letter_versions here.
+  if (!runId && parsed.data.coverLetterVersionId) {
+    const [row] = await db
+      .select({ runId: coverLetterVersionsTable.runId })
+      .from(coverLetterVersionsTable)
+      .where(eq(coverLetterVersionsTable.id, parsed.data.coverLetterVersionId));
+    runId = row?.runId ?? null;
+  }
 
   // Validate lineage before allowing feedback insert
   if (!runId || !isCanonicalRunId(runId)) {
@@ -140,7 +145,7 @@ router.post("/feedback-signals", async (req, res): Promise<void> => {
   }
 
   // 3. Query cover letter version claimIds (if coverLetterVersionId present in raw body)
-  const coverLetterVersionId = (req.body as Record<string, unknown>)?.coverLetterVersionId as number | undefined;
+  const coverLetterVersionId = parsed.data.coverLetterVersionId ?? undefined;
   if (coverLetterVersionId) {
     const [clv] = await db
       .select({ claimIds: coverLetterVersionsTable.claimIds })
@@ -162,10 +167,29 @@ router.post("/feedback-signals", async (req, res): Promise<void> => {
   if (enrichment.taskScope) attributionData.taskScope = enrichment.taskScope;
   if (enrichment.selectedClaimIds?.length) attributionData.selectedClaimIds = enrichment.selectedClaimIds;
 
+  const topLevelPromptVersionId = parsed.data.promptVersionId ?? enrichment.promptVersionId ?? null;
+  const topLevelModelName = parsed.data.modelName ?? enrichment.modelName ?? null;
+  const topLevelClaimIds = parsed.data.selectedClaimIds?.length
+    ? parsed.data.selectedClaimIds
+    : (enrichment.selectedClaimIds ?? []);
+  const topLevelJobId = parsed.data.jobId ?? existingApp?.jobId ?? null;
+
   const row = await db.transaction(async (tx) => {
     const [inserted] = await tx
       .insert(feedbackSignalsTable)
-      .values({ ...parsed.data, runId, attributionData })
+      .values({
+        ...parsed.data,
+        runId,
+        jobId: topLevelJobId,
+        roleProfileId: parsed.data.roleProfileId ?? null,
+        baseResumeVersionId: parsed.data.baseResumeVersionId ?? null,
+        coverLetterVersionId: parsed.data.coverLetterVersionId ?? null,
+        promptVersionId: topLevelPromptVersionId,
+        modelName: topLevelModelName,
+        selectedClaimIds: topLevelClaimIds,
+        finalResult: parsed.data.finalResult ?? null,
+        attributionData,
+      })
       .returning();
 
     if (newStatus && existingApp) {
