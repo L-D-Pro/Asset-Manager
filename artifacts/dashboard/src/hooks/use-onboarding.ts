@@ -15,7 +15,7 @@ export interface OnboardingState {
 
 async function apiGet(path: string) {
  const res = await fetch(`/api${path}`, { credentials: "include" });
- if (!res.ok) throw new Error(`GET ${path} failed`);
+ if (!res.ok) throw new Error(`HTTP ${res.status} GET ${path} failed`);
  return res.json();
 }
 

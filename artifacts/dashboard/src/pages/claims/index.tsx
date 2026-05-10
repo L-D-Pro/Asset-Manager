@@ -175,7 +175,7 @@ export default function ClaimsPage() {
           onError: (error) =>
             toast({
               title: "Failed to delete claim",
-              description: getErrorMessage(error, "Please try again."),
+              description: getErrorMessage(error, "Please adjust the source and try again."),
               variant: "destructive",
             }),
         }
@@ -349,7 +349,7 @@ export default function ClaimsPage() {
  data-testid="input-claim-draft-file"
  />
  <p className="text-xs text-muted-foreground">
- {draftFile ? draftFile.name : "DOCX or text-based PDF. The file is converted to text and not stored."}
+ {draftFile ? draftFile.name : "DOCX recommended. PDF works for text-based PDFs only — if it fails, paste the text instead. The file is not stored."}
  </p>
  </div>
  </div>

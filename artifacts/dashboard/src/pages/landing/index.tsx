@@ -79,7 +79,7 @@ function Hero() {
  </Link>
  <button
  onClick={scrollToHow}
-  className="inline-flex items-center gap-2 text-base font-bold text-primary-foreground border-2 border-white/50 hover:bg-white/10 transition-colors px-6 py-3 rounded-2xl cursor-pointer"
+  className="inline-flex items-center gap-2 text-base font-bold text-primary border-2 border-primary/40 hover:border-primary/70 hover:bg-primary/5 transition-colors px-6 py-3 rounded-2xl cursor-pointer"
  >
  See How It Works
  </button>
@@ -93,15 +93,15 @@ function Hero() {
  className="mt-16 relative max-w-md mx-auto w-full px-4"
  style={{ animation: shouldReduce ? 'none' : 'float 4s ease-in-out infinite' }}
  >
- <div className="bg-background">
- <div className="flex items-center gap-1.5 mb-4 pb-3 border-b border-border/30">
+ <div className="bg-background rounded-2xl border border-border shadow-xl p-6">
+ <div className="flex items-center gap-1.5 -mx-6 -mt-6 mb-5 px-4 py-3 bg-muted/40 rounded-t-2xl border-b border-border/60">
  <div className="w-2.5 h-2.5 rounded-full bg-destructive/60" />
  <div className="w-2.5 h-2.5 rounded-full bg-warning/60" />
  <div className="w-2.5 h-2.5 rounded-full bg-success/60" />
  <span className="text-xs text-muted-foreground ml-2">Job Ops Dashboard</span>
  </div>
  <div>
- <div className="flex items-center justify-between mb-1">
+ <div className="flex items-center justify-between mb-3">
   <span className="text-sm font-bold">Level 12</span>
  <span className="text-xs text-muted-foreground">2,450 / 3,000 XP</span>
  </div>
@@ -109,13 +109,13 @@ function Hero() {
               <div className="h-full bg-primary rounded-full" style={{ width: '82%' }} />
  </div>
  </div>
- <div className="grid grid-cols-3 gap-3 mt-4">
+ <div className="grid grid-cols-3 gap-4 mt-4">
  {[
  ['12', 'Jobs'],
  ['47', 'Applied'],
  ['7', 'Day Streak'],
  ].map(([val, label]) => (
- <div key={label} className="bg-surface rounded-xl p-3 text-center">
+ <div key={label} className="bg-surface rounded-xl p-4 text-center">
   <div className="text-lg font-bold text-primary">{val}</div>
   <div className="text-xs text-muted-foreground leading-tight">{label}</div>
  </div>

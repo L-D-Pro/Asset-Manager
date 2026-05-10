@@ -4,7 +4,6 @@ import { StreakFlame } from "@/components/gamification/StreakFlame";
 import { GamifiedBadge } from "@/components/gamification/GamifiedBadge";
 import { QuestCard } from "@/components/gamification/QuestCard";
 import { LeaderboardStrip } from "@/components/gamification/LeaderboardStrip";
-import { MascotAvatar } from "@/components/gamification/MascotAvatar";
 import { TiltCard } from "@/components/gamification/TiltCard";
 import { MotivationalQuoteCard } from "@/components/gamification/MotivationalQuoteCard";
 import { FloatingXP } from "@/components/gamification/FloatingXP";
@@ -325,7 +324,6 @@ export default function Dashboard() {
   {floatingXp.map((f) => (
     <FloatingXP key={f.id} xp={f.xp} />
   ))}
-  <MascotAvatar />
  </motion.div>
  );
 }

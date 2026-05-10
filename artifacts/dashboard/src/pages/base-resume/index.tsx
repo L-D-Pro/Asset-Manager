@@ -379,7 +379,7 @@ export default function BaseResumePage() {
       variant="ghost"
       size="sm"
       className="text-destructive hover:text-destructive hover:bg-destructive/10"
-      disabled={version.isCurrent}
+      disabled={version.isCurrent && history.length > 1}
       onClick={() => setDeleteTarget(version.id)}
       data-testid={`btn-delete-base-resume-${version.id}`}
     >

@@ -110,6 +110,7 @@ function ProtectedRoutes() {
 
  return (
  <MainLayout>
+ <WelcomeModal />
  <PageTransition>
  <Routes>
  <Route path="/dashboard" element={<Dashboard />} />
@@ -205,7 +206,6 @@ function App() {
  <BrowserRouter basename={base}>
  <AuthProvider>
  <AppRoutes />
- <WelcomeModal />
  </AuthProvider>
  </BrowserRouter>
  <Toaster />

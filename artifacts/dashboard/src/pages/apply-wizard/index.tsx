@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
  approveCoverLetterVersion,
  approveResumeVersion,
@@ -11,16 +12,20 @@ import {
  useApproveCoverLetterVersion,
  useApproveResumeVersion,
  useCreateApplicationSession,
+ useCreateClaim,
  useCreateJob,
  useCreateRoleProfile,
  useCreateWizardSession,
  useDeleteWizardSession,
+ useDraftClaims,
  useDraftCoverLetter,
+ useListClaims,
  useListWizardSessions,
  getGetCoverLetterVersionQueryKey,
  getGetJobClaimMatchesQueryKey,
  getGetJobQueryKey,
  getGetResumeVersionQueryKey,
+ getListClaimsQueryKey,
  useGetCoverLetterVersion,
  useGetJob,
  useGetJobClaimMatches,
@@ -34,6 +39,7 @@ import {
 } from "@workspace/api-client-react";
 import { CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ContentCard } from "@/components/ui/content-card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -191,6 +197,10 @@ export default function ApplyWizardPage() {
  minSalary: "",
  softKeywords: "",
  });
+ const [skipClaims, setSkipClaims] = useState(false);
+ const [seedSourceText, setSeedSourceText] = useState("");
+ const [seedDrafts, setSeedDrafts] = useState<Array<{ clientId: string; summary: string; selected: boolean }>>([]);
+ const [seedingClaims, setSeedingClaims] = useState(false);
 
  const [parsedDraft, setParsedDraft] = useState({
  requiredSkills: "",
@@ -220,6 +230,9 @@ export default function ApplyWizardPage() {
  const createSession = useCreateApplicationSession();
  const createWizardSession = useCreateWizardSession();
  const deleteWizardSession = useDeleteWizardSession();
+ const draftClaimsHook = useDraftClaims();
+ const createClaim = useCreateClaim();
+ const queryClient = useQueryClient();
 
  const fileInputRef = useRef<HTMLInputElement>(null);
  const [savedSessions, setSavedSessions] = useState<Array<{
@@ -233,6 +246,7 @@ export default function ApplyWizardPage() {
  const [savingSession, setSavingSession] = useState(false);
 
  const { data: roleProfiles = [] } = useListRoleProfiles();
+ const { data: activeClaims = [] } = useListClaims({ isActive: true });
  const { data: apiSessions, refetch: refetchSessions } = useListWizardSessions();
  const { data: job, isLoading: jobLoading, refetch: refetchJob } = useGetJob(jobId ?? 0, {
  query: { enabled: !!jobId, queryKey: getGetJobQueryKey(jobId ?? 0) },
@@ -285,19 +299,27 @@ export default function ApplyWizardPage() {
 
  useEffect(() => {
  if (!job) return;
+ const keywords = (job.parsedKeywords ?? []).join(", ");
  setParsedDraft({
  requiredSkills: (job.parsedRequiredSkills ?? []).join("\n"),
  niceSkills: (job.parsedNiceToHaveSkills ?? []).join("\n"),
  responsibilities: (job.parsedResponsibilities ?? []).join("\n"),
- keywords: (job.parsedKeywords ?? []).join(", "),
+ keywords,
  });
  if (job.roleProfileId != null) {
  setSelectedRoleProfileId(job.roleProfileId);
  }
+ if (keywords) {
+ setQuickProfile((prev) => prev.requiredKeywords ? prev : { ...prev, requiredKeywords: keywords });
+ }
  }, [job]);
 
  useEffect(() => {
- if (claimMatches.length === 0) return;
+ if (claimMatches.length === 0) {
+ setSkipClaims(true);
+ return;
+ }
+ setSkipClaims(false);
  if (selectedClaimIds.length > 0) return;
  setSelectedClaimIds(
  claimMatches
@@ -305,7 +327,7 @@ export default function ApplyWizardPage() {
  .map((m: any) => m.claim?.id)
  .filter((id: unknown): id is number => typeof id === "number"),
  );
- }, [claimMatches, selectedClaimIds.length]);
+ }, [claimMatches]);
 
  useEffect(() => {
  if (resumeCandidates.length > 0 && !activeResumeTab) {
@@ -481,6 +503,7 @@ export default function ApplyWizardPage() {
  intakeMode,
  parsedDraft,
  quickProfile,
+ skipClaims,
  selectedRoleProfileId,
  selectedClaimIds,
  resumeVersionId,
@@ -538,6 +561,7 @@ export default function ApplyWizardPage() {
  if (s.intakeMode) setIntakeMode(s.intakeMode as IntakeMode);
  if (s.parsedDraft) setParsedDraft(s.parsedDraft as typeof parsedDraft);
  if (s.quickProfile) setQuickProfile(s.quickProfile as typeof quickProfile);
+ if (s.skipClaims != null) setSkipClaims(s.skipClaims as boolean);
  if (s.selectedRoleProfileId != null) setSelectedRoleProfileId(s.selectedRoleProfileId as number);
  if (s.selectedClaimIds) setSelectedClaimIds(s.selectedClaimIds as number[]);
  if (s.resumeVersionId) setResumeVersionId(s.resumeVersionId as number);
@@ -795,6 +819,45 @@ export default function ApplyWizardPage() {
  }),
  },
  );
+ };
+
+ const handleSeedDraftClaims = () => {
+ if (!seedSourceText.trim()) {
+ toast({ title: "Paste some notes first", variant: "destructive" });
+ return;
+ }
+ draftClaimsHook.mutate(
+ { data: { sourceText: seedSourceText.trim() } },
+ {
+ onSuccess: (response) => {
+ setSeedDrafts(response.claims.map((c, i) => ({ clientId: `seed-${i}`, summary: c.summary, selected: true })));
+ toast({ title: `${response.claims.length} claim drafts ready — review and save` });
+ },
+ onError: (error) => toast({ title: "Draft failed", description: getErrorMessage(error, "Try again."), variant: "destructive" }),
+ },
+ );
+ };
+
+ const handleSeedSaveClaims = async () => {
+ const toSave = seedDrafts.filter((d) => d.selected && d.summary.trim());
+ if (toSave.length === 0) {
+ toast({ title: "Select at least one claim", variant: "destructive" });
+ return;
+ }
+ setSeedingClaims(true);
+ try {
+ for (const draft of toSave) {
+ await createClaim.mutateAsync({ data: { summary: draft.summary, isActive: true, evidenceType: "self_attestation" } });
+ }
+ await queryClient.invalidateQueries({ queryKey: getListClaimsQueryKey() });
+ setSeedDrafts([]);
+ setSeedSourceText("");
+ toast({ title: `${toSave.length} claim${toSave.length === 1 ? "" : "s"} added to ledger` });
+ } catch (error) {
+ toast({ title: "Failed to save claims", description: getErrorMessage(error, "Try again."), variant: "destructive" });
+ } finally {
+ setSeedingClaims(false);
+ }
  };
 
  const handleQuickCreateRoleProfile = () => {
@@ -1159,16 +1222,16 @@ export default function ApplyWizardPage() {
  </ContentCard>
  ) : null}
 
- <div className="flex items-center justify-center gap-0">
+ <div className="flex items-start justify-center gap-0">
  {STEP_ORDER.map((name, index) => {
  const isCompleted = index < currentStepIndex;
  const isActive = index === currentStepIndex;
  const isFuture = index > currentStepIndex;
  return (
- <div key={name} className="flex items-center">
+ <div key={name} className="flex items-start">
  {index > 0 && (
  <div
- className={`h-1 w-6 md:w-10 ${
+ className={`h-1 w-6 md:w-10 mt-4 ${
  isCompleted || isActive ? "bg-primary" : "bg-border"
  }`}
  />
@@ -1452,15 +1515,59 @@ export default function ApplyWizardPage() {
  <CardHeader>
  <CardTitle className="flex items-center gap-2">
  <UserCircle className="h-5 w-5" />
- 3) Role Profile and Claims
+ 3) Claims &amp; Role Profile
  </CardTitle>
  <CardDescription>
- Pick an existing role profile or quick-create one inline, then review matched claims.
+ Review matched claims for this job, then optionally attach a role profile for scoring.
  </CardDescription>
  </CardHeader>
  <CardContent className="space-y-4">
+ {activeClaims.length === 0 && (
+ <div className="rounded-md border border-warning/40 bg-warning/10 p-4 space-y-3">
+ <div className="flex items-start gap-2">
+ <AlertCircle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
+ <div className="space-y-1">
+ <p className="text-sm font-semibold">Your Claims Ledger is empty</p>
+ <p className="text-xs text-muted-foreground">
+ AI tailoring needs claims — past achievements, skills, and projects — to personalise your resume and cover letter. Add a few now or{" "}
+ <Link to="/claims" className="underline text-primary">go to the full Claims Ledger</Link>.
+ </p>
+ </div>
+ </div>
+ <Textarea
+ placeholder="Paste career notes, a resume, or a project summary…"
+ value={seedSourceText}
+ onChange={(e) => setSeedSourceText(e.target.value)}
+ className="min-h-28 text-sm"
+ />
+ {seedDrafts.length === 0 ? (
+ <div className="flex justify-end">
+ <Button size="sm" variant="secondary" onClick={handleSeedDraftClaims} disabled={draftClaimsHook.isPending}>
+ <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+ {draftClaimsHook.isPending ? "Drafting…" : "AI Draft Claims"}
+ </Button>
+ </div>
+ ) : (
+ <div className="space-y-2">
+ <p className="text-xs font-medium text-muted-foreground">Review drafts — uncheck any you don't want to save:</p>
+ {seedDrafts.map((d) => (
+ <label key={d.clientId} className="flex items-start gap-2 text-sm cursor-pointer">
+ <input type="checkbox" className="mt-1" checked={d.selected} onChange={(e) => setSeedDrafts((prev) => prev.map((x) => x.clientId === d.clientId ? { ...x, selected: e.target.checked } : x))} />
+ <Textarea value={d.summary} onChange={(e) => setSeedDrafts((prev) => prev.map((x) => x.clientId === d.clientId ? { ...x, summary: e.target.value } : x))} className="min-h-12 text-xs" />
+ </label>
+ ))}
+ <div className="flex justify-end gap-2">
+ <Button size="sm" variant="outline" onClick={() => setSeedDrafts([])}>Discard</Button>
+ <Button size="sm" onClick={handleSeedSaveClaims} disabled={seedingClaims}>
+ {seedingClaims ? "Saving…" : `Save ${seedDrafts.filter((d) => d.selected).length} Claims`}
+ </Button>
+ </div>
+ </div>
+ )}
+ </div>
+ )}
  <div className="rounded-md border p-3 space-y-3">
- <p className="text-sm font-medium">Select existing role profile</p>
+ <p className="text-sm font-medium">Select existing role profile <span className="text-muted-foreground font-normal">(optional)</span></p>
  <select
  className="w-full rounded border bg-background px-3 py-2 text-sm"
  value={selectedRoleProfileId ?? ""}
@@ -1485,7 +1592,7 @@ export default function ApplyWizardPage() {
  </div>
 
  <div className="rounded-md border p-3 space-y-3">
- <p className="text-sm font-medium">Quick create role profile</p>
+ <p className="text-sm font-medium">Quick create role profile <span className="text-muted-foreground font-normal">(optional)</span></p>
  <Input
  placeholder="Profile name"
  value={quickProfile.name}
@@ -1524,7 +1631,20 @@ export default function ApplyWizardPage() {
  <div className="rounded-md border p-3 space-y-3">
  <p className="text-sm font-medium">Matched claims</p>
  {claimMatches.length === 0 ? (
+ <div className="space-y-3">
  <p className="text-sm text-muted-foreground">No claim matches yet. Parse the JD first or create more claims.</p>
+ <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+ <input
+ type="checkbox"
+ checked={skipClaims}
+ onChange={(e) => setSkipClaims(e.target.checked)}
+ className="rounded"
+ />
+ <span>
+ Skip — let the AI auto-select relevant claims when generating drafts.
+ </span>
+ </label>
+ </div>
  ) : (
  <div className="space-y-2 max-h-72 overflow-auto">
  {claimMatches.map((match: any) => {
@@ -1560,14 +1680,13 @@ export default function ApplyWizardPage() {
  </Button>
  <Button
  onClick={() => setStep("tailor")}
- disabled={selectedRoleProfileId == null || selectedClaimIds.length === 0}
- 
+ disabled={selectedClaimIds.length === 0 && !skipClaims}
  >
  Continue
  </Button>
  </div>
  <p className="text-xs text-muted-foreground">
- Continue requires an attached role profile and at least one selected claim.
+ Continue requires at least one selected claim (or use the skip option below).
  </p>
  </CardContent>
  </ContentCard>
@@ -1585,9 +1704,25 @@ export default function ApplyWizardPage() {
  </CardDescription>
  </CardHeader>
  <CardContent className="space-y-3">
+ {activeClaims.length === 0 ? (
+ <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 flex items-start gap-2">
+ <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+ <p className="text-sm text-destructive">
+ No claims in your ledger. Go back to Step 3 to add claims — without them, generation will produce your unmodified base resume.
+ </p>
+ </div>
+ ) : selectedClaimIds.length === 0 ? (
+ <div className="rounded-md border border-warning/40 bg-warning/10 p-3 flex items-start gap-2">
+ <AlertCircle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
+ <p className="text-sm">
+ No specific claims selected — the AI will auto-select the most relevant from your {activeClaims.length} active claim{activeClaims.length === 1 ? "" : "s"}.
+ </p>
+ </div>
+ ) : (
  <p className="text-sm text-muted-foreground">
  Selected claims: <span className="font-medium text-foreground">{selectedClaimIds.length}</span>
  </p>
+ )}
 
  <div className="flex flex-wrap gap-2">
  <Button variant={useCustomComparison ? "outline" : "default"} onClick={() => setUseCustomComparison(false)}>
@@ -1600,10 +1735,10 @@ export default function ApplyWizardPage() {
 
  {!useCustomComparison ? (
  <div className="flex flex-wrap gap-2">
- <Button variant="secondary" onClick={handleGenerateResume} disabled={tailorResume.isPending}>
+ <Button variant="secondary" onClick={handleGenerateResume} disabled={tailorResume.isPending || activeClaims.length === 0}>
  {tailorResume.isPending ? "Generating Resume..." : "Generate Resume"}
  </Button>
- <Button variant="secondary" onClick={handleGenerateCoverLetter} disabled={draftCoverLetter.isPending}>
+ <Button variant="secondary" onClick={handleGenerateCoverLetter} disabled={draftCoverLetter.isPending || activeClaims.length === 0}>
  {draftCoverLetter.isPending ? "Generating Cover Letter..." : "Generate Cover Letter"}
  </Button>
  </div>
@@ -1843,8 +1978,20 @@ export default function ApplyWizardPage() {
 
  {(!useCustomComparison || resumeVersionId) && (
  <div className="space-y-3">
+ {resumeVersionId && !resumeVersion && (
+ <Skeleton className="h-48 w-full rounded-md" />
+ )}
+ {resumeVersion?.notes?.includes("No matching claims") && (
+ <div className="rounded-md border border-warning/40 bg-warning/10 p-3 flex items-start gap-2">
+ <AlertCircle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
+ <div>
+ <p className="text-sm font-medium">This is your unmodified base resume</p>
+ <p className="text-xs text-muted-foreground">No claims were available when this was generated. Add claims in Step 3 and regenerate for a tailored version.</p>
+ </div>
+ </div>
+ )}
  <div className="max-h-96 overflow-y-auto bg-muted/50 rounded-md border p-4 text-sm whitespace-pre-wrap font-mono leading-relaxed">
- {resumeVersion?.tailoredDocumentText || (resumeVersionId ? "No tailored content available." : "Generate a resume in Step 4 first.")}
+ {resumeVersion?.tailoredDocumentText || (resumeVersionId && !resumeVersion ? "" : resumeVersionId ? "No tailored content available." : "Generate a resume in Step 4 first.")}
  </div>
  <div className="flex gap-2">
  <Button
@@ -1953,6 +2100,18 @@ export default function ApplyWizardPage() {
 
  {(!useCustomComparison || coverLetterVersionId) && (
  <div className="space-y-3">
+ {coverLetterVersionId && !coverLetterVersion && (
+ <Skeleton className="h-48 w-full rounded-md" />
+ )}
+ {coverLetterVersion?.notes?.includes("No matching claims") && (
+ <div className="rounded-md border border-warning/40 bg-warning/10 p-3 flex items-start gap-2">
+ <AlertCircle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
+ <div>
+ <p className="text-sm font-medium">This is a fallback cover letter</p>
+ <p className="text-xs text-muted-foreground">No claims were available when this was generated. Add claims in Step 3 and regenerate.</p>
+ </div>
+ </div>
+ )}
  <div className="max-h-[32rem] overflow-y-auto rounded-md border p-4 bg-muted/30">
  {coverLetterVersion?.annotatedParagraphs && Array.isArray(coverLetterVersion.annotatedParagraphs) && coverLetterVersion.annotatedParagraphs.length > 0 ? (
  <div className="space-y-3">
@@ -2017,7 +2176,7 @@ export default function ApplyWizardPage() {
  </div>
 
  <div className="flex justify-end gap-2 pt-4">
- <Button variant="outline" onClick={() => setStep("tailor")}>Back</Button>
+ <Button variant="outline" onClick={() => setStep("tailor")}>Back to Generate</Button>
  <Button variant="outline" onClick={handleSaveSession} disabled={savingSession}>
  <Save className="h-3.5 w-3.5 mr-1.5" />
  {savingSession ? "Saving..." : "Save & Continue Later"}

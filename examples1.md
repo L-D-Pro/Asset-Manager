@@ -1,4 +1,5 @@
-Motivational qoutes card: document.addEventListener("DOMContentLoaded", () => {
+Motivational qoutes card: 
+	document.addEventListener("DOMContentLoaded", () => {
 	const track = document.querySelector(".carousel-track");
 	const cards = document.querySelectorAll(".deconstructed-card");
 	const prevBtn = document.querySelector(".carousel-button.prev");
