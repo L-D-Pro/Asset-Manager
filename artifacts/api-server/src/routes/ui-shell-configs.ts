@@ -112,6 +112,21 @@ function normalizeUiConfig(
   };
 }
 
+function buildFallbackUiConfig(appKey: string, themeID: string, adminId: number | null): UiConfigInput {
+  return normalizeUiConfig(appKey, adminId, {
+    version: 1,
+    appKey,
+    themeID,
+    slots: {
+      navbar: [],
+      sidebar: [],
+      dashboardGrid: [],
+    },
+    updatedAt: new Date().toISOString(),
+    updatedBy: adminId,
+  });
+}
+
 function toRouteErrorMessage(error: unknown): string {
   const pgError = error as PgLikeError;
   if (pgError?.code === "42P01") {
@@ -181,7 +196,26 @@ router.get(
         return;
       }
 
-      res.json(row);
+      const safeThemeID =
+        typeof row.themeID === "string" && row.themeID.length > 0
+          ? row.themeID
+          : "higo-pastel-02";
+      const parsedThemes = z.array(themeDefinitionSchema).safeParse(row.themeDefinitions);
+      const parsedUiConfig = uiConfigSchema.safeParse(row.uiConfig);
+      const safeUiConfig = parsedUiConfig.success
+        ? parsedUiConfig.data
+        : buildFallbackUiConfig(
+            params.data.appKey,
+            safeThemeID,
+            row.updatedByAdminId ?? null,
+          );
+
+      res.json({
+        ...row,
+        themeID: safeThemeID,
+        themeDefinitions: parsedThemes.success ? parsedThemes.data : [],
+        uiConfig: safeUiConfig,
+      });
     } catch (error) {
       res.status(500).json({ error: toRouteErrorMessage(error) });
     }
@@ -275,18 +309,11 @@ router.post(
       }
 
       const adminId = (req.session as { adminId?: number }).adminId ?? null;
-      const emptyUiConfig: UiConfigInput = {
-        version: 1,
-        appKey: params.data.appKey,
-        themeID: "higo-pastel-02",
-        slots: {
-          navbar: [],
-          sidebar: [],
-          dashboardGrid: [],
-        },
-        updatedAt: new Date().toISOString(),
-        updatedBy: adminId,
-      };
+      const emptyUiConfig = buildFallbackUiConfig(
+        params.data.appKey,
+        "higo-pastel-02",
+        adminId,
+      );
 
       const [updated] = await db
         .insert(uiShellConfigsTable)

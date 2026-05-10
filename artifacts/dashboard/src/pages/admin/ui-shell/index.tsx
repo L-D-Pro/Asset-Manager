@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Component, type ErrorInfo, useEffect, useState } from "react";
 import {
  type ThemeDefinition,
  type UIConfig,
@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import {
@@ -117,7 +116,39 @@ function SlotEditor({
  );
 }
 
-export default function AdminUiShellPage() {
+class UiShellErrorBoundary extends Component<
+ { children: React.ReactNode },
+ { error: Error | null }
+> {
+ constructor(props: { children: React.ReactNode }) {
+ super(props);
+ this.state = { error: null };
+ }
+
+ static getDerivedStateFromError(error: Error) {
+ return { error };
+ }
+
+ componentDidCatch(error: Error, info: ErrorInfo) {
+ console.error("UI Shell page crashed", error, info);
+ }
+
+ render() {
+ if (this.state.error) {
+ return (
+ <Card>
+ <CardHeader>
+ <CardTitle>UI Shell Runtime Error</CardTitle>
+ <CardDescription>{this.state.error.message}</CardDescription>
+ </CardHeader>
+ </Card>
+ );
+ }
+ return this.props.children;
+ }
+}
+
+function AdminUiShellPageContent() {
  const { user } = useAuth();
  const { config, themes, isLoading, refetch } = useUiShellState();
  const saveMutation = useSaveUiShellState();
@@ -228,40 +259,25 @@ export default function AdminUiShellPage() {
  </CardDescription>
  </CardHeader>
  <CardContent className="space-y-4">
- <div className="max-w-sm space-y-2">
- <Label htmlFor="theme-id">Theme</Label>
- <Select
- value={effectiveConfig.themeID}
- onValueChange={(themeID) => setDraftConfig((current) => (current ? { ...current, themeID } : current))}
- >
- <SelectTrigger id="theme-id">
- <SelectValue placeholder="Select a theme" />
- </SelectTrigger>
- <SelectContent>
- {effectiveThemes.map((theme) => (
- <SelectItem key={theme.id} value={theme.id}>
- <span className="inline-flex items-center gap-2">
- <span className="inline-flex items-center gap-1">
- {[
- theme.palette.brandPrimary,
- theme.palette.brandAccent ?? theme.palette.brandPrimary,
- theme.palette.bgPrimary,
- theme.palette.textMain,
- ].map((color, index) => (
- <span
- key={`${theme.id}-${index}`}
- className="h-2.5 w-2.5 rounded-full border border-border/70"
- style={{ backgroundColor: color }}
- />
- ))}
- </span>
- <span>{theme.name}</span>
- </span>
- </SelectItem>
- ))}
- </SelectContent>
- </Select>
- </div>
+             <div className="max-w-sm space-y-2">
+             <Label htmlFor="theme-id">Theme</Label>
+             <select
+             id="theme-id"
+             value={effectiveConfig.themeID}
+             onChange={(event) =>
+             setDraftConfig((current) =>
+             current ? { ...current, themeID: event.currentTarget.value } : current
+             )
+             }
+             className="flex h-12 w-full rounded-[16px] border-2 border-[hsl(var(--border))] bg-[hsl(var(--background))] px-4 py-3 text-base font-sans text-[hsl(var(--foreground))] focus:outline-none focus:border-[hsl(var(--primary))]"
+             >
+             {effectiveThemes.map((theme) => (
+             <option key={theme.id} value={theme.id}>
+             {theme.name}
+             </option>
+             ))}
+             </select>
+             </div>
  {selectedTheme ? (
  <div className="rounded-lg border border-border/70 bg-card/70 p-3">
  <p className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
@@ -317,5 +333,13 @@ export default function AdminUiShellPage() {
  </div>
  )}
  </div>
+ );
+}
+
+export default function AdminUiShellPage() {
+ return (
+ <UiShellErrorBoundary>
+ <AdminUiShellPageContent />
+ </UiShellErrorBoundary>
  );
 }

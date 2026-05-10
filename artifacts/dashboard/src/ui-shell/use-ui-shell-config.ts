@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { ThemeDefinition, UIConfig } from "@workspace/ui-core";
+import { UIConfigSchema, type ThemeDefinition, type UIConfig } from "@workspace/ui-core";
 import { defaultThemes, defaultUIConfig, UI_SHELL_APP_KEY } from "./default-config";
 
 type UiShellConfigResponse = {
@@ -7,6 +7,47 @@ type UiShellConfigResponse = {
  themeDefinitions: ThemeDefinition[];
  uiConfig: UIConfig;
 };
+
+function isNonEmptyString(value: unknown): value is string {
+ return typeof value === "string" && value.trim().length > 0;
+}
+
+function isThemeDefinition(value: unknown): value is ThemeDefinition {
+ if (!value || typeof value !== "object") return false;
+ const candidate = value as Partial<ThemeDefinition>;
+ if (!isNonEmptyString(candidate.id) || !isNonEmptyString(candidate.name)) return false;
+ if (candidate.mode !== "light" && candidate.mode !== "dark") return false;
+ const palette = candidate.palette as ThemeDefinition["palette"] | undefined;
+ if (!palette || typeof palette !== "object") return false;
+ return (
+ isNonEmptyString(palette.bgPrimary) &&
+ isNonEmptyString(palette.bgGlass) &&
+ isNonEmptyString(palette.textMain) &&
+ isNonEmptyString(palette.brandPrimary)
+ );
+}
+
+function normalizeSlotItems(items: UIConfig["slots"]["navbar"]): UIConfig["slots"]["navbar"] {
+ const seen = new Set<string>();
+ const deduped = items.filter((item) => {
+ if (seen.has(item.id)) return false;
+ seen.add(item.id);
+ return true;
+ });
+ return deduped.map((item, index) => ({ ...item, order: index }));
+}
+
+function normalizeUiConfigForRuntime(config: UIConfig): UIConfig {
+ return {
+ ...config,
+ slots: {
+ ...config.slots,
+ navbar: normalizeSlotItems(config.slots.navbar),
+ sidebar: normalizeSlotItems(config.slots.sidebar),
+ dashboardGrid: normalizeSlotItems(config.slots.dashboardGrid),
+ },
+ };
+}
 
 const UI_SHELL_QUERY_KEY = ["ui-shell-config", UI_SHELL_APP_KEY] as const;
 
@@ -22,6 +63,41 @@ function mergeThemeDefinitions(serverThemes: ThemeDefinition[] | undefined): The
  merged.set(theme.id, theme);
  }
  return Array.from(merged.values());
+}
+
+function sanitizeThemeDefinitions(raw: unknown): ThemeDefinition[] {
+ if (!Array.isArray(raw)) return defaultThemes;
+ const valid = raw.filter((theme): theme is ThemeDefinition => isThemeDefinition(theme));
+ return valid.length > 0 ? valid : defaultThemes;
+}
+
+function sanitizeUiShellState(payload: unknown): UiShellConfigResponse {
+ if (!payload || typeof payload !== "object") {
+ return {
+ themeID: defaultUIConfig.themeID,
+ themeDefinitions: defaultThemes,
+ uiConfig: defaultUIConfig,
+ };
+ }
+
+ const candidate = payload as Partial<UiShellConfigResponse>;
+ const parsedConfig = UIConfigSchema.safeParse(candidate.uiConfig);
+ const safeConfig = parsedConfig.success
+ ? normalizeUiConfigForRuntime(parsedConfig.data)
+ : defaultUIConfig;
+ const safeThemes = sanitizeThemeDefinitions(candidate.themeDefinitions);
+ const safeThemeID = typeof candidate.themeID === "string" && candidate.themeID.length > 0
+ ? candidate.themeID
+ : safeConfig.themeID;
+ const resolvedThemeID = safeThemes.some((theme) => theme.id === safeThemeID)
+ ? safeThemeID
+ : safeConfig.themeID;
+
+ return {
+ themeID: resolvedThemeID,
+ themeDefinitions: safeThemes,
+ uiConfig: safeConfig,
+ };
 }
 
 async function fetchUiShellState(appKey: string): Promise<UiShellConfigResponse> {
@@ -41,7 +117,7 @@ async function fetchUiShellState(appKey: string): Promise<UiShellConfigResponse>
  throw new Error("Failed to load UI shell config.");
  }
 
- return (await response.json()) as UiShellConfigResponse;
+ return sanitizeUiShellState(await response.json());
 }
 
 async function putUiShellState(
@@ -98,6 +174,11 @@ export function useUiShellState() {
 
 export function useResolvedUiConfig(): UIConfig {
  return useUiShellState().config;
+}
+
+export function useResolvedUiTheme(): ThemeDefinition {
+ const { themes, themeID } = useUiShellState();
+ return themes.find((theme) => theme.id === themeID) ?? themes[0] ?? defaultThemes[0];
 }
 
 export function useSaveUiShellState() {
