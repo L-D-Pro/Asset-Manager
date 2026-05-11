@@ -22,6 +22,9 @@ import {
  useDraftClaims,
  useDraftCoverLetter,
  useListClaims,
+ useListCoverLetterVersions,
+ useListResumeVersions,
+ useListResumeTemplates,
  useListWizardSessions,
  getGetCoverLetterVersionQueryKey,
  getGetJobClaimMatchesQueryKey,
@@ -50,7 +53,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Sparkles, Link2, ClipboardCheck, Wand2, ShieldCheck, MousePointerClick, UserCircle, Tag, Check, AlertCircle, ChevronRight, Download, Save, Upload, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getErrorMessage } from "@/lib/api-errors";
+import { getErrorMessage, hasHttpStatus } from "@/lib/api-errors";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { easing } from "@/lib/animations";
@@ -100,6 +103,7 @@ type CompareCandidate = {
  status: "succeeded" | "failed";
  preview?: string;
  notes?: string;
+ templateId?: string | null;
  runId?: string | null;
  eventLogId?: number | null;
  error?: string;
@@ -119,7 +123,37 @@ const ROLE_LABEL_COLORS: Record<string, string> = {
  closing: "text-warning bg-warning/10",
 };
 
+function truthBadgeClass(status?: string): string {
+ if (status === "supported") return "border-success/50 text-success";
+ if (status === "partial") return "border-warning/50 text-warning";
+ if (status === "unsupported") return "border-destructive/50 text-destructive";
+ return "border-border text-muted-foreground";
+}
+
+function truthBadgeText(status?: string): string {
+ if (status === "supported") return "Supported";
+ if (status === "partial") return "Needs Review";
+ if (status === "unsupported") return "Unsupported";
+ return "Truth Pending";
+}
+
 const STEP_ORDER: WizardStep[] = ["intake", "parse", "role", "tailor", "approve", "assisted"];
+
+function getMatchClaimId(match: unknown): number | null {
+ const maybeClaim = (match as { claim?: { id?: unknown } })?.claim;
+ return typeof maybeClaim?.id === "number" ? maybeClaim.id : null;
+}
+
+function getResumeDiagnosticMessage(notes?: string | null): string {
+ const fallback =
+ "The model returned a readable resume, but not the structured format needed for claim attribution and truth review. Regenerate this resume before approval.";
+ if (!notes) return fallback;
+ const normalized = notes.toLowerCase();
+ if (normalized.includes("structured json") || normalized.includes("could not be parsed")) {
+ return fallback;
+ }
+ return notes;
+}
 
 function splitCsvOrLines(value: string): string[] {
  return value
@@ -195,6 +229,8 @@ export default function ApplyWizardPage() {
  const [selectedCoverWinner, setSelectedCoverWinner] = useState<string | null>(null);
  const [activeResumeTab, setActiveResumeTab] = useState<string | null>(null);
  const [activeCoverTab, setActiveCoverTab] = useState<string | null>(null);
+ const [activeDraftPreview, setActiveDraftPreview] = useState<"resume" | "cover" | null>(null);
+ const [selectedResumeTemplateId, setSelectedResumeTemplateId] = useState("software_developer");
 
  const [quickProfile, setQuickProfile] = useState({
  name: "",
@@ -253,6 +289,11 @@ export default function ApplyWizardPage() {
 
  const { data: roleProfiles = [] } = useListRoleProfiles();
  const { data: activeClaims = [] } = useListClaims({ isActive: true });
+ const { data: resumeVersions = [], isFetched: resumeVersionsFetched } = useListResumeVersions();
+ const { data: coverLetterVersions = [], isFetched: coverLetterVersionsFetched } = useListCoverLetterVersions();
+ const { data: resumeTemplatesData } = useListResumeTemplates();
+ const resumeTemplates = resumeTemplatesData?.templates ?? [];
+ const selectedResumeTemplate = resumeTemplates.find((template) => template.id === selectedResumeTemplateId);
  const { data: apiSessions, refetch: refetchSessions } = useListWizardSessions();
  const { data: job, isLoading: jobLoading, refetch: refetchJob } = useGetJob(jobId ?? 0, {
  query: { enabled: !!jobId, queryKey: getGetJobQueryKey(jobId ?? 0) },
@@ -289,19 +330,76 @@ export default function ApplyWizardPage() {
  return (await response.json()) as T;
  };
 
- const { data: resumeVersion, refetch: refetchResumeVersion } = useGetResumeVersion(resumeVersionId ?? 0, {
+ const resumeVersionExistsInQueue = Boolean(
+ resumeVersionId && resumeVersions.some((version) => version.id === resumeVersionId),
+ );
+ const coverLetterVersionExistsInQueue = Boolean(
+ coverLetterVersionId && coverLetterVersions.some((version) => version.id === coverLetterVersionId),
+ );
+ const hasCachedResumeVersion = Boolean(
+ resumeVersionId && queryClient.getQueryData(getGetResumeVersionQueryKey(resumeVersionId)),
+ );
+ const hasCachedCoverLetterVersion = Boolean(
+ coverLetterVersionId && queryClient.getQueryData(getGetCoverLetterVersionQueryKey(coverLetterVersionId)),
+ );
+
+ const { data: resumeVersion, error: resumeVersionError, refetch: refetchResumeVersion } = useGetResumeVersion(resumeVersionId ?? 0, {
  query: {
- enabled: !!resumeVersionId,
+ enabled: !!resumeVersionId && resumeVersionsFetched && (resumeVersionExistsInQueue || hasCachedResumeVersion),
  queryKey: getGetResumeVersionQueryKey(resumeVersionId ?? 0),
+ retry: false,
  },
  });
 
- const { data: coverLetterVersion, refetch: refetchCoverLetterVersion } = useGetCoverLetterVersion(coverLetterVersionId ?? 0, {
+ const { data: coverLetterVersion, error: coverLetterVersionError, refetch: refetchCoverLetterVersion } = useGetCoverLetterVersion(coverLetterVersionId ?? 0, {
  query: {
- enabled: !!coverLetterVersionId,
+ enabled: !!coverLetterVersionId && coverLetterVersionsFetched && (coverLetterVersionExistsInQueue || hasCachedCoverLetterVersion),
  queryKey: getGetCoverLetterVersionQueryKey(coverLetterVersionId ?? 0),
+ retry: false,
  },
  });
+
+ useEffect(() => {
+ if (!resumeVersionId || !resumeVersionsFetched || resumeVersionExistsInQueue || hasCachedResumeVersion) return;
+ queryClient.removeQueries({ queryKey: getGetResumeVersionQueryKey(resumeVersionId) });
+ setResumeVersionId(null);
+ setActiveDraftPreview((current) => (current === "resume" ? (coverLetterVersionId ? "cover" : null) : current));
+ }, [resumeVersionId, resumeVersionsFetched, resumeVersionExistsInQueue, hasCachedResumeVersion, coverLetterVersionId, queryClient]);
+
+ useEffect(() => {
+ if (!coverLetterVersionId || !coverLetterVersionsFetched || coverLetterVersionExistsInQueue || hasCachedCoverLetterVersion) return;
+ queryClient.removeQueries({ queryKey: getGetCoverLetterVersionQueryKey(coverLetterVersionId) });
+ setCoverLetterVersionId(null);
+ setActiveDraftPreview((current) => (current === "cover" ? (resumeVersionId ? "resume" : null) : current));
+ }, [coverLetterVersionId, coverLetterVersionsFetched, coverLetterVersionExistsInQueue, hasCachedCoverLetterVersion, resumeVersionId, queryClient]);
+
+ useEffect(() => {
+ if (!resumeVersionId || !hasHttpStatus(resumeVersionError, 404)) return;
+ queryClient.removeQueries({ queryKey: getGetResumeVersionQueryKey(resumeVersionId) });
+ setResumeVersionId(null);
+ setActiveDraftPreview((current) => (current === "resume" ? (coverLetterVersionId ? "cover" : null) : current));
+ toast({
+ title: "Resume draft was deleted",
+ description: "The wizard cleared the stale resume draft reference.",
+ });
+ }, [resumeVersionError, resumeVersionId, coverLetterVersionId, queryClient, toast]);
+
+ useEffect(() => {
+ if (!coverLetterVersionId || !hasHttpStatus(coverLetterVersionError, 404)) return;
+ queryClient.removeQueries({ queryKey: getGetCoverLetterVersionQueryKey(coverLetterVersionId) });
+ setCoverLetterVersionId(null);
+ setActiveDraftPreview((current) => (current === "cover" ? (resumeVersionId ? "resume" : null) : current));
+ toast({
+ title: "Cover letter draft was deleted",
+ description: "The wizard cleared the stale cover letter reference.",
+ });
+ }, [coverLetterVersionError, coverLetterVersionId, resumeVersionId, queryClient, toast]);
+
+ useEffect(() => {
+ if (resumeVersion?.templateId) {
+ setSelectedResumeTemplateId(resumeVersion.templateId);
+ }
+ }, [resumeVersion?.templateId]);
 
  useEffect(() => {
  if (!job) return;
@@ -321,18 +419,11 @@ export default function ApplyWizardPage() {
  }, [job]);
 
  useEffect(() => {
- if (claimMatches.length === 0) {
- setSkipClaims(true);
- return;
- }
+ const matchedIds = claimMatches.map(getMatchClaimId).filter((id): id is number => id != null);
+ if (matchedIds.length === 0) return;
  setSkipClaims(false);
  if (selectedClaimIds.length > 0) return;
- setSelectedClaimIds(
- claimMatches
- .slice(0, 15)
- .map((m: any) => m.claim?.id)
- .filter((id: unknown): id is number => typeof id === "number"),
- );
+ setSelectedClaimIds(matchedIds.slice(0, 15));
  }, [claimMatches]);
 
  useEffect(() => {
@@ -430,6 +521,27 @@ export default function ApplyWizardPage() {
  selectedRoleProfileId,
  ]);
 
+ const matchedClaimIds = useMemo(
+ () => claimMatches.map(getMatchClaimId).filter((id): id is number => id != null),
+ [claimMatches],
+ );
+ const canContinueFromRoleStep = selectedClaimIds.length > 0 || skipClaims;
+ const resumePreviewText = resumeVersion?.tailoredDocumentText || resumeVersion?.rawContent || "";
+ const resumePreviewIsRaw = Boolean(resumeVersion?.rawContent && !resumeVersion?.tailoredDocumentText);
+ const resumeSourceValidation = (resumeVersion?.diffData as any)?.sourceValidation;
+ const resumeHasPassingSourceValidation = Boolean(
+ resumeSourceValidation?.passed === true && Number(resumeSourceValidation?.validItemCount ?? 0) > 0,
+ );
+ const resumeNeedsRegeneration = Boolean(
+ resumeVersionId &&
+ resumeVersion &&
+ (!resumeVersion.tailoredDocumentText ||
+ !resumeVersion.templateId ||
+ !(resumeVersion.diffData as any)?.templateValidation ||
+ !resumeHasPassingSourceValidation ||
+ /could not be repaired|truth lock failure|quality check failed|truth review failed|generation failed|source validation failed|base resume parse failed|needs review/i.test(resumeVersion.notes ?? "")),
+ );
+
  const updateBatchRun = (id: string, patch: Partial<BatchRun>) => {
  setBatchRuns((prev) => prev.map((run) => (run.id === id ? { ...run, ...patch } : run)));
  };
@@ -512,6 +624,7 @@ export default function ApplyWizardPage() {
  skipClaims,
  selectedRoleProfileId,
  selectedClaimIds,
+ selectedResumeTemplateId,
  resumeVersionId,
  coverLetterVersionId,
  assistedSessionId,
@@ -573,6 +686,7 @@ export default function ApplyWizardPage() {
  if (s.skipClaims != null) setSkipClaims(s.skipClaims as boolean);
  if (s.selectedRoleProfileId != null) setSelectedRoleProfileId(s.selectedRoleProfileId as number);
  if (s.selectedClaimIds) setSelectedClaimIds(s.selectedClaimIds as number[]);
+ if (s.selectedResumeTemplateId) setSelectedResumeTemplateId(s.selectedResumeTemplateId as string);
  if (s.resumeVersionId) setResumeVersionId(s.resumeVersionId as number);
  if (s.coverLetterVersionId) setCoverLetterVersionId(s.coverLetterVersionId as number);
  if (s.assistedSessionId) setAssistedSessionId(s.assistedSessionId as number);
@@ -643,7 +757,7 @@ export default function ApplyWizardPage() {
  .map((m: any) => m.claim?.id)
  .filter((id: unknown): id is number => typeof id === "number");
 
- const resume = await tailorJobResumeRequest(created.id, { claimIds });
+ const resume = await tailorJobResumeRequest(created.id, { claimIds, templateId: selectedResumeTemplateId });
  const cover = await draftCoverLetterRequest(created.id, { claimIds });
 
  updateBatchRun(runId, {
@@ -929,15 +1043,29 @@ export default function ApplyWizardPage() {
 
  const handleGenerateResume = () => {
  if (!jobId) return;
+ if (!selectedResumeTemplateId) {
+ toast({ title: "Choose a resume template first", variant: "destructive" });
+ return;
+ }
  tailorResume.mutate(
  {
  id: jobId,
- data: { claimIds: selectedClaimIds },
+ data: { claimIds: selectedClaimIds, templateId: selectedResumeTemplateId },
  },
  {
  onSuccess: (version) => {
  setResumeVersionId(version.id);
+ queryClient.setQueryData(getGetResumeVersionQueryKey(version.id), version);
+ setActiveDraftPreview("resume");
+ if (version.tailoredDocumentText) {
  toast({ title: `Resume draft created (#${version.id})` });
+ } else {
+ toast({
+ title: `Resume draft #${version.id} needs review`,
+ description: getResumeDiagnosticMessage(version.notes),
+ variant: "destructive",
+ });
+ }
  },
  onError: (error) =>
  toast({
@@ -959,6 +1087,8 @@ export default function ApplyWizardPage() {
  {
  onSuccess: (version) => {
  setCoverLetterVersionId(version.id);
+ queryClient.setQueryData(getGetCoverLetterVersionQueryKey(version.id), version);
+ setActiveDraftPreview("cover");
  toast({ title: `Cover letter draft created (#${version.id})` });
  },
  onError: (error) =>
@@ -986,6 +1116,7 @@ export default function ApplyWizardPage() {
  method: "POST",
  body: JSON.stringify({
  claimIds: selectedClaimIds,
+ templateId: selectedResumeTemplateId,
  models: resumeCompareModels.map((modelName) => ({ provider: "openrouter", modelName })),
  }),
  },
@@ -1050,11 +1181,13 @@ export default function ApplyWizardPage() {
   method: "POST",
   body: JSON.stringify({
    claimIds: selectedClaimIds,
+   templateId: selectedResumeTemplateId,
    model: { provider: "openrouter", modelName: selectedResumeWinner },
    candidateVersionId: winner.versionId,
   }),
-  });
+ });
  setResumeVersionId(version.id);
+ setActiveDraftPreview("resume");
  toast({ title: `Promoted resume winner (#${version.id})` });
  } catch (error) {
  toast({
@@ -1083,8 +1216,9 @@ export default function ApplyWizardPage() {
    model: { provider: "openrouter", modelName: selectedCoverWinner },
    candidateVersionId: winner.versionId,
   }),
-  });
+ });
  setCoverLetterVersionId(version.id);
+ setActiveDraftPreview("cover");
  toast({ title: `Promoted cover winner (#${version.id})` });
  } catch (error) {
  toast({
@@ -1122,8 +1256,9 @@ export default function ApplyWizardPage() {
  { id: resumeVersionId, data: {} },
  {
  onSuccess: () => {
- toast({ title: "Resume rejected" });
+ toast({ title: "Resume rejected; generating a fresh draft" });
  refetchResumeVersion();
+ handleGenerateResume();
  },
  onError: (error) =>
  toast({
@@ -1691,9 +1826,37 @@ export default function ApplyWizardPage() {
 
  <div className="rounded-md border p-3 space-y-3">
  <p className="text-sm font-medium">Matched claims</p>
- {claimMatches.length === 0 ? (
+ {matchedClaimIds.length === 0 ? (
  <div className="space-y-3">
- <p className="text-sm text-muted-foreground">No claim matches yet. Parse the JD first or create more claims.</p>
+ <p className="text-sm text-muted-foreground">
+ No automatic matches yet. Select claims manually from your active ledger, or use Skip to let generation auto-select later.
+ </p>
+ {activeClaims.length > 0 ? (
+ <div className="space-y-2 max-h-72 overflow-auto">
+ {activeClaims.map((claim) => {
+ const isSelected = selectedClaimIds.includes(claim.id);
+ return (
+ <label key={claim.id} className="flex items-start gap-3 rounded border p-2 text-sm">
+ <input
+ type="checkbox"
+ checked={isSelected}
+ onChange={() => handleToggleClaim(claim.id)}
+ className="mt-1"
+ />
+ <div className="space-y-1">
+ <p className="font-medium">{claim.summary}</p>
+ <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+ {claim.domain ? <span>{claim.domain}</span> : null}
+ {claim.applicableTags?.slice(0, 4).map((tag) => (
+ <span key={tag} className="rounded bg-muted px-1.5 py-0.5">{tag}</span>
+ ))}
+ </div>
+ </div>
+ </label>
+ );
+ })}
+ </div>
+ ) : null}
  <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
  <input
  type="checkbox"
@@ -1709,7 +1872,8 @@ export default function ApplyWizardPage() {
  ) : (
  <div className="space-y-2 max-h-72 overflow-auto">
  {claimMatches.map((match: any) => {
- const claimId = match.claim?.id as number;
+ const claimId = getMatchClaimId(match);
+ if (claimId == null) return null;
  const isSelected = selectedClaimIds.includes(claimId);
  return (
  <label key={claimId} className="flex items-start gap-3 rounded border p-2 text-sm">
@@ -1741,13 +1905,13 @@ export default function ApplyWizardPage() {
  </Button>
  <Button
  onClick={() => setStep("tailor")}
- disabled={selectedClaimIds.length === 0 && !skipClaims}
+ disabled={!canContinueFromRoleStep}
  >
  Continue
  </Button>
  </div>
  <p className="text-xs text-muted-foreground">
- Continue requires at least one selected claim (or use the skip option below).
+ Continue requires at least one selected claim, or an explicit Skip choice to let the AI auto-select from your active Claims Ledger.
  </p>
  </CardContent>
  </ContentCard>
@@ -1766,17 +1930,17 @@ export default function ApplyWizardPage() {
  </CardHeader>
  <CardContent className="space-y-3">
  {activeClaims.length === 0 ? (
- <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 flex items-start gap-2">
- <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
- <p className="text-sm text-destructive">
- No claims in your ledger. Add claims in Step 3 first; otherwise generation stays in assist-only mode and may return minimally tailored drafts.
+ <div className="rounded-md border border-warning/40 bg-warning/10 p-3 flex items-start gap-2">
+ <AlertCircle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
+ <p className="text-sm">
+ No active claims are selected. Resume generation can still use your base resume as a truth source, but claim-backed tailoring will be limited.
  </p>
  </div>
  ) : selectedClaimIds.length === 0 ? (
  <div className="rounded-md border border-warning/40 bg-warning/10 p-3 flex items-start gap-2">
  <AlertCircle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
  <p className="text-sm">
- No specific claims selected. The AI will auto-select from your {activeClaims.length} active claim{activeClaims.length === 1 ? "" : "s"}.
+ No specific claims selected. The system will use your base resume and auto-select from your {activeClaims.length} active claim{activeClaims.length === 1 ? "" : "s"} when there is a strong match.
  </p>
  </div>
  ) : (
@@ -1794,9 +1958,46 @@ export default function ApplyWizardPage() {
  </Button>
  </div>
 
+ <div className="rounded-md border bg-muted/20 p-3 space-y-2">
+ <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+ <div>
+ <p className="text-sm font-medium">Resume template</p>
+ <p className="text-xs text-muted-foreground">
+ Templates control headings, section order, spacing, and export style. Length remains adaptive up to 2 pages.
+ </p>
+ </div>
+ <select
+ className="h-10 rounded-md border bg-background px-3 text-sm"
+ value={selectedResumeTemplateId}
+ onChange={(event) => {
+ setSelectedResumeTemplateId(event.target.value);
+ setResumeVersionId(null);
+ setResumeCandidates([]);
+ setSelectedResumeWinner(null);
+ }}
+ disabled={tailorResume.isPending || comparisonRunning}
+ >
+ {resumeTemplates.map((template) => (
+ <option key={template.id} value={template.id}>
+ {template.label}
+ </option>
+ ))}
+ </select>
+ </div>
+ {selectedResumeTemplate ? (
+ <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+ <Badge variant="outline">{selectedResumeTemplate.lengthPolicy.target}</Badge>
+ <Badge variant="outline">Max {selectedResumeTemplate.lengthPolicy.maxPages} pages</Badge>
+ <span>{selectedResumeTemplate.sectionOrder.join(" -> ")}</span>
+ </div>
+ ) : (
+ <p className="text-xs text-destructive">Template metadata is still loading.</p>
+ )}
+ </div>
+
  {!useCustomComparison ? (
  <div className="flex flex-wrap gap-2">
- <Button variant="secondary" onClick={handleGenerateResume} disabled={tailorResume.isPending || activeClaims.length === 0}>
+ <Button variant="secondary" onClick={handleGenerateResume} disabled={tailorResume.isPending || !selectedResumeTemplate}>
  {tailorResume.isPending ? "Generating Resume..." : "Generate Resume"}
  </Button>
  <Button variant="secondary" onClick={handleGenerateCoverLetter} disabled={draftCoverLetter.isPending || activeClaims.length === 0}>
@@ -1837,7 +2038,7 @@ export default function ApplyWizardPage() {
  </button>
  ))}
  </div>
- <Button onClick={handleCompareResume} disabled={comparisonRunning || resumeCompareModels.length === 0}>
+ <Button onClick={handleCompareResume} disabled={comparisonRunning || resumeCompareModels.length === 0 || !selectedResumeTemplate}>
  {comparisonRunning ? "Running..." : "Run Resume Comparison"}
  </Button>
  {resumeCandidates.length > 0 ? (
@@ -1910,14 +2111,156 @@ export default function ApplyWizardPage() {
  </div>
  </div>
  )}
- <div className="flex flex-wrap gap-3">
- <Badge variant={resumeVersionId ? "default" : "outline"}>
+ <div className="flex flex-wrap gap-2">
+ <Button
+ type="button"
+ size="sm"
+ variant={activeDraftPreview === "resume" ? "default" : resumeVersionId ? "secondary" : "outline"}
+ disabled={!resumeVersionId}
+ onClick={() => setActiveDraftPreview("resume")}
+ data-testid="btn-preview-resume-draft"
+ >
  Resume Draft {resumeVersionId ? `#${resumeVersionId}` : "not created"}
- </Badge>
- <Badge variant={coverLetterVersionId ? "default" : "outline"}>
+ </Button>
+ <Button
+ type="button"
+ size="sm"
+ variant={activeDraftPreview === "cover" ? "default" : coverLetterVersionId ? "secondary" : "outline"}
+ disabled={!coverLetterVersionId}
+ onClick={() => setActiveDraftPreview("cover")}
+ data-testid="btn-preview-cover-letter-draft"
+ >
  Cover Letter Draft {coverLetterVersionId ? `#${coverLetterVersionId}` : "not created"}
- </Badge>
+ </Button>
  </div>
+ {activeDraftPreview ? (
+ <div className="rounded-xl border bg-card/70 p-4 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)] space-y-3">
+ <div className="flex flex-wrap items-center justify-between gap-3">
+ <div>
+ <p className="text-sm font-semibold">
+ {activeDraftPreview === "resume" ? "Resume Draft Preview" : "Cover Letter Draft Preview"}
+ </p>
+ <p className="text-xs text-muted-foreground">
+ Review this content before continuing to approval.
+ </p>
+ {activeDraftPreview === "resume" ? (
+ <p className="text-xs text-muted-foreground">
+ Template: <span className="font-medium text-foreground">{selectedResumeTemplate?.label ?? resumeVersion?.templateId ?? "Unknown"}</span>
+ {selectedResumeTemplate ? ` (${selectedResumeTemplate.lengthPolicy.target}, max ${selectedResumeTemplate.lengthPolicy.maxPages} pages)` : ""}
+ </p>
+ ) : null}
+ </div>
+ <Button variant="outline" size="sm" onClick={() => setStep("approve")}>
+ Open Full Review
+ </Button>
+ </div>
+
+ {activeDraftPreview === "resume" ? (
+ <div className="space-y-3">
+ {resumeVersionId && !resumeVersion ? (
+ <Skeleton className="h-48 w-full rounded-md" />
+ ) : (
+ <>
+ {(resumePreviewIsRaw || resumeNeedsRegeneration) && (
+ <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm space-y-1">
+ <p className="font-medium text-destructive">Resume must be regenerated before approval</p>
+ <p className="text-xs text-muted-foreground">
+ {getResumeDiagnosticMessage(resumeVersion?.notes)}
+ </p>
+ </div>
+ )}
+ {resumeVersion ? (
+ <div className="rounded-md border bg-muted/30 p-3 text-xs space-y-1">
+ <p className="font-semibold uppercase tracking-wide text-muted-foreground">Template</p>
+ <p>
+ <span className="font-medium text-foreground">
+ {((resumeVersion.diffData as any)?.templateLabel as string | undefined) ?? selectedResumeTemplate?.label ?? resumeVersion.templateId ?? "Unknown"}
+ </span>
+ {" "}
+ <span className="text-muted-foreground">
+ {((resumeVersion.diffData as any)?.lengthPolicy?.target as string | undefined) ?? "Concise 1-2 pages"}
+ </span>
+ </p>
+ </div>
+ ) : null}
+ {(() => {
+ const truthReview = (resumeVersion?.diffData as any)?.truthReview;
+ if (!truthReview) return null;
+ return (
+ <div className="rounded-md border bg-muted/30 p-3 text-xs space-y-2">
+ <div className="flex flex-wrap items-center gap-2">
+ <ShieldCheck className="h-4 w-4 text-primary" />
+ <span className="font-semibold uppercase tracking-wide text-muted-foreground">Truth Review</span>
+ <Badge variant="outline" className={truthBadgeClass(truthReview.supportStatus)}>
+ {truthBadgeText(truthReview.supportStatus)}
+ </Badge>
+ <span className="text-muted-foreground">
+ {truthReview.supportedCount ?? 0} supported, {truthReview.partialCount ?? 0} needs review, {truthReview.unsupportedCount ?? 0} unsupported
+ </span>
+ </div>
+ {truthReview.seriousViolationCount > 0 && (
+ <p className="text-destructive">{truthReview.seriousViolationCount} serious issue{truthReview.seriousViolationCount === 1 ? "" : "s"} found before approval.</p>
+ )}
+ </div>
+ );
+ })()}
+ <div className="max-h-[28rem] overflow-y-auto bg-muted/50 rounded-md border p-4 text-sm whitespace-pre-wrap font-mono leading-relaxed">
+ {resumePreviewText || "Resume content is still loading."}
+ </div>
+ </>
+ )}
+ </div>
+ ) : (
+ <div className="space-y-3">
+ {coverLetterVersionId && !coverLetterVersion ? (
+ <Skeleton className="h-48 w-full rounded-md" />
+ ) : (
+ <div className="max-h-[28rem] overflow-y-auto rounded-md border p-4 bg-muted/30">
+ {coverLetterVersion?.annotatedParagraphs && Array.isArray(coverLetterVersion.annotatedParagraphs) && coverLetterVersion.annotatedParagraphs.length > 0 ? (
+ <div className="space-y-3">
+ {(coverLetterVersion.annotatedParagraphs as any[]).map((para, i) => (
+ <div
+ key={i}
+ className={`p-3 rounded-md border text-sm ${ROLE_COLORS[para.role] || "bg-card"}`}
+ >
+ <div className="flex items-center gap-2 mb-2 flex-wrap">
+ <span className={`text-[10px] font-bold uppercase rounded px-1.5 py-0.5 ${ROLE_LABEL_COLORS[para.role] || "bg-muted"}`}>
+ {para.role}
+ </span>
+ <Badge variant="outline" className={`text-[10px] ${truthBadgeClass(para.supportStatus ?? para.truthReview?.supportStatus)}`}>
+ {truthBadgeText(para.supportStatus ?? para.truthReview?.supportStatus)}
+ </Badge>
+ {para.claimIds?.length > 0 && (
+ <span className="text-[10px] text-muted-foreground">
+ Claims: {para.claimIds.join(", ")}
+ </span>
+ )}
+ </div>
+ <p className="leading-relaxed">{para.text}</p>
+ {para.truthReview && (
+ <div className="mt-3 rounded border bg-background/70 p-2 text-xs space-y-1">
+ {(para.truthReview.unsupportedPhrases?.length ?? 0) > 0 && (
+ <p className="text-destructive">Unsupported: {para.truthReview.unsupportedPhrases.join("; ")}</p>
+ )}
+ {(para.truthReview.gapNotes?.length ?? 0) > 0 && (
+ <p className="text-warning">Gaps: {para.truthReview.gapNotes.join("; ")}</p>
+ )}
+ </div>
+ )}
+ </div>
+ ))}
+ </div>
+ ) : (
+ <div className="text-sm whitespace-pre-wrap leading-relaxed">
+ {coverLetterVersion?.draftContent || "No tailored content available yet."}
+ </div>
+ )}
+ </div>
+ )}
+ </div>
+ )}
+ </div>
+ ) : null}
  <div className="flex justify-end gap-2">
  <Button variant="outline" onClick={() => setStep("role")}>Back</Button>
  <Button variant="outline" onClick={handleSaveSession} disabled={savingSession}>
@@ -1929,7 +2272,7 @@ export default function ApplyWizardPage() {
  disabled={
  useCustomComparison
  ? resumeCandidates.length === 0 || coverCandidates.length === 0
- : !resumeVersionId || !coverLetterVersionId
+ : !resumeVersionId || !coverLetterVersionId || resumeNeedsRegeneration
  }
  
  >
@@ -1965,8 +2308,8 @@ export default function ApplyWizardPage() {
  Resume
  </h3>
  {resumeVersionId && (
- <Badge variant={resumeVersion?.status === "approved" ? "default" : "secondary"}>
- {resumeVersion?.status === "approved" ? "Approved" : "Pending Approval"}
+ <Badge variant={resumeNeedsRegeneration ? "destructive" : resumeVersion?.status === "approved" ? "default" : "secondary"}>
+ {resumeNeedsRegeneration ? "Needs Regeneration" : resumeVersion?.status === "approved" ? "Approved" : "Pending Approval"}
  </Badge>
  )}
  </div>
@@ -2051,21 +2394,53 @@ export default function ApplyWizardPage() {
  </div>
  </div>
  )}
+ {(resumePreviewIsRaw || resumeNeedsRegeneration) && (
+ <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 flex items-start gap-2">
+ <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+ <div>
+ <p className="text-sm font-medium text-destructive">Resume must be regenerated before approval</p>
+ <p className="text-xs text-muted-foreground">
+ {getResumeDiagnosticMessage(resumeVersion?.notes)}
+ </p>
+ </div>
+ </div>
+ )}
+ {(() => {
+ const truthReview = (resumeVersion?.diffData as any)?.truthReview;
+ if (!truthReview) return null;
+ return (
+ <div className="rounded-md border bg-muted/30 p-3 text-xs space-y-2">
+ <div className="flex flex-wrap items-center gap-2">
+ <ShieldCheck className="h-4 w-4 text-primary" />
+ <span className="font-semibold uppercase tracking-wide text-muted-foreground">Truth Review</span>
+ <Badge variant="outline" className={truthBadgeClass(truthReview.supportStatus)}>
+ {truthBadgeText(truthReview.supportStatus)}
+ </Badge>
+ <span className="text-muted-foreground">
+ {truthReview.supportedCount ?? 0} supported, {truthReview.partialCount ?? 0} needs review, {truthReview.unsupportedCount ?? 0} unsupported
+ </span>
+ </div>
+ {truthReview.seriousViolationCount > 0 && (
+ <p className="text-destructive">{truthReview.seriousViolationCount} serious issue{truthReview.seriousViolationCount === 1 ? "" : "s"} found before approval.</p>
+ )}
+ </div>
+ );
+ })()}
  <div className="max-h-96 overflow-y-auto bg-muted/50 rounded-md border p-4 text-sm whitespace-pre-wrap font-mono leading-relaxed">
- {resumeVersion?.tailoredDocumentText || (resumeVersionId && !resumeVersion ? "" : resumeVersionId ? "No tailored content available." : "Generate a resume in Step 4 first.")}
+ {resumePreviewText || (resumeVersionId && !resumeVersion ? "" : resumeVersionId ? "Resume content is still loading." : "Generate a resume in Step 4 first.")}
  </div>
  <div className="flex gap-2">
  <Button
  variant={resumeVersion?.status === "approved" ? "outline" : "default"}
  onClick={handleApproveResume}
- disabled={resumeVersion?.status === "approved" || !resumeVersionId}
+ disabled={resumeVersion?.status === "approved" || !resumeVersionId || resumeNeedsRegeneration}
  >
- {resumeVersion?.status === "approved" ? <><Check className="h-4 w-4 mr-2" /> Resume Approved</> : "Approve Resume"}
+ {resumeNeedsRegeneration ? "Regenerate Resume Required" : resumeVersion?.status === "approved" ? <><Check className="h-4 w-4 mr-2" /> Resume Approved</> : "Approve Resume"}
  </Button>
- <Button variant="outline" onClick={handleRejectResume} disabled={!resumeVersionId}>
- Reject & Regenerate
+ <Button variant="outline" onClick={handleRejectResume} disabled={!resumeVersionId || rejectResume.isPending || tailorResume.isPending}>
+ {rejectResume.isPending || tailorResume.isPending ? "Regenerating..." : "Reject & Regenerate"}
  </Button>
- {resumeVersion?.status === "approved" && (
+ {resumeVersion?.status === "approved" && !resumeNeedsRegeneration && (
  <Button variant="secondary" asChild>
  <a href={`/api/resume-versions/${resumeVersionId}/export`} target="_blank" rel="noopener noreferrer">
  <Download className="h-4 w-4 mr-2" /> Export DOCX
@@ -2185,6 +2560,9 @@ export default function ApplyWizardPage() {
  <span className={`text-[10px] font-bold uppercase rounded px-1.5 py-0.5 ${ROLE_LABEL_COLORS[para.role] || "bg-muted"}`}>
  {para.role}
  </span>
+ <Badge variant="outline" className={`text-[10px] ${truthBadgeClass(para.supportStatus ?? para.truthReview?.supportStatus)}`}>
+ {truthBadgeText(para.supportStatus ?? para.truthReview?.supportStatus)}
+ </Badge>
  {para.claimIds?.length > 0 && (
  <div className="flex items-center gap-1 flex-wrap">
  <Tag className="h-3 w-3 text-muted-foreground" />
@@ -2204,6 +2582,19 @@ export default function ApplyWizardPage() {
  )}
  </div>
  <p className="leading-relaxed">{para.text}</p>
+ {para.truthReview && (
+ <div className="mt-3 rounded border bg-background/70 p-2 text-xs space-y-1">
+ {(para.truthReview.unsupportedPhrases?.length ?? 0) > 0 && (
+ <p className="text-destructive">{para.truthReview.unsupportedPhrases.join("; ")}</p>
+ )}
+ {(para.truthReview.gapNotes?.length ?? 0) > 0 && (
+ <p className="text-warning">Gaps: {para.truthReview.gapNotes.join("; ")}</p>
+ )}
+ {(para.truthReview.jobKeywordsUsed?.length ?? 0) > 0 && (
+ <p className="text-muted-foreground">JD keywords: {para.truthReview.jobKeywordsUsed.join(", ")}</p>
+ )}
+ </div>
+ )}
  </div>
  ))}
  </div>
@@ -2246,7 +2637,7 @@ export default function ApplyWizardPage() {
  size="lg"
  className="px-8"
  onClick={() => setStep("assisted")}
- disabled={resumeVersion?.status !== "approved" || coverLetterVersion?.status !== "approved"}
+ disabled={resumeVersion?.status !== "approved" || coverLetterVersion?.status !== "approved" || resumeNeedsRegeneration}
  >
  Continue to Submission <ChevronRight className="ml-2 h-4 w-4" />
  </Button>

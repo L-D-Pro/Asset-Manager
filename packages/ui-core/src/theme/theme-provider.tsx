@@ -83,7 +83,7 @@ function applyThemeToElement(element: HTMLElement, theme: ThemeDefinition): void
   element.style.setProperty("--popover-foreground", hexToHslChannels(resolved.textMain));
   element.style.setProperty("--primary", hexToHslChannels(resolved.brandPrimary));
   element.style.setProperty("--primary-foreground", primaryForeground);
-  element.style.setProperty("--secondary", hexToHslChannels(resolved.bgGlass));
+  element.style.setProperty("--secondary", hexToHslChannels(resolved.brandAccent));
   element.style.setProperty("--secondary-foreground", hexToHslChannels(resolved.textMain));
   element.style.setProperty("--muted", hexToHslChannels(resolved.bgGlass));
   element.style.setProperty("--muted-foreground", hexToHslChannels(resolved.textSubtle));

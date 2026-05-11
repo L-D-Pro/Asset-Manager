@@ -67,6 +67,7 @@ CREATE INDEX IF NOT EXISTS event_logs_run_id_idx ON event_logs(run_id);
 
 ALTER TABLE resume_versions ADD COLUMN IF NOT EXISTS run_id TEXT;
 ALTER TABLE resume_versions ADD COLUMN IF NOT EXISTS event_log_id INTEGER;
+ALTER TABLE resume_versions ADD COLUMN IF NOT EXISTS template_id TEXT;
 CREATE INDEX IF NOT EXISTS resume_versions_run_id_idx ON resume_versions(run_id);
 CREATE INDEX IF NOT EXISTS resume_versions_event_log_id_idx ON resume_versions(event_log_id);
 

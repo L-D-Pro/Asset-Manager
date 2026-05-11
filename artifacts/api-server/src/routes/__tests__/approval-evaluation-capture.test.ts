@@ -42,10 +42,11 @@ vi.mock("@workspace/db", () => {
               jobId: 77,
               baseResumeVersionId: null,
               label: null,
+              templateId: "software_developer",
               status: "approved",
               tailoredDocumentText: null,
-              tailoredBullets: undefined,
-              diffData: null,
+              tailoredBullets: [{ text: "Supported", claimIds: [1] }],
+              diffData: { templateValidation: { templateId: "software_developer" } },
               claimIds: [],
               fileUrl: null,
               rawContent: null,
@@ -115,6 +116,12 @@ describe("approval evaluation capture", () => {
                 jobId: 77,
                 runId: "run_20250101t000000z_aaaaaaaaaaaa",
                 eventLogId: 501,
+                templateId: "software_developer",
+                tailoredBullets: [{ text: "Supported", claimIds: [1] }],
+                diffData: {
+                  templateValidation: { templateId: "software_developer" },
+                  sourceValidation: { passed: true, validItemCount: 1 },
+                },
               },
             ];
           },
@@ -167,6 +174,49 @@ describe("approval evaluation capture", () => {
     expect(evaluationInsert.formattingScore).toBe(3);
     expect(evaluationInsert.attributionScore).toBe(2);
     expect(evaluationInsert.notes).toBe("LGTM");
+  });
+
+  it("allows rejecting a previously approved resume when it now fails approval validation", async () => {
+    const { default: resumeRouter } = await import("../resume-versions");
+
+    (await import("@workspace/db") as any).__approvalEvalCaptureTest.dbMock.select.mockReturnValueOnce({
+      from() {
+        return {
+          where() {
+            return [
+              {
+                id: 123,
+                status: "approved",
+                jobId: 77,
+                runId: "run_20250101t000000z_invalidapproved",
+                eventLogId: 501,
+                templateId: null,
+                tailoredBullets: [],
+                diffData: null,
+                notes: "Resume must be regenerated before approval",
+              },
+            ];
+          },
+        };
+      },
+    });
+
+    const layer = (resumeRouter as any).stack.find(
+      (l: any) => l.route?.path === "/resume-versions/:id/reject" && l.route?.methods?.post,
+    );
+    expect(layer).toBeTruthy();
+
+    const handler = layer.route.stack[0].handle;
+    const req: any = {
+      params: { id: "123" },
+      body: { notes: "Regenerate invalid approved draft" },
+      log: { info: vi.fn(), warn: vi.fn() },
+    };
+    const res = makeRes();
+
+    await handler(req, res);
+
+    expect(res.statusCode).toBe(200);
   });
 
   it("upserts ai_run_evaluations when rejecting a cover letter version", async () => {

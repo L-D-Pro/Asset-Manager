@@ -22,6 +22,38 @@ import { generateResumeDocx } from "../lib/docx-export";
 
 const router: IRouter = Router();
 
+function getResumeApprovalBlocker(resumeVersion: typeof resumeVersionsTable.$inferSelect): string | null {
+  const diffData =
+    resumeVersion.diffData && typeof resumeVersion.diffData === "object" && !Array.isArray(resumeVersion.diffData)
+      ? (resumeVersion.diffData as Record<string, unknown>)
+      : {};
+  const hasStructuredBullets =
+    Array.isArray(resumeVersion.tailoredBullets) && resumeVersion.tailoredBullets.length > 0;
+  const sourceValidation =
+    diffData.sourceValidation && typeof diffData.sourceValidation === "object" && !Array.isArray(diffData.sourceValidation)
+      ? (diffData.sourceValidation as Record<string, unknown>)
+      : null;
+  const hasPassingSourceValidation =
+    sourceValidation?.passed === true &&
+    typeof sourceValidation.validItemCount === "number" &&
+    sourceValidation.validItemCount > 0;
+  const hasBlockingDiagnostic =
+    typeof resumeVersion.notes === "string" &&
+    /could not be repaired|truth lock failure|quality check failed|truth review failed|generation failed|source validation failed|base resume parse failed|needs review/i.test(resumeVersion.notes);
+
+  if (
+    !resumeVersion.templateId ||
+    !diffData.templateValidation ||
+    !hasStructuredBullets ||
+    !hasPassingSourceValidation ||
+    hasBlockingDiagnostic
+  ) {
+    return "This resume does not have passing structured content, truth review, and template validation metadata.";
+  }
+
+  return null;
+}
+
 router.get("/resume-versions", async (req, res): Promise<void> => {
   req.log.info("Listing resume versions");
   const query = ListResumeVersionsQueryParams.safeParse(req.query);
@@ -138,7 +170,17 @@ router.post("/resume-versions/:id/approve", async (req, res): Promise<void> => {
   }
 
   // Only validate lineage when runId is present — versions created
-  // via error paths or manual creation may not have lineage data
+  // New resume drafts must have structured truth and template metadata before approval.
+  const approvalBlocker = getResumeApprovalBlocker(resumeVersion);
+  if (approvalBlocker) {
+    res.status(422).json({
+      error: "Resume must be regenerated before approval",
+      details: approvalBlocker,
+    });
+    return;
+  }
+
+  // Only validate lineage when runId is present; diagnostic rows may not have lineage data.
   if (resumeVersion.runId) {
     const lineageValidation = await validateLineage({
       table: "resume_versions",
@@ -280,9 +322,11 @@ router.post("/resume-versions/:id/reject", async (req, res): Promise<void> => {
   const resumeVersion = existing[0];
   const previousStatus = resumeVersion.status;
 
-  if (previousStatus !== "pending_approval") {
+  const approvalBlocker = getResumeApprovalBlocker(resumeVersion);
+  const canRejectApprovedInvalidResume = previousStatus === "approved" && approvalBlocker != null;
+  if (previousStatus !== "pending_approval" && !canRejectApprovedInvalidResume) {
     res.status(409).json({
-      error: `Cannot reject a resume version in status "${previousStatus}". Only "pending_approval" versions can be rejected.`,
+      error: `Cannot reject a resume version in status "${previousStatus}". Only "pending_approval" versions, or previously approved versions that now fail approval validation, can be rejected.`,
     });
     return;
   }

@@ -6,27 +6,82 @@ import {
 import { eq } from "drizzle-orm";
 import { callAI, parseJsonResponse } from "../ai-client";
 import { matchClaimsToJob } from "../scoring";
-import { validateBullet, assertMinimumContent, TruthLockViolation, stripClaimIdRefs, validateResumeQuality, validateSemanticQuality, QualityViolation } from "./validation";
+import { stripClaimIdRefs, reviewGeneratedTruth } from "./validation";
 import { logger } from "../logger";
 import { loadOrCreateBestPractices, formatBestPracticesForPrompt } from "../best-practices";
+import {
+  formatTemplatePrompt,
+  getResumeTemplate,
+  renderResumePlainText,
+} from "../resume-templates";
+import {
+  buildResumeSourcePacket,
+  formatResumeSourcePacketForPrompt,
+  validateResumeTailoringPlan,
+  type ResumeTailoringPlan,
+  type ValidatedResumeItem,
+  type ResumeSourceValidation,
+} from "../resume-source-packet";
 import type { Job, Claim } from "@workspace/db";
 
-interface RawBullet {
-  text?: unknown;
-  claimIds?: unknown;
-  section?: unknown;
-  isAggregated?: unknown;
-  originalText?: unknown;
-}
+const RESUME_PLAN_JSON_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["sectionItems", "summary"],
+  properties: {
+    sectionItems: {
+      type: "array",
+      minItems: 1,
+      maxItems: 28,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["section", "text", "sourceRefs", "jobKeywordsUsed", "gapNotes"],
+        properties: {
+          section: {
+            type: "string",
+            enum: ["summary", "experience", "project", "education", "coursework", "involvement", "skills"],
+          },
+          text: { type: "string", minLength: 8, maxLength: 900 },
+          sourceRefs: {
+            type: "array",
+            minItems: 1,
+            maxItems: 6,
+            items: { type: "string" },
+          },
+          jobKeywordsUsed: {
+            type: "array",
+            maxItems: 12,
+            items: { type: "string" },
+          },
+          gapNotes: {
+            type: "array",
+            maxItems: 8,
+            items: { type: "string" },
+          },
+        },
+      },
+    },
+    summary: { type: "string" },
+  },
+} as const;
 
-interface TailoringResult {
-  documentText?: unknown;
-  bullets?: RawBullet[];
-  addedBullets?: string[];
-  removedBullets?: string[];
-  reorderedSections?: string[];
-  summary?: string;
-}
+const RESUME_STRUCTURED_OUTPUT_PARAMS = {
+  temperature: 0.1,
+  max_tokens: 3600,
+  timeoutMs: 45_000,
+  provider: {
+    require_parameters: true,
+  },
+  response_format: {
+    type: "json_schema",
+    json_schema: {
+      name: "resume_tailoring_plan",
+      strict: true,
+      schema: RESUME_PLAN_JSON_SCHEMA,
+    },
+  },
+};
 
 export class MissingBaseResumeError extends Error {
   constructor() {
@@ -35,57 +90,112 @@ export class MissingBaseResumeError extends Error {
   }
 }
 
-const SYSTEM_PROMPT = `You are an expert resume writer specializing in ATS-optimized, job-specific resumes.
-Your task is to produce a COMPLETE tailored resume rewrite that makes the candidate read as a near-perfect match for the specific job.
+const SYSTEM_PROMPT = `You are an expert ATS resume tailoring planner.
 
-CRITICAL RULES — NEVER VIOLATE:
-1. Every bullet MUST trace back to a provided claim. Do NOT invent new achievements.
-2. Use ONLY claim IDs from the provided list. Do NOT use any other IDs.
-3. Bullets that combine multiple claims must explicitly flag isAggregated: true.
-4. Do NOT include claim ID references (like "(ID:4)" or "[ID:14]") in the text.
-   Claim attribution goes ONLY in the "claimIds" array field, never in the prose.
-5. Return a complete resume draft in plain text with section headings and bullets.
-6. NO markdown formatting — no bold, italic, headers (#), bullet symbols (- * •), or code blocks.
+You do NOT write or format a full resume. You return a compact JSON tailoring plan only.
+The application will validate your source references and render the final resume through a fixed ATS template.
 
-JOB-MIRRORING RULES — APPLY ALL:
-7. MIRROR the job's exact phrasing: if the JD says "cross-functional stakeholder alignment", use those exact words — not synonyms.
-8. Place the top 5 JD required skills/keywords in prominent bullet positions. Each must appear at least once in the tailored document.
-9. REORDER bullets so the most relevant to THIS job come first in each section. Demote or omit bullets irrelevant to this role.
-10. For each required JD skill you cannot address with any available claim, add a note in the "summary" field: "GAP: [skill] — no claim available."
-11. Do NOT pad with generic statements. Every sentence must be anchored to a specific claim.
+Hard rules:
+1. Use only facts from the provided CLAIM SOURCES and BASE RESUME SOURCES.
+2. Every section item must cite at least one exact sourceRefs value from the packet.
+3. Valid source refs look like claim:12 or base:experience:b003. Do not invent refs.
+4. Claims are strongest evidence. Base resume refs are valid truth sources when a claim is not available.
+5. Do not invent or inflate metrics, tools, titles, credentials, employers, dates, responsibilities, or company facts.
+6. If the job asks for something not supported by sources, do not imply the candidate has it; put a short note in gapNotes.
+7. Return clean prose only in text fields: no markdown, no bullets, no labels, no claim IDs in prose.
+8. Keep the plan concise: summary/profile lines plus the strongest relevant experience, project, education, and skills items.
+9. Mirror important job keywords only when the source material supports them.
+10. Keep each item useful as one resume line or bullet after rendering.`;
 
-QUALITY REQUIREMENTS:
-12. Start every bullet with a strong action verb (Led, Built, Reduced, Increased, Delivered, etc.).
-13. Include quantified impact in EVERY bullet (numbers, %, revenue, users, time saved). If a claim lacks numbers, state the scale ("team of N", "N projects", etc.).
-14. The summary section (if present) must reference the target company name and role title.
+function parsedPlanIsUsable(content: string, packet: ReturnType<typeof buildResumeSourcePacket>): boolean {
+  const parsed = parseJsonResponse<ResumeTailoringPlan>(content);
+  const { validation } = validateResumeTailoringPlan(parsed, packet);
+  return validation.passed;
+}
 
-Return ONLY valid JSON with this exact structure:
-{
-  "documentText": "Full tailored resume draft in plain text",
-  "bullets": [
-    {
-      "text": "Tailored bullet text",
-      "claimIds": [claim_id_numbers],
-      "section": "experience|skills|projects|education|summary",
-      "isAggregated": false,
-      "originalText": "original claim summary or null"
-    }
-  ],
-  "addedBullets": ["new bullet texts not in original"],
-  "removedBullets": ["removed bullet texts"],
-  "reorderedSections": ["sections that moved"],
-  "summary": "Brief explanation of tailoring decisions and any GAP notes"
-}`;
+function getErrorRunId(error: unknown): string | null {
+  return error && typeof error === "object" && "runId" in error && typeof (error as { runId?: unknown }).runId === "string"
+    ? (error as { runId: string }).runId
+    : null;
+}
+
+function getErrorEventLogId(error: unknown): number | null {
+  return error && typeof error === "object" && "eventLogId" in error && typeof (error as { eventLogId?: unknown }).eventLogId === "number"
+    ? (error as { eventLogId: number }).eventLogId
+    : null;
+}
+
+async function saveDiagnosticResumeVersion(args: {
+  job: Job;
+  baseResumeVersionId: number;
+  templateId: string;
+  label: string;
+  notes: string;
+  rawContent?: string | null;
+  runId?: string | null;
+  eventLogId?: number | null;
+  sourceValidation?: ResumeSourceValidation | null;
+  sourceRefsAvailable?: number;
+}): Promise<typeof resumeVersionsTable.$inferSelect> {
+  const template = getResumeTemplate(args.templateId);
+  const [row] = await db
+    .insert(resumeVersionsTable)
+    .values({
+      jobId: args.job.id,
+      label: args.label,
+      status: "pending_approval",
+      baseResumeVersionId: args.baseResumeVersionId,
+      templateId: template.id,
+      runId: args.runId ?? null,
+      eventLogId: args.eventLogId ?? null,
+      claimIds: [],
+      tailoredBullets: [],
+      tailoredDocumentText: null,
+      rawContent: args.rawContent ?? null,
+      diffData: {
+        modelContract: "resume_tailoring_plan_v1",
+        templateId: template.id,
+        templateLabel: template.label,
+        templateValidation: null,
+        sourceValidation: args.sourceValidation ?? null,
+        sourceRefsAvailable: args.sourceRefsAvailable ?? null,
+      },
+      notes: args.notes,
+    })
+    .returning();
+  return row!;
+}
+
+function buildJobContext(job: Job): string {
+  return `
+Title: ${job.title}
+Company: ${job.company}
+Required Skills: ${(job.parsedRequiredSkills ?? []).join(", ") || "Not parsed yet"}
+Nice-to-Have Skills: ${(job.parsedNiceToHaveSkills ?? []).join(", ") || ""}
+Keywords: ${(job.parsedKeywords ?? []).join(", ") || ""}
+Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed yet"}
+Raw Description:
+${job.rawJdText ?? ""}
+`.trim();
+}
+
+function toTruthReviewItems(items: ValidatedResumeItem[]) {
+  return items.map((item) => ({
+    text: item.text,
+    claimIds: item.claimIds,
+    role: item.claimIds.length > 0 ? "claim-backed" : "base-backed",
+    section: item.section,
+    jobKeywordsUsed: item.jobKeywordsUsed,
+    gapNotes: item.gapNotes,
+  }));
+}
 
 /**
- * Runs the resume tailoring pipeline:
- * 1. Matches claims to the job (or uses provided claimIds)
- * 2. Calls the AI to generate tailored bullets with claim attribution
- * 3. Validates all returned claim IDs against the selected claims (truth lock)
- * 4. Discards bullets with no valid claim attribution
- * 5. Fails hard if zero valid bullets remain (stores raw output for debugging)
- * 6. Stores the result as a new ResumeVersion in pending_approval state
- * Returns the new ResumeVersion.
+ * Runs the MVP resume tailoring pipeline:
+ * 1. Builds a compact source packet from the base resume and selected claims.
+ * 2. Asks the model for sourced section items, not a full resume.
+ * 3. Validates every source ref against claim/base-resume sources.
+ * 4. Renders the final resume deterministically through the selected template.
  */
 export async function runResumeTailorPipeline(
   job: Job,
@@ -96,6 +206,7 @@ export async function runResumeTailorPipeline(
       provider?: string;
       modelName: string;
     };
+    templateId?: string | null;
   },
 ): Promise<typeof resumeVersionsTable.$inferSelect> {
   logger.info({ jobId: job.id, claimIds }, "Starting resume tailor pipeline");
@@ -109,225 +220,158 @@ export async function runResumeTailorPipeline(
     throw new MissingBaseResumeError();
   }
 
-  let selectedClaims: Claim[];
-  if (claimIds && claimIds.length > 0) {
-    selectedClaims = allClaims.filter((c) => claimIds.includes(c.id));
-  } else {
-    const matches = matchClaimsToJob(job, allClaims);
-    selectedClaims = matches.slice(0, 15).map((m) => m.claim);
+  const template = getResumeTemplate(options?.templateId);
+  const templateContext = formatTemplatePrompt(template);
+
+  const selectedClaims = claimIds && claimIds.length > 0
+    ? allClaims.filter((claim) => claimIds.includes(claim.id))
+    : matchClaimsToJob(job, allClaims).slice(0, 15).map((match) => match.claim);
+
+  const packet = buildResumeSourcePacket({
+    baseResumeText: baseResumeVersion.contentText,
+    claims: selectedClaims,
+    templateId: template.id,
+  });
+
+  if (packet.baseSources.length === 0) {
+    return saveDiagnosticResumeVersion({
+      job,
+      baseResumeVersionId: baseResumeVersion.id,
+      templateId: template.id,
+      label: "AI tailored - base resume parse failed",
+      notes: "The current base resume could not be parsed into source snippets, so the resume was not generated. Review the base resume text and regenerate.",
+      sourceRefsAvailable: 0,
+    });
   }
 
-  if (selectedClaims.length === 0) {
-    logger.warn({ jobId: job.id }, "No claims available for resume tailoring");
-    const [row] = await db
-      .insert(resumeVersionsTable)
-      .values({
-        jobId: job.id,
-        label: "AI tailored — no claims available",
-        status: "pending_approval",
-        baseResumeVersionId: baseResumeVersion.id,
-        tailoredDocumentText: baseResumeVersion.contentText,
-        claimIds: [],
-        notes: "No matching claims found. Add claims to your Claims Ledger first.",
-        tailoredBullets: [],
-      })
-      .returning();
-    return row!;
-  }
-
-  const claimsContext = selectedClaims
-    .map(
-      (c) =>
-        `[ID:${c.id}] ${c.summary}${c.evidence ? ` (Evidence: ${c.evidence})` : ""}`,
-    )
-    .join("\n");
-
-  const jobContext = `
-Title: ${job.title}
-Company: ${job.company}
-Required Skills: ${(job.parsedRequiredSkills ?? []).join(", ") || "Not parsed yet"}
-Nice-to-Have Skills: ${(job.parsedNiceToHaveSkills ?? []).join(", ") || ""}
-Keywords: ${(job.parsedKeywords ?? []).join(", ") || ""}
-Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed yet"}
-`.trim();
-
-  // Load best practices and inject into system prompt
-  const bestPractices = await loadOrCreateBestPractices("general");
+  const jobContext = buildJobContext(job);
+  const researchContext =
+    job.researchData != null ? JSON.stringify(job.researchData).slice(0, 3000) : "No stored research available.";
+  const bestPractices = await loadOrCreateBestPractices("resume_tailoring");
   const practicesText = formatBestPracticesForPrompt(bestPractices);
-  const augmentedSystemPrompt = SYSTEM_PROMPT + practicesText;
+  const sourcePacketPrompt = formatResumeSourcePacketForPrompt(packet);
 
-  const MAX_RETRIES = 2;
-  let attempt = 0;
-  let lastQualityViolation: QualityViolation | null = null;
-  let lastResult: Awaited<ReturnType<typeof callAI>> | null = null;
-  let parsed: TailoringResult | null = null;
-  let validatedBullets: NonNullable<ReturnType<typeof validateBullet>>[] = [];
-
-  while (attempt <= MAX_RETRIES) {
-    const correctionNote =
-      lastQualityViolation && attempt > 0
-        ? `\n\n[SELF-CORRECTION — attempt ${attempt + 1} of ${MAX_RETRIES + 1}]\nYour previous output failed quality validation:\n${lastQualityViolation.violations.map((v) => `- ${v}`).join("\n")}\nFix ALL of these issues and regenerate the complete output.`
-        : "";
-
-    lastResult = await callAI({
+  let aiResult: Awaited<ReturnType<typeof callAI>>;
+  try {
+    aiResult = await callAI({
       taskType: "resume_tailoring",
-      systemPrompt: augmentedSystemPrompt,
+      systemPrompt: `${SYSTEM_PROMPT}${practicesText}\n\nTEMPLATE CONTRACT:\n${templateContext}`,
       userPrompt:
-        `Tailor the base resume for this job.\n\n` +
-        `Base Resume (current source of truth):\n${baseResumeVersion.contentText}\n\n` +
-        `${jobContext}\n\nAvailable claims (use ONLY these):\n${claimsContext}` +
-        correctionNote,
+        `Create a compact resume tailoring plan for this job. Return only JSON matching the schema.\n\n` +
+        `JOB CONTEXT\n${jobContext}\n\n` +
+        `STORED JOB/COMPANY RESEARCH\n${researchContext}\n\n` +
+        `SOURCE PACKET\n${sourcePacketPrompt}`,
       jobId: job.id,
       modelOverride: options?.modelOverride,
+      extraParams: RESUME_STRUCTURED_OUTPUT_PARAMS,
+      validateContent: (content) => {
+        if (!parsedPlanIsUsable(content, packet)) {
+          throw new Error("Resume tailoring plan did not pass compact JSON/source-ref validation.");
+        }
+      },
     });
-
-    parsed = parseJsonResponse<TailoringResult>(lastResult.content);
-
-    if (
-      !parsed ||
-      typeof parsed.documentText !== "string" ||
-      parsed.documentText.trim() === "" ||
-      !Array.isArray(parsed.bullets)
-    ) {
-      logger.error(
-        { jobId: job.id, raw: lastResult.content.slice(0, 500) },
-        "AI returned unparseable JSON for resume tailoring — storing failed version",
-      );
-      const [row] = await db
-        .insert(resumeVersionsTable)
-        .values({
-          jobId: job.id,
-          label: "AI tailored — generation failed",
-          status: "pending_approval",
-          baseResumeVersionId: baseResumeVersion.id,
-          runId: lastResult.runId,
-          eventLogId: lastResult.eventLogId,
-          claimIds: [],
-          tailoredBullets: [],
-          tailoredDocumentText: null,
-          rawContent: lastResult.content,
-          notes: "AI output could not be parsed as structured JSON. Review raw content and regenerate.",
-        })
-        .returning();
-      return row!;
-    }
-
-    validatedBullets = parsed.bullets
-      .map((b) => validateBullet(b, selectedClaims))
-      .filter((b): b is NonNullable<typeof b> => b !== null);
-
-    try {
-      assertMinimumContent(validatedBullets, lastResult.content, "resume bullets");
-    } catch (err) {
-      if (err instanceof TruthLockViolation) {
-        logger.error(
-          { jobId: job.id, ...err.details },
-          "Truth lock violation: zero valid bullets — storing failed version",
-        );
-        const [row] = await db
-          .insert(resumeVersionsTable)
-          .values({
-            jobId: job.id,
-            label: "AI tailored — truth lock failure",
-            status: "pending_approval",
-            baseResumeVersionId: baseResumeVersion.id,
-            runId: lastResult.runId,
-            eventLogId: lastResult.eventLogId,
-            claimIds: [],
-            tailoredBullets: [],
-            tailoredDocumentText: parsed.documentText as string,
-            rawContent: lastResult.content,
-            notes: `Truth lock failure: ${err.message}. All AI-generated bullets cited claim IDs not in the selected set. Review claims and regenerate.`,
-          })
-          .returning();
-        return row!;
-      }
-      throw err;
-    }
-
-    // ─── Best Practices Quality Validation ───
-    try {
-      validateResumeQuality(parsed.documentText as string, validatedBullets);
-      await validateSemanticQuality(parsed.documentText as string, jobContext, job.id);
-      lastQualityViolation = null;
-      break; // passed — exit retry loop
-    } catch (err) {
-      if (err instanceof QualityViolation) {
-        lastQualityViolation = err;
-        logger.warn(
-          { jobId: job.id, attempt: attempt + 1, violations: err.violations },
-          "Resume quality violation — retrying",
-        );
-        attempt++;
-      } else {
-        throw err;
-      }
-    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error({ jobId: job.id, error: message }, "Resume tailoring AI call failed");
+    return saveDiagnosticResumeVersion({
+      job,
+      baseResumeVersionId: baseResumeVersion.id,
+      templateId: template.id,
+      label: "AI tailored - generation failed",
+      notes: `Resume generation failed after the configured model/fallback attempts: ${message}`,
+      rawContent: message,
+      runId: getErrorRunId(error),
+      eventLogId: getErrorEventLogId(error),
+      sourceRefsAvailable: packet.baseSources.length + packet.claims.length,
+    });
   }
 
-  // After retry loop: if still failing quality, store failed record
-  if (lastQualityViolation) {
-    logger.error(
-      { jobId: job.id, violations: lastQualityViolation.violations },
-      "Resume quality validation failed after all retries — storing failed version",
-    );
-    const [row] = await db
-      .insert(resumeVersionsTable)
-      .values({
-        jobId: job.id,
-        label: "AI tailored — quality check failed",
-        status: "pending_approval",
-        baseResumeVersionId: baseResumeVersion.id,
-        runId: lastResult!.runId,
-        eventLogId: lastResult!.eventLogId,
-        claimIds: [...new Set(validatedBullets.flatMap((b) => b.claimIds))],
-        tailoredBullets: validatedBullets as unknown as Record<string, unknown>[],
-        tailoredDocumentText: parsed!.documentText as string,
-        rawContent: lastResult!.content,
-        notes: `Quality check failed after ${MAX_RETRIES + 1} attempts:\n${lastQualityViolation.violations.join("\n")}\n\nThe AI output violated best practices. Review and regenerate, or adjust your claims.`,
-      })
-      .returning();
-    return row!;
+  const parsed = parseJsonResponse<ResumeTailoringPlan>(aiResult.content);
+  const { items, validation: sourceValidation } = validateResumeTailoringPlan(parsed, packet);
+
+  if (!sourceValidation.passed) {
+    logger.warn({ jobId: job.id, sourceValidation }, "Resume source validation failed");
+    return saveDiagnosticResumeVersion({
+      job,
+      baseResumeVersionId: baseResumeVersion.id,
+      templateId: template.id,
+      label: "AI tailored - source validation failed",
+      notes: "Resume generation needs review: the model returned a compact plan, but one or more items lacked valid claim/base-resume source references. Regenerate or adjust claims/base resume.",
+      rawContent: aiResult.content,
+      runId: aiResult.runId,
+      eventLogId: aiResult.eventLogId,
+      sourceValidation,
+      sourceRefsAvailable: packet.baseSources.length + packet.claims.length,
+    });
   }
 
-  // At this point parsed and lastResult are guaranteed non-null (loop exited via break after passing quality check)
-  const finalParsed = parsed!;
-  const finalResult = lastResult!;
-
-  const usedClaimIds = [...new Set(validatedBullets.flatMap((b) => b.claimIds))];
-  const diffData = {
-    addedBullets: finalParsed.addedBullets ?? [],
-    removedBullets: finalParsed.removedBullets ?? [],
-    reorderedSections: finalParsed.reorderedSections ?? [],
-    summary: finalParsed.summary ?? "",
-    generatedAt: new Date().toISOString(),
-    modelName: finalResult.modelName,
-    bulletsTotal: finalParsed.bullets?.length ?? 0,
-    bulletsPassedValidation: validatedBullets.length,
-    bulletsDiscarded: (finalParsed.bullets?.length ?? 0) - validatedBullets.length,
-  };
-
-  const sanitizedBullets = validatedBullets.map((b) => ({
-    ...b,
-    text: stripClaimIdRefs(b.text),
+  const cleanedItems = items.map((item) => ({
+    ...item,
+    text: stripClaimIdRefs(item.text),
   }));
+  const rendered = renderResumePlainText({
+    templateId: template.id,
+    baseResumeText: baseResumeVersion.contentText,
+    documentText: null,
+    bullets: cleanedItems,
+  });
 
-  const sanitizedDocumentText = stripClaimIdRefs(finalParsed.documentText as string);
+  const truthReview = reviewGeneratedTruth(toTruthReviewItems(cleanedItems), {
+    selectedClaims,
+    baseResumeText: baseResumeVersion.contentText,
+    jobSourceText: jobContext,
+    researchSourceText: researchContext,
+    allowUncitedRoles: ["base-backed"],
+    sourcePolicy:
+      "Resume facts must cite either a selected Claims Ledger entry or a parsed base resume source snippet. Base-resume-backed content is allowed for MVP tailoring.",
+  });
+
+  if (truthReview.seriousViolationCount > 0) {
+    logger.warn({ jobId: job.id, truthReview }, "Resume truth review failed");
+    return saveDiagnosticResumeVersion({
+      job,
+      baseResumeVersionId: baseResumeVersion.id,
+      templateId: template.id,
+      label: "AI tailored - truth review failed",
+      notes: "Resume generation needs review: the generated plan passed source references but failed deterministic truth review for metrics, credentials, disallowed implications, or unsupported facts.",
+      rawContent: aiResult.content,
+      runId: aiResult.runId,
+      eventLogId: aiResult.eventLogId,
+      sourceValidation,
+      sourceRefsAvailable: packet.baseSources.length + packet.claims.length,
+    });
+  }
 
   const [row] = await db
     .insert(resumeVersionsTable)
     .values({
       jobId: job.id,
-      label: `AI tailored — ${new Date().toLocaleDateString()}`,
+      label: "AI tailored resume",
       status: "pending_approval",
       baseResumeVersionId: baseResumeVersion.id,
-      runId: finalResult.runId,
-      eventLogId: finalResult.eventLogId,
-      claimIds: usedClaimIds,
-      tailoredDocumentText: sanitizedDocumentText,
-      tailoredBullets: sanitizedBullets as unknown as Record<string, unknown>[],
-      diffData: diffData as unknown as Record<string, unknown>,
-      notes: finalParsed.summary ?? "AI-generated resume tailoring",
+      templateId: template.id,
+      runId: aiResult.runId,
+      eventLogId: aiResult.eventLogId,
+      claimIds: selectedClaims.map((claim) => claim.id),
+      tailoredBullets: cleanedItems,
+      tailoredDocumentText: rendered.text,
+      rawContent: aiResult.content,
+      diffData: {
+        modelContract: "resume_tailoring_plan_v1",
+        templateId: template.id,
+        templateLabel: template.label,
+        templateValidation: rendered.validation,
+        sourceValidation,
+        truthReview,
+        sourceRefsUsed: cleanedItems.flatMap((item) => item.sourceRefs),
+        sourceRefsAvailable: packet.baseSources.length + packet.claims.length,
+        claimBackedItemCount: sourceValidation.claimBackedCount,
+        baseBackedItemCount: sourceValidation.baseBackedCount,
+      },
+      notes:
+        sourceValidation.claimBackedCount === 0
+          ? "Generated from base resume sources only. Claim-backed tailoring is limited because no selected claims matched this job."
+          : "Generated from compact sourced resume plan and rendered through the selected ATS template.",
     })
     .returning();
 
@@ -335,9 +379,8 @@ Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed
     {
       jobId: job.id,
       resumeVersionId: row!.id,
-      bulletsGenerated: finalParsed.bullets?.length ?? 0,
-      bulletsValid: validatedBullets.length,
-      discarded: (finalParsed.bullets?.length ?? 0) - validatedBullets.length,
+      sourceValidation,
+      modelName: aiResult.modelName,
     },
     "Resume tailor pipeline completed",
   );

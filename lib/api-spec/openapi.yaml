@@ -20,6 +20,8 @@ tags:
     description: Claims ledger (truth lock system)
   - name: resume-versions
     description: Tailored resume version management
+  - name: resume-templates
+    description: Built-in ATS resume template metadata
   - name: cover-letter-versions
     description: Cover letter version management
   - name: applications
@@ -603,6 +605,26 @@ paths:
           $ref: "#/components/responses/NotFound"
 
   # ── Resume Versions ────────────────────────────────────────────────────────
+  /resume-templates:
+    get:
+      operationId: listResumeTemplates
+      tags: [resume-templates]
+      summary: List built-in resume templates
+      responses:
+        "200":
+          description: Built-in resume template metadata
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  templates:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ResumeTemplate"
+                required:
+                  - templates
+
   /resume-versions:
     get:
       operationId: listResumeVersions
@@ -2688,6 +2710,8 @@ components:
           type: array
           items:
             type: integer
+        templateId:
+          type: string
 
     DraftCoverLetterBody:
       type: object
@@ -2832,6 +2856,44 @@ components:
         - metadata
 
     # ── Resume Version ───────────────────────────────────────────────────────
+    ResumeTemplate:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        description:
+          type: string
+        roleFit:
+          type: array
+          items:
+            type: string
+        sectionOrder:
+          type: array
+          items:
+            type: string
+        lengthPolicy:
+          type: object
+          properties:
+            target:
+              type: string
+            maxPages:
+              type: integer
+            maxBulletLines:
+              type: integer
+          required:
+            - target
+            - maxPages
+            - maxBulletLines
+      required:
+        - id
+        - label
+        - description
+        - roleFit
+        - sectionOrder
+        - lengthPolicy
+
     ResumeVersion:
       type: object
       properties:
@@ -2842,6 +2904,8 @@ components:
         baseResumeVersionId:
           type: ["integer", "null"]
         label:
+          type: ["string", "null"]
+        templateId:
           type: ["string", "null"]
         status:
           type: string

@@ -88,6 +88,7 @@ import type {
   ListFeedbackSignalsParams,
   ListJobBoardListingsParams,
   ListJobsParams,
+  ListResumeTemplates200,
   ListResumeVersionsParams,
   ListSuggestedAiTrainingExamplesParams,
   ListSuggestedBestPracticesParams,
@@ -2697,6 +2698,81 @@ export const useDeleteClaim = <
 > => {
   return useMutation(getDeleteClaimMutationOptions(options));
 };
+
+/**
+ * @summary List built-in resume templates
+ */
+export const getListResumeTemplatesUrl = () => {
+  return `/api/resume-templates`;
+};
+
+export const listResumeTemplates = async (
+  options?: RequestInit,
+): Promise<ListResumeTemplates200> => {
+  return customFetch<ListResumeTemplates200>(getListResumeTemplatesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListResumeTemplatesQueryKey = () => {
+  return [`/api/resume-templates`] as const;
+};
+
+export const getListResumeTemplatesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listResumeTemplates>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listResumeTemplates>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListResumeTemplatesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listResumeTemplates>>
+  > = ({ signal }) => listResumeTemplates({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listResumeTemplates>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListResumeTemplatesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listResumeTemplates>>
+>;
+export type ListResumeTemplatesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List built-in resume templates
+ */
+
+export function useListResumeTemplates<
+  TData = Awaited<ReturnType<typeof listResumeTemplates>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listResumeTemplates>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListResumeTemplatesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary List resume versions

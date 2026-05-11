@@ -25,6 +25,10 @@ const matchClaimsToJobMock = vi.fn();
 const validateBulletMock = vi.fn();
 const validateParagraphMock = vi.fn();
 const assertMinimumContentMock = vi.fn();
+const validateResumeQualityMock = vi.fn();
+const validateCoverLetterQualityMock = vi.fn();
+const validateSemanticQualityMock = vi.fn();
+const reviewGeneratedTruthMock = vi.fn();
 const loggerMock = {
   info: vi.fn(),
   warn: vi.fn(),
@@ -63,10 +67,25 @@ vi.mock("../../logger", () => ({
   logger: loggerMock,
 }));
 
+vi.mock("../../best-practices", () => ({
+  loadOrCreateBestPractices: vi.fn(async () => ({
+    domain: "test",
+    title: "Test practices",
+    items: [],
+    hardcodedGuards: {},
+  })),
+  formatBestPracticesForPrompt: vi.fn(() => ""),
+}));
+
 vi.mock("../validation", () => ({
   validateBullet: validateBulletMock,
   validateParagraph: validateParagraphMock,
   assertMinimumContent: assertMinimumContentMock,
+  validateResumeQuality: validateResumeQualityMock,
+  validateCoverLetterQuality: validateCoverLetterQualityMock,
+  validateSemanticQuality: validateSemanticQualityMock,
+  reviewGeneratedTruth: reviewGeneratedTruthMock,
+  stripClaimIdRefs: (text: string) => text,
   TruthLockViolation,
 }));
 
@@ -83,7 +102,7 @@ describe("job lineage pipelines", () => {
 
   it("persists the callAI runId and eventLogId on successful resume generations", async () => {
     callAIMock.mockResolvedValue({
-      content: '{"documentText":"Tailored","bullets":[{"text":"Bullet","claimIds":[1],"section":"experience","isAggregated":false,"originalText":"Orig"}],"summary":"Done"}',
+      content: '{"sectionItems":[{"text":"Bullet","sourceRefs":["claim:1"],"section":"experience","jobKeywordsUsed":[],"gapNotes":[]}],"summary":"Done"}',
       modelName: "test/model",
       provider: "openrouter",
       taskScope: "resume_tailoring",
@@ -94,15 +113,22 @@ describe("job lineage pipelines", () => {
       eventLogId: 321,
     });
     parseJsonResponseMock.mockReturnValue({
-      documentText: "Tailored",
-      bullets: [{ text: "Bullet", claimIds: [1], section: "experience", isAggregated: false, originalText: "Orig" }],
-      addedBullets: [],
-      removedBullets: [],
-      reorderedSections: [],
+      sectionItems: [{ text: "Bullet", sourceRefs: ["claim:1"], section: "experience", jobKeywordsUsed: [], gapNotes: [] }],
       summary: "Done",
     });
     validateBulletMock.mockImplementation((bullet) => bullet);
     assertMinimumContentMock.mockImplementation(() => undefined);
+    validateResumeQualityMock.mockImplementation(() => undefined);
+    validateSemanticQualityMock.mockResolvedValue(undefined);
+    reviewGeneratedTruthMock.mockReturnValue({
+      supportStatus: "supported",
+      items: [{ supportStatus: "supported" }],
+      unsupportedCount: 0,
+      partialCount: 0,
+      supportedCount: 1,
+      seriousViolationCount: 0,
+      sourcePolicy: "test",
+    });
 
     const { runResumeTailorPipeline } = await import("../resume-tailor");
 
@@ -117,9 +143,57 @@ describe("job lineage pipelines", () => {
     expect(inserted.eventLogId).toBe(321);
   });
 
+  it("persists compact resume plans without running a full-resume repair pass", async () => {
+    callAIMock.mockResolvedValue({
+      content: '{"sectionItems":[{"text":"Led project delivery","sourceRefs":["claim:1"],"section":"experience","jobKeywordsUsed":[],"gapNotes":[]}],"summary":"Plan complete"}',
+      modelName: "test/model",
+      provider: "openrouter",
+      taskScope: "resume_tailoring",
+      promptTokens: 10,
+      completionTokens: 20,
+      promptVersionId: 12,
+      runId: "run_resume_plan_1234567890",
+      eventLogId: 321,
+    });
+    parseJsonResponseMock.mockReturnValue({
+      sectionItems: [{ text: "Led project delivery", sourceRefs: ["claim:1"], section: "experience", jobKeywordsUsed: [], gapNotes: [] }],
+      summary: "Plan complete",
+    });
+    validateBulletMock.mockImplementation((bullet) => bullet);
+    assertMinimumContentMock.mockImplementation(() => undefined);
+    validateResumeQualityMock.mockImplementation(() => undefined);
+    validateSemanticQualityMock.mockResolvedValue(undefined);
+    reviewGeneratedTruthMock.mockReturnValue({
+      supportStatus: "supported",
+      items: [{ supportStatus: "supported" }],
+      unsupportedCount: 0,
+      partialCount: 0,
+      supportedCount: 1,
+      seriousViolationCount: 0,
+      sourcePolicy: "test",
+    });
+
+    const { runResumeTailorPipeline } = await import("../resume-tailor");
+
+    await runResumeTailorPipeline(
+      { id: 11, title: "Engineer", company: "Acme" } as never,
+      [{ id: 1, summary: "Built feature", evidence: null } as never],
+      [1],
+    );
+
+    expect(callAIMock).toHaveBeenCalledTimes(1);
+    const inserted = resumeInsertValuesMock.mock.calls.at(-1)?.[0];
+    expect(inserted.label).not.toContain("generation failed");
+    expect(inserted.tailoredDocumentText).toContain("EXPERIENCE");
+    expect(inserted.tailoredDocumentText).toContain("Led project delivery");
+    expect(inserted.templateId).toBe("software_developer");
+    expect(inserted.runId).toBe("run_resume_plan_1234567890");
+    expect(inserted.eventLogId).toBe(321);
+  });
+
   it("persists lineage on resume truth-lock failures so failed generations remain diagnosable", async () => {
     callAIMock.mockResolvedValue({
-      content: '{"documentText":"Tailored","bullets":[{"text":"Bad","claimIds":[999],"section":"experience","isAggregated":false,"originalText":"Orig"}]}',
+      content: '{"sectionItems":[{"text":"Bad","sourceRefs":["claim:999"],"section":"experience","jobKeywordsUsed":[],"gapNotes":[]}],"summary":"Bad"}',
       modelName: "test/model",
       provider: "openrouter",
       taskScope: "resume_tailoring",
@@ -130,8 +204,8 @@ describe("job lineage pipelines", () => {
       eventLogId: 654,
     });
     parseJsonResponseMock.mockReturnValue({
-      documentText: "Tailored",
-      bullets: [{ text: "Bad", claimIds: [999], section: "experience", isAggregated: false, originalText: "Orig" }],
+      sectionItems: [{ text: "Bad", sourceRefs: ["claim:999"], section: "experience", jobKeywordsUsed: [], gapNotes: [] }],
+      summary: "Bad",
     });
     validateBulletMock.mockReturnValue(null);
     assertMinimumContentMock.mockImplementation(() => {
@@ -147,9 +221,31 @@ describe("job lineage pipelines", () => {
     );
 
     const inserted = resumeInsertValuesMock.mock.calls.at(-1)?.[0];
-    expect(inserted.label).toContain("truth lock failure");
+    expect(inserted.label).toContain("source validation failed");
     expect(inserted.runId).toBe("run_resume_failure_1234567890");
     expect(inserted.eventLogId).toBe(654);
+  });
+
+  it("saves diagnostic resume rows when all model attempts fail the compact source contract", async () => {
+    callAIMock.mockRejectedValue(
+      Object.assign(new Error("AI call failed after fallback chain"), {
+        runId: "run_terminal_contract_failure_1234567890",
+        eventLogId: 777,
+      }),
+    );
+
+    const { runResumeTailorPipeline } = await import("../resume-tailor");
+
+    await runResumeTailorPipeline(
+      { id: 11, title: "Engineer", company: "Acme" } as never,
+      [{ id: 1, summary: "Built feature", evidence: null } as never],
+      [1],
+    );
+
+    const inserted = resumeInsertValuesMock.mock.calls.at(-1)?.[0];
+    expect(inserted.label).toContain("generation failed");
+    expect(inserted.runId).toBe("run_terminal_contract_failure_1234567890");
+    expect(inserted.eventLogId).toBe(777);
   });
 
   it("persists the callAI runId and eventLogId on successful cover-letter generations", async () => {
@@ -171,6 +267,17 @@ describe("job lineage pipelines", () => {
     });
     validateParagraphMock.mockImplementation((paragraph) => paragraph);
     assertMinimumContentMock.mockImplementation(() => undefined);
+    validateCoverLetterQualityMock.mockImplementation(() => undefined);
+    validateSemanticQualityMock.mockResolvedValue(undefined);
+    reviewGeneratedTruthMock.mockReturnValue({
+      supportStatus: "supported",
+      items: [{ supportStatus: "supported" }],
+      unsupportedCount: 0,
+      partialCount: 0,
+      supportedCount: 1,
+      seriousViolationCount: 0,
+      sourcePolicy: "test",
+    });
 
     const { runCoverLetterPipeline } = await import("../cover-letter-draft");
 

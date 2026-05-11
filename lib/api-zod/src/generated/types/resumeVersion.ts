@@ -14,6 +14,8 @@ export interface ResumeVersion {
   baseResumeVersionId?: number | null;
   /** @nullable */
   label?: string | null;
+  /** @nullable */
+  templateId?: string | null;
   status: string;
   /** @nullable */
   tailoredDocumentText?: string | null;

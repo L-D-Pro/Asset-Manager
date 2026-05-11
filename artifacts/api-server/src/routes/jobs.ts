@@ -59,11 +59,13 @@ const modelOverrideSchema = z.object({
 
 const compareBodySchema = z.object({
   claimIds: z.array(z.number()).optional(),
+  templateId: z.string().optional(),
   models: z.array(modelOverrideSchema).min(1).max(3),
 });
 
 const promoteBodySchema = z.object({
   claimIds: z.array(z.number()).optional(),
+  templateId: z.string().optional(),
   model: modelOverrideSchema.optional(),
   candidateVersionId: z.number().int().positive().optional(),
 });
@@ -394,7 +396,10 @@ router.post("/jobs/:id/tailor", async (req: JobOpsRequest, res): Promise<void> =
       job,
       allClaims,
       body.data.claimIds,
-      { modelOverride: requestedModelOverride.success ? requestedModelOverride.data : undefined },
+      {
+        modelOverride: requestedModelOverride.success ? requestedModelOverride.data : undefined,
+        templateId: body.data.templateId,
+      },
     );
 
     awardXp(req.session.adminId!, "job_apply", { jobId: job.id }).catch(() => {});
@@ -496,7 +501,7 @@ router.post("/jobs/:id/compare/resume", async (req: JobOpsRequest, res): Promise
         job,
         allClaims,
         body.data.claimIds,
-        { modelOverride: model },
+        { modelOverride: model, templateId: body.data.templateId },
       );
       await db
         .update(resumeVersionsTable)
@@ -510,6 +515,7 @@ router.post("/jobs/:id/compare/resume", async (req: JobOpsRequest, res): Promise
         status: "succeeded",
         preview: version.tailoredDocumentText ?? version.rawContent ?? "",
         notes: version.notes ?? "",
+        templateId: version.templateId ?? body.data.templateId ?? null,
         runId: version.runId ?? null,
         eventLogId: version.eventLogId ?? null,
       });
@@ -698,6 +704,7 @@ router.post("/jobs/:id/compare/promote-resume", async (req, res): Promise<void> 
         candidateVersionId: promoted!.id,
         model: body.data.model ?? null,
         claimIds: body.data.claimIds ?? [],
+        templateId: promoted!.templateId ?? body.data.templateId ?? null,
         resumeVersionId: promoted!.id,
         eventLogId: promoted!.eventLogId ?? null,
       },
@@ -717,7 +724,7 @@ router.post("/jobs/:id/compare/promote-resume", async (req, res): Promise<void> 
       job,
       allClaims,
       body.data.claimIds,
-      { modelOverride: body.data.model },
+      { modelOverride: body.data.model, templateId: body.data.templateId },
     );
 
     await db.insert(eventLogsTable).values({
@@ -732,6 +739,7 @@ router.post("/jobs/:id/compare/promote-resume", async (req, res): Promise<void> 
       metadata: {
         model: body.data.model,
         claimIds: body.data.claimIds ?? [],
+        templateId: version.templateId ?? body.data.templateId ?? null,
         resumeVersionId: version.id,
         eventLogId: version.eventLogId ?? null,
       },

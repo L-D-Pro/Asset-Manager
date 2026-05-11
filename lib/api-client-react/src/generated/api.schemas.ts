@@ -308,6 +308,7 @@ export interface ClaimMatch {
 
 export interface TailorResumeBody {
   claimIds?: number[];
+  templateId?: string;
 }
 
 export interface DraftCoverLetterBody {
@@ -360,6 +361,21 @@ export interface DraftClaimsResponse {
   metadata: DraftClaimsResponseMetadata;
 }
 
+export type ResumeTemplateLengthPolicy = {
+  target: string;
+  maxPages: number;
+  maxBulletLines: number;
+};
+
+export interface ResumeTemplate {
+  id: string;
+  label: string;
+  description: string;
+  roleFit: string[];
+  sectionOrder: string[];
+  lengthPolicy: ResumeTemplateLengthPolicy;
+}
+
 export interface ResumeVersion {
   id: number;
   /** @nullable */
@@ -368,6 +384,8 @@ export interface ResumeVersion {
   baseResumeVersionId?: number | null;
   /** @nullable */
   label?: string | null;
+  /** @nullable */
+  templateId?: string | null;
   status: string;
   /** @nullable */
   tailoredDocumentText?: string | null;
@@ -1887,6 +1905,10 @@ export type ScoreJobParams = {
 export type ListClaimsParams = {
   domain?: string;
   isActive?: boolean;
+};
+
+export type ListResumeTemplates200 = {
+  templates: ResumeTemplate[];
 };
 
 export type ListResumeVersionsParams = {

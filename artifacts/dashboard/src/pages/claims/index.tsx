@@ -28,6 +28,7 @@ const claimSchema = z.object({
  evidence: z.string().optional(),
  isActive: z.boolean().default(true),
  phrasingVariants: z.array(z.object({ text: z.string().min(1) })),
+ disallowedImplications: z.array(z.object({ text: z.string().min(1) })),
  applicableTags: z.array(z.object({ tag: z.string().min(1) })),
 });
 
@@ -50,6 +51,7 @@ function buildPayload(data: FormValues) {
  evidence: data.evidence || undefined,
  isActive: data.isActive,
  phrasingVariants: data.phrasingVariants.map(p => p.text),
+ disallowedImplications: data.disallowedImplications.map(p => p.text),
  applicableTags: data.applicableTags.map(t => t.tag),
  };
 }
@@ -86,11 +88,13 @@ export default function ClaimsPage() {
  evidence: "",
  isActive: true,
  phrasingVariants: [],
+ disallowedImplications: [],
  applicableTags: [],
  },
  });
 
  const { fields: pvFields, append: pvAppend, remove: pvRemove } = useFieldArray({ control: form.control, name: "phrasingVariants" });
+ const { fields: diFields, append: diAppend, remove: diRemove } = useFieldArray({ control: form.control, name: "disallowedImplications" });
  const { fields: tagFields, append: tagAppend, remove: tagRemove } = useFieldArray({ control: form.control, name: "applicableTags" });
 
  const onSubmit = (data: FormValues) => {
@@ -140,6 +144,7 @@ export default function ClaimsPage() {
  evidence: claim.evidence || "",
  isActive: claim.isActive,
  phrasingVariants: (claim.phrasingVariants ?? []).map((t) => ({ text: t })),
+ disallowedImplications: (claim.disallowedImplications ?? []).map((t) => ({ text: t })),
  applicableTags: (claim.applicableTags ?? []).map((t) => ({ tag: t })),
  });
  setIsDialogOpen(true);
@@ -213,7 +218,7 @@ export default function ClaimsPage() {
  const handleCloseDialog = () => {
  setIsDialogOpen(false);
  setEditingId(null);
- form.reset({ summary: "", domain: "", evidence: "", isActive: true, phrasingVariants: [], applicableTags: [] });
+ form.reset({ summary: "", domain: "", evidence: "", isActive: true, phrasingVariants: [], disallowedImplications: [], applicableTags: [] });
  };
 
  const handleDraftClaims = () => {
@@ -424,6 +429,16 @@ export default function ClaimsPage() {
  />
  </div>
  <div className="md:col-span-2 space-y-2">
+ <label className="text-xs font-medium" htmlFor={`draft-disallowed-${draft.clientId}`}>Disallowed Implications</label>
+ <Input
+ id={`draft-disallowed-${draft.clientId}`}
+ value={draft.disallowedImplicationsText}
+ onChange={(event) => updateDraftReview(draft.clientId, { disallowedImplicationsText: event.target.value })}
+ placeholder="comma-separated, e.g. sole founder, certified trainer"
+ data-testid={`input-draft-disallowed-${index}`}
+ />
+ </div>
+ <div className="md:col-span-2 space-y-2">
  <label className="text-xs font-medium" htmlFor={`draft-evidence-${draft.clientId}`}>Evidence</label>
  <Textarea
  id={`draft-evidence-${draft.clientId}`}
@@ -540,6 +555,36 @@ export default function ClaimsPage() {
  </div>
  ))}
  {pvFields.length === 0 && <p className="text-xs text-muted-foreground italic">No variants yet.</p>}
+ </div>
+ </div>
+
+ <div>
+ <div className="flex items-center justify-between mb-2">
+ <div>
+ <p className="text-sm font-medium leading-none">Disallowed Implications</p>
+ <p className="text-xs text-muted-foreground mt-1">
+ Phrases or claims the AI must never imply from this fact, such as inflated ownership, credentials, or scope.
+ </p>
+ </div>
+ <Button type="button" variant="outline" size="sm" onClick={() => diAppend({ text: "" })} data-testid="btn-add-disallowed-implication">
+ <Plus className="h-3 w-3 mr-1" /> Add
+ </Button>
+ </div>
+ <div className="space-y-2">
+ {diFields.map((f, i) => (
+ <div key={f.id} className="flex gap-2">
+ <FormField control={form.control} name={`disallowedImplications.${i}.text`} render={({field}) => (
+ <FormItem className="flex-1 mb-0">
+ <FormControl><Input {...field} placeholder={`e.g. sole founder, certified trainer, managed LMS`} data-testid={`input-disallowed-implication-${i}`}/></FormControl>
+ <FormMessage />
+ </FormItem>
+ )}/>
+ <Button type="button" variant="ghost" size="icon" onClick={() => diRemove(i)} data-testid={`btn-remove-disallowed-implication-${i}`}>
+ <X className="h-4 w-4 text-destructive" />
+ </Button>
+ </div>
+ ))}
+ {diFields.length === 0 && <p className="text-xs text-muted-foreground italic">No disallowed implications yet.</p>}
  </div>
  </div>
 
@@ -667,10 +712,20 @@ export default function ClaimsPage() {
  {claim.phrasingVariants.length} variant{claim.phrasingVariants.length > 1 ? "s" : ""}
  </Badge>
  )}
+ {(claim.disallowedImplications ?? []).length > 0 && (
+ <Badge variant="outline" className="text-xs text-destructive border-destructive/40">
+ {claim.disallowedImplications.length} disallowed implication{claim.disallowedImplications.length > 1 ? "s" : ""}
+ </Badge>
+ )}
  </div>
  {claim.evidence && (
  <p className="text-sm text-muted-foreground line-clamp-2" data-testid={`text-claim-evidence-${claim.id}`}>
  {claim.evidence}
+ </p>
+ )}
+ {(claim.disallowedImplications ?? []).length > 0 && (
+ <p className="text-xs text-destructive/90" data-testid={`text-claim-disallowed-${claim.id}`}>
+ AI must not imply: {claim.disallowedImplications.join(", ")}
  </p>
  )}
  </div>

@@ -34,6 +34,19 @@ const TASK_SCOPES = [
  "validation",
 ];
 
+const RECOMMENDED_FALLBACK_MODELS = [
+ { id: "deepseek/deepseek-v4-pro", label: "DeepSeek V4 Pro", note: "1M ctx, structured, $0.44/M in, $0.87/M out" },
+ { id: "x-ai/grok-4.1-fast", label: "Grok 4.1 Fast", note: "2M ctx, structured, $0.20/M in, $0.50/M out" },
+ { id: "deepseek/deepseek-v4-flash", label: "DeepSeek V4 Flash", note: "1M ctx, structured, $0.14/M in, $0.28/M out" },
+ { id: "google/gemini-3.1-flash-lite", label: "Gemini 3.1 Flash Lite", note: "1M ctx, structured, $0.25/M in" },
+ { id: "qwen/qwen3.6-flash", label: "Qwen3.6 Flash", note: "1M ctx, structured, $0.25/M in" },
+ { id: "qwen/qwen3.5-plus-20260420", label: "Qwen3.5 Plus", note: "1M ctx, structured, $0.40/M in" },
+ { id: "google/gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite", note: "1M ctx, structured, $0.10/M in, $0.40/M out" },
+ { id: "openai/gpt-4.1-mini", label: "GPT-4.1 Mini", note: "1M ctx, structured, $0.40/M in" },
+ { id: "meta-llama/llama-4-maverick", label: "Llama 4 Maverick", note: "1M ctx, structured, $0.15/M in, $0.60/M out" },
+ { id: "qwen/qwen-plus-2025-07-28:thinking", label: "Qwen Plus Thinking", note: "1M ctx, structured, $0.26/M in, $0.78/M out" },
+];
+
 const configSchema = z.object({
  taskScope: z.string().min(1, "Task scope is required"),
  provider: z.string().min(1, "Provider is required"),
@@ -43,6 +56,8 @@ const configSchema = z.object({
  costPerInputToken: z.string().optional(),
  costPerOutputToken: z.string().optional(),
  fallbackModelId: z.coerce.number().optional().nullable(),
+ fallbackChoice: z.string().optional(),
+ secondFallbackChoice: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof configSchema>;
@@ -70,6 +85,8 @@ export default function AiConfigPage() {
  costPerInputToken: "",
  costPerOutputToken: "",
  fallbackModelId: null,
+ fallbackChoice: "__none",
+ secondFallbackChoice: "__none",
  },
  });
 
@@ -84,35 +101,59 @@ export default function AiConfigPage() {
  fallbackModelId: data.fallbackModelId || undefined,
  });
 
- const onSubmit = (data: FormValues) => {
- const payload = buildPayload(data);
- if (editingId) {
- updateConfig.mutate({ id: editingId, data: payload }, {
- onSuccess: () => {
- toast({ title: "Config updated" });
- handleClose();
- queryClient.invalidateQueries({ queryKey: getListAiModelConfigsQueryKey() });
+ const resolveFallbackChoice = async (choice: string | undefined, data: FormValues, priorityOffset: number): Promise<number | undefined> => {
+ if (!choice || choice === "__none") return undefined;
+ if (choice.startsWith("config:")) return Number(choice.slice("config:".length));
+ const modelName = choice.startsWith("model:") ? choice.slice("model:".length).trim() : choice.trim();
+ if (!modelName) return undefined;
+ if (modelName === data.modelName.trim()) {
+  throw new Error("Fallback model must be different from the primary model.");
+ }
+ const existing = configs?.find((config) => config.modelName === modelName && config.taskScope === data.taskScope);
+ if (existing && existing.id !== editingId) return existing.id;
+ const fallback = await createConfig.mutateAsync({
+ data: {
+ taskScope: data.taskScope,
+ provider: data.provider,
+ modelName,
+ isActive: true,
+ priority: data.priority + priorityOffset,
  },
- onError: (error) =>
- toast({
- title: "Failed to update AI config",
- description: getErrorMessage(error, "Please try again."),
- variant: "destructive",
- })
  });
+ return fallback.id;
+ };
+
+ const onSubmit = async (data: FormValues) => {
+ try {
+ const secondFallbackModelId = await resolveFallbackChoice(data.secondFallbackChoice, data, 2);
+ const fallbackModelId = await resolveFallbackChoice(data.fallbackChoice, data, 1);
+ if (fallbackModelId && secondFallbackModelId && fallbackModelId === secondFallbackModelId) {
+ throw new Error("Fallback 1 and fallback 2 must be different configs.");
+ }
+ if (fallbackModelId && fallbackModelId !== editingId) {
+ await updateConfig.mutateAsync({
+ id: fallbackModelId,
+ data: { fallbackModelId: secondFallbackModelId ?? null },
+ });
+ }
+ const payload = {
+ ...buildPayload(data),
+ fallbackModelId,
+ };
+ if (editingId) {
+ await updateConfig.mutateAsync({ id: editingId, data: payload });
+ toast({ title: "Config updated" });
  } else {
- createConfig.mutate({ data: payload }, {
- onSuccess: () => {
+ await createConfig.mutateAsync({ data: payload });
  toast({ title: "Config created" });
+ }
  handleClose();
  queryClient.invalidateQueries({ queryKey: getListAiModelConfigsQueryKey() });
- },
- onError: (error) =>
+ } catch (error) {
  toast({
- title: "Failed to create AI config",
+ title: editingId ? "Failed to update AI config" : "Failed to create AI config",
  description: getErrorMessage(error, "Please try again."),
  variant: "destructive",
- })
  });
  }
  };
@@ -130,6 +171,10 @@ export default function AiConfigPage() {
  costPerInputToken: c.costPerInputToken ?? "",
  costPerOutputToken: c.costPerOutputToken ?? "",
  fallbackModelId: c.fallbackModelId ?? null,
+ fallbackChoice: c.fallbackModelId ? `config:${c.fallbackModelId}` : "__none",
+ secondFallbackChoice: configs?.find((config) => config.id === c.fallbackModelId)?.fallbackModelId
+ ? `config:${configs.find((config) => config.id === c.fallbackModelId)?.fallbackModelId}`
+ : "__none",
  });
  setIsDialogOpen(true);
  };
@@ -165,6 +210,16 @@ export default function AiConfigPage() {
  };
 
  const sortedConfigs = (configs ?? []).slice().sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0));
+ const fallbackCandidates = (configs ?? []).filter((config) => config.id !== editingId);
+ const firstFallbackChoice = form.watch("fallbackChoice");
+ const getFallbackChain = (config: AiModelConfig) => {
+ const first = configs?.find((item) => item.id === config.fallbackModelId);
+ const second = first ? configs?.find((item) => item.id === first.fallbackModelId) : null;
+ return {
+ firstName: first ? `${first.modelName} (${first.taskScope})` : getFallbackName(config.fallbackModelId),
+ secondName: second ? `${second.modelName} (${second.taskScope})` : null,
+ };
+ };
 
  return (
  <div className="space-y-6">
@@ -268,12 +323,12 @@ export default function AiConfigPage() {
  )}/>
  </div>
 
- <FormField control={form.control} name="fallbackModelId" render={({field}) => (
+ <FormField control={form.control} name="fallbackChoice" render={({field}) => (
  <FormItem>
- <FormLabel>Fallback Model</FormLabel>
+ <FormLabel>Fallback Model 1</FormLabel>
  <Select
- onValueChange={(v) => field.onChange(v === "__none" ? null : parseInt(v, 10))}
- value={field.value ? String(field.value) : "__none"}
+ onValueChange={field.onChange}
+ value={field.value || "__none"}
  >
  <FormControl>
  <SelectTrigger data-testid="select-fallback-model">
@@ -282,18 +337,68 @@ export default function AiConfigPage() {
  </FormControl>
  <SelectContent>
  <SelectItem value="__none">No fallback</SelectItem>
- {(configs ?? [])
- .filter(c => c.id !== editingId)
- .map(c => (
- <SelectItem key={c.id} value={String(c.id)}>
+ {fallbackCandidates.length === 0 && (
+ <SelectItem value="__empty" disabled>No saved fallback configs yet</SelectItem>
+ )}
+ {fallbackCandidates.map(c => (
+ <SelectItem key={c.id} value={`config:${c.id}`}>
  {c.modelName} ({c.taskScope})
+ </SelectItem>
+ ))}
+ {RECOMMENDED_FALLBACK_MODELS.map((model) => (
+ <SelectItem key={model.id} value={`model:${model.id}`}>
+ {model.label} - {model.id}
  </SelectItem>
  ))}
  </SelectContent>
  </Select>
- <FormDescription className="text-xs">Used when this model is inactive or fails.</FormDescription>
+ <FormDescription className="text-xs">Used first if the primary model fails. Recommended models are created as configs when saved.</FormDescription>
  </FormItem>
  )}/>
+
+ <FormField control={form.control} name="secondFallbackChoice" render={({field}) => (
+ <FormItem>
+ <FormLabel>Fallback Model 2</FormLabel>
+ <Select
+ onValueChange={field.onChange}
+ value={field.value || "__none"}
+ disabled={!firstFallbackChoice || firstFallbackChoice === "__none"}
+ >
+ <FormControl>
+ <SelectTrigger data-testid="select-second-fallback-model">
+ <SelectValue placeholder="No second fallback" />
+ </SelectTrigger>
+ </FormControl>
+ <SelectContent>
+ <SelectItem value="__none">No second fallback</SelectItem>
+ {fallbackCandidates.map(c => (
+ <SelectItem key={c.id} value={`config:${c.id}`}>
+ {c.modelName} ({c.taskScope})
+ </SelectItem>
+ ))}
+ {RECOMMENDED_FALLBACK_MODELS.map((model) => (
+ <SelectItem key={model.id} value={`model:${model.id}`}>
+ {model.label} - {model.id}
+ </SelectItem>
+ ))}
+ </SelectContent>
+ </Select>
+ <FormDescription className="text-xs">
+ Optional. If fallback 1 fails, routing follows this third model.
+ </FormDescription>
+ <FormMessage />
+ </FormItem>
+ )}/>
+
+ <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground space-y-1">
+ <p className="font-medium text-foreground">Recommended low-cost long-context fallbacks</p>
+ <p>Best for strict resume JSON because they support response format and structured outputs.</p>
+ <div className="grid gap-1">
+ {RECOMMENDED_FALLBACK_MODELS.slice(0, 5).map((model) => (
+ <span key={model.id}>{model.label}: {model.note}</span>
+ ))}
+ </div>
+ </div>
 
  <FormField control={form.control} name="isActive" render={({field}) => (
  <FormItem className="flex items-center justify-between rounded-lg border p-3">
@@ -325,7 +430,7 @@ export default function AiConfigPage() {
  ) : (
  <div className="grid gap-4 md:grid-cols-2">
  {sortedConfigs.map(c => {
- const fallbackName = getFallbackName(c.fallbackModelId);
+ const fallbackChain = getFallbackChain(c);
  return (
   <div key={c.id} data-testid={`card-config-${c.id}`} className={cn("card-glass rounded-2xl overflow-hidden", !c.isActive && "opacity-70")}>
   <div className="p-5 space-y-3">
@@ -352,10 +457,16 @@ export default function AiConfigPage() {
  </div>
  )}
 
- {fallbackName && (
+ {fallbackChain.firstName && (
  <div className="flex items-center gap-1 text-xs text-muted-foreground">
  <ArrowRight className="h-3 w-3" />
- Fallback: <span className="font-medium">{fallbackName}</span>
+ Fallback: <span className="font-medium">{fallbackChain.firstName}</span>
+ {fallbackChain.secondName && (
+ <>
+ <ArrowRight className="h-3 w-3 ml-1" />
+ <span className="font-medium">{fallbackChain.secondName}</span>
+ </>
+ )}
  </div>
  )}
   </div>

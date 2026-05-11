@@ -3,10 +3,10 @@ import {
   coverLetterVersionsTable,
   baseResumeVersionsTable,
 } from "@workspace/db";
-import { desc, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { callAI, parseJsonResponse } from "../ai-client";
 import { matchClaimsToJob } from "../scoring";
-import { validateParagraph, assertMinimumContent, TruthLockViolation, stripClaimIdRefs, validateCoverLetterQuality, validateSemanticQuality, QualityViolation } from "./validation";
+import { validateParagraph, assertMinimumContent, TruthLockViolation, stripClaimIdRefs, validateCoverLetterQuality, validateSemanticQuality, QualityViolation, reviewGeneratedTruth } from "./validation";
 import { logger } from "../logger";
 import { loadOrCreateBestPractices, formatBestPracticesForPrompt } from "../best-practices";
 import type { Job, RoleProfile, Claim } from "@workspace/db";
@@ -15,6 +15,10 @@ interface RawParagraph {
   text?: unknown;
   claimIds?: unknown;
   role?: unknown;
+  jobKeywordsUsed?: unknown;
+  companySourcesUsed?: unknown;
+  gapNotes?: unknown;
+  sourceMap?: unknown;
 }
 
 interface CoverLetterResult {
@@ -57,7 +61,14 @@ Return ONLY valid JSON with this exact structure:
     {
       "text": "Paragraph text",
       "claimIds": [claim_id_numbers],
-      "role": "opening|hook|body|closing"
+      "role": "opening|hook|body|closing",
+      "jobKeywordsUsed": ["exact JD keywords used in this paragraph"],
+      "companySourcesUsed": ["company/job facts from the provided job description or stored research"],
+      "gapNotes": ["unsupported requirement or company detail intentionally omitted"],
+      "sourceMap": {
+        "supportedPhrases": ["important phrase from the paragraph"],
+        "sourceClaimIds": [claim_id_numbers]
+      }
     }
   ],
   "fullText": "Complete cover letter text joined from paragraphs"
@@ -123,13 +134,14 @@ export async function runCoverLetterPipeline(
   const [baseResumeVersion] = await db
     .select()
     .from(baseResumeVersionsTable)
-    .where(eq(baseResumeVersionsTable.isCurrent, true))
-    .orderBy(desc(baseResumeVersionsTable.createdAt))
-    .limit(1);
+    .where(eq(baseResumeVersionsTable.isCurrent, true));
 
   const resumeContext = baseResumeVersion
     ? `\n\nCandidate's Resume (for context — do NOT repeat verbatim, use to complement):\n${baseResumeVersion.contentText.slice(0, 2000)}`
     : "";
+
+  const researchContext =
+    job.researchData != null ? JSON.stringify(job.researchData).slice(0, 3000) : "";
 
   const profileContext = roleProfile
     ? `Applying via role profile: ${roleProfile.name}. `
@@ -144,10 +156,14 @@ Required Skills: ${(job.parsedRequiredSkills ?? []).join(", ") || "Not parsed ye
 Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed yet"}
 `.trim();
 
-  // Load best practices and inject into system prompt
-  const bestPractices = await loadOrCreateBestPractices("general");
+  // Load task-specific best practices and inject into system prompt
+  const bestPractices = await loadOrCreateBestPractices("cover_letter");
   const practicesText = formatBestPracticesForPrompt(bestPractices);
-  const augmentedSystemPrompt = SYSTEM_PROMPT + practicesText;
+  const augmentedSystemPrompt = SYSTEM_PROMPT + practicesText + `\n\nTRUTH-LOCK SOURCE POLICY:
+- Treat the provided claims, candidate resume context, job description fields, and stored job research as the ONLY factual sources.
+- Do not use model memory for company news, mission, products, people, or recent events.
+- You may write in a natural human voice, but you may not invent motivations, relationships, metrics, credentials, dates, titles, tools, company facts, or experience.
+- Body and hook paragraphs must cite claimIds. Opening and closing may be uncited only if they contain no factual claims.`;
 
   const MAX_RETRIES = 2;
   let attempt = 0;
@@ -167,7 +183,7 @@ Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed
       taskType: "cover_letter",
       systemPrompt: augmentedSystemPrompt,
       userPrompt:
-        `Draft a cover letter for this job:\n\n${jobContext}${resumeContext}\n\nAvailable claims (use ONLY these IDs):\n${claimsContext}` +
+        `Draft a cover letter for this job:\n\n${jobContext}${resumeContext}\n\nStored job/company research (use only if present; do not use model memory):\n${researchContext || "No stored research available."}\n\nAvailable claims (use ONLY these IDs):\n${claimsContext}` +
         correctionNote,
       jobId: job.id,
       modelOverride: options?.modelOverride,
@@ -281,10 +297,50 @@ Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed
   const finalResult = lastResult!;
 
   const usedClaimIds = [...new Set(validatedParagraphs.flatMap((p) => p.claimIds))];
-  const sanitizedParagraphs = validatedParagraphs.map((p) => ({
+  const truthReview = reviewGeneratedTruth(validatedParagraphs, {
+    selectedClaims,
+    baseResumeText: baseResumeVersion?.contentText ?? "",
+    jobSourceText: jobContext,
+    researchSourceText: researchContext,
+    allowUncitedRoles: ["opening", "closing"],
+    sourcePolicy:
+      "Cover letter facts must be traceable to the Claims Ledger, base resume, job description, or stored job research. Company references cannot come from model memory.",
+  });
+
+  const enrichedParagraphs = validatedParagraphs.map((paragraph, index) => ({
+    ...paragraph,
+    truthReview: truthReview.items[index] ?? null,
+    supportStatus: truthReview.items[index]?.supportStatus ?? "partial",
+  }));
+
+  const sanitizedParagraphs = enrichedParagraphs.map((p) => ({
     ...p,
     text: stripClaimIdRefs(p.text),
   }));
+
+  if (truthReview.seriousViolationCount > 0) {
+    logger.error(
+      { jobId: job.id, truthReview },
+      "Cover letter truth review failed â€” storing pending diagnostic version",
+    );
+    const [row] = await db
+      .insert(coverLetterVersionsTable)
+      .values({
+        jobId: job.id,
+        label: "AI drafted â€” truth review failed",
+        status: "pending_approval",
+        runId: finalResult.runId,
+        eventLogId: finalResult.eventLogId,
+        claimIds: usedClaimIds,
+        draftContent: fullText,
+        annotatedParagraphs: sanitizedParagraphs as unknown as Record<string, unknown>[],
+        notes:
+          `Truth review failed with ${truthReview.seriousViolationCount} serious issue(s). ` +
+          `Subject: ${finalParsed.subject ?? `Application for ${job.title} at ${job.company}`}`,
+      })
+      .returning();
+    return row!;
+  }
 
   const [row] = await db
     .insert(coverLetterVersionsTable)

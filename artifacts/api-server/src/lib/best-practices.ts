@@ -6,6 +6,11 @@ export interface BestPracticeItem {
   source: "ai" | "hardcoded" | "hybrid";
   rationale?: string;
   frequency?: number; // times encountered
+  sourceUrl?: string;
+  sourcePost?: string;
+  taskScopes?: string[];
+  severity?: "guidance" | "guardrail" | "blocking";
+  guardKey?: string;
 }
 
 export interface BestPracticesConfig {
@@ -41,6 +46,11 @@ export function formatBestPracticesForPrompt(config: BestPracticesConfig): strin
 
   return `\n\nQUALITY STANDARDS — FOLLOW ALL:\n${lines.join("\n")}`;
 }
+
+const RESUME_TAILORING_GUIDE_URL =
+  "https://www.reddit.com/r/resumes/comments/1khryt7/a_practical_guide_for_tailoring_your_resume/";
+const COVER_LETTER_GUIDE_URL =
+  "https://www.reddit.com/r/jobsearchhacks/comments/1kq801b/after_10_years_of_helping_people_write_cover/";
 
 const DEFAULT_BEST_PRACTICES: BestPracticesConfig = {
   domain: "general",
@@ -104,6 +114,166 @@ const DEFAULT_BEST_PRACTICES: BestPracticesConfig = {
   },
 };
 
+const RESUME_TAILORING_BEST_PRACTICES: BestPracticesConfig = {
+  domain: "resume_tailoring",
+  title: "Truth-Locked Resume Tailoring Playbook",
+  items: [
+    {
+      description:
+        "Start from the current base resume and tailor it; do not create a new candidate profile from scratch.",
+      source: "hybrid",
+      sourceUrl: RESUME_TAILORING_GUIDE_URL,
+      sourcePost: "A practical guide for tailoring your resume",
+      taskScopes: ["resume_tailoring"],
+      severity: "guardrail",
+      guardKey: "use_base_resume",
+    },
+    {
+      description:
+        "Break the job description into required skills, nice-to-haves, responsibilities, and repeated keywords before rewriting.",
+      source: "hybrid",
+      sourceUrl: RESUME_TAILORING_GUIDE_URL,
+      sourcePost: "A practical guide for tailoring your resume",
+      taskScopes: ["resume_tailoring"],
+      severity: "guidance",
+      guardKey: "jd_decomposition",
+    },
+    {
+      description:
+        "Mirror job language only when it can be connected to verified experience; never keyword-stuff unsupported skills.",
+      source: "hybrid",
+      sourceUrl: RESUME_TAILORING_GUIDE_URL,
+      sourcePost: "A practical guide for tailoring your resume",
+      taskScopes: ["resume_tailoring"],
+      severity: "blocking",
+      guardKey: "truthful_keyword_mirroring",
+    },
+    {
+      description:
+        "Pair every important keyword with proof: a claim, result, responsibility, project, or metric already present in the source material.",
+      source: "hybrid",
+      sourceUrl: RESUME_TAILORING_GUIDE_URL,
+      sourcePost: "A practical guide for tailoring your resume",
+      taskScopes: ["resume_tailoring"],
+      severity: "blocking",
+      guardKey: "keywords_need_proof",
+    },
+    {
+      description:
+        "Preserve truthful scope. Do not inflate ownership, seniority, tools, credentials, dates, metrics, or business impact.",
+      source: "hardcoded",
+      sourceUrl: RESUME_TAILORING_GUIDE_URL,
+      sourcePost: "A practical guide for tailoring your resume",
+      taskScopes: ["resume_tailoring"],
+      severity: "blocking",
+      guardKey: "no_exaggeration",
+    },
+    {
+      description:
+        "When a required skill cannot be supported, record it as a gap instead of inventing coverage.",
+      source: "hardcoded",
+      sourceUrl: RESUME_TAILORING_GUIDE_URL,
+      sourcePost: "A practical guide for tailoring your resume",
+      taskScopes: ["resume_tailoring"],
+      severity: "blocking",
+      guardKey: "gaps_not_fiction",
+    },
+  ],
+  hardcodedGuards: {
+    useBaseResume: true,
+    jdDecomposition: true,
+    truthfulKeywordMirroring: true,
+    keywordsNeedProof: true,
+    noExaggeration: true,
+    gapsNotFiction: true,
+  },
+};
+
+const COVER_LETTER_BEST_PRACTICES: BestPracticesConfig = {
+  domain: "cover_letter",
+  title: "Truth-Locked Cover Letter Playbook",
+  items: [
+    {
+      description:
+        "Do not repeat the resume. Use the letter to connect 2-3 verified achievements to the employer's most important needs.",
+      source: "hybrid",
+      sourceUrl: COVER_LETTER_GUIDE_URL,
+      sourcePost: "After 10 years of helping people write cover letters",
+      taskScopes: ["cover_letter"],
+      severity: "guidance",
+      guardKey: "connect_not_repeat",
+    },
+    {
+      description:
+        "Use a natural, specific human voice. Avoid generic openings, filler, and broad claims of being a perfect fit.",
+      source: "hybrid",
+      sourceUrl: COVER_LETTER_GUIDE_URL,
+      sourcePost: "After 10 years of helping people write cover letters",
+      taskScopes: ["cover_letter"],
+      severity: "guardrail",
+      guardKey: "natural_specific_voice",
+    },
+    {
+      description:
+        "Every body or hook paragraph must be grounded in provided claims; opening and closing may be uncited only when they contain no factual claims.",
+      source: "hardcoded",
+      sourceUrl: COVER_LETTER_GUIDE_URL,
+      sourcePost: "After 10 years of helping people write cover letters",
+      taskScopes: ["cover_letter"],
+      severity: "blocking",
+      guardKey: "paragraph_truth_lock",
+    },
+    {
+      description:
+        "Company references must come from the job description or stored research data, not model memory.",
+      source: "hardcoded",
+      sourceUrl: COVER_LETTER_GUIDE_URL,
+      sourcePost: "After 10 years of helping people write cover letters",
+      taskScopes: ["cover_letter"],
+      severity: "blocking",
+      guardKey: "source_company_research",
+    },
+    {
+      description:
+        "Keep the cover letter concise and purposeful: roughly 3-5 short paragraphs focused on the employer's problem and the candidate's evidence-backed fit.",
+      source: "hybrid",
+      sourceUrl: COVER_LETTER_GUIDE_URL,
+      sourcePost: "After 10 years of helping people write cover letters",
+      taskScopes: ["cover_letter"],
+      severity: "guidance",
+      guardKey: "concise_problem_fit",
+    },
+    {
+      description:
+        "Do not invent motivations, relationships, company news, metrics, credentials, or experience; flag gaps or uncertainty instead.",
+      source: "hardcoded",
+      sourceUrl: COVER_LETTER_GUIDE_URL,
+      sourcePost: "After 10 years of helping people write cover letters",
+      taskScopes: ["cover_letter"],
+      severity: "blocking",
+      guardKey: "no_cover_letter_fiction",
+    },
+  ],
+  hardcodedGuards: {
+    connectNotRepeat: true,
+    naturalSpecificVoice: true,
+    paragraphTruthLock: true,
+    sourceCompanyResearch: true,
+    conciseProblemFit: true,
+    noCoverLetterFiction: true,
+  },
+};
+
+function defaultBestPracticesForDomain(domain: string): BestPracticesConfig {
+  if (domain === "resume_tailoring") {
+    return { ...RESUME_TAILORING_BEST_PRACTICES, items: [...RESUME_TAILORING_BEST_PRACTICES.items] };
+  }
+  if (domain === "cover_letter") {
+    return { ...COVER_LETTER_BEST_PRACTICES, items: [...COVER_LETTER_BEST_PRACTICES.items] };
+  }
+  return { ...DEFAULT_BEST_PRACTICES, domain, items: [...DEFAULT_BEST_PRACTICES.items] };
+}
+
 export async function loadOrCreateBestPractices(
   domain = "general",
 ): Promise<BestPracticesConfig> {
@@ -123,7 +293,7 @@ export async function loadOrCreateBestPractices(
     };
   }
 
-  const config = { ...DEFAULT_BEST_PRACTICES, domain };
+  const config = defaultBestPracticesForDomain(domain);
   await db.insert(bestPracticesTable).values({
     domain: config.domain,
     title: config.title,
@@ -146,8 +316,7 @@ export async function updateBestPractices(
 
   if (!existing) {
     const config = {
-      ...DEFAULT_BEST_PRACTICES,
-      domain,
+      ...defaultBestPracticesForDomain(domain),
       items,
     };
     const [inserted] = await db
@@ -208,7 +377,7 @@ export async function refreshBestPracticesFromAI(
   }
 
   // Insert default and mark refreshed
-  const config = { ...DEFAULT_BEST_PRACTICES, domain };
+  const config = defaultBestPracticesForDomain(domain);
   const [inserted] = await db
     .insert(bestPracticesTable)
     .values({

@@ -6,6 +6,32 @@ import { resolvePromptForTask } from "./prompt-router";
 import { logger } from "./logger";
 import { mintRunId } from "./lineage";
 
+const DEFAULT_AI_REQUEST_TIMEOUT_MS = 60_000;
+const AI_CONTROL_PARAM_KEYS = new Set(["timeoutMs", "requestTimeoutMs"]);
+
+function resolveTimeoutMs(...configs: Array<Record<string, unknown> | undefined>): number {
+  for (const config of configs) {
+    const raw = config?.timeoutMs ?? config?.requestTimeoutMs;
+    const parsed = typeof raw === "number" ? raw : typeof raw === "string" ? Number(raw) : NaN;
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return Math.max(5_000, Math.min(parsed, 180_000));
+    }
+  }
+
+  const envTimeout = Number(process.env.AI_REQUEST_TIMEOUT_MS);
+  if (Number.isFinite(envTimeout) && envTimeout > 0) {
+    return Math.max(5_000, Math.min(envTimeout, 180_000));
+  }
+
+  return DEFAULT_AI_REQUEST_TIMEOUT_MS;
+}
+
+function stripAiControlParams(config: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(config).filter(([key]) => !AI_CONTROL_PARAM_KEYS.has(key)),
+  );
+}
+
 /**
  * Options for a single AI call.
  *
@@ -30,6 +56,14 @@ export interface AiCallOptions {
     provider?: string;
     modelName: string;
   };
+  /** Optional OpenRouter request parameters, such as response_format or provider routing hints. */
+  extraParams?: Record<string, unknown>;
+  /**
+   * Optional contract validator for successful HTTP responses. Throw from this
+   * callback to treat unusable model content as a model failure and advance to
+   * the configured fallback model.
+   */
+  validateContent?: (content: string, model: SelectedModel) => void | Promise<void>;
 }
 
 /**
@@ -73,7 +107,7 @@ export interface AiCallResult {
  * reads these automatically.
  */
 export async function callAI(opts: AiCallOptions): Promise<AiCallResult> {
-  const { taskType, systemPrompt, userPrompt, jobId, applicationId, modelOverride } = opts;
+  const { taskType, systemPrompt, userPrompt, jobId, applicationId, modelOverride, extraParams, validateContent } = opts;
   const runId = opts.runId ?? mintRunId();
   const resolvedPrompt = await resolvePromptForTask(
     taskType,
@@ -92,19 +126,39 @@ export async function callAI(opts: AiCallOptions): Promise<AiCallResult> {
         "Calling AI model",
       );
 
+      const modelExtraConfig =
+        model.extraConfig && typeof model.extraConfig === "object" && !Array.isArray(model.extraConfig)
+          ? model.extraConfig
+          : {};
+      const requestParams = {
+        ...stripAiControlParams(modelExtraConfig),
+        ...stripAiControlParams(extraParams ?? {}),
+      };
+      const timeoutMs = resolveTimeoutMs(extraParams, modelExtraConfig);
+      const maxTokens =
+        typeof requestParams.max_tokens === "number"
+          ? requestParams.max_tokens
+          : model.maxTokens ?? 8192;
+      delete (requestParams as { max_tokens?: unknown }).max_tokens;
+
       const response = await openrouter.chat.completions.create({
+        ...requestParams,
         model: model.modelName,
-        max_tokens: model.maxTokens ?? 8192,
+        max_tokens: maxTokens,
         messages: [
           { role: "system", content: resolvedPrompt.systemPrompt },
           { role: "user", content: resolvedPrompt.userPrompt },
         ],
-      });
+      } as never, { timeout: timeoutMs } as never);
 
       const content = response.choices[0]?.message?.content ?? "";
       const usage = response.usage;
       const promptTokens = usage?.prompt_tokens ?? 0;
       const completionTokens = usage?.completion_tokens ?? 0;
+
+      if (validateContent) {
+        await validateContent(content, model);
+      }
 
       const costIn = model.costPerInputToken
         ? parseFloat(model.costPerInputToken) * promptTokens
@@ -136,6 +190,7 @@ export async function callAI(opts: AiCallOptions): Promise<AiCallResult> {
           modelName: model.modelName,
           provider: model.provider,
           modelOverride: modelOverride ?? null,
+          structuredOutput: Boolean(extraParams?.response_format),
           promptTokens,
           completionTokens,
           estimatedCostUsd: totalCost,

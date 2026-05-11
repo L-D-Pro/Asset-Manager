@@ -1,11 +1,9 @@
 import {
-  useGetBaseResume,
   useListBaseResumeHistory,
   useCreateBaseResume,
   useImportBaseResume,
   useRestoreBaseResumeVersion,
   useDeleteBaseResumeVersion,
-  getGetBaseResumeQueryKey,
   getListBaseResumeHistoryQueryKey,
 } from "@workspace/api-client-react";
 import { useEffect, useState } from "react";
@@ -26,19 +24,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { getErrorMessage } from "@/lib/api-errors";
 
-function isNotFoundError(error: unknown): boolean {
-  return error instanceof Error && error.message.includes("404");
-}
-
 export default function BaseResumePage() {
-  const {
-  data: currentResume,
-  isLoading: currentLoading,
-  error: currentError,
-  } = useGetBaseResume({
-  query: { retry: false, queryKey: getGetBaseResumeQueryKey() },
-  });
   const { data: history = [], isLoading: historyLoading } = useListBaseResumeHistory();
+  const currentResume = history.find((version) => version.isCurrent);
   const saveResume = useCreateBaseResume();
   const importResume = useImportBaseResume();
   const restoreResume = useRestoreBaseResumeVersion();
@@ -55,16 +43,14 @@ export default function BaseResumePage() {
   }, [currentResume?.id, currentResume?.contentText]);
 
   const hasCurrentResume = Boolean(currentResume);
-  const showEmptyState = !currentLoading && isNotFoundError(currentError);
+  const currentLoading = historyLoading;
+  const showEmptyState = !historyLoading && !hasCurrentResume;
   const saveDisabled = saveResume.isPending || contentText.trim().length === 0;
 
   const refreshQueries = async () => {
-  await Promise.all([
-  queryClient.invalidateQueries({ queryKey: getGetBaseResumeQueryKey() }),
-  queryClient.invalidateQueries({
+  await queryClient.invalidateQueries({
   queryKey: getListBaseResumeHistoryQueryKey(),
-  }),
-  ]);
+  });
   };
 
   const handleSave = () => {
@@ -240,13 +226,6 @@ export default function BaseResumePage() {
   <AlertCircle className="h-4 w-4" />
   <AlertDescription>
   No base resume exists yet. Save your current resume to unlock AI tailoring.
-  </AlertDescription>
-  </Alert>
-  ) : currentError ? (
-  <Alert variant="destructive">
-  <AlertCircle className="h-4 w-4" />
-  <AlertDescription>
-  {getErrorMessage(currentError, "Failed to load the current base resume.")}
   </AlertDescription>
   </Alert>
   ) : null}

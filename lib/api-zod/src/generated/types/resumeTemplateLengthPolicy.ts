@@ -6,7 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface TailorResumeBody {
-  claimIds?: number[];
-  templateId?: string;
-}
+export type ResumeTemplateLengthPolicy = {
+  target: string;
+  maxPages: number;
+  maxBulletLines: number;
+};

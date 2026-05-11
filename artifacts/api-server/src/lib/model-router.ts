@@ -67,6 +67,17 @@ export async function selectModelForTask(
     "No active primary model for task scope, checking fallback chain",
   );
 
+  if (taskScope === "resume_tailoring") {
+    const seeded = await ensureResumeTailoringMvpChain();
+    if (seeded) {
+      logger.info(
+        { taskScope, modelId: seeded.id, modelName: seeded.modelName },
+        "Seeded MVP resume_tailoring model chain",
+      );
+      return seeded;
+    }
+  }
+
   const [inactive] = await db
     .select()
     .from(aiModelConfigsTable)
@@ -110,6 +121,72 @@ export async function selectModelForTask(
 
   logger.error({ taskScope }, "No model config available for task scope");
   return null;
+}
+
+async function ensureResumeTailoringMvpChain(): Promise<SelectedModel | null> {
+  const recommended = [
+    { modelName: "openai/gpt-4.1-mini", priority: 0, maxTokens: 3600 },
+    { modelName: "google/gemini-2.5-flash-lite", priority: 1, maxTokens: 3600 },
+    { modelName: "deepseek/deepseek-v4-pro", priority: 2, maxTokens: 3600 },
+  ];
+
+  const rows: Array<typeof aiModelConfigsTable.$inferSelect> = [];
+  for (const config of recommended) {
+    const [existing] = await db
+      .select()
+      .from(aiModelConfigsTable)
+      .where(
+        and(
+          eq(aiModelConfigsTable.taskScope, "resume_tailoring"),
+          eq(aiModelConfigsTable.provider, "openrouter"),
+          eq(aiModelConfigsTable.modelName, config.modelName),
+        ),
+      )
+      .limit(1);
+
+    if (existing) {
+      const [updated] = await db
+        .update(aiModelConfigsTable)
+        .set({
+          isActive: true,
+          priority: config.priority,
+          maxTokens: config.maxTokens,
+          extraConfig: {
+            ...(existing.extraConfig && typeof existing.extraConfig === "object" && !Array.isArray(existing.extraConfig)
+              ? existing.extraConfig
+              : {}),
+            timeoutMs: 45_000,
+          },
+        })
+        .where(eq(aiModelConfigsTable.id, existing.id))
+        .returning();
+      rows.push(updated!);
+      continue;
+    }
+
+    const [created] = await db
+      .insert(aiModelConfigsTable)
+      .values({
+        taskScope: "resume_tailoring",
+        provider: "openrouter",
+        modelName: config.modelName,
+        isActive: true,
+        priority: config.priority,
+        maxTokens: config.maxTokens,
+        extraConfig: { timeoutMs: 45_000 },
+      })
+      .returning();
+    rows.push(created!);
+  }
+
+  for (let i = 0; i < rows.length; i += 1) {
+    await db
+      .update(aiModelConfigsTable)
+      .set({ fallbackModelId: rows[i + 1]?.id ?? null })
+      .where(eq(aiModelConfigsTable.id, rows[i]!.id));
+  }
+
+  return rows[0] ? toSelectedModel({ ...rows[0], fallbackModelId: rows[1]?.id ?? null }) : null;
 }
 
 async function resolveFallbackChain(

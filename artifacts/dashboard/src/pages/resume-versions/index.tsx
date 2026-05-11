@@ -5,6 +5,7 @@ import {
   useUpdateResumeVersion,
   useDeleteResumeVersion,
   deleteResumeVersion,
+  getGetResumeVersionQueryKey,
   getListResumeVersionsQueryKey,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -22,7 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { FileText, Check, X, ExternalLink, Plus, Minus, ArrowLeftRight, ThumbsUp, ThumbsDown, AlertCircle, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { FileText, Check, X, ExternalLink, Plus, Minus, ArrowLeftRight, ThumbsUp, ThumbsDown, AlertCircle, Trash2, ChevronDown, ChevronUp, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -39,7 +40,89 @@ type DiffData = {
  bulletsTotal?: number;
  bulletsPassedValidation?: number;
  bulletsDiscarded?: number;
+ truthReview?: TruthReviewSummary;
 };
+
+type TruthReviewItem = {
+ text: string;
+ supportStatus: "supported" | "partial" | "unsupported";
+ sourceClaimIds?: number[];
+ unsupportedPhrases?: string[];
+ metricViolations?: string[];
+ disallowedImplicationViolations?: string[];
+ gapNotes?: string[];
+ jobKeywordsUsed?: string[];
+};
+
+type TruthReviewSummary = {
+ supportStatus: "supported" | "partial" | "unsupported";
+ supportedCount: number;
+ partialCount: number;
+ unsupportedCount: number;
+ seriousViolationCount: number;
+ sourcePolicy?: string;
+ items?: TruthReviewItem[];
+};
+
+function SupportBadge({ status }: { status: TruthReviewItem["supportStatus"] }) {
+ if (status === "supported") return <Badge variant="outline" className="border-success/50 text-success">Supported</Badge>;
+ if (status === "partial") return <Badge variant="outline" className="border-warning/50 text-warning">Needs Review</Badge>;
+ return <Badge variant="destructive">Unsupported</Badge>;
+}
+
+function TruthReviewPanel({ review }: { review: TruthReviewSummary }) {
+ const riskyItems = (review.items ?? []).filter(
+  (item) =>
+   item.supportStatus !== "supported" ||
+   (item.gapNotes?.length ?? 0) > 0 ||
+   (item.jobKeywordsUsed?.length ?? 0) > 0,
+ );
+ return (
+  <div className="rounded-md border border-border bg-muted/20 p-3 space-y-3">
+   <div className="flex flex-wrap items-center gap-2">
+    <ShieldCheck className="h-4 w-4 text-primary" />
+    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Truth Review</span>
+    <SupportBadge status={review.supportStatus} />
+    <span className="text-xs text-muted-foreground">
+     {review.supportedCount} supported, {review.partialCount} needs review, {review.unsupportedCount} unsupported
+    </span>
+   </div>
+   {review.seriousViolationCount > 0 && (
+    <Alert variant="destructive">
+     <AlertCircle className="h-4 w-4" />
+     <AlertDescription className="text-xs">
+      {review.seriousViolationCount} serious truth issue{review.seriousViolationCount === 1 ? "" : "s"} found. Review unsupported phrases before approving.
+     </AlertDescription>
+    </Alert>
+   )}
+   {review.sourcePolicy && <p className="text-xs text-muted-foreground">{review.sourcePolicy}</p>}
+   {riskyItems.length > 0 && (
+    <div className="space-y-2">
+     {riskyItems.map((item, index) => (
+      <div key={`${item.text}-${index}`} className="rounded border bg-background/70 p-2 text-xs space-y-1">
+       <div className="flex items-center justify-between gap-2">
+        <p className="font-medium text-foreground line-clamp-2">{item.text}</p>
+        <SupportBadge status={item.supportStatus} />
+       </div>
+       {(item.sourceClaimIds?.length ?? 0) > 0 && (
+        <p className="text-muted-foreground">Claims: {item.sourceClaimIds?.join(", ")}</p>
+       )}
+       {(item.unsupportedPhrases?.length ?? 0) > 0 && (
+        <p className="text-destructive">Unsupported: {item.unsupportedPhrases?.join("; ")}</p>
+       )}
+       {(item.gapNotes?.length ?? 0) > 0 && (
+        <p className="text-warning">Gaps: {item.gapNotes?.join("; ")}</p>
+       )}
+       {(item.jobKeywordsUsed?.length ?? 0) > 0 && (
+        <p className="text-muted-foreground">JD keywords: {item.jobKeywordsUsed?.join(", ")}</p>
+       )}
+      </div>
+     ))}
+    </div>
+   )}
+  </div>
+ );
+}
 
 function DocumentPreview({
  content,
@@ -190,6 +273,7 @@ function DiffReview({
  <p>{diffData.summary}</p>
  </div>
  )}
+ {diffData.truthReview && <TruthReviewPanel review={diffData.truthReview} />}
  {total > 0 && (
  <div className="text-xs flex gap-3" data-testid={`decisions-summary-${versionId}`}>
  <span className="text-success font-medium">{accepted} accepted</span>
@@ -341,6 +425,7 @@ export default function ResumeVersionsPage() {
       onSuccess: () => {
         toast({ title: "Resume version deleted" });
         setDeleteTarget(null);
+        queryClient.removeQueries({ queryKey: getGetResumeVersionQueryKey(id) });
         queryClient.invalidateQueries({ queryKey: getListResumeVersionsQueryKey() });
       },
       onError: (error) =>
@@ -353,7 +438,7 @@ export default function ResumeVersionsPage() {
   };
 
   const handleBulkDelete = async () => {
-    const toDelete = versions?.filter(v => v.status !== 'approved') ?? [];
+    const toDelete = versions ?? [];
     if (toDelete.length === 0) {
       setShowBulkDelete(false);
       return;
@@ -361,6 +446,9 @@ export default function ResumeVersionsPage() {
     try {
       await Promise.all(toDelete.map(v => deleteResumeVersion(v.id)));
       toast({ title: `Deleted ${toDelete.length} resume version${toDelete.length !== 1 ? 's' : ''}` });
+      toDelete.forEach((version) => {
+        queryClient.removeQueries({ queryKey: getGetResumeVersionQueryKey(version.id) });
+      });
       queryClient.invalidateQueries({ queryKey: getListResumeVersionsQueryKey() });
     } catch (error) {
       toast({
@@ -409,6 +497,10 @@ export default function ResumeVersionsPage() {
  const totalDecisions = Object.keys(versionDecisions).length;
  const pendingCount = Object.values(versionDecisions).filter(d => d === "pending").length;
  const hasPending = pendingCount > 0;
+ const needsRegeneration =
+ !version.templateId ||
+ !(diffData as any)?.templateValidation ||
+ /could not be repaired|truth lock failure|quality check failed|truth review failed/i.test(version.notes ?? "");
 
  return (
 <ContentCard key={version.id} data-testid={`card-resume-${version.id}`} className="p-0">
@@ -426,6 +518,11 @@ export default function ResumeVersionsPage() {
  {version.status === "pending_approval" && hasDiff && hasPending && (
  <Badge variant="outline" className="text-warning border-warning/50 text-xs">
  {pendingCount} undecided
+ </Badge>
+ )}
+ {version.templateId && (
+ <Badge variant="outline" className="text-xs">
+ {(diffData as any)?.templateLabel ?? version.templateId}
  </Badge>
  )}
  </div>
@@ -462,17 +559,17 @@ export default function ResumeVersionsPage() {
                     Accept All
                   </Button>
                 )}
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setDeleteTarget(version.id)}
+                  disabled={deleteVersion.isPending}
+                  data-testid={`btn-delete-resume-${version.id}`}
+                >
+                  <Trash2 className="mr-1 h-4 w-4" /> Delete
+                </Button>
                 {version.status === "pending_approval" && (
                   <>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => setDeleteTarget(version.id)}
-                      disabled={deleteVersion.isPending}
-                      data-testid={`btn-delete-resume-${version.id}`}
-                    >
-                      <Trash2 className="mr-1 h-4 w-4" /> Delete
-                    </Button>
                     <Button
                       variant="secondary"
                       className="text-destructive"
@@ -487,7 +584,7 @@ export default function ResumeVersionsPage() {
                       variant="default"
                       size="sm"
                       onClick={() => handleApprove(version.id, diffData, versionDecisions)}
-                      disabled={approve.isPending || updateResume.isPending}
+                      disabled={approve.isPending || updateResume.isPending || needsRegeneration}
                       data-testid={`btn-approve-resume-${version.id}`}
                     >
                       <Check className="mr-1 h-4 w-4" /> Approve
@@ -526,6 +623,14 @@ export default function ResumeVersionsPage() {
  <AlertCircle className="h-4 w-4 text-warning" />
  <AlertDescription className="text-warning text-xs">
  {pendingCount} change{pendingCount > 1 ? "s" : ""} still need{pendingCount === 1 ? "s" : ""} a decision. Accept or reject each before approving — your decisions will be saved on the version record.
+ </AlertDescription>
+ </Alert>
+ )}
+ {version.status === "pending_approval" && needsRegeneration && (
+ <Alert variant="destructive">
+ <AlertCircle className="h-4 w-4" />
+ <AlertDescription className="text-xs">
+ This draft is diagnostic only. Regenerate it so structured truth review and template validation can pass before approval.
  </AlertDescription>
  </Alert>
  )}
@@ -579,7 +684,7 @@ export default function ResumeVersionsPage() {
           <DialogHeader>
             <DialogTitle>Clean Up Resume Versions</DialogTitle>
             <DialogDescription>
-              This will permanently delete all rejected and pending resume versions. Approved versions will be kept.
+              This will permanently delete every resume version in the queue, including approved test drafts.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -589,7 +694,7 @@ export default function ResumeVersionsPage() {
               onClick={handleBulkDelete}
               data-testid="btn-confirm-bulk-delete"
             >
-              Delete All Rejected/Pending
+              Delete All Resume Versions
             </Button>
           </DialogFooter>
         </DialogContent>

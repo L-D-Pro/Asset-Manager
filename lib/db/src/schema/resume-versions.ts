@@ -64,6 +64,9 @@ export const resumeVersionsTable = pgTable(
     /** Human-readable label (e.g. "AI tailored — Jun 15, 2025"). Auto-set by the pipeline. */
     label: text("label"),
 
+    /** Built-in or admin-provided renderer template used for this resume draft. */
+    templateId: text("template_id"),
+
     /**
      * Current state. `pending_approval` until the user acts.
      * Values: `pending_approval`, `approved`, `rejected`

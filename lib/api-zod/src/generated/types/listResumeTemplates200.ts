@@ -5,8 +5,8 @@
  * Job Application Operations Platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { ResumeTemplate } from "./resumeTemplate";
 
-export interface TailorResumeBody {
-  claimIds?: number[];
-  templateId?: string;
-}
+export type ListResumeTemplates200 = {
+  templates: ResumeTemplate[];
+};

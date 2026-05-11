@@ -1,11 +1,11 @@
-import { useListCoverLetterVersions, useApproveCoverLetterVersion, useRejectCoverLetterVersion, useUpdateCoverLetterVersion, useDeleteCoverLetterVersion, deleteCoverLetterVersion, useListClaims, getListCoverLetterVersionsQueryKey, type CoverLetterVersion } from "@workspace/api-client-react";
+import { useListCoverLetterVersions, useApproveCoverLetterVersion, useRejectCoverLetterVersion, useUpdateCoverLetterVersion, useDeleteCoverLetterVersion, deleteCoverLetterVersion, useListClaims, getGetCoverLetterVersionQueryKey, getListCoverLetterVersionsQueryKey, type CoverLetterVersion } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 
 import { PageHeader } from "@/components/ui/page-header";
 import { ContentCard } from "@/components/ui/content-card";
-import { MessageSquare, Check, X, Tag, RotateCcw, ExternalLink, Trash2 } from "lucide-react";
+import { MessageSquare, Check, X, Tag, RotateCcw, ExternalLink, Trash2, ShieldCheck, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -18,7 +18,25 @@ type AnnotatedParagraph = {
   text: string;
   claimIds: number[];
   role: "opening" | "hook" | "body" | "closing";
+  supportStatus?: "supported" | "partial" | "unsupported";
+  truthReview?: {
+    supportStatus: "supported" | "partial" | "unsupported";
+    sourceClaimIds?: number[];
+    unsupportedPhrases?: string[];
+    metricViolations?: string[];
+    disallowedImplicationViolations?: string[];
+    gapNotes?: string[];
+    jobKeywordsUsed?: string[];
+    companySourcesUsed?: string[];
+  };
 };
+
+function SupportBadge({ status }: { status?: AnnotatedParagraph["supportStatus"] }) {
+  if (status === "supported") return <Badge variant="outline" className="border-success/50 text-success">Supported</Badge>;
+  if (status === "partial") return <Badge variant="outline" className="border-warning/50 text-warning">Needs Review</Badge>;
+  if (status === "unsupported") return <Badge variant="destructive">Unsupported</Badge>;
+  return null;
+}
 
 const ROLE_COLORS: Record<string, string> = {
   opening: "bg-primary/10 border-primary/30",
@@ -104,6 +122,7 @@ export default function CoverLettersPage() {
       {
         onSuccess: () => {
           toast({ title: "Cover letter deleted" });
+          queryClient.removeQueries({ queryKey: getGetCoverLetterVersionQueryKey(id) });
           queryClient.invalidateQueries({ queryKey: getListCoverLetterVersionsQueryKey() });
           setDeleteTarget(null);
         },
@@ -118,7 +137,7 @@ export default function CoverLettersPage() {
   };
 
   const handleBulkDelete = async () => {
-    const toDelete = versions?.filter(v => v.status !== 'approved') ?? [];
+    const toDelete = versions ?? [];
     if (toDelete.length === 0) {
       setShowBulkDelete(false);
       return;
@@ -126,6 +145,9 @@ export default function CoverLettersPage() {
     try {
       await Promise.all(toDelete.map(v => deleteCoverLetterVersion(v.id)));
       toast({ title: `Deleted ${toDelete.length} cover letter${toDelete.length !== 1 ? 's' : ''}` });
+      toDelete.forEach((version) => {
+        queryClient.removeQueries({ queryKey: getGetCoverLetterVersionQueryKey(version.id) });
+      });
       queryClient.invalidateQueries({ queryKey: getListCoverLetterVersionsQueryKey() });
     } catch (error) {
       toast({
@@ -176,6 +198,7 @@ export default function CoverLettersPage() {
         ) : (
           versions?.map((version) => {
             const annotations = parseAnnotations(version);
+            const seriousTruthIssues = annotations?.filter((para) => para.supportStatus === "unsupported").length ?? 0;
             return (
               <ContentCard key={version.id} data-testid={`card-cl-${version.id}`}>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-6 pb-3">
@@ -188,6 +211,9 @@ export default function CoverLettersPage() {
                       }>
                         {version.status.replace("_", " ")}
                       </Badge>
+                      {seriousTruthIssues > 0 && (
+                        <Badge variant="destructive">{seriousTruthIssues} truth issue{seriousTruthIssues === 1 ? "" : "s"}</Badge>
+                      )}
                     </div>
                     <p className="text-sm text-muted-foreground">
                       {version.jobId && (
@@ -263,6 +289,7 @@ export default function CoverLettersPage() {
                             <span className={`text-xs font-semibold uppercase rounded px-1.5 py-0.5 ${ROLE_LABEL_COLORS[para.role] || "text-muted-foreground bg-muted"}`}>
                               {para.role}
                             </span>
+                            <SupportBadge status={para.supportStatus ?? para.truthReview?.supportStatus} />
                             {para.claimIds.length > 0 && (
                               <div className="flex items-center gap-1 flex-wrap">
                                 <Tag className="h-3 w-3 text-muted-foreground" />
@@ -282,6 +309,29 @@ export default function CoverLettersPage() {
                             )}
                           </div>
                           <p className="leading-relaxed">{para.text}</p>
+                          {para.truthReview && (
+                            <div className="mt-3 rounded border bg-background/70 p-2 text-xs space-y-1">
+                              <div className="flex items-center gap-1 text-muted-foreground">
+                                <ShieldCheck className="h-3 w-3" />
+                                <span>Truth review</span>
+                              </div>
+                              {(para.truthReview.unsupportedPhrases?.length ?? 0) > 0 && (
+                                <p className="text-destructive flex gap-1">
+                                  <AlertCircle className="h-3 w-3 shrink-0 mt-0.5" />
+                                  <span>{para.truthReview.unsupportedPhrases?.join("; ")}</span>
+                                </p>
+                              )}
+                              {(para.truthReview.gapNotes?.length ?? 0) > 0 && (
+                                <p className="text-warning">Gaps: {para.truthReview.gapNotes?.join("; ")}</p>
+                              )}
+                              {(para.truthReview.jobKeywordsUsed?.length ?? 0) > 0 && (
+                                <p className="text-muted-foreground">JD keywords: {para.truthReview.jobKeywordsUsed?.join(", ")}</p>
+                              )}
+                              {(para.truthReview.companySourcesUsed?.length ?? 0) > 0 && (
+                                <p className="text-muted-foreground">Company/job sources: {para.truthReview.companySourcesUsed?.join(", ")}</p>
+                              )}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -355,7 +405,7 @@ export default function CoverLettersPage() {
           <DialogHeader>
             <DialogTitle>Clean Up Cover Letters</DialogTitle>
             <DialogDescription>
-              This will permanently delete all rejected and pending cover letters. Approved cover letters will be kept.
+              This will permanently delete every cover letter in the queue, including approved test drafts.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -365,7 +415,7 @@ export default function CoverLettersPage() {
               onClick={handleBulkDelete}
               data-testid="btn-confirm-bulk-delete"
             >
-              Delete All Rejected/Pending
+              Delete All Cover Letters
             </Button>
           </DialogFooter>
         </DialogContent>

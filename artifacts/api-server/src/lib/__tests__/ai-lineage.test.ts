@@ -145,4 +145,111 @@ describe("callAI lineage propagation", () => {
       { modelName: "test/model-primary", error: "upstream timeout" },
     ]);
   });
+
+  it("treats content contract failures as fallback-worthy model failures", async () => {
+    selectModelForTaskMock.mockResolvedValue({
+      id: 11,
+      provider: "openrouter",
+      modelName: "test/model-primary",
+      taskScope: "resume_tailoring",
+      maxTokens: 1024,
+      costPerInputToken: null,
+      costPerOutputToken: null,
+      extraConfig: {},
+    });
+
+    dbSelectMock
+      .mockReturnValueOnce({
+        from() {
+          return {
+            where() {
+              return [{ fallbackModelId: 22 }];
+            },
+          };
+        },
+      })
+      .mockReturnValueOnce({
+        from() {
+          return {
+            where() {
+              return [
+                {
+                  id: 22,
+                  provider: "openrouter",
+                  modelName: "test/model-fallback",
+                  taskScope: "resume_tailoring",
+                  maxTokens: 1024,
+                  costPerInputToken: null,
+                  costPerOutputToken: null,
+                  extraConfig: {},
+                  fallbackModelId: null,
+                },
+              ];
+            },
+          };
+        },
+      });
+
+    openrouterCreate
+      .mockResolvedValueOnce({
+        choices: [{ message: { content: "plain readable resume" } }],
+        usage: { prompt_tokens: 1, completion_tokens: 2 },
+      })
+      .mockResolvedValueOnce({
+        choices: [{ message: { content: '{"ok":true}' } }],
+        usage: { prompt_tokens: 3, completion_tokens: 4 },
+      });
+
+    insertValuesMock.mockReturnValueOnce({
+      returning: () => [{ id: 888 }],
+    });
+
+    const { callAI } = await import("../ai-client");
+
+    const result = await callAI({
+      taskType: "resume_tailoring",
+      systemPrompt: "system",
+      userPrompt: "user",
+      validateContent: (content) => {
+        if (!content.startsWith("{")) throw new Error("structured JSON required");
+      },
+    });
+
+    expect(result.modelName).toBe("test/model-fallback");
+    expect(openrouterCreate).toHaveBeenCalledTimes(2);
+    const successInsert = insertValuesMock.mock.calls[0][0];
+    expect(successInsert.metadata.priorFailures).toEqual([
+      { modelName: "test/model-primary", error: "structured JSON required" },
+    ]);
+  });
+
+  it("logs terminal failure when every fallback violates the content contract", async () => {
+    openrouterCreate.mockResolvedValue({
+      choices: [{ message: { content: "plain readable resume" } }],
+      usage: { prompt_tokens: 1, completion_tokens: 2 },
+    });
+
+    insertValuesMock.mockReturnValueOnce({
+      returning: () => [{ id: 889 }],
+    });
+
+    const { callAI } = await import("../ai-client");
+
+    await expect(
+      callAI({
+        taskType: "resume_tailoring",
+        systemPrompt: "system",
+        userPrompt: "user",
+        validateContent: () => {
+          throw new Error("structured claim-linked JSON required");
+        },
+      }),
+    ).rejects.toMatchObject({
+      eventLogId: 889,
+    });
+
+    const failureInsert = insertValuesMock.mock.calls[0][0];
+    expect(failureInsert.eventType).toBe("ai_call_failed");
+    expect(failureInsert.metadata.finalError).toBe("structured claim-linked JSON required");
+  });
 });

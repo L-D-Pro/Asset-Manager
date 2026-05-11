@@ -528,6 +528,7 @@ export const TailorJobResumeParams = zod.object({
 
 export const TailorJobResumeBody = zod.object({
   claimIds: zod.array(zod.number()).optional(),
+  templateId: zod.string().optional(),
 });
 
 /**
@@ -670,6 +671,26 @@ export const DeleteClaimParams = zod.object({
 });
 
 /**
+ * @summary List built-in resume templates
+ */
+export const ListResumeTemplatesResponse = zod.object({
+  templates: zod.array(
+    zod.object({
+      id: zod.string(),
+      label: zod.string(),
+      description: zod.string(),
+      roleFit: zod.array(zod.string()),
+      sectionOrder: zod.array(zod.string()),
+      lengthPolicy: zod.object({
+        target: zod.string(),
+        maxPages: zod.number(),
+        maxBulletLines: zod.number(),
+      }),
+    }),
+  ),
+});
+
+/**
  * @summary List resume versions
  */
 export const ListResumeVersionsQueryParams = zod.object({
@@ -682,6 +703,7 @@ export const ListResumeVersionsResponseItem = zod.object({
   jobId: zod.number().nullish(),
   baseResumeVersionId: zod.number().nullish(),
   label: zod.string().nullish(),
+  templateId: zod.string().nullish(),
   status: zod.string(),
   tailoredDocumentText: zod.string().nullish(),
   tailoredBullets: zod
@@ -715,6 +737,7 @@ export const GetResumeVersionResponse = zod.object({
   jobId: zod.number().nullish(),
   baseResumeVersionId: zod.number().nullish(),
   label: zod.string().nullish(),
+  templateId: zod.string().nullish(),
   status: zod.string(),
   tailoredDocumentText: zod.string().nullish(),
   tailoredBullets: zod
@@ -753,6 +776,7 @@ export const UpdateResumeVersionResponse = zod.object({
   jobId: zod.number().nullish(),
   baseResumeVersionId: zod.number().nullish(),
   label: zod.string().nullish(),
+  templateId: zod.string().nullish(),
   status: zod.string(),
   tailoredDocumentText: zod.string().nullish(),
   tailoredBullets: zod
@@ -803,6 +827,7 @@ export const ApproveResumeVersionResponse = zod.object({
   jobId: zod.number().nullish(),
   baseResumeVersionId: zod.number().nullish(),
   label: zod.string().nullish(),
+  templateId: zod.string().nullish(),
   status: zod.string(),
   tailoredDocumentText: zod.string().nullish(),
   tailoredBullets: zod
@@ -846,6 +871,7 @@ export const RejectResumeVersionResponse = zod.object({
   jobId: zod.number().nullish(),
   baseResumeVersionId: zod.number().nullish(),
   label: zod.string().nullish(),
+  templateId: zod.string().nullish(),
   status: zod.string(),
   tailoredDocumentText: zod.string().nullish(),
   tailoredBullets: zod
