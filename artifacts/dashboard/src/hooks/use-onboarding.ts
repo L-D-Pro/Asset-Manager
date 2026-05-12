@@ -34,6 +34,10 @@ export function useOnboardingState() {
  return useQuery<OnboardingState>({
  queryKey: ONBOARDING_KEY,
  queryFn: () => apiGet("/onboarding/state"),
+ staleTime: 300_000,
+ refetchOnWindowFocus: false,
+ refetchOnReconnect: false,
+ refetchOnMount: false,
  });
 }
 

@@ -141,8 +141,8 @@ describe("callAI lineage propagation", () => {
     expect(failureInsert.runId).toBe(suppliedRunId);
     expect(failureInsert.eventType).toBe("ai_call_failed");
     expect(failureInsert.metadata.runId).toBe(suppliedRunId);
-    expect(failureInsert.metadata.attemptErrors).toEqual([
-      { modelName: "test/model-primary", error: "upstream timeout" },
+    expect(failureInsert.metadata.attemptErrors).toMatchObject([
+      { modelName: "test/model-primary", error: "upstream timeout", category: "timeout", attemptNumber: 1 },
     ]);
   });
 
@@ -218,8 +218,8 @@ describe("callAI lineage propagation", () => {
     expect(result.modelName).toBe("test/model-fallback");
     expect(openrouterCreate).toHaveBeenCalledTimes(2);
     const successInsert = insertValuesMock.mock.calls[0][0];
-    expect(successInsert.metadata.priorFailures).toEqual([
-      { modelName: "test/model-primary", error: "structured JSON required" },
+    expect(successInsert.metadata.priorFailures).toMatchObject([
+      { modelName: "test/model-primary", error: "structured JSON required", category: "content_contract", attemptNumber: 1 },
     ]);
   });
 

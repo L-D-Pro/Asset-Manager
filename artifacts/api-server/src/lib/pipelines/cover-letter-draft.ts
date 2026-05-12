@@ -27,6 +27,84 @@ interface CoverLetterResult {
   fullText?: string;
 }
 
+function extractAttemptSummary(error: unknown): string {
+  if (!error || typeof error !== "object" || !("attemptErrors" in error)) {
+    return "No model-attempt details were recorded.";
+  }
+  const attempts = (error as { attemptErrors?: unknown }).attemptErrors;
+  if (!Array.isArray(attempts) || attempts.length === 0) {
+    return "No model-attempt details were recorded.";
+  }
+  return attempts
+    .map((attempt) => {
+      const modelName = typeof (attempt as { modelName?: unknown }).modelName === "string"
+        ? (attempt as { modelName: string }).modelName
+        : "unknown-model";
+      const category = typeof (attempt as { category?: unknown }).category === "string"
+        ? (attempt as { category: string }).category
+        : "unknown";
+      const detail = typeof (attempt as { error?: unknown }).error === "string"
+        ? (attempt as { error: string }).error
+        : "unknown error";
+      return `${modelName}: ${category} (${detail})`;
+    })
+    .join(" | ");
+}
+
+const COVER_LETTER_JSON_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["subject", "paragraphs", "fullText"],
+  properties: {
+    subject: { type: "string", minLength: 6, maxLength: 180 },
+    fullText: { type: "string", minLength: 120, maxLength: 3000 },
+    paragraphs: {
+      type: "array",
+      minItems: 3,
+      maxItems: 6,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["text", "claimIds", "role", "jobKeywordsUsed", "companySourcesUsed", "gapNotes", "sourceMap"],
+        properties: {
+          text: { type: "string", minLength: 20, maxLength: 1200 },
+          claimIds: { type: "array", maxItems: 8, items: { type: "number" } },
+          role: { type: "string", enum: ["opening", "hook", "body", "closing"] },
+          jobKeywordsUsed: { type: "array", maxItems: 15, items: { type: "string" } },
+          companySourcesUsed: { type: "array", maxItems: 10, items: { type: "string" } },
+          gapNotes: { type: "array", maxItems: 8, items: { type: "string" } },
+          sourceMap: {
+            type: "object",
+            additionalProperties: false,
+            required: ["supportedPhrases", "sourceClaimIds"],
+            properties: {
+              supportedPhrases: { type: "array", maxItems: 10, items: { type: "string" } },
+              sourceClaimIds: { type: "array", maxItems: 8, items: { type: "number" } },
+            },
+          },
+        },
+      },
+    },
+  },
+} as const;
+
+const COVER_LETTER_STRUCTURED_OUTPUT_PARAMS = {
+  temperature: 0.2,
+  max_tokens: 3000,
+  timeoutMs: 45_000,
+  provider: {
+    require_parameters: true,
+  },
+  response_format: {
+    type: "json_schema",
+    json_schema: {
+      name: "cover_letter_plan",
+      strict: true,
+      schema: COVER_LETTER_JSON_SCHEMA,
+    },
+  },
+};
+
 const SYSTEM_PROMPT = `You are an expert career coach specializing in cover letters.
 Your task is to draft a professional cover letter using ONLY the provided claims as source material.
 
@@ -179,15 +257,46 @@ Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed
         ? `\n\n[SELF-CORRECTION — attempt ${attempt + 1} of ${MAX_RETRIES + 1}]\nYour previous output failed quality validation:\n${lastQualityViolation.violations.map((v) => `- ${v}`).join("\n")}\nFix ALL of these issues and regenerate the complete output.`
         : "";
 
-    lastResult = await callAI({
-      taskType: "cover_letter",
-      systemPrompt: augmentedSystemPrompt,
-      userPrompt:
-        `Draft a cover letter for this job:\n\n${jobContext}${resumeContext}\n\nStored job/company research (use only if present; do not use model memory):\n${researchContext || "No stored research available."}\n\nAvailable claims (use ONLY these IDs):\n${claimsContext}` +
-        correctionNote,
-      jobId: job.id,
-      modelOverride: options?.modelOverride,
-    });
+    try {
+      lastResult = await callAI({
+        taskType: "cover_letter",
+        systemPrompt: augmentedSystemPrompt,
+        userPrompt:
+          `Draft a cover letter for this job:\n\n${jobContext}${resumeContext}\n\nStored job/company research (use only if present; do not use model memory):\n${researchContext || "No stored research available."}\n\nAvailable claims (use ONLY these IDs):\n${claimsContext}` +
+          correctionNote,
+        jobId: job.id,
+        modelOverride: options?.modelOverride,
+        extraParams: COVER_LETTER_STRUCTURED_OUTPUT_PARAMS,
+        validateContent: (content) => {
+          const parsedCandidate = parseJsonResponse<CoverLetterResult>(content);
+          if (!parsedCandidate || !Array.isArray(parsedCandidate.paragraphs) || parsedCandidate.paragraphs.length === 0) {
+            throw new Error("Cover letter did not pass structured JSON validation.");
+          }
+        },
+      });
+    } catch (error) {
+      const [row] = await db
+        .insert(coverLetterVersionsTable)
+        .values({
+          jobId: job.id,
+          label: "AI drafted — generation failed",
+          status: "pending_approval",
+          runId:
+            error && typeof error === "object" && "runId" in error && typeof (error as { runId?: unknown }).runId === "string"
+              ? (error as { runId: string }).runId
+              : null,
+          eventLogId:
+            error && typeof error === "object" && "eventLogId" in error && typeof (error as { eventLogId?: unknown }).eventLogId === "number"
+              ? (error as { eventLogId: number }).eventLogId
+              : null,
+          claimIds: selectedClaims.map((claim) => claim.id),
+          annotatedParagraphs: [],
+          draftContent: "",
+          notes: `Cover letter generation failed after model fallback attempts. ${extractAttemptSummary(error)}`,
+        })
+        .returning();
+      return row!;
+    }
 
     parsed = parseJsonResponse<CoverLetterResult>(lastResult.content);
 

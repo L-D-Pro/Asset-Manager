@@ -74,6 +74,34 @@ describe("resume template rendering", () => {
     expect(rendered.validation.trimmedBulletCount).toBe(5);
   });
 
+  it("renders dated experience entries as headers with bullets underneath", () => {
+    const rendered = renderResumePlainText({
+      templateId: "software_developer",
+      documentText: "Candidate\ncandidate@example.com",
+      bullets: [
+        {
+          text: "Software Developer | Acme Corp | San Diego, CA | Jan 2021 - Present",
+          section: "experience",
+        },
+        {
+          text: "Built React workflows for 40 users.",
+          section: "experience",
+        },
+        {
+          text: "Data Engineer | Beta Co | Remote | Feb 2019 - Dec 2020",
+          section: "experience",
+        },
+        {
+          text: "Maintained ETL checks for 12 pipelines.",
+          section: "experience",
+        },
+      ],
+    });
+
+    expect(rendered.text).toContain("Software Developer | Acme Corp | San Diego, CA | Jan 2021 - Present\n- Built React workflows");
+    expect(rendered.text).toContain("Data Engineer | Beta Co | Remote | Feb 2019 - Dec 2020\n- Maintained ETL checks");
+  });
+
   it("normalizes raw markdown text without inventing content", () => {
     const stripped = stripMarkdownArtifacts("## Summary\n- **Led:** support for 10 users.");
 

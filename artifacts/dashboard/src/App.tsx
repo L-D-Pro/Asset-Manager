@@ -41,6 +41,7 @@ import AdminUsageLimitsPage from "@/pages/admin/usage-limits";
 import AdminDocsPage from "@/pages/admin/docs";
 import AdminUiShellPage from "@/pages/admin/ui-shell";
 import AdminBestPracticesPage from "@/pages/admin/best-practices";
+import AdminResetPage from "@/pages/admin/reset";
 import AiLearningPage from "@/pages/ai-learning";
 import TrendsPage from "@/pages/trends";
 import ResourcesPage from "@/pages/resources";
@@ -80,6 +81,9 @@ const queryClient = new QueryClient({
  }),
  defaultOptions: {
  queries: {
+ staleTime: 30_000,
+ refetchOnWindowFocus: false,
+ refetchOnReconnect: false,
  retry: (failureCount, error) => {
  if (hasHttpStatus(error, 401)) return false;
  return failureCount < 2;
@@ -137,6 +141,7 @@ function ProtectedRoutes() {
  <Route path="/admin/docs" element={<AdminDocsPage />} />
           <Route path="/admin/ui-shell" element={<AdminUiShellPage />} />
           <Route path="/admin/best-practices" element={<AdminBestPracticesPage />} />
+          <Route path="/admin/reset" element={<AdminResetPage />} />
           <Route path="/ai-learning" element={<AiLearningPage />} />
  <Route path="/trends" element={<TrendsPage />} />
  <Route path="/resources" element={<ResourcesPage />} />

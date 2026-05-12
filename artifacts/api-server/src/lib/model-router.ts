@@ -42,7 +42,7 @@ export interface SelectedModel {
 export async function selectModelForTask(
   taskScope: string,
 ): Promise<SelectedModel | null> {
-  const [primary] = await db
+  const activeInScope = await db
     .select()
     .from(aiModelConfigsTable)
     .where(
@@ -51,8 +51,9 @@ export async function selectModelForTask(
         eq(aiModelConfigsTable.isActive, true),
       ),
     )
-    .orderBy(aiModelConfigsTable.priority)
-    .limit(1);
+    .orderBy(aiModelConfigsTable.priority, aiModelConfigsTable.id);
+
+  const primary = selectPrimaryModel(activeInScope);
 
   if (primary) {
     logger.debug(
@@ -67,22 +68,11 @@ export async function selectModelForTask(
     "No active primary model for task scope, checking fallback chain",
   );
 
-  if (taskScope === "resume_tailoring") {
-    const seeded = await ensureResumeTailoringMvpChain();
-    if (seeded) {
-      logger.info(
-        { taskScope, modelId: seeded.id, modelName: seeded.modelName },
-        "Seeded MVP resume_tailoring model chain",
-      );
-      return seeded;
-    }
-  }
-
   const [inactive] = await db
     .select()
     .from(aiModelConfigsTable)
     .where(eq(aiModelConfigsTable.taskScope, taskScope))
-    .orderBy(aiModelConfigsTable.priority)
+    .orderBy(aiModelConfigsTable.priority, aiModelConfigsTable.id)
     .limit(1);
 
   if (inactive?.fallbackModelId != null) {
@@ -108,7 +98,7 @@ export async function selectModelForTask(
         eq(aiModelConfigsTable.isActive, true),
       ),
     )
-    .orderBy(aiModelConfigsTable.priority)
+    .orderBy(aiModelConfigsTable.priority, aiModelConfigsTable.id)
     .limit(1);
 
   if (defaultModel) {
@@ -123,70 +113,22 @@ export async function selectModelForTask(
   return null;
 }
 
-async function ensureResumeTailoringMvpChain(): Promise<SelectedModel | null> {
-  const recommended = [
-    { modelName: "openai/gpt-4.1-mini", priority: 0, maxTokens: 3600 },
-    { modelName: "google/gemini-2.5-flash-lite", priority: 1, maxTokens: 3600 },
-    { modelName: "deepseek/deepseek-v4-pro", priority: 2, maxTokens: 3600 },
-  ];
+function selectPrimaryModel(
+  rows: Array<typeof aiModelConfigsTable.$inferSelect>,
+): typeof aiModelConfigsTable.$inferSelect | null {
+  if (rows.length === 0) return null;
 
-  const rows: Array<typeof aiModelConfigsTable.$inferSelect> = [];
-  for (const config of recommended) {
-    const [existing] = await db
-      .select()
-      .from(aiModelConfigsTable)
-      .where(
-        and(
-          eq(aiModelConfigsTable.taskScope, "resume_tailoring"),
-          eq(aiModelConfigsTable.provider, "openrouter"),
-          eq(aiModelConfigsTable.modelName, config.modelName),
-        ),
-      )
-      .limit(1);
-
-    if (existing) {
-      const [updated] = await db
-        .update(aiModelConfigsTable)
-        .set({
-          isActive: true,
-          priority: config.priority,
-          maxTokens: config.maxTokens,
-          extraConfig: {
-            ...(existing.extraConfig && typeof existing.extraConfig === "object" && !Array.isArray(existing.extraConfig)
-              ? existing.extraConfig
-              : {}),
-            timeoutMs: 45_000,
-          },
-        })
-        .where(eq(aiModelConfigsTable.id, existing.id))
-        .returning();
-      rows.push(updated!);
-      continue;
-    }
-
-    const [created] = await db
-      .insert(aiModelConfigsTable)
-      .values({
-        taskScope: "resume_tailoring",
-        provider: "openrouter",
-        modelName: config.modelName,
-        isActive: true,
-        priority: config.priority,
-        maxTokens: config.maxTokens,
-        extraConfig: { timeoutMs: 45_000 },
-      })
-      .returning();
-    rows.push(created!);
-  }
-
-  for (let i = 0; i < rows.length; i += 1) {
-    await db
-      .update(aiModelConfigsTable)
-      .set({ fallbackModelId: rows[i + 1]?.id ?? null })
-      .where(eq(aiModelConfigsTable.id, rows[i]!.id));
-  }
-
-  return rows[0] ? toSelectedModel({ ...rows[0], fallbackModelId: rows[1]?.id ?? null }) : null;
+  // Prefer active roots in the fallback graph so fallback nodes cannot accidentally
+  // become primaries due to priority drift.
+  const fallbackTargets = new Set(
+    rows
+      .map((row) => row.fallbackModelId)
+      .filter((value): value is number => typeof value === "number"),
+  );
+  const rootCandidates = rows.filter((row) => !fallbackTargets.has(row.id));
+  const source = rootCandidates.length > 0 ? rootCandidates : rows;
+  source.sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0) || a.id - b.id);
+  return source[0] ?? null;
 }
 
 async function resolveFallbackChain(

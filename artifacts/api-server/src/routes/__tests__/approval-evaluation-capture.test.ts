@@ -46,7 +46,11 @@ vi.mock("@workspace/db", () => {
               status: "approved",
               tailoredDocumentText: null,
               tailoredBullets: [{ text: "Supported", claimIds: [1] }],
-              diffData: { templateValidation: { templateId: "software_developer" } },
+              diffData: {
+                templateValidation: { templateId: "software_developer" },
+                sourceValidation: { passed: true, validItemCount: 1 },
+                semanticValidation: { passed: true, sectionCounts: { summary: 1, experience: 4, education: 2, skills: 3 } },
+              },
               claimIds: [],
               fileUrl: null,
               rawContent: null,
@@ -121,6 +125,7 @@ describe("approval evaluation capture", () => {
                 diffData: {
                   templateValidation: { templateId: "software_developer" },
                   sourceValidation: { passed: true, validItemCount: 1 },
+                  semanticValidation: { passed: true, sectionCounts: { summary: 1, experience: 4, education: 2, skills: 3 } },
                 },
               },
             ];

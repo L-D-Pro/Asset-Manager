@@ -32,7 +32,7 @@ Rules:
 5. Use concise tags that improve job matching.
 6. Return 3-12 useful claims unless the source supports fewer.
 
-Return ONLY valid JSON with this exact structure:
+Prefer valid JSON with this exact structure:
 {
   "claims": [
     {
@@ -46,7 +46,13 @@ Return ONLY valid JSON with this exact structure:
       "isActive": true
     }
   ]
-}`;
+}
+
+If JSON is difficult for the model/provider, return one claim per line instead. Each line must still be a factual claim, not advice.`;
+
+const CLAIM_GENERATION_TIMEOUT_MS = 25_000;
+const CLAIM_GENERATION_MAX_TOKENS = 1_800;
+const CLAIM_GENERATION_MAX_ATTEMPTS = 1;
 
 export async function draftClaimsFromSource(
   input: DraftClaimsInput,
@@ -63,23 +69,27 @@ export async function draftClaimsFromSource(
   const { text: aiSourceText, truncated } = truncateForAi(combinedSource);
   const evidenceType = input.extractedText.trim() ? "document" : "self_attestation";
 
-  const result = await callAI({
-    taskType: "claim_generation",
-    systemPrompt: SYSTEM_PROMPT,
-    userPrompt:
-      `User instruction/context:\n${input.prompt.trim() || "Create factual claims from the provided source material."}\n\n` +
-      `Source text${truncated ? ` (truncated to ${MAX_AI_SOURCE_CHARS} characters)` : ""}:\n${aiSourceText}`,
+  const aiClaims = await draftClaimsWithAi({
+    aiSourceText,
+    truncated,
+    prompt: input.prompt,
+    evidenceType,
   });
+  const claims = aiClaims.length > 0
+    ? aiClaims
+    : draftClaimsDeterministically(aiSourceText, evidenceType);
 
-  const parsed = parseJsonResponse<{ claims?: unknown } | unknown[]>(result.content);
-  const rawClaims = Array.isArray(parsed) ? parsed : parsed?.claims;
-
-  if (!Array.isArray(rawClaims)) {
-    logger.warn({ raw: result.content.slice(0, 500) }, "Claim generation AI response did not include a claims array");
-    throw new Error("AI did not return valid claim drafts.");
+  if (aiClaims.length === 0) {
+    logger.warn(
+      {
+        sourceTextChars: input.sourceText.length,
+        extractedTextChars: input.extractedText.length,
+        filename: input.filename,
+      },
+      "Claim generation used deterministic source-text fallback",
+    );
   }
 
-  const claims = rawClaims.map((raw) => normalizeDraftClaim(raw, evidenceType));
   const parsedClaims = CreateClaimBody.array().safeParse(claims);
 
   if (!parsedClaims.success || parsedClaims.data.length === 0) {
@@ -100,6 +110,183 @@ export async function draftClaimsFromSource(
       filename: input.filename,
     },
   };
+}
+
+async function draftClaimsWithAi(args: {
+  aiSourceText: string;
+  truncated: boolean;
+  prompt: string;
+  evidenceType: "self_attestation" | "document";
+}): Promise<Array<Record<string, unknown>>> {
+  try {
+    const result = await callAI({
+      taskType: "claim_generation",
+      systemPrompt: SYSTEM_PROMPT,
+      userPrompt:
+        `User instruction/context:\n${args.prompt.trim() || "Create factual claims from the provided source material."}\n\n` +
+        `Source text${args.truncated ? ` (truncated to ${MAX_AI_SOURCE_CHARS} characters)` : ""}:\n${args.aiSourceText}`,
+      extraParams: {
+        maxAttempts: CLAIM_GENERATION_MAX_ATTEMPTS,
+        timeoutMs: CLAIM_GENERATION_TIMEOUT_MS,
+        max_tokens: CLAIM_GENERATION_MAX_TOKENS,
+        temperature: 0.2,
+      },
+      validateContent: (content) => {
+        if (!content.trim()) {
+          throw new Error("empty_model_content: claim generation returned no text");
+        }
+      },
+    });
+
+    const rawClaims = parseAiClaimDrafts(result.content);
+    if (rawClaims.length === 0) {
+      logger.warn(
+        {
+          raw: result.content.slice(0, 500),
+          modelName: result.modelName,
+          finishReason: result.finishReason,
+        },
+        "Claim generation AI response did not include parseable claim drafts",
+      );
+      return [];
+    }
+
+    return rawClaims.map((raw) => normalizeDraftClaim(raw, args.evidenceType));
+  } catch (error) {
+    logger.warn(
+      {
+        error: error instanceof Error ? error.message : String(error),
+      },
+      "Claim generation AI path failed; falling back to deterministic claim drafts",
+    );
+    return [];
+  }
+}
+
+function parseAiClaimDrafts(content: string): unknown[] {
+  const parsed = parseJsonResponse<{ claims?: unknown } | unknown[]>(content);
+  const rawClaims = Array.isArray(parsed) ? parsed : parsed?.claims;
+  if (Array.isArray(rawClaims)) return rawClaims;
+  return parseLineOrientedClaimDrafts(content);
+}
+
+function parseLineOrientedClaimDrafts(content: string): unknown[] {
+  const lines = content
+    .split(/\r?\n/)
+    .map((line) => sanitizeClaimText(line))
+    .filter((line) => isUsefulClaimLine(line))
+    .slice(0, 12);
+
+  return lines.map((line) => ({
+    summary: line,
+    evidence: line,
+    evidenceType: "self_attestation",
+    phrasingVariants: [],
+    disallowedImplications: [],
+    domain: inferDomain(line),
+    applicableTags: inferTags(line),
+    isActive: true,
+  }));
+}
+
+function draftClaimsDeterministically(
+  sourceText: string,
+  evidenceType: "self_attestation" | "document",
+): Array<Record<string, unknown>> {
+  const lines = sourceText
+    .split(/\r?\n/)
+    .flatMap((line) => line.split(/(?<=\.)\s+(?=[A-Z])/))
+    .map((line) => sanitizeClaimText(line))
+    .filter((line) => isUsefulClaimLine(line))
+    .slice(0, 12);
+
+  const uniqueLines = Array.from(new Set(lines));
+
+  return uniqueLines.map((line) => ({
+    summary: line,
+    evidence: line,
+    evidenceType,
+    phrasingVariants: [],
+    disallowedImplications: inferDisallowedImplications(line),
+    domain: inferDomain(line),
+    applicableTags: inferTags(line),
+    isActive: true,
+  }));
+}
+
+function sanitizeClaimText(value: string): string {
+  return value
+    .replace(/^```[a-z]*\s*/i, "")
+    .replace(/```$/i, "")
+    .replace(/^\s*[-*•]\s*/, "")
+    .replace(/^\s*\d+[\).]\s*/, "")
+    .replace(/^\s*["']|["']\s*$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isUsefulClaimLine(line: string): boolean {
+  if (line.length < 24 || line.length > 360) return false;
+  if (/^(summary|experience|education|skills|projects|claims?|drafts?)$/i.test(line)) return false;
+  if (/^(highlight|include|mention|emphasize|showcase|focus on)\b/i.test(line)) return false;
+  if (!/[a-z]/i.test(line)) return false;
+  return true;
+}
+
+function inferDomain(text: string): string | null {
+  const lower = text.toLowerCase();
+  if (/\b(ai|llm|automation|generative)\b/.test(lower)) return "ai";
+  if (/\b(lms|scorm|xapi|storyline|captivate|instructional|learning|training)\b/.test(lower)) {
+    return "learning_development";
+  }
+  if (/\b(cybersecurity|security|phishing|hipaa|compliance)\b/.test(lower)) return "compliance";
+  if (/\b(project|portfolio|platform|application|cloud)\b/.test(lower)) return "projects";
+  return null;
+}
+
+function inferTags(text: string): string[] {
+  const lower = text.toLowerCase();
+  const tags = new Set<string>();
+  const knownTags = [
+    "instructional design",
+    "learning development",
+    "addie",
+    "sam",
+    "agile",
+    "section 508",
+    "wcag",
+    "lms",
+    "scorm",
+    "xapi",
+    "articulate storyline",
+    "captivate",
+    "ai",
+    "llm",
+    "automation",
+    "cybersecurity",
+    "hipaa",
+    "compliance",
+    "moodle",
+    "canvas",
+    "healthcare",
+  ];
+
+  for (const tag of knownTags) {
+    if (lower.includes(tag)) tags.add(tag);
+  }
+
+  return [...tags].slice(0, 10);
+}
+
+function inferDisallowedImplications(text: string): string[] {
+  const disallowed: string[] = [];
+  if (!/\b\d+%|\b\d+x|\$\d+|\b\d+\s*(hours|days|weeks|months|learners|users)\b/i.test(text)) {
+    disallowed.push("Do not add unsupported metrics or quantified outcomes.");
+  }
+  if (!/\bcertified|certification|certificate\b/i.test(text)) {
+    disallowed.push("Do not imply an unstated credential or certification.");
+  }
+  return disallowed;
 }
 
 function normalizeDraftClaim(

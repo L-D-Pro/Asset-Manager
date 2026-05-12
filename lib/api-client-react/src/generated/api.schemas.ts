@@ -13,6 +13,44 @@ export interface ErrorResponse {
   error: string;
 }
 
+export interface AppTestResetTableSummary {
+  table: string;
+  rowsBefore: number;
+}
+
+export type AppTestResetSummaryMode =
+  (typeof AppTestResetSummaryMode)[keyof typeof AppTestResetSummaryMode];
+
+export const AppTestResetSummaryMode = {
+  app_test_data: "app_test_data",
+} as const;
+
+export interface AppTestResetSummary {
+  mode: AppTestResetSummaryMode;
+  resetsIdentity: boolean;
+  preservedTables: string[];
+  resetTables: AppTestResetTableSummary[];
+  missingTables: string[];
+  totalRowsBefore: number;
+}
+
+export type AppTestResetBodyConfirmation =
+  (typeof AppTestResetBodyConfirmation)[keyof typeof AppTestResetBodyConfirmation];
+
+export const AppTestResetBodyConfirmation = {
+  RESET: "RESET",
+  RESET_APP: "RESET APP",
+} as const;
+
+export interface AppTestResetBody {
+  confirmation: AppTestResetBodyConfirmation;
+}
+
+export type AppTestResetResult = AppTestResetSummary & {
+  resetAt: string;
+  resetByAdminId: number;
+};
+
 export interface BaseResumeVersion {
   id: number;
   /** @nullable */
@@ -1941,6 +1979,19 @@ export type ListFeedbackSignalsParams = {
 export type ListAiModelConfigsParams = {
   taskScope?: string;
   isActive?: boolean;
+};
+
+export type NukeJobAttempts200 = {
+  jobId: number;
+  deletedResumeVersions: number;
+  deletedCoverLetterVersions: number;
+  deletedApplications: number;
+  deletedFeedbackSignals: number;
+  deletedEventLogs: number;
+  deletedEvaluations: number;
+  deletedTrainingExamples: number;
+  scrubbedWizardSessions: number;
+  deletedJob: boolean;
 };
 
 export type ListAiPromptVersionsParams = {

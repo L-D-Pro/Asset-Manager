@@ -19,6 +19,7 @@ import {
 } from "@workspace/api-zod";
 import { validateLineage } from "../lib/lineage";
 import { generateCoverLetterDocx } from "../lib/docx-export";
+import { scrubWizardStateReferences } from "../lib/wizard-state-cleanup";
 
 const router: IRouter = Router();
 
@@ -101,6 +102,7 @@ router.delete("/cover-letter-versions/:id", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Cover letter version not found" });
     return;
   }
+  await scrubWizardStateReferences({ coverLetterVersionIds: [params.data.id] });
   res.sendStatus(204);
 });
 

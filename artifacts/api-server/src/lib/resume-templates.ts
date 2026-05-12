@@ -182,6 +182,26 @@ function headingToSection(line: string): ResumeSectionKey | null {
   return normalizeResumeSection(stripped);
 }
 
+function sanitizeAscii(value: string): string {
+  return value.replace(/[^\x09\x0A\x0D\x20-\x7E]/g, " ");
+}
+
+function hasDateSignal(text: string): boolean {
+  return /\b(19|20)\d{2}\b/.test(text) || /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)\b/i.test(text);
+}
+
+function looksLikeExperienceHeader(text: string): boolean {
+  return (
+    hasDateSignal(text) &&
+    (/\s\|\s/.test(text) || /\s-\s/.test(text) || /\bat\b/i.test(text)) &&
+    /(designer|developer|engineer|manager|lead|specialist|analyst|assistant|director|consultant|architect|administrator)/i.test(text)
+  );
+}
+
+function looksLikeProjectHeader(text: string): boolean {
+  return /^[^:]{2,80}:\s+\S/.test(text);
+}
+
 function extractSections(text: string): {
   headerLines: string[];
   sections: Partial<Record<ResumeSectionKey, string[]>>;
@@ -247,7 +267,8 @@ function scoreBullet(bullet: TemplateBullet): number {
   const metricBoost = /\b\d+(?:[.,]\d+)?%?|\b(?:one|two|three|four|five|six|seven|eight|nine|ten)\b/i.test(text)
     ? 2
     : 0;
-  return claimCount * 5 + keywordCount * 2 + metricBoost + Math.min(text.length / 120, 2);
+  const headerBoost = looksLikeExperienceHeader(text) ? 10 : 0;
+  return headerBoost + claimCount * 5 + keywordCount * 2 + metricBoost + Math.min(text.length / 120, 2);
 }
 
 function chooseBulletsForTemplate(args: {
@@ -270,18 +291,46 @@ function chooseBulletsForTemplate(args: {
 
   const selected: TemplateBullet[] = [];
   for (const section of args.template.sectionOrder) {
-    const bullets = (sectioned[section] ?? [])
-      .filter((bullet) => normalizeLine(bullet.text))
-      .sort((a, b) => scoreBullet(b) - scoreBullet(a));
+    const bullets = (sectioned[section] ?? []).filter((bullet) => normalizeLine(bullet.text));
     selected.push(...bullets);
   }
 
-  const kept = selected.slice(0, args.template.lengthPolicy.maxBulletLines);
+  const kept = selected.length <= args.template.lengthPolicy.maxBulletLines
+    ? selected
+    : selected
+        .map((bullet, index) => ({ bullet, index, score: scoreBullet(bullet) }))
+        .sort((a, b) => b.score - a.score || a.index - b.index)
+        .slice(0, args.template.lengthPolicy.maxBulletLines)
+        .sort((a, b) => a.index - b.index)
+        .map((item) => item.bullet);
   return {
     bullets: kept,
     omittedSections: Array.from(omittedSections),
     trimmedBulletCount: Math.max(0, selected.length - kept.length),
   };
+}
+
+function renderSectionLines(section: ResumeSectionKey, lines: string[]): string[] {
+  if (section === "summary") return [lines.join(" ")];
+
+  if (section === "experience") {
+    const output: string[] = [];
+    for (const line of lines) {
+      if (looksLikeExperienceHeader(line)) {
+        if (output.length > 0) output.push("");
+        output.push(line);
+      } else {
+        output.push(`- ${line}`);
+      }
+    }
+    return output;
+  }
+
+  if (section === "project") {
+    return lines.map((line) => (looksLikeProjectHeader(line) ? line : `- ${line}`));
+  }
+
+  return lines.map((line) => `- ${line}`);
 }
 
 export function renderResumePlainText(args: {
@@ -321,6 +370,9 @@ export function renderResumePlainText(args: {
     if (sectionLines.length === 0) continue;
 
     output.push(KNOWN_SECTION_LABELS[section]);
+    output.push(...renderSectionLines(section, sectionLines));
+    output.push("");
+    continue;
     if (section === "summary") {
       output.push(sectionLines.join(" "));
     } else {
@@ -329,7 +381,7 @@ export function renderResumePlainText(args: {
     output.push("");
   }
 
-  const text = output.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  const text = sanitizeAscii(output.join("\n").replace(/\n{3,}/g, "\n\n").trim());
   return {
     text,
     validation: {

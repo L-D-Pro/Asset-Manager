@@ -10,11 +10,13 @@ import {
 } from "@workspace/api-zod";
 import type { JobOpsRequest } from "../lib/http-types";
 import { awardXp } from "../lib/gamification";
+import { scrubWizardStatesForDeletedEntities } from "../lib/wizard-state-cleanup";
 
 const router: IRouter = Router();
 
 router.get("/wizard-sessions", async (req: JobOpsRequest, res): Promise<void> => {
   const userId = req.session.adminId!;
+  await scrubWizardStatesForDeletedEntities();
 
   const sessions = await db
     .select()

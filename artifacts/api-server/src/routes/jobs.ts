@@ -48,6 +48,7 @@ import { runJobResearchPipeline } from "../lib/pipelines/job-research";
 import { runGapAnalysisPipeline } from "../lib/pipelines/gap-analysis";
 import { mintRunId } from "../lib/lineage";
 import { awardXp } from "../lib/gamification";
+import { nukeJobAttemptData, scrubWizardStateReferences } from "../lib/wizard-state-cleanup";
 import { z } from "zod/v4";
 
 const router: IRouter = Router();
@@ -152,15 +153,54 @@ router.delete("/jobs/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [row] = await db
-    .delete(jobsTable)
-    .where(eq(jobsTable.id, params.data.id))
-    .returning();
+
+  const resumeRows = await db
+    .select({ id: resumeVersionsTable.id })
+    .from(resumeVersionsTable)
+    .where(eq(resumeVersionsTable.jobId, params.data.id));
+  const coverRows = await db
+    .select({ id: coverLetterVersionsTable.id })
+    .from(coverLetterVersionsTable)
+    .where(eq(coverLetterVersionsTable.jobId, params.data.id));
+
+  const [row] = await db.delete(jobsTable).where(eq(jobsTable.id, params.data.id)).returning();
   if (!row) {
     res.status(404).json({ error: "Job not found" });
     return;
   }
+
+  await scrubWizardStateReferences({
+    jobIds: [params.data.id],
+    resumeVersionIds: resumeRows.map((item) => item.id),
+    coverLetterVersionIds: coverRows.map((item) => item.id),
+  });
+
   res.sendStatus(204);
+});
+
+router.post("/jobs/:id/nuke-attempts", async (req: JobOpsRequest, res): Promise<void> => {
+  const params = DeleteJobParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const [job] = await db
+    .select({ id: jobsTable.id })
+    .from(jobsTable)
+    .where(eq(jobsTable.id, params.data.id));
+  if (!job) {
+    res.status(404).json({ error: "Job not found" });
+    return;
+  }
+
+  const result = await nukeJobAttemptData(params.data.id);
+  req.log.info({ jobId: params.data.id, result }, "Job-scoped nuke cleanup completed");
+
+  res.json({
+    jobId: params.data.id,
+    ...result,
+  });
 });
 
 router.get("/jobs/:id/score", async (req, res): Promise<void> => {
@@ -389,7 +429,7 @@ router.post("/jobs/:id/tailor", async (req: JobOpsRequest, res): Promise<void> =
     .from(claimsTable)
     .where(eq(claimsTable.isActive, true));
 
-  req.log.info({ jobId: job.id }, "Starting resume tailor pipeline");
+  req.log.info({ jobId: job.id }, "Received resume tailor request");
 
   try {
     const resumeVersion = await runResumeTailorPipeline(
@@ -407,6 +447,7 @@ router.post("/jobs/:id/tailor", async (req: JobOpsRequest, res): Promise<void> =
     res.status(201).json(GetResumeVersionResponse.parse(resumeVersion));
   } catch (error) {
     if (error instanceof MissingBaseResumeError) {
+      req.log.warn({ jobId: job.id }, "Resume tailoring blocked: missing current base resume");
       res.status(400).json({ error: error.message });
       return;
     }

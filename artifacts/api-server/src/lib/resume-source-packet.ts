@@ -13,6 +13,7 @@ export interface BaseResumeSource {
   section: ResumeSectionKey;
   sourceId: string;
   text: string;
+  kind: "header" | "bullet" | "detail";
 }
 
 export interface ResumeSourcePacket {
@@ -39,9 +40,43 @@ export interface ResumeTailoringPlanItem {
   gapNotes?: unknown;
 }
 
+interface HybridResumeEvidenceMap {
+  [lineKey: string]: unknown;
+}
+
+interface HybridResumeLineItem {
+  text?: unknown;
+  sourceRefs?: unknown;
+  jobKeywordsUsed?: unknown;
+  gapNotes?: unknown;
+  confidence?: unknown;
+}
+
+interface HybridResumeExperienceEntry {
+  title?: unknown;
+  company?: unknown;
+  location?: unknown;
+  dateRange?: unknown;
+  sourceRefs?: unknown;
+  bullets?: unknown;
+}
+
+interface HybridResumeContent {
+  summary?: unknown;
+  experienceEntries?: unknown;
+  projects?: unknown;
+  education?: unknown;
+  coursework?: unknown;
+  involvement?: unknown;
+  skills?: unknown;
+}
+
 export interface ResumeTailoringPlan {
   sectionItems?: ResumeTailoringPlanItem[];
   summary?: unknown;
+  strategy?: unknown;
+  content?: HybridResumeContent;
+  evidence?: HybridResumeEvidenceMap;
 }
 
 export interface ValidatedResumeItem extends TemplateBullet {
@@ -72,14 +107,45 @@ export interface ResumeSourceValidation {
   }>;
 }
 
-const MAX_BASE_SOURCE_CHARS = 700;
-const MAX_BASE_SOURCES = 120;
+export interface PlainTextResumeParseDiagnostics {
+  rawLineCount: number;
+  parsedLineCount: number;
+  validSourceTagCount: number;
+  invalidSourceTagCount: number;
+  sourceLessLineCount: number;
+  sectionCounts: Partial<Record<ResumeSectionKey, number>>;
+}
+
+const MAX_BASE_SOURCE_CHARS = 420;
+const MAX_BASE_SOURCES = 70;
+const MAX_PROMPT_BASE_SOURCES = 45;
+const MAX_PROMPT_CLAIMS = 18;
+
+function sanitizeAscii(value: string): string {
+  return value.replace(/[^\x09\x0A\x0D\x20-\x7E]/g, " ");
+}
 
 function cleanSourceLine(value: string): string {
-  return stripMarkdownArtifacts(value)
-    .text.replace(/^[-*•]\s*/u, "")
-    .replace(/\s+/g, " ")
-    .trim();
+  return sanitizeAscii(
+    stripMarkdownArtifacts(value)
+      .text.replace(/^[-*•]\s*/u, "")
+      .replace(/\s+/g, " ")
+      .trim(),
+  );
+}
+
+function truncate(value: string, maxChars: number): string {
+  if (value.length <= maxChars) return value;
+  return `${value.slice(0, maxChars - 1).trim()}...`;
+}
+
+function cleanPromptText(value: string, maxChars: number): string {
+  return truncate(
+    sanitizeAscii(value)
+      .replace(/\s+/g, " ")
+      .trim(),
+    maxChars,
+  );
 }
 
 function headingToSection(line: string): ResumeSectionKey | null {
@@ -90,6 +156,25 @@ function headingToSection(line: string): ResumeSectionKey | null {
   const section = normalizeResumeSection(stripped);
   if (section) return section;
   return /^[A-Z][A-Z0-9 &/.-]{2,}$/.test(stripped) ? null : null;
+}
+
+function hasDateSignal(text: string): boolean {
+  return /\b(19|20)\d{2}\b/.test(text) || /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)\b/i.test(text);
+}
+
+function looksLikeExperienceHeader(text: string): boolean {
+  return (
+    hasDateSignal(text) &&
+    (/\s\|\s/.test(text) || /\s-\s/.test(text) || /\bat\b/i.test(text)) &&
+    /(designer|developer|engineer|manager|lead|specialist|analyst|assistant|director|consultant|architect|administrator)/i.test(text)
+  );
+}
+
+function classifySourceLine(section: ResumeSectionKey, text: string): BaseResumeSource["kind"] {
+  if (section === "experience" && looksLikeExperienceHeader(text)) return "header";
+  if (/^[-*•]\s*/u.test(text)) return "bullet";
+  if (section === "project" && /^[^:]{2,80}:\s+\S/.test(text)) return "header";
+  return "detail";
 }
 
 export function parseBaseResumeSources(baseResumeText: string): BaseResumeSource[] {
@@ -124,6 +209,7 @@ export function parseBaseResumeSources(baseResumeText: string): BaseResumeSource
       section: currentSection,
       sourceId,
       text: text.slice(0, MAX_BASE_SOURCE_CHARS),
+      kind: classifySourceLine(currentSection, line),
     });
 
     if (sources.length >= MAX_BASE_SOURCES) break;
@@ -158,19 +244,25 @@ export function buildResumeSourcePacket(args: {
 export function formatResumeSourcePacketForPrompt(packet: ResumeSourcePacket): string {
   const claims = packet.claims.length > 0
     ? packet.claims
+        .slice(0, MAX_PROMPT_CLAIMS)
         .map((claim) => {
-          const variants = claim.phrasingVariants.length > 0 ? ` Variants: ${claim.phrasingVariants.join(" | ")}.` : "";
-          const tags = claim.applicableTags.length > 0 ? ` Tags: ${claim.applicableTags.join(", ")}.` : "";
-          const disallowed = claim.disallowedImplications.length > 0
-            ? ` Disallowed implications: ${claim.disallowedImplications.join("; ")}.`
+          const variants = claim.phrasingVariants.length > 0
+            ? ` Variants: ${claim.phrasingVariants.slice(0, 3).map((variant) => cleanPromptText(variant, 120)).join(" | ")}.`
             : "";
-          return `${claim.ref} ${claim.summary}${claim.evidence ? ` Evidence: ${claim.evidence}.` : ""}${variants}${tags}${disallowed}`;
+          const tags = claim.applicableTags.length > 0
+            ? ` Tags: ${claim.applicableTags.slice(0, 6).map((tag) => cleanPromptText(tag, 40)).join(", ")}.`
+            : "";
+          const disallowed = claim.disallowedImplications.length > 0
+            ? ` Disallowed implications: ${claim.disallowedImplications.slice(0, 4).map((item) => cleanPromptText(item, 80)).join("; ")}.`
+            : "";
+          return `${claim.ref} ${cleanPromptText(claim.summary, 260)}${claim.evidence ? ` Evidence: ${cleanPromptText(claim.evidence, 240)}.` : ""}${variants}${tags}${disallowed}`;
         })
         .join("\n")
     : "No selected claims. Use base resume sources only and add gap notes for unsupported job requirements.";
 
   const base = packet.baseSources
-    .map((source) => `${source.ref} [${source.section}] ${source.text}`)
+    .slice(0, MAX_PROMPT_BASE_SOURCES)
+    .map((source) => `${source.ref} [${source.section}:${source.kind}] ${source.text}`)
     .join("\n");
 
   return [
@@ -187,24 +279,235 @@ export function formatResumeSourcePacketForPrompt(packet: ResumeSourcePacket): s
 
 function stringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
-  return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0).map((item) => item.trim());
+  return value
+    .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+    .map((item) => item.trim());
+}
+
+function looksLikeDirectiveText(value: string): boolean {
+  return /^(highlight|emphasize|include|list|showcase|stress|demonstrate|detail|note|mention|add|outline)\b/i.test(value.trim());
+}
+
+function extractSourceTags(line: string): { text: string; sourceRefs: string[]; invalidTagCount: number } {
+  const sourceRefs: string[] = [];
+  let invalidTagCount = 0;
+  const text = line.replace(/\[src:([^\]]+)\]/gi, (_match, rawRefs: string) => {
+    const refs = String(rawRefs)
+      .split(/[,\s]+/g)
+      .map((ref) => ref.trim())
+      .filter(Boolean);
+    for (const ref of refs) {
+      if (/^claim:\d+$/i.test(ref)) {
+        sourceRefs.push(ref.toLowerCase());
+      } else if (/^base:[a-z_]+:b\d+$/i.test(ref)) {
+        sourceRefs.push(ref.toLowerCase());
+      } else {
+        invalidTagCount++;
+      }
+    }
+    return "";
+  });
+
+  return {
+    text: cleanSourceLine(text),
+    sourceRefs: [...new Set(sourceRefs)],
+    invalidTagCount,
+  };
+}
+
+export function parsePlainTextResumeDraft(
+  content: string,
+  packet: ResumeSourcePacket,
+): { items: ValidatedResumeItem[]; validation: ResumeSourceValidation; diagnostics: PlainTextResumeParseDiagnostics } {
+  const stripped = stripMarkdownArtifacts(sanitizeAscii(content)).text;
+  const lines = stripped.split(/\r?\n/);
+  const sectionCounts: Partial<Record<ResumeSectionKey, number>> = {};
+  const sectionItems: ResumeTailoringPlanItem[] = [];
+  let currentSection: ResumeSectionKey | null = null;
+  let sawSection = false;
+  let rawLineCount = 0;
+  let validSourceTagCount = 0;
+  let invalidSourceTagCount = 0;
+  let sourceLessLineCount = 0;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    rawLineCount++;
+
+    const withoutTag = line.replace(/\[src:[^\]]+\]/gi, "").trim();
+    const section = headingToSection(withoutTag);
+    const looksLikeUnknownHeading = /^[A-Z][A-Z0-9 &/.-]{2,}$/.test(withoutTag.replace(/[:\s]+$/g, ""));
+    if (section) {
+      currentSection = section;
+      sawSection = true;
+      continue;
+    }
+    if (looksLikeUnknownHeading && sawSection) {
+      currentSection = null;
+      continue;
+    }
+    if (!currentSection) continue;
+
+    const extracted = extractSourceTags(line);
+    invalidSourceTagCount += extracted.invalidTagCount;
+    validSourceTagCount += extracted.sourceRefs.length;
+    if (extracted.sourceRefs.length === 0) {
+      sourceLessLineCount++;
+    }
+    if (!extracted.text || extracted.text.length < 8) continue;
+
+    sectionCounts[currentSection] = (sectionCounts[currentSection] ?? 0) + 1;
+    sectionItems.push({
+      section: currentSection,
+      text: extracted.text,
+      sourceRefs: extracted.sourceRefs,
+      jobKeywordsUsed: [],
+      gapNotes: [],
+    });
+  }
+
+  const result = validateResumeTailoringPlan({ sectionItems, summary: "plain_text_v1" }, packet);
+  return {
+    ...result,
+    diagnostics: {
+      rawLineCount,
+      parsedLineCount: sectionItems.length,
+      validSourceTagCount,
+      invalidSourceTagCount,
+      sourceLessLineCount,
+      sectionCounts,
+    },
+  };
+}
+
+function toResumePlanItem(args: {
+  section: ResumeSectionKey;
+  text: string;
+  sourceRefs?: unknown;
+  jobKeywordsUsed?: unknown;
+  gapNotes?: unknown;
+}): ResumeTailoringPlanItem {
+  return {
+    section: args.section,
+    text: args.text,
+    sourceRefs: stringArray(args.sourceRefs),
+    jobKeywordsUsed: stringArray(args.jobKeywordsUsed),
+    gapNotes: stringArray(args.gapNotes),
+  };
+}
+
+function experienceHeaderFromEntry(entry: HybridResumeExperienceEntry): string {
+  const title = typeof entry.title === "string" ? cleanSourceLine(entry.title) : "";
+  const company = typeof entry.company === "string" ? cleanSourceLine(entry.company) : "";
+  const location = typeof entry.location === "string" ? cleanSourceLine(entry.location) : "";
+  const dateRange = typeof entry.dateRange === "string" ? cleanSourceLine(entry.dateRange) : "";
+  const parts = [title, company, location, dateRange].filter((part) => part.length > 0);
+  return parts.join(" | ");
+}
+
+function rawTextList(value: unknown): Array<{
+  text: string;
+  sourceRefs?: unknown;
+  jobKeywordsUsed?: unknown;
+  gapNotes?: unknown;
+}> {
+  if (typeof value === "string") {
+    return [{ text: cleanSourceLine(value) }];
+  }
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (typeof item === "string") {
+        return { text: cleanSourceLine(item) };
+      }
+      if (!item || typeof item !== "object" || Array.isArray(item)) return null;
+      const candidate = item as HybridResumeLineItem;
+      const text = typeof candidate.text === "string" ? cleanSourceLine(candidate.text) : "";
+      if (!text) return null;
+      return {
+        text,
+        sourceRefs: candidate.sourceRefs,
+        jobKeywordsUsed: candidate.jobKeywordsUsed,
+        gapNotes: candidate.gapNotes,
+      };
+    })
+    .filter((item): item is { text: string; sourceRefs?: unknown; jobKeywordsUsed?: unknown; gapNotes?: unknown } => item != null && item.text.length > 0);
+}
+
+function extractHybridPlanItems(plan: ResumeTailoringPlan): ResumeTailoringPlanItem[] {
+  const content = plan.content;
+  if (!content || typeof content !== "object" || Array.isArray(content)) return [];
+
+  const items: ResumeTailoringPlanItem[] = [];
+  for (const line of rawTextList(content.summary)) {
+    items.push(toResumePlanItem({ section: "summary", ...line }));
+  }
+
+  const experienceEntries = Array.isArray(content.experienceEntries) ? (content.experienceEntries as HybridResumeExperienceEntry[]) : [];
+  for (const entry of experienceEntries) {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) continue;
+    const header = experienceHeaderFromEntry(entry);
+    if (header.length > 0) {
+      items.push(
+        toResumePlanItem({
+          section: "experience",
+          text: header,
+          sourceRefs: entry.sourceRefs,
+        }),
+      );
+    }
+    const bullets = Array.isArray(entry.bullets) ? entry.bullets : [];
+    for (const bullet of rawTextList(bullets)) {
+      items.push(toResumePlanItem({ section: "experience", ...bullet }));
+    }
+  }
+
+  for (const line of rawTextList(content.projects)) {
+    items.push(toResumePlanItem({ section: "project", ...line }));
+  }
+  for (const line of rawTextList(content.education)) {
+    items.push(toResumePlanItem({ section: "education", ...line }));
+  }
+  for (const line of rawTextList(content.coursework)) {
+    items.push(toResumePlanItem({ section: "coursework", ...line }));
+  }
+  for (const line of rawTextList(content.involvement)) {
+    items.push(toResumePlanItem({ section: "involvement", ...line }));
+  }
+  for (const line of rawTextList(content.skills)) {
+    items.push(toResumePlanItem({ section: "skills", ...line }));
+  }
+
+  return items;
 }
 
 export function validateResumeTailoringPlan(
   plan: ResumeTailoringPlan | null,
   packet: ResumeSourcePacket,
 ): { items: ValidatedResumeItem[]; validation: ResumeSourceValidation } {
+  const safePlan = plan ?? {};
   const claimRefs = new Map(packet.claims.map((claim) => [claim.ref, claim.id]));
   const baseRefs = new Set(packet.baseSources.map((source) => source.ref));
   const allowedSections = new Set(packet.allowedSections);
-  const rawItems = Array.isArray(plan?.sectionItems) ? plan!.sectionItems : [];
+  const hybridItems = extractHybridPlanItems(safePlan);
+  const rawItems =
+    Array.isArray(safePlan.sectionItems) && safePlan.sectionItems.length > 0
+      ? safePlan.sectionItems
+      : hybridItems;
   const items: ValidatedResumeItem[] = [];
   const invalidItems: ResumeSourceValidation["invalidItems"] = [];
+  const evidenceMap =
+    safePlan.evidence && typeof safePlan.evidence === "object" && !Array.isArray(safePlan.evidence)
+      ? (safePlan.evidence as HybridResumeEvidenceMap)
+      : {};
 
   for (const raw of rawItems) {
     const text = typeof raw.text === "string" ? cleanSourceLine(raw.text) : "";
     const section = normalizeResumeSection(raw.section) ?? null;
-    const sourceRefs = stringArray(raw.sourceRefs);
+    const sourceRefsFromRaw = stringArray(raw.sourceRefs);
+    const evidenceRefs = stringArray(evidenceMap[text]);
+    const sourceRefs = sourceRefsFromRaw.length > 0 ? sourceRefsFromRaw : evidenceRefs;
     const validClaimIds: number[] = [];
     const validBaseRefs: string[] = [];
 
@@ -221,8 +524,16 @@ export function validateResumeTailoringPlan(
       invalidItems.push({ text: "", reason: "Missing text", sourceRefs });
       continue;
     }
+    if (looksLikeDirectiveText(text)) {
+      invalidItems.push({ text, reason: "Directive-style text is not renderable resume content", sourceRefs });
+      continue;
+    }
     if (!section || !allowedSections.has(section)) {
-      invalidItems.push({ text, reason: `Section is not allowed by selected template: ${String(raw.section ?? "")}`, sourceRefs });
+      invalidItems.push({
+        text,
+        reason: `Section is not allowed by selected template: ${String(raw.section ?? "")}`,
+        sourceRefs,
+      });
       continue;
     }
     if (validClaimIds.length === 0 && validBaseRefs.length === 0) {
@@ -251,10 +562,12 @@ export function validateResumeTailoringPlan(
 
   const claimBackedCount = items.filter((item) => item.claimIds.length > 0).length;
   const baseBackedCount = items.filter((item) => item.baseSourceRefs.length > 0).length;
+  const validityRatio = rawItems.length > 0 ? items.length / rawItems.length : 0;
+  const hasExperience = items.some((item) => item.section === "experience");
   return {
     items,
     validation: {
-      passed: items.length > 0 && invalidItems.length === 0,
+      passed: items.length > 0 && (validityRatio >= 0.35 || hasExperience),
       validItemCount: items.length,
       invalidItemCount: invalidItems.length,
       claimBackedCount,

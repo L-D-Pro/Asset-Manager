@@ -26,6 +26,9 @@ import type {
   AiReviewOverview,
   AiRunEvaluation,
   AiTrainingExample,
+  AppTestResetBody,
+  AppTestResetResult,
+  AppTestResetSummary,
   Application,
   ApplicationAction,
   ApplicationFormField,
@@ -93,6 +96,7 @@ import type {
   ListSuggestedAiTrainingExamplesParams,
   ListSuggestedBestPracticesParams,
   NotFoundResponse,
+  NukeJobAttempts200,
   ParseJobBody,
   ProjectSource,
   ProposalOutcome,
@@ -5526,6 +5530,91 @@ export const useDeleteAiModelConfig = <
 };
 
 /**
+ * Deletes the job and linked drafts/attempt lineage artifacts, and scrubs stale wizard references.
+ * @summary Nuke test attempts for a job (job-scoped cleanup)
+ */
+export const getNukeJobAttemptsUrl = (id: number) => {
+  return `/api/jobs/${id}/nuke-attempts`;
+};
+
+export const nukeJobAttempts = async (
+  id: number,
+  options?: RequestInit,
+): Promise<NukeJobAttempts200> => {
+  return customFetch<NukeJobAttempts200>(getNukeJobAttemptsUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getNukeJobAttemptsMutationOptions = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof nukeJobAttempts>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof nukeJobAttempts>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["nukeJobAttempts"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof nukeJobAttempts>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return nukeJobAttempts(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type NukeJobAttemptsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof nukeJobAttempts>>
+>;
+
+export type NukeJobAttemptsMutationError = ErrorType<NotFoundResponse>;
+
+/**
+ * @summary Nuke test attempts for a job (job-scoped cleanup)
+ */
+export const useNukeJobAttempts = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof nukeJobAttempts>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof nukeJobAttempts>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getNukeJobAttemptsMutationOptions(options));
+};
+
+/**
  * @summary Get UI shell config for an app
  */
 export const getGetUiShellConfigUrl = (appKey: string) => {
@@ -5782,6 +5871,170 @@ export const useResetUiShellConfig = <
   TContext
 > => {
   return useMutation(getResetUiShellConfigMutationOptions(options));
+};
+
+/**
+ * @summary Preview admin test data reset
+ */
+export const getGetAppTestResetSummaryUrl = () => {
+  return `/api/admin/test-reset/summary`;
+};
+
+export const getAppTestResetSummary = async (
+  options?: RequestInit,
+): Promise<AppTestResetSummary> => {
+  return customFetch<AppTestResetSummary>(getGetAppTestResetSummaryUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetAppTestResetSummaryQueryKey = () => {
+  return [`/api/admin/test-reset/summary`] as const;
+};
+
+export const getGetAppTestResetSummaryQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAppTestResetSummary>>,
+  TError = ErrorType<ErrorResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAppTestResetSummary>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetAppTestResetSummaryQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getAppTestResetSummary>>
+  > = ({ signal }) => getAppTestResetSummary({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAppTestResetSummary>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetAppTestResetSummaryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAppTestResetSummary>>
+>;
+export type GetAppTestResetSummaryQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Preview admin test data reset
+ */
+
+export function useGetAppTestResetSummary<
+  TData = Awaited<ReturnType<typeof getAppTestResetSummary>>,
+  TError = ErrorType<ErrorResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAppTestResetSummary>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAppTestResetSummaryQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Reset app test data and identity sequences
+ */
+export const getResetAppTestDataUrl = () => {
+  return `/api/admin/test-reset`;
+};
+
+export const resetAppTestData = async (
+  appTestResetBody: AppTestResetBody,
+  options?: RequestInit,
+): Promise<AppTestResetResult> => {
+  return customFetch<AppTestResetResult>(getResetAppTestDataUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(appTestResetBody),
+  });
+};
+
+export const getResetAppTestDataMutationOptions = <
+  TError = ErrorType<BadRequestResponse | ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resetAppTestData>>,
+    TError,
+    { data: BodyType<AppTestResetBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof resetAppTestData>>,
+  TError,
+  { data: BodyType<AppTestResetBody> },
+  TContext
+> => {
+  const mutationKey = ["resetAppTestData"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof resetAppTestData>>,
+    { data: BodyType<AppTestResetBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return resetAppTestData(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ResetAppTestDataMutationResult = NonNullable<
+  Awaited<ReturnType<typeof resetAppTestData>>
+>;
+export type ResetAppTestDataMutationBody = BodyType<AppTestResetBody>;
+export type ResetAppTestDataMutationError = ErrorType<
+  BadRequestResponse | ErrorResponse
+>;
+
+/**
+ * @summary Reset app test data and identity sequences
+ */
+export const useResetAppTestData = <
+  TError = ErrorType<BadRequestResponse | ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resetAppTestData>>,
+    TError,
+    { data: BodyType<AppTestResetBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof resetAppTestData>>,
+  TError,
+  { data: BodyType<AppTestResetBody> },
+  TContext
+> => {
+  return useMutation(getResetAppTestDataMutationOptions(options));
 };
 
 /**

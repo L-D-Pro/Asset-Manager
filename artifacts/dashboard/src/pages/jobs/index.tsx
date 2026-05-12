@@ -124,6 +124,8 @@ export default function JobsPage() {
   const deleteJob = useDeleteJob();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
+  const [nukeTarget, setNukeTarget] = useState<number | null>(null);
+  const [nukingJobId, setNukingJobId] = useState<number | null>(null);
   const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -212,6 +214,37 @@ export default function JobsPage() {
         description: `${failCount} failed to delete`,
         variant: "destructive",
       });
+    }
+  };
+
+  const handleNuke = async (id: number) => {
+    setNukingJobId(id);
+    try {
+      const res = await fetch(`/api/jobs/${id}/nuke-attempts`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        let message = `HTTP ${res.status}`;
+        try {
+          const payload = (await res.json()) as { error?: string };
+          message = payload.error ?? message;
+        } catch {
+          // ignore parse errors
+        }
+        throw new Error(message);
+      }
+      toast({ title: "Job attempts nuked", description: "Job, drafts, attempts, and stale wizard refs were cleared." });
+      setNukeTarget(null);
+      queryClient.invalidateQueries({ queryKey: getListJobsQueryKey() });
+    } catch (error) {
+      toast({
+        title: "Failed to nuke job attempts",
+        description: getErrorMessage(error, "Please try again."),
+        variant: "destructive",
+      });
+    } finally {
+      setNukingJobId(null);
     }
   };
 
@@ -412,6 +445,18 @@ export default function JobsPage() {
   <Button
     variant="ghost"
     size="sm"
+    className="text-warning hover:text-warning hover:bg-warning/10"
+    onClick={(e) => {
+      e.stopPropagation();
+      setNukeTarget(job.id);
+    }}
+    data-testid={`btn-nuke-job-${job.id}`}
+  >
+    <AlertTriangle className="h-4 w-4" />
+  </Button>
+  <Button
+    variant="ghost"
+    size="sm"
     className="text-destructive hover:text-destructive hover:bg-destructive/10"
     onClick={(e) => {
       e.stopPropagation();
@@ -449,6 +494,33 @@ export default function JobsPage() {
           onClick={() => { if (deleteTarget != null) handleDelete(deleteTarget); }}
         >
           {deleteJob.isPending ? "Deleting..." : "Delete"}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+
+  {/* Job-scoped Nuke Confirmation */}
+  <Dialog open={nukeTarget !== null} onOpenChange={(open) => { if (!open) setNukeTarget(null); }}>
+    <DialogContent className="sm:max-w-[460px] rounded-2xl">
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-2 text-xl">
+          <AlertTriangle className="h-5 w-5 text-warning" />
+          Nuke Job Attempts
+        </DialogTitle>
+        <DialogDescription>
+          This testing cleanup will remove the job and all associated attempts: resume versions, cover letters, applications, run lineage metadata, and stale wizard references.
+        </DialogDescription>
+      </DialogHeader>
+      <DialogFooter>
+        <Button variant="outline" onClick={() => setNukeTarget(null)}>
+          Cancel
+        </Button>
+        <Button
+          variant="destructive"
+          disabled={nukingJobId === nukeTarget}
+          onClick={() => { if (nukeTarget != null) void handleNuke(nukeTarget); }}
+        >
+          {nukingJobId === nukeTarget ? "Nuking..." : "Nuke Attempts"}
         </Button>
       </DialogFooter>
     </DialogContent>

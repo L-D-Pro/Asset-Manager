@@ -5,9 +5,10 @@ import { selectModelForTask, type SelectedModel } from "./model-router";
 import { resolvePromptForTask } from "./prompt-router";
 import { logger } from "./logger";
 import { mintRunId } from "./lineage";
+import { getOpenRouterModelCapabilities } from "./openrouter-model-capabilities";
 
 const DEFAULT_AI_REQUEST_TIMEOUT_MS = 60_000;
-const AI_CONTROL_PARAM_KEYS = new Set(["timeoutMs", "requestTimeoutMs"]);
+const AI_CONTROL_PARAM_KEYS = new Set(["timeoutMs", "requestTimeoutMs", "maxAttempts"]);
 
 function resolveTimeoutMs(...configs: Array<Record<string, unknown> | undefined>): number {
   for (const config of configs) {
@@ -26,10 +27,39 @@ function resolveTimeoutMs(...configs: Array<Record<string, unknown> | undefined>
   return DEFAULT_AI_REQUEST_TIMEOUT_MS;
 }
 
+function resolveMaxAttempts(...configs: Array<Record<string, unknown> | undefined>): number | null {
+  for (const config of configs) {
+    const raw = config?.maxAttempts;
+    const parsed = typeof raw === "number" ? raw : typeof raw === "string" ? Number(raw) : NaN;
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return Math.max(1, Math.min(Math.floor(parsed), 5));
+    }
+  }
+
+  return null;
+}
+
 function stripAiControlParams(config: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(
     Object.entries(config).filter(([key]) => !AI_CONTROL_PARAM_KEYS.has(key)),
   );
+}
+
+async function withHardTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  message: string,
+): Promise<T> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeout = setTimeout(() => reject(new Error(message)), timeoutMs);
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
 }
 
 /**
@@ -91,6 +121,173 @@ export interface AiCallResult {
   runId: string;
   /** Inserted event-log row ID for the successful AI root event, or the terminal failure row when all attempts fail. */
   eventLogId: number;
+  /** OpenRouter finish reason for the successful response, when available. */
+  finishReason: string | null;
+  /** Prior failed attempts in the same fallback chain. */
+  priorFailures: AiAttemptFailure[];
+  /** Indicates the request had to degrade from strict response-format schema mode. */
+  compatibilityNote?: string | null;
+}
+
+export interface AiAttemptFailure {
+  attemptNumber: number;
+  modelId: number;
+  modelName: string;
+  provider: string;
+  error: string;
+  category: string;
+  elapsedMs: number;
+}
+
+function classifyAiError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  if (/empty_model_content|empty model content|empty content/i.test(message)) {
+    return "empty_model_content";
+  }
+  if (/unsupported|require_parameters|response_format|json_schema|schema/i.test(message)) {
+    return "model_parameter_compatibility";
+  }
+  if (/\b400\b|provider returned error/i.test(message)) {
+    return "provider_rejected_request";
+  }
+  if (/timeout|abort|timed out/i.test(message)) {
+    return "timeout";
+  }
+  if (/json|parse|source-ref|source ref|structured|contract|validation/i.test(message)) {
+    return "content_contract";
+  }
+  return "upstream_or_unknown";
+}
+
+function hasResponseFormatParam(params: Record<string, unknown>): boolean {
+  return params.response_format != null;
+}
+
+function extractMessageContent(message: unknown): string {
+  if (!message || typeof message !== "object") return "";
+
+  const candidate = message as {
+    content?: unknown;
+    parsed?: unknown;
+    tool_calls?: unknown;
+  };
+
+  if (typeof candidate.content === "string") {
+    return candidate.content;
+  }
+
+  if (Array.isArray(candidate.content)) {
+    const text = candidate.content
+      .map((part) => {
+        if (typeof part === "string") return part;
+        if (!part || typeof part !== "object") return "";
+        const record = part as { text?: unknown; content?: unknown };
+        if (typeof record.text === "string") return record.text;
+        if (typeof record.content === "string") return record.content;
+        return "";
+      })
+      .join("")
+      .trim();
+    if (text.length > 0) return text;
+  }
+
+  if (candidate.parsed && typeof candidate.parsed === "object") {
+    try {
+      return JSON.stringify(candidate.parsed);
+    } catch {
+      // ignore and continue with other extraction paths
+    }
+  }
+
+  if (Array.isArray(candidate.tool_calls)) {
+    const argsText = candidate.tool_calls
+      .map((toolCall) => {
+        if (!toolCall || typeof toolCall !== "object") return "";
+        const functionObject = (toolCall as { function?: unknown }).function;
+        if (!functionObject || typeof functionObject !== "object") return "";
+        const args = (functionObject as { arguments?: unknown }).arguments;
+        return typeof args === "string" ? args : "";
+      })
+      .join("\n")
+      .trim();
+    if (argsText.length > 0) return argsText;
+  }
+
+  return "";
+}
+
+function extractChoiceContent(choice: unknown): string {
+  if (!choice || typeof choice !== "object") return "";
+  const choiceRecord = choice as {
+    message?: unknown;
+    text?: unknown;
+  };
+
+  const fromMessage = extractMessageContent(choiceRecord.message);
+  if (fromMessage.length > 0) return fromMessage;
+  if (typeof choiceRecord.text === "string") return choiceRecord.text;
+  return "";
+}
+
+async function adaptRequestParamsForModel(args: {
+  taskType: string;
+  model: SelectedModel;
+  requestParams: Record<string, unknown>;
+}): Promise<{ requestParams: Record<string, unknown>; compatibilityNote: string | null }> {
+  if (!hasResponseFormatParam(args.requestParams)) {
+    return { requestParams: args.requestParams, compatibilityNote: null };
+  }
+
+  const capabilities = await getOpenRouterModelCapabilities(args.model.modelName);
+  const supported = capabilities?.supportedParameters;
+  if (!supported || supported.length === 0 || supported.includes("response_format")) {
+    const isStrictSchemaTask = args.taskType === "resume_tailoring" || args.taskType === "cover_letter";
+    const isOpenAiFamily = args.model.modelName.startsWith("openai/");
+    if (isStrictSchemaTask && !isOpenAiFamily) {
+      const degraded: Record<string, unknown> = {
+        ...args.requestParams,
+        response_format: { type: "json_object" },
+      };
+      if (
+        degraded.provider &&
+        typeof degraded.provider === "object" &&
+        !Array.isArray(degraded.provider)
+      ) {
+        const provider = { ...(degraded.provider as Record<string, unknown>) };
+        delete provider.require_parameters;
+        degraded.provider = provider;
+      }
+      return {
+        requestParams: degraded,
+        compatibilityNote:
+          `Model family ${args.model.modelName} forced to json_object compatibility mode for ${args.taskType}.`,
+      };
+    }
+    return { requestParams: args.requestParams, compatibilityNote: null };
+  }
+
+  if (args.taskType === "resume_tailoring" || args.taskType === "cover_letter") {
+    const degraded: Record<string, unknown> = { ...args.requestParams };
+    delete degraded.response_format;
+    if (
+      degraded.provider &&
+      typeof degraded.provider === "object" &&
+      !Array.isArray(degraded.provider)
+    ) {
+      const provider = { ...(degraded.provider as Record<string, unknown>) };
+      delete provider.require_parameters;
+      degraded.provider = provider;
+    }
+    return {
+      requestParams: degraded,
+      compatibilityNote:
+        `Model catalog does not list response_format support; ${args.taskType} degraded to prompt-only JSON validation.`,
+    };
+  }
+
+  throw new Error(
+    `Model ${args.model.modelName} does not support response_format required by ${args.taskType}.`,
+  );
 }
 
 /**
@@ -116,13 +313,32 @@ export async function callAI(opts: AiCallOptions): Promise<AiCallResult> {
   );
 
   const modelChain = await resolveModelChainForCall(taskType, modelOverride);
-  const attemptErrors: Array<{ modelName: string; error: string }> = [];
+  const maxAttempts = resolveMaxAttempts(extraParams);
+  const attemptModelChain = maxAttempts == null ? modelChain : modelChain.slice(0, maxAttempts);
+  logger.info(
+    {
+      runId,
+      taskType,
+      modelChain: attemptModelChain.map((model, index) => ({
+        attemptNumber: index + 1,
+        modelId: model.id,
+        modelName: model.modelName,
+        provider: model.provider,
+      })),
+      configuredModelCount: modelChain.length,
+      maxAttempts,
+    },
+    "Resolved AI model fallback chain",
+  );
+  const attemptErrors: AiAttemptFailure[] = [];
   let lastError: unknown;
 
-  for (const model of modelChain) {
+  for (const [index, model] of attemptModelChain.entries()) {
+    const attemptNumber = index + 1;
+    const attemptStartedAt = Date.now();
     try {
       logger.debug(
-        { taskType, modelName: model.modelName, attempt: modelChain.indexOf(model) + 1 },
+        { taskType, modelId: model.id, modelName: model.modelName, attempt: attemptNumber, runId },
         "Calling AI model",
       );
 
@@ -130,28 +346,52 @@ export async function callAI(opts: AiCallOptions): Promise<AiCallResult> {
         model.extraConfig && typeof model.extraConfig === "object" && !Array.isArray(model.extraConfig)
           ? model.extraConfig
           : {};
-      const requestParams = {
+      const rawRequestParams = {
         ...stripAiControlParams(modelExtraConfig),
         ...stripAiControlParams(extraParams ?? {}),
       };
       const timeoutMs = resolveTimeoutMs(extraParams, modelExtraConfig);
+      const adapted = await adaptRequestParamsForModel({
+        taskType,
+        model,
+        requestParams: rawRequestParams,
+      });
+      const requestParams = adapted.requestParams;
       const maxTokens =
         typeof requestParams.max_tokens === "number"
           ? requestParams.max_tokens
           : model.maxTokens ?? 8192;
       delete (requestParams as { max_tokens?: unknown }).max_tokens;
 
-      const response = await openrouter.chat.completions.create({
-        ...requestParams,
-        model: model.modelName,
-        max_tokens: maxTokens,
-        messages: [
-          { role: "system", content: resolvedPrompt.systemPrompt },
-          { role: "user", content: resolvedPrompt.userPrompt },
-        ],
-      } as never, { timeout: timeoutMs } as never);
+      logger.info(
+        {
+          taskType,
+          modelId: model.id,
+          modelName: model.modelName,
+          attemptNumber,
+          timeoutMs,
+          maxTokens,
+          runId,
+        },
+        "Dispatching AI request",
+      );
 
-      const content = response.choices[0]?.message?.content ?? "";
+      const response = await withHardTimeout(
+        openrouter.chat.completions.create({
+          ...requestParams,
+          model: model.modelName,
+          max_tokens: maxTokens,
+          messages: [
+            { role: "system", content: resolvedPrompt.systemPrompt },
+            { role: "user", content: resolvedPrompt.userPrompt },
+          ],
+        } as never, { timeout: timeoutMs } as never),
+        timeoutMs,
+        `AI request timed out after ${timeoutMs}ms for ${taskType} attempt ${attemptNumber} (${model.modelName})`,
+      );
+
+      const content = extractChoiceContent(response.choices[0]);
+      const finishReason = response.choices[0]?.finish_reason ?? null;
       const usage = response.usage;
       const promptTokens = usage?.prompt_tokens ?? 0;
       const completionTokens = usage?.completion_tokens ?? 0;
@@ -169,7 +409,19 @@ export async function callAI(opts: AiCallOptions): Promise<AiCallResult> {
       const totalCost = costIn != null && costOut != null ? costIn + costOut : null;
 
       logger.info(
-        { taskType, modelName: model.modelName, promptTokens, completionTokens, totalCost },
+        {
+          taskType,
+          modelId: model.id,
+          modelName: model.modelName,
+          promptTokens,
+          completionTokens,
+          totalCost,
+          finishReason,
+          contentLength: content.length,
+          runId,
+          attemptNumber,
+          elapsedMs: Date.now() - attemptStartedAt,
+        },
         "AI call completed",
       );
 
@@ -189,14 +441,21 @@ export async function callAI(opts: AiCallOptions): Promise<AiCallResult> {
           promptLabel: resolvedPrompt.promptLabel,
           modelName: model.modelName,
           provider: model.provider,
+          modelConfigId: model.id,
           modelOverride: modelOverride ?? null,
           structuredOutput: Boolean(extraParams?.response_format),
+          degradedStructuredOutput: Boolean(adapted.compatibilityNote),
+          compatibilityNote: adapted.compatibilityNote,
           promptTokens,
           completionTokens,
+          finishReason,
           estimatedCostUsd: totalCost,
           succeeded: true,
-          attemptNumber: modelChain.indexOf(model) + 1,
+          attemptNumber,
           priorFailures: attemptErrors,
+          configuredModelCount: modelChain.length,
+          modelsAttempted: attemptModelChain.length,
+          contentLength: content.length,
           runId,
         },
       }).returning({ id: eventLogsTable.id });
@@ -211,13 +470,34 @@ export async function callAI(opts: AiCallOptions): Promise<AiCallResult> {
         promptVersionId: resolvedPrompt.promptVersionId,
         runId,
         eventLogId: eventLog!.id,
+        finishReason,
+        priorFailures: attemptErrors,
+        compatibilityNote: adapted.compatibilityNote,
       };
     } catch (err) {
       lastError = err;
       const errorMsg = err instanceof Error ? err.message : String(err);
-      attemptErrors.push({ modelName: model.modelName, error: errorMsg });
+      const elapsedMs = Date.now() - attemptStartedAt;
+      attemptErrors.push({
+        attemptNumber,
+        modelId: model.id,
+        modelName: model.modelName,
+        provider: model.provider,
+        error: errorMsg,
+        category: classifyAiError(err),
+        elapsedMs,
+      });
       logger.warn(
-        { taskType, modelName: model.modelName, error: errorMsg },
+        {
+          taskType,
+          modelId: model.id,
+          modelName: model.modelName,
+          error: errorMsg,
+          category: classifyAiError(err),
+          attemptNumber,
+          elapsedMs,
+          runId,
+        },
         "AI call failed, advancing to next model in fallback chain",
       );
     }
@@ -241,20 +521,23 @@ export async function callAI(opts: AiCallOptions): Promise<AiCallResult> {
         promptLabel: resolvedPrompt.promptLabel,
         modelOverride: modelOverride ?? null,
         succeeded: false,
-        modelsAttempted: modelChain.length,
+        configuredModelCount: modelChain.length,
+        modelsAttempted: attemptModelChain.length,
         attemptErrors,
         finalError: lastError instanceof Error ? lastError.message : String(lastError),
+        finalCategory: classifyAiError(lastError),
         runId,
       },
     }).returning({ id: eventLogsTable.id });
 
     throw Object.assign(
       new Error(
-        `AI call failed for task ${taskType} after exhausting all ${modelChain.length} model(s) in fallback chain: ${String(lastError)}`,
+        `AI call failed for task ${taskType} after exhausting all ${attemptModelChain.length} model(s) in fallback chain: ${String(lastError)}`,
       ),
       {
         runId,
         eventLogId: failureEvent!.id,
+        attemptErrors,
       },
     );
   } catch (logErr) {
@@ -265,7 +548,7 @@ export async function callAI(opts: AiCallOptions): Promise<AiCallResult> {
   }
 
   throw new Error(
-    `AI call failed for task ${taskType} after exhausting all ${modelChain.length} model(s) in fallback chain: ${String(lastError)}`,
+    `AI call failed for task ${taskType} after exhausting all ${attemptModelChain.length} model(s) in fallback chain: ${String(lastError)}`,
   );
 }
 

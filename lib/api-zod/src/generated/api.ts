@@ -1460,6 +1460,27 @@ export const DeleteAiModelConfigParams = zod.object({
 });
 
 /**
+ * Deletes the job and linked drafts/attempt lineage artifacts, and scrubs stale wizard references.
+ * @summary Nuke test attempts for a job (job-scoped cleanup)
+ */
+export const NukeJobAttemptsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const NukeJobAttemptsResponse = zod.object({
+  jobId: zod.number(),
+  deletedResumeVersions: zod.number(),
+  deletedCoverLetterVersions: zod.number(),
+  deletedApplications: zod.number(),
+  deletedFeedbackSignals: zod.number(),
+  deletedEventLogs: zod.number(),
+  deletedEvaluations: zod.number(),
+  deletedTrainingExamples: zod.number(),
+  scrubbedWizardSessions: zod.number(),
+  deletedJob: zod.boolean(),
+});
+
+/**
  * @summary Get UI shell config for an app
  */
 export const GetUiShellConfigParams = zod.object({
@@ -1800,6 +1821,51 @@ export const ResetUiShellConfigResponse = zod.object({
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
+
+/**
+ * @summary Preview admin test data reset
+ */
+export const GetAppTestResetSummaryResponse = zod.object({
+  mode: zod.enum(["app_test_data"]),
+  resetsIdentity: zod.boolean(),
+  preservedTables: zod.array(zod.string()),
+  resetTables: zod.array(
+    zod.object({
+      table: zod.string(),
+      rowsBefore: zod.number(),
+    }),
+  ),
+  missingTables: zod.array(zod.string()),
+  totalRowsBefore: zod.number(),
+});
+
+/**
+ * @summary Reset app test data and identity sequences
+ */
+export const ResetAppTestDataBody = zod.object({
+  confirmation: zod.enum(["RESET", "RESET APP"]),
+});
+
+export const ResetAppTestDataResponse = zod
+  .object({
+    mode: zod.enum(["app_test_data"]),
+    resetsIdentity: zod.boolean(),
+    preservedTables: zod.array(zod.string()),
+    resetTables: zod.array(
+      zod.object({
+        table: zod.string(),
+        rowsBefore: zod.number(),
+      }),
+    ),
+    missingTables: zod.array(zod.string()),
+    totalRowsBefore: zod.number(),
+  })
+  .and(
+    zod.object({
+      resetAt: zod.coerce.date(),
+      resetByAdminId: zod.number(),
+    }),
+  );
 
 /**
  * @summary Get AI review overview

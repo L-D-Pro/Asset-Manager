@@ -26,13 +26,20 @@ import {
  useListResumeVersions,
  useListResumeTemplates,
  useListWizardSessions,
- getGetCoverLetterVersionQueryKey,
- getGetJobClaimMatchesQueryKey,
+  getGetCoverLetterVersionQueryKey,
+ getGetBaseResumeQueryKey,
+  getGetJobClaimMatchesQueryKey,
  getGetJobQueryKey,
  getGetResumeVersionQueryKey,
  getListClaimsQueryKey,
+ getListCoverLetterVersionsQueryKey,
+ getListResumeTemplatesQueryKey,
+ getListResumeVersionsQueryKey,
+ getListRoleProfilesQueryKey,
+ getListWizardSessionsQueryKey,
  useGetCoverLetterVersion,
- useGetJob,
+ useGetBaseResume,
+  useGetJob,
  useGetJobClaimMatches,
  useGetResumeVersion,
  useListRoleProfiles,
@@ -138,6 +145,12 @@ function truthBadgeText(status?: string): string {
 }
 
 const STEP_ORDER: WizardStep[] = ["intake", "parse", "role", "tailor", "approve", "assisted"];
+const WIZARD_STABLE_QUERY = {
+ staleTime: 300_000,
+ refetchOnWindowFocus: false,
+ refetchOnReconnect: false,
+ refetchOnMount: false,
+};
 
 function getMatchClaimId(match: unknown): number | null {
  const maybeClaim = (match as { claim?: { id?: unknown } })?.claim;
@@ -287,22 +300,37 @@ export default function ApplyWizardPage() {
  }>>([]);
  const [savingSession, setSavingSession] = useState(false);
 
- const { data: roleProfiles = [] } = useListRoleProfiles();
- const { data: activeClaims = [] } = useListClaims({ isActive: true });
- const { data: resumeVersions = [], isFetched: resumeVersionsFetched } = useListResumeVersions();
- const { data: coverLetterVersions = [], isFetched: coverLetterVersionsFetched } = useListCoverLetterVersions();
- const { data: resumeTemplatesData } = useListResumeTemplates();
+ const { data: roleProfiles = [] } = useListRoleProfiles({ query: { ...WIZARD_STABLE_QUERY, queryKey: getListRoleProfilesQueryKey() } });
+ const { data: activeClaims = [] } = useListClaims({ isActive: true }, { query: { ...WIZARD_STABLE_QUERY, queryKey: getListClaimsQueryKey({ isActive: true }) } });
+ const { data: resumeVersions = [], isFetched: resumeVersionsFetched } = useListResumeVersions(undefined, { query: { ...WIZARD_STABLE_QUERY, queryKey: getListResumeVersionsQueryKey() } });
+ const { data: coverLetterVersions = [], isFetched: coverLetterVersionsFetched } = useListCoverLetterVersions(undefined, { query: { ...WIZARD_STABLE_QUERY, queryKey: getListCoverLetterVersionsQueryKey() } });
+ const { data: resumeTemplatesData } = useListResumeTemplates({ query: { ...WIZARD_STABLE_QUERY, queryKey: getListResumeTemplatesQueryKey() } });
  const resumeTemplates = resumeTemplatesData?.templates ?? [];
  const selectedResumeTemplate = resumeTemplates.find((template) => template.id === selectedResumeTemplateId);
- const { data: apiSessions, refetch: refetchSessions } = useListWizardSessions();
+ const { data: apiSessions, refetch: refetchSessions } = useListWizardSessions({ query: { ...WIZARD_STABLE_QUERY, queryKey: getListWizardSessionsQueryKey() } });
  const { data: job, isLoading: jobLoading, refetch: refetchJob } = useGetJob(jobId ?? 0, {
- query: { enabled: !!jobId, queryKey: getGetJobQueryKey(jobId ?? 0) },
+ query: { enabled: !!jobId, queryKey: getGetJobQueryKey(jobId ?? 0), ...WIZARD_STABLE_QUERY },
  });
+ const {
+ data: baseResume,
+ error: baseResumeError,
+ isLoading: baseResumeLoading,
+ } = useGetBaseResume({
+ query: {
+ queryKey: getGetBaseResumeQueryKey(),
+ retry: false,
+ staleTime: 30_000,
+ refetchOnWindowFocus: false,
+ refetchOnReconnect: false,
+ },
+ });
+ const baseResumeMissing = hasHttpStatus(baseResumeError, 404);
 
  const { data: claimMatches = [] } = useGetJobClaimMatches(jobId ?? 0, {
  query: {
  enabled: !!jobId,
  queryKey: getGetJobClaimMatchesQueryKey(jobId ?? 0),
+ ...WIZARD_STABLE_QUERY,
  },
  });
 
@@ -529,9 +557,12 @@ export default function ApplyWizardPage() {
  const resumePreviewText = resumeVersion?.tailoredDocumentText || resumeVersion?.rawContent || "";
  const resumePreviewIsRaw = Boolean(resumeVersion?.rawContent && !resumeVersion?.tailoredDocumentText);
  const resumeSourceValidation = (resumeVersion?.diffData as any)?.sourceValidation;
+ const resumeSemanticValidation = (resumeVersion?.diffData as any)?.semanticValidation;
+ const resumeAiAttemptSummary = (resumeVersion?.diffData as any)?.aiAttemptSummary as string | undefined;
  const resumeHasPassingSourceValidation = Boolean(
  resumeSourceValidation?.passed === true && Number(resumeSourceValidation?.validItemCount ?? 0) > 0,
  );
+ const resumeHasPassingSemanticValidation = Boolean(resumeSemanticValidation?.passed === true);
  const resumeNeedsRegeneration = Boolean(
  resumeVersionId &&
  resumeVersion &&
@@ -539,7 +570,8 @@ export default function ApplyWizardPage() {
  !resumeVersion.templateId ||
  !(resumeVersion.diffData as any)?.templateValidation ||
  !resumeHasPassingSourceValidation ||
- /could not be repaired|truth lock failure|quality check failed|truth review failed|generation failed|source validation failed|base resume parse failed|needs review/i.test(resumeVersion.notes ?? "")),
+ !resumeHasPassingSemanticValidation ||
+ /could not be repaired|truth lock failure|quality check failed|truth review failed|generation failed|source validation failed|semantic template validation failed|base resume parse failed|needs review/i.test(resumeVersion.notes ?? "")),
  );
 
  const updateBatchRun = (id: string, patch: Partial<BatchRun>) => {
@@ -1043,6 +1075,18 @@ export default function ApplyWizardPage() {
 
  const handleGenerateResume = () => {
  if (!jobId) return;
+ if (baseResumeLoading) {
+ toast({ title: "Checking base resume...", description: "Try again in a moment." });
+ return;
+ }
+ if (!baseResume || baseResumeMissing) {
+ toast({
+ title: "Base resume required",
+ description: "Upload or paste your base resume before generating a tailored resume.",
+ variant: "destructive",
+ });
+ return;
+ }
  if (!selectedResumeTemplateId) {
  toast({ title: "Choose a resume template first", variant: "destructive" });
  return;
@@ -1257,7 +1301,6 @@ export default function ApplyWizardPage() {
  {
  onSuccess: () => {
  toast({ title: "Resume rejected; generating a fresh draft" });
- refetchResumeVersion();
  handleGenerateResume();
  },
  onError: (error) =>
@@ -1929,6 +1972,16 @@ export default function ApplyWizardPage() {
  </CardDescription>
  </CardHeader>
  <CardContent className="space-y-3">
+ {baseResumeMissing ? (
+ <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 flex items-start gap-2">
+ <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+ <p className="text-sm">
+ Base resume is missing. The reset tool clears base resumes too, so upload or paste one on the{" "}
+ <Link to="/base-resume" className="underline font-medium">Base Resume</Link>{" "}
+ page before generating a tailored resume.
+ </p>
+ </div>
+ ) : null}
  {activeClaims.length === 0 ? (
  <div className="rounded-md border border-warning/40 bg-warning/10 p-3 flex items-start gap-2">
  <AlertCircle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
@@ -1997,7 +2050,7 @@ export default function ApplyWizardPage() {
 
  {!useCustomComparison ? (
  <div className="flex flex-wrap gap-2">
- <Button variant="secondary" onClick={handleGenerateResume} disabled={tailorResume.isPending || !selectedResumeTemplate}>
+ <Button variant="secondary" onClick={handleGenerateResume} disabled={tailorResume.isPending || !selectedResumeTemplate || baseResumeLoading || baseResumeMissing}>
  {tailorResume.isPending ? "Generating Resume..." : "Generate Resume"}
  </Button>
  <Button variant="secondary" onClick={handleGenerateCoverLetter} disabled={draftCoverLetter.isPending || activeClaims.length === 0}>
@@ -2181,6 +2234,11 @@ export default function ApplyWizardPage() {
  {((resumeVersion.diffData as any)?.lengthPolicy?.target as string | undefined) ?? "Concise 1-2 pages"}
  </span>
  </p>
+ {resumeAiAttemptSummary ? (
+ <p className="text-muted-foreground">
+ AI attempt summary: {resumeAiAttemptSummary}
+ </p>
+ ) : null}
  </div>
  ) : null}
  {(() => {
@@ -2402,6 +2460,11 @@ export default function ApplyWizardPage() {
  <p className="text-xs text-muted-foreground">
  {getResumeDiagnosticMessage(resumeVersion?.notes)}
  </p>
+ {resumeAiAttemptSummary ? (
+ <p className="text-xs text-muted-foreground mt-1">
+ Attempts: {resumeAiAttemptSummary}
+ </p>
+ ) : null}
  </div>
  </div>
  )}
@@ -2437,7 +2500,11 @@ export default function ApplyWizardPage() {
  >
  {resumeNeedsRegeneration ? "Regenerate Resume Required" : resumeVersion?.status === "approved" ? <><Check className="h-4 w-4 mr-2" /> Resume Approved</> : "Approve Resume"}
  </Button>
- <Button variant="outline" onClick={handleRejectResume} disabled={!resumeVersionId || rejectResume.isPending || tailorResume.isPending}>
+ <Button
+ variant="outline"
+ onClick={handleRejectResume}
+ disabled={!resumeVersionId || rejectResume.isPending || tailorResume.isPending || (resumeVersion?.status !== "pending_approval" && !resumeNeedsRegeneration)}
+ >
  {rejectResume.isPending || tailorResume.isPending ? "Regenerating..." : "Reject & Regenerate"}
  </Button>
  {resumeVersion?.status === "approved" && !resumeNeedsRegeneration && (
@@ -2612,7 +2679,7 @@ export default function ApplyWizardPage() {
  >
  {coverLetterVersion?.status === "approved" ? <><Check className="h-4 w-4 mr-2" /> Cover Approved</> : "Approve Cover Letter"}
  </Button>
- <Button variant="outline" onClick={handleRejectCover} disabled={!coverLetterVersionId}>
+ <Button variant="outline" onClick={handleRejectCover} disabled={!coverLetterVersionId || coverLetterVersion?.status !== "pending_approval"}>
  Reject & Regenerate
  </Button>
  {coverLetterVersion?.status === "approved" && (

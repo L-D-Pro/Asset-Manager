@@ -94,7 +94,27 @@ describe("job lineage pipelines", () => {
     vi.resetModules();
     vi.clearAllMocks();
 
-    dbSelectWhereMock.mockResolvedValue([{ id: 5, contentText: "Base resume text" }]);
+    dbSelectWhereMock.mockResolvedValue([{
+      id: 5,
+      contentText: [
+        "CYRUS SEPASI",
+        "cyrus@example.com",
+        "SUMMARY",
+        "Senior instructional designer with 13 years of experience.",
+        "EXPERIENCE",
+        "Senior Instructional Designer | Acme Health | San Diego, CA | Jan 2021 - Present",
+        "Led learning deployments for healthcare teams.",
+        "Built SCORM/xAPI solutions and maintained LMS tracking quality.",
+        "Instructional Designer | Beta Learning | Remote | Feb 2018 - Dec 2020",
+        "Designed blended programs and stakeholder reviews.",
+        "EDUCATION",
+        "M.P.A. Cybersecurity Concentration - CSU San Bernardino",
+        "B.A. Psychology - CSU Stanislaus",
+        "SKILLS",
+        "Instructional Design: ADDIE, SAM, Agile",
+        "Tools: Storyline, Captivate, SCORM/xAPI, LMS",
+      ].join("\n"),
+    }]);
     resumeInsertValuesMock.mockReturnValue({ returning: async () => [{ id: 901 }] });
     coverInsertValuesMock.mockReturnValue({ returning: async () => [{ id: 902 }] });
     matchClaimsToJobMock.mockReturnValue([]);
@@ -102,7 +122,22 @@ describe("job lineage pipelines", () => {
 
   it("persists the callAI runId and eventLogId on successful resume generations", async () => {
     callAIMock.mockResolvedValue({
-      content: '{"sectionItems":[{"text":"Bullet","sourceRefs":["claim:1"],"section":"experience","jobKeywordsUsed":[],"gapNotes":[]}],"summary":"Done"}',
+      content: [
+        "SUMMARY",
+        "Senior instructional designer with 13 years delivering enterprise learning systems. [src:base:summary:b001]",
+        "EXPERIENCE",
+        "Senior Instructional Designer | Acme Health | San Diego, CA | Jan 2021 - Present [src:base:experience:b001]",
+        "Led learning deployments for healthcare teams. [src:base:experience:b002]",
+        "Built SCORM/xAPI solutions and maintained LMS tracking quality. [src:base:experience:b003]",
+        "Instructional Designer | Beta Learning | Remote | Feb 2018 - Dec 2020 [src:base:experience:b004]",
+        "Designed blended programs and stakeholder reviews. [src:base:experience:b005]",
+        "EDUCATION",
+        "M.P.A. Cybersecurity Concentration - CSU San Bernardino [src:base:education:b001]",
+        "B.A. Psychology - CSU Stanislaus [src:base:education:b002]",
+        "SKILLS",
+        "Instructional Design: ADDIE, SAM, Agile [src:base:skills:b001]",
+        "Tools: Storyline, Captivate, SCORM/xAPI, LMS [src:base:skills:b002]",
+      ].join("\n"),
       modelName: "test/model",
       provider: "openrouter",
       taskScope: "resume_tailoring",
@@ -112,10 +147,7 @@ describe("job lineage pipelines", () => {
       runId: "run_resume_success_1234567890",
       eventLogId: 321,
     });
-    parseJsonResponseMock.mockReturnValue({
-      sectionItems: [{ text: "Bullet", sourceRefs: ["claim:1"], section: "experience", jobKeywordsUsed: [], gapNotes: [] }],
-      summary: "Done",
-    });
+    parseJsonResponseMock.mockReturnValue(null);
     validateBulletMock.mockImplementation((bullet) => bullet);
     assertMinimumContentMock.mockImplementation(() => undefined);
     validateResumeQualityMock.mockImplementation(() => undefined);
@@ -143,9 +175,24 @@ describe("job lineage pipelines", () => {
     expect(inserted.eventLogId).toBe(321);
   });
 
-  it("persists compact resume plans without running a full-resume repair pass", async () => {
+  it("persists plain-text resume drafts without running a full-resume repair pass", async () => {
     callAIMock.mockResolvedValue({
-      content: '{"sectionItems":[{"text":"Led project delivery","sourceRefs":["claim:1"],"section":"experience","jobKeywordsUsed":[],"gapNotes":[]}],"summary":"Plan complete"}',
+      content: [
+        "SUMMARY",
+        "Senior Instructional Designer with 13+ years delivering enterprise learning systems. [src:claim:1]",
+        "EXPERIENCE",
+        "Senior Instructional Designer | Acme Health | San Diego, CA | Jan 2021 - Present [src:base:experience:b001]",
+        "Led project delivery across learning deployments and stakeholder reviews. [src:claim:1]",
+        "Built SCORM/xAPI solutions and maintained LMS tracking quality. [src:base:experience:b003]",
+        "Instructional Designer | Beta Learning | Remote | Feb 2018 - Dec 2020 [src:base:experience:b004]",
+        "Designed blended programs and stakeholder reviews. [src:base:experience:b005]",
+        "EDUCATION",
+        "M.P.A. Cybersecurity Concentration - CSU San Bernardino [src:base:education:b001]",
+        "B.A. Psychology - CSU Stanislaus [src:base:education:b002]",
+        "SKILLS",
+        "Instructional Design: ADDIE, SAM, Agile [src:base:skills:b001]",
+        "Tools: Storyline, Captivate, SCORM/xAPI, LMS [src:base:skills:b002]",
+      ].join("\n"),
       modelName: "test/model",
       provider: "openrouter",
       taskScope: "resume_tailoring",
@@ -155,10 +202,7 @@ describe("job lineage pipelines", () => {
       runId: "run_resume_plan_1234567890",
       eventLogId: 321,
     });
-    parseJsonResponseMock.mockReturnValue({
-      sectionItems: [{ text: "Led project delivery", sourceRefs: ["claim:1"], section: "experience", jobKeywordsUsed: [], gapNotes: [] }],
-      summary: "Plan complete",
-    });
+    parseJsonResponseMock.mockReturnValue(null);
     validateBulletMock.mockImplementation((bullet) => bullet);
     assertMinimumContentMock.mockImplementation(() => undefined);
     validateResumeQualityMock.mockImplementation(() => undefined);
@@ -187,13 +231,14 @@ describe("job lineage pipelines", () => {
     expect(inserted.tailoredDocumentText).toContain("EXPERIENCE");
     expect(inserted.tailoredDocumentText).toContain("Led project delivery");
     expect(inserted.templateId).toBe("software_developer");
+    expect(inserted.diffData.modelContract).toBe("resume_tailoring_plain_text_v1");
     expect(inserted.runId).toBe("run_resume_plan_1234567890");
     expect(inserted.eventLogId).toBe(321);
   });
 
   it("persists lineage on resume truth-lock failures so failed generations remain diagnosable", async () => {
     callAIMock.mockResolvedValue({
-      content: '{"sectionItems":[{"text":"Bad","sourceRefs":["claim:999"],"section":"experience","jobKeywordsUsed":[],"gapNotes":[]}],"summary":"Bad"}',
+      content: "EXPERIENCE\nBad unsupported line. [src:claim:999]",
       modelName: "test/model",
       provider: "openrouter",
       taskScope: "resume_tailoring",
@@ -203,10 +248,7 @@ describe("job lineage pipelines", () => {
       runId: "run_resume_failure_1234567890",
       eventLogId: 654,
     });
-    parseJsonResponseMock.mockReturnValue({
-      sectionItems: [{ text: "Bad", sourceRefs: ["claim:999"], section: "experience", jobKeywordsUsed: [], gapNotes: [] }],
-      summary: "Bad",
-    });
+    parseJsonResponseMock.mockReturnValue(null);
     validateBulletMock.mockReturnValue(null);
     assertMinimumContentMock.mockImplementation(() => {
       throw new TruthLockViolation("zero valid bullets", { discarded: 1 });
@@ -221,16 +263,48 @@ describe("job lineage pipelines", () => {
     );
 
     const inserted = resumeInsertValuesMock.mock.calls.at(-1)?.[0];
-    expect(inserted.label).toContain("source validation failed");
+    expect(inserted.label).toContain("ATS resume from verified base sources");
     expect(inserted.runId).toBe("run_resume_failure_1234567890");
     expect(inserted.eventLogId).toBe(654);
   });
 
-  it("saves diagnostic resume rows when all model attempts fail the compact source contract", async () => {
+  it("saves a deterministic base-resume fallback when all model attempts fail the plain-text contract", async () => {
+    dbSelectWhereMock.mockResolvedValueOnce([{
+      id: 5,
+      contentText: [
+        "CYRUS SEPASI",
+        "cyrus@example.com",
+        "SUMMARY",
+        "Senior instructional designer with 13 years of experience.",
+        "EXPERIENCE",
+        "Senior Instructional Designer | Acme Health | San Diego, CA | Jan 2021 - Present",
+        "Led learning deployments for healthcare teams.",
+        "Built SCORM/xAPI solutions and maintained LMS tracking quality.",
+        "Instructional Designer | Beta Learning | Remote | Feb 2018 - Dec 2020",
+        "Designed blended programs and stakeholder reviews.",
+        "EDUCATION",
+        "M.P.A. Cybersecurity Concentration - CSU San Bernardino",
+        "B.A. Psychology - CSU Stanislaus",
+        "SKILLS",
+        "Instructional Design: ADDIE, SAM, Agile",
+        "Tools: Storyline, Captivate, SCORM/xAPI, LMS",
+      ].join("\n"),
+    }]);
     callAIMock.mockRejectedValue(
       Object.assign(new Error("AI call failed after fallback chain"), {
         runId: "run_terminal_contract_failure_1234567890",
         eventLogId: 777,
+        attemptErrors: [
+          {
+            attemptNumber: 1,
+            modelId: 1,
+            modelName: "test/model",
+            provider: "openrouter",
+            error: "structured JSON required",
+            category: "content_contract",
+            elapsedMs: 10,
+          },
+        ],
       }),
     );
 
@@ -243,7 +317,9 @@ describe("job lineage pipelines", () => {
     );
 
     const inserted = resumeInsertValuesMock.mock.calls.at(-1)?.[0];
-    expect(inserted.label).toContain("generation failed");
+    expect(inserted.label).toContain("ATS resume from verified base sources");
+    expect(inserted.tailoredDocumentText).toContain("Senior Instructional Designer | Acme Health");
+    expect(inserted.diffData.aiAttemptSummary).toContain("test/model: content_contract");
     expect(inserted.runId).toBe("run_terminal_contract_failure_1234567890");
     expect(inserted.eventLogId).toBe(777);
   });

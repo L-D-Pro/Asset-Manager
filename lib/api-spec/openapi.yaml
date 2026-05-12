@@ -46,6 +46,8 @@ tags:
     description: Aggregated job board listings
   - name: ui-shell-configs
     description: Theme and layout orchestration config
+  - name: admin-reset
+    description: Admin-only test data reset operations
   - name: best-practices
     description: AI-suggested and curated best practices for job applications
 
@@ -1231,6 +1233,56 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /jobs/{id}/nuke-attempts:
+    post:
+      operationId: nukeJobAttempts
+      tags: [jobs]
+      summary: Nuke test attempts for a job (job-scoped cleanup)
+      description: Deletes the job and linked drafts/attempt lineage artifacts, and scrubs stale wizard references.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Cleanup summary
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - jobId
+                  - deletedResumeVersions
+                  - deletedCoverLetterVersions
+                  - deletedApplications
+                  - deletedFeedbackSignals
+                  - deletedEventLogs
+                  - deletedEvaluations
+                  - deletedTrainingExamples
+                  - scrubbedWizardSessions
+                  - deletedJob
+                properties:
+                  jobId:
+                    type: integer
+                  deletedResumeVersions:
+                    type: integer
+                  deletedCoverLetterVersions:
+                    type: integer
+                  deletedApplications:
+                    type: integer
+                  deletedFeedbackSignals:
+                    type: integer
+                  deletedEventLogs:
+                    type: integer
+                  deletedEvaluations:
+                    type: integer
+                  deletedTrainingExamples:
+                    type: integer
+                  scrubbedWizardSessions:
+                    type: integer
+                  deletedJob:
+                    type: boolean
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /admin/ui-shell-configs/{appKey}:
     get:
       operationId: getUiShellConfig
@@ -1285,6 +1337,52 @@ paths:
                 $ref: "#/components/schemas/UiShellConfigResponse"
 
   # ── AI Learning ────────────────────────────────────────────────────────────
+  /admin/test-reset/summary:
+    get:
+      operationId: getAppTestResetSummary
+      tags: [admin-reset]
+      summary: Preview admin test data reset
+      responses:
+        "200":
+          description: Reset summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppTestResetSummary"
+        "403":
+          description: Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /admin/test-reset:
+    post:
+      operationId: resetAppTestData
+      tags: [admin-reset]
+      summary: Reset app test data and identity sequences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AppTestResetBody"
+      responses:
+        "200":
+          description: Reset completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppTestResetResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          description: Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /ai-review/overview:
     get:
       operationId: getAiReviewOverview
@@ -2199,6 +2297,70 @@ components:
         - error
 
     # ── Role Profile ────────────────────────────────────────────────────────
+    AppTestResetTableSummary:
+      type: object
+      properties:
+        table:
+          type: string
+        rowsBefore:
+          type: integer
+      required:
+        - table
+        - rowsBefore
+
+    AppTestResetSummary:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum: [app_test_data]
+        resetsIdentity:
+          type: boolean
+        preservedTables:
+          type: array
+          items:
+            type: string
+        resetTables:
+          type: array
+          items:
+            $ref: "#/components/schemas/AppTestResetTableSummary"
+        missingTables:
+          type: array
+          items:
+            type: string
+        totalRowsBefore:
+          type: integer
+      required:
+        - mode
+        - resetsIdentity
+        - preservedTables
+        - resetTables
+        - missingTables
+        - totalRowsBefore
+
+    AppTestResetBody:
+      type: object
+      properties:
+        confirmation:
+          type: string
+          enum: [RESET, RESET APP]
+      required:
+        - confirmation
+
+    AppTestResetResult:
+      allOf:
+        - $ref: "#/components/schemas/AppTestResetSummary"
+        - type: object
+          properties:
+            resetAt:
+              type: string
+              format: date-time
+            resetByAdminId:
+              type: integer
+          required:
+            - resetAt
+            - resetByAdminId
+
     BaseResumeVersion:
       type: object
       properties:

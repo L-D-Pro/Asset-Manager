@@ -19,6 +19,7 @@ import {
 } from "@workspace/api-zod";
 import { validateLineage } from "../lib/lineage";
 import { generateResumeDocx } from "../lib/docx-export";
+import { scrubWizardStateReferences } from "../lib/wizard-state-cleanup";
 
 const router: IRouter = Router();
 
@@ -37,16 +38,25 @@ function getResumeApprovalBlocker(resumeVersion: typeof resumeVersionsTable.$inf
     sourceValidation?.passed === true &&
     typeof sourceValidation.validItemCount === "number" &&
     sourceValidation.validItemCount > 0;
+  const semanticValidation =
+    diffData.semanticValidation && typeof diffData.semanticValidation === "object" && !Array.isArray(diffData.semanticValidation)
+      ? (diffData.semanticValidation as Record<string, unknown>)
+      : null;
+  const hasPassingSemanticValidation = semanticValidation?.passed === true;
   const hasBlockingDiagnostic =
     typeof resumeVersion.notes === "string" &&
-    /could not be repaired|truth lock failure|quality check failed|truth review failed|generation failed|source validation failed|base resume parse failed|needs review/i.test(resumeVersion.notes);
+    /could not be repaired|truth lock failure|quality check failed|truth review failed|generation failed|source validation failed|semantic template validation failed|base resume parse failed|needs review/i.test(resumeVersion.notes);
+  const modelContract = typeof diffData.modelContract === "string" ? diffData.modelContract : null;
+  const isDeterministicFallbackContract = modelContract === "deterministic_base_resume_fallback_v1";
 
   if (
     !resumeVersion.templateId ||
     !diffData.templateValidation ||
     !hasStructuredBullets ||
     !hasPassingSourceValidation ||
-    hasBlockingDiagnostic
+    !hasPassingSemanticValidation ||
+    hasBlockingDiagnostic ||
+    isDeterministicFallbackContract
   ) {
     return "This resume does not have passing structured content, truth review, and template validation metadata.";
   }
@@ -133,6 +143,7 @@ router.delete("/resume-versions/:id", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Resume version not found" });
     return;
   }
+  await scrubWizardStateReferences({ resumeVersionIds: [params.data.id] });
   res.sendStatus(204);
 });
 
