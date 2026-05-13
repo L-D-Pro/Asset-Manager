@@ -5,6 +5,28 @@ import { adminUsersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { ensureModelConfigConstraints, seedModelConfigs } from "./lib/seed-model-configs";
+import { checkModelConfigHealth } from "./lib/model-config-health";
+
+const HEALTH_CHECK_INTERVAL_MS = 5 * 60 * 1000;
+
+async function runConfigHealthCheck(context: "startup" | "periodic") {
+  try {
+    const report = await checkModelConfigHealth();
+    if (!report.healthy) {
+      logger.error(
+        { unhealthyScopes: report.unhealthyScopes, checkedAt: report.checkedAt },
+        `[${context}] Model config health check FAILED — unhealthy scopes detected`,
+      );
+    } else {
+      logger.info(
+        { checkedAt: report.checkedAt },
+        `[${context}] Model config health check passed`,
+      );
+    }
+  } catch (err) {
+    logger.error({ err }, `[${context}] Model config health check threw an unexpected error`);
+  }
+}
 
 /**
  * API server entry point.
@@ -88,6 +110,13 @@ async function main() {
   await bootstrapAdminUser();
   await ensureModelConfigConstraints();
   await seedModelConfigs();
+
+  await runConfigHealthCheck("startup");
+
+  const healthInterval = setInterval(() => {
+    runConfigHealthCheck("periodic");
+  }, HEALTH_CHECK_INTERVAL_MS);
+  healthInterval.unref();
 
   app.listen(port, (err) => {
     if (err) {
