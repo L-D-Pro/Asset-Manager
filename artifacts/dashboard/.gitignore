@@ -1,0 +1,8 @@
+dist/
+.env.*
+!.env.example
+
+# Playwright test artifacts (transient — never commit these)
+test-results/
+playwright-report/
+.last-run.json
