@@ -2,7 +2,7 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { db, pool } from "@workspace/db";
 import { adminUsersTable, aiModelConfigsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
 /**
@@ -71,7 +71,10 @@ async function seedModelConfigs() {
     const existing = await db
       .select({ id: aiModelConfigsTable.id })
       .from(aiModelConfigsTable)
-      .where(eq(aiModelConfigsTable.taskScope, config.taskScope));
+      .where(and(
+        eq(aiModelConfigsTable.taskScope, config.taskScope),
+        eq(aiModelConfigsTable.isActive, true),
+      ));
 
     const hasActive = existing.length > 0;
     if (!hasActive) {

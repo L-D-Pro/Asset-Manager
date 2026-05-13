@@ -1103,11 +1103,9 @@ export default function ApplyWizardPage() {
  if (version.tailoredDocumentText) {
  toast({ title: `Resume draft created (#${version.id})` });
  } else {
- toast({
- title: `Resume draft #${version.id} needs review`,
- description: getResumeDiagnosticMessage(version.notes),
- variant: "destructive",
- });
+ const attemptSummary = (version.diffData as any)?.aiAttemptSummary as string | undefined;
+ const detail = attemptSummary ? attemptSummary.slice(0, 200) : getResumeDiagnosticMessage(version.notes);
+ toast({ title: `Resume draft #${version.id} needs review`, description: detail, variant: "destructive" });
  }
  },
  onError: (error) =>
@@ -2222,7 +2220,9 @@ export default function ApplyWizardPage() {
  <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm space-y-1">
  <p className="font-medium text-destructive">Resume must be regenerated before approval</p>
  <p className="text-xs text-muted-foreground">
- {getResumeDiagnosticMessage(resumeVersion?.notes)}
+ {resumePreviewIsRaw && !resumeVersion?.tailoredDocumentText
+ ? "AI returned a draft but source attribution failed. Review the raw draft below or regenerate."
+ : getResumeDiagnosticMessage(resumeVersion?.notes)}
  </p>
  </div>
  )}
@@ -2462,7 +2462,9 @@ export default function ApplyWizardPage() {
  <div>
  <p className="text-sm font-medium text-destructive">Resume must be regenerated before approval</p>
  <p className="text-xs text-muted-foreground">
- {getResumeDiagnosticMessage(resumeVersion?.notes)}
+ {resumePreviewIsRaw && !resumeVersion?.tailoredDocumentText
+ ? "AI returned a draft but source attribution failed. Review the raw draft below or regenerate."
+ : getResumeDiagnosticMessage(resumeVersion?.notes)}
  </p>
  {resumeAiAttemptSummary ? (
  <p className="text-xs text-muted-foreground mt-1">

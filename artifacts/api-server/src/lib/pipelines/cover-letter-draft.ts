@@ -93,6 +93,7 @@ const COVER_LETTER_STRUCTURED_OUTPUT_PARAMS = {
   max_tokens: 3000,
   timeoutMs: 30_000,
   maxAttempts: 2,
+  response_format: { type: "json_object" },
 };
 
 const SYSTEM_PROMPT = `You are an expert career coach specializing in cover letters.
@@ -233,146 +234,129 @@ Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed
 - You may write in a natural human voice, but you may not invent motivations, relationships, metrics, credentials, dates, titles, tools, company facts, or experience.
 - Body and hook paragraphs must cite claimIds. Opening and closing may be uncited only if they contain no factual claims.`;
 
-  const MAX_RETRIES = 2;
-  let attempt = 0;
-  let lastQualityViolation: QualityViolation | null = null;
-  let lastResult: Awaited<ReturnType<typeof callAI>> | null = null;
-  let parsed: CoverLetterResult | null = null;
-  let validatedParagraphs: NonNullable<ReturnType<typeof validateParagraph>>[] = [];
-  let fullText = "";
+  let aiResult: Awaited<ReturnType<typeof callAI>>;
 
-  while (attempt <= MAX_RETRIES) {
-    const correctionNote =
-      lastQualityViolation && attempt > 0
-        ? `\n\n[SELF-CORRECTION — attempt ${attempt + 1} of ${MAX_RETRIES + 1}]\nYour previous output failed quality validation:\n${lastQualityViolation.violations.map((v) => `- ${v}`).join("\n")}\nFix ALL of these issues and regenerate the complete output.`
-        : "";
-
-    try {
-      lastResult = await callAI({
-        taskType: "cover_letter",
-        systemPrompt: augmentedSystemPrompt,
-        userPrompt:
-          `Draft a cover letter for this job:\n\n${jobContext}${resumeContext}\n\nStored job/company research (use only if present; do not use model memory):\n${researchContext || "No stored research available."}\n\nAvailable claims (use ONLY these IDs):\n${claimsContext}` +
-          correctionNote,
+  try {
+    aiResult = await callAI({
+      taskType: "cover_letter",
+      systemPrompt: augmentedSystemPrompt,
+      userPrompt:
+        `Draft a cover letter for this job:\n\n${jobContext}${resumeContext}\n\nStored job/company research (use only if present; do not use model memory):\n${researchContext || "No stored research available."}\n\nAvailable claims (use ONLY these IDs):\n${claimsContext}`,
+      jobId: job.id,
+      modelOverride: options?.modelOverride,
+      extraParams: COVER_LETTER_STRUCTURED_OUTPUT_PARAMS,
+      validateContent: (content) => {
+        const parsedCandidate = parseJsonResponse<CoverLetterResult>(content);
+        if (!parsedCandidate || !Array.isArray(parsedCandidate.paragraphs) || parsedCandidate.paragraphs.length === 0) {
+          throw new Error("Cover letter did not pass structured JSON validation.");
+        }
+      },
+    });
+  } catch (error) {
+    const [row] = await db
+      .insert(coverLetterVersionsTable)
+      .values({
         jobId: job.id,
-        modelOverride: options?.modelOverride,
-        extraParams: COVER_LETTER_STRUCTURED_OUTPUT_PARAMS,
-        validateContent: (content) => {
-          const parsedCandidate = parseJsonResponse<CoverLetterResult>(content);
-          if (!parsedCandidate || !Array.isArray(parsedCandidate.paragraphs) || parsedCandidate.paragraphs.length === 0) {
-            throw new Error("Cover letter did not pass structured JSON validation.");
-          }
-        },
-      });
-    } catch (error) {
-      const [row] = await db
-        .insert(coverLetterVersionsTable)
-        .values({
-          jobId: job.id,
-          label: "AI drafted — generation failed",
-          status: "pending_approval",
-          runId:
-            error && typeof error === "object" && "runId" in error && typeof (error as { runId?: unknown }).runId === "string"
-              ? (error as { runId: string }).runId
-              : null,
-          eventLogId:
-            error && typeof error === "object" && "eventLogId" in error && typeof (error as { eventLogId?: unknown }).eventLogId === "number"
-              ? (error as { eventLogId: number }).eventLogId
-              : null,
-          claimIds: selectedClaims.map((claim) => claim.id),
-          annotatedParagraphs: [],
-          draftContent: "",
-          notes: `Cover letter generation failed after model fallback attempts. ${extractAttemptSummary(error)}`,
-        })
-        .returning();
-      return row!;
-    }
+        label: "AI drafted — generation failed",
+        status: "pending_approval",
+        runId:
+          error && typeof error === "object" && "runId" in error && typeof (error as { runId?: unknown }).runId === "string"
+            ? (error as { runId: string }).runId
+            : null,
+        eventLogId:
+          error && typeof error === "object" && "eventLogId" in error && typeof (error as { eventLogId?: unknown }).eventLogId === "number"
+            ? (error as { eventLogId: number }).eventLogId
+            : null,
+        claimIds: selectedClaims.map((claim) => claim.id),
+        annotatedParagraphs: [],
+        draftContent: "",
+        notes: `Cover letter generation failed after model fallback attempts. ${extractAttemptSummary(error)}`,
+      })
+      .returning();
+    return row!;
+  }
 
-    parsed = parseJsonResponse<CoverLetterResult>(lastResult.content);
+  const parsed = parseJsonResponse<CoverLetterResult>(aiResult.content);
 
-    if (!parsed || !Array.isArray(parsed.paragraphs)) {
+  if (!parsed || !Array.isArray(parsed.paragraphs)) {
+    logger.error(
+      { jobId: job.id, raw: aiResult.content.slice(0, 500) },
+      "AI returned unparseable JSON for cover letter — storing failed version",
+    );
+    const [row] = await db
+      .insert(coverLetterVersionsTable)
+      .values({
+        jobId: job.id,
+        label: "AI drafted — generation failed",
+        status: "pending_approval",
+        runId: aiResult.runId,
+        eventLogId: aiResult.eventLogId,
+        claimIds: [],
+        annotatedParagraphs: [],
+        draftContent: aiResult.content,
+        notes: "AI output could not be parsed as structured JSON. Review raw content and regenerate.",
+      })
+      .returning();
+    return row!;
+  }
+
+  const validatedParagraphs = parsed.paragraphs
+    .map((p) => validateParagraph(p, selectedClaims))
+    .filter((p): p is NonNullable<typeof p> => p !== null);
+
+  try {
+    assertMinimumContent(validatedParagraphs, aiResult.content, "cover letter paragraphs");
+  } catch (err) {
+    if (err instanceof TruthLockViolation) {
       logger.error(
-        { jobId: job.id, raw: lastResult.content.slice(0, 500) },
-        "AI returned unparseable JSON for cover letter — storing failed version",
+        { jobId: job.id, ...err.details },
+        "Truth lock violation: zero valid paragraphs — storing failed version",
       );
       const [row] = await db
         .insert(coverLetterVersionsTable)
         .values({
           jobId: job.id,
-          label: "AI drafted — generation failed",
+          label: "AI drafted — truth lock failure",
           status: "pending_approval",
-          runId: lastResult.runId,
-          eventLogId: lastResult.eventLogId,
+          runId: aiResult.runId,
+          eventLogId: aiResult.eventLogId,
           claimIds: [],
           annotatedParagraphs: [],
-          draftContent: lastResult.content,
-          notes: "AI output could not be parsed as structured JSON. Review raw content and regenerate.",
+          draftContent: aiResult.content,
+          notes: `Truth lock failure: ${err.message}. All AI-generated paragraphs cited claim IDs not in the selected set. Review claims and regenerate.`,
         })
         .returning();
       return row!;
     }
+    throw err;
+  }
 
-    validatedParagraphs = parsed.paragraphs
-      .map((p) => validateParagraph(p, selectedClaims))
-      .filter((p): p is NonNullable<typeof p> => p !== null);
+  // ─── Best Practices Quality Validation ───
+  const fullText = stripClaimIdRefs(
+    parsed.fullText?.trim() ||
+    validatedParagraphs.map((p) => p.text).join("\n\n"),
+  );
 
-    try {
-      assertMinimumContent(validatedParagraphs, lastResult.content, "cover letter paragraphs");
-    } catch (err) {
-      if (err instanceof TruthLockViolation) {
-        logger.error(
-          { jobId: job.id, ...err.details },
-          "Truth lock violation: zero valid paragraphs — storing failed version",
-        );
-        const [row] = await db
-          .insert(coverLetterVersionsTable)
-          .values({
-            jobId: job.id,
-            label: "AI drafted — truth lock failure",
-            status: "pending_approval",
-            runId: lastResult.runId,
-            eventLogId: lastResult.eventLogId,
-            claimIds: [],
-            annotatedParagraphs: [],
-            draftContent: lastResult.content,
-            notes: `Truth lock failure: ${err.message}. All AI-generated paragraphs cited claim IDs not in the selected set. Review claims and regenerate.`,
-          })
-          .returning();
-        return row!;
-      }
+  let qualityViolation: QualityViolation | null = null;
+  try {
+    validateCoverLetterQuality(fullText);
+    await validateSemanticQuality(fullText, jobContext, job.id);
+  } catch (err) {
+    if (err instanceof QualityViolation) {
+      qualityViolation = err;
+      logger.warn(
+        { jobId: job.id, violations: err.violations },
+        "Cover letter quality violation — storing draft for review",
+      );
+    } else {
       throw err;
-    }
-
-    // ─── Best Practices Quality Validation ───
-    fullText = stripClaimIdRefs(
-      parsed.fullText?.trim() ||
-      validatedParagraphs.map((p) => p.text).join("\n\n"),
-    );
-
-    try {
-      validateCoverLetterQuality(fullText);
-      await validateSemanticQuality(fullText, jobContext, job.id);
-      lastQualityViolation = null;
-      break; // passed — exit retry loop
-    } catch (err) {
-      if (err instanceof QualityViolation) {
-        lastQualityViolation = err;
-        logger.warn(
-          { jobId: job.id, attempt: attempt + 1, violations: err.violations },
-          "Cover letter quality violation — retrying",
-        );
-        attempt++;
-      } else {
-        throw err;
-      }
     }
   }
 
-  // After retry loop: if still failing quality, store failed record
-  if (lastQualityViolation) {
+  if (qualityViolation) {
     logger.error(
-      { jobId: job.id, violations: lastQualityViolation.violations },
-      "Cover letter quality validation failed after all retries — storing failed version",
+      { jobId: job.id, violations: qualityViolation.violations },
+      "Cover letter quality validation failed — storing version for review",
     );
     const [row] = await db
       .insert(coverLetterVersionsTable)
@@ -380,20 +364,19 @@ Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed
         jobId: job.id,
         label: "AI drafted — quality check failed",
         status: "pending_approval",
-        runId: lastResult!.runId,
-        eventLogId: lastResult!.eventLogId,
+        runId: aiResult.runId,
+        eventLogId: aiResult.eventLogId,
         claimIds: [...new Set(validatedParagraphs.flatMap((p) => p.claimIds))],
         annotatedParagraphs: validatedParagraphs as unknown as Record<string, unknown>[],
         draftContent: fullText,
-        notes: `Quality check failed after ${MAX_RETRIES + 1} attempts:\n${lastQualityViolation.violations.join("\n")}\n\nThe AI output violated best practices. Review and regenerate, or adjust your claims.`,
+        notes: `Quality check failed:\n${qualityViolation.violations.join("\n")}\n\nThe AI output violated best practices. Review and regenerate, or adjust your claims.`,
       })
       .returning();
     return row!;
   }
 
-  // At this point parsed and lastResult are guaranteed non-null (loop exited via break)
-  const finalParsed = parsed!;
-  const finalResult = lastResult!;
+  const finalParsed = parsed;
+  const finalResult = aiResult;
 
   const usedClaimIds = [...new Set(validatedParagraphs.flatMap((p) => p.claimIds))];
   const truthReview = reviewGeneratedTruth(validatedParagraphs, {
