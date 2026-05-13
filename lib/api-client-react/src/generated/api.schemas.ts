@@ -18,6 +18,25 @@ export interface AppTestResetTableSummary {
   rowsBefore: number;
 }
 
+export interface ScopeHealthStatus {
+  scope: string;
+  hasActiveConfig: boolean;
+  /** @nullable */
+  activeModelName: string | null;
+  requiresFallback: boolean;
+  fallbackWired: boolean;
+  /** @nullable */
+  fallbackModelName: string | null;
+  healthy: boolean;
+}
+
+export interface ModelConfigHealthReport {
+  healthy: boolean;
+  checkedAt: string;
+  scopes: ScopeHealthStatus[];
+  unhealthyScopes: string[];
+}
+
 export type AppTestResetSummaryMode =
   (typeof AppTestResetSummaryMode)[keyof typeof AppTestResetSummaryMode];
 
@@ -32,6 +51,7 @@ export interface AppTestResetSummary {
   resetTables: AppTestResetTableSummary[];
   missingTables: string[];
   totalRowsBefore: number;
+  modelConfigHealth?: ModelConfigHealthReport;
 }
 
 export type AppTestResetBodyConfirmation =

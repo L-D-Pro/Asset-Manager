@@ -7,6 +7,7 @@
  */
 import type { AppTestResetSummaryMode } from "./appTestResetSummaryMode";
 import type { AppTestResetTableSummary } from "./appTestResetTableSummary";
+import type { ModelConfigHealthReport } from "./modelConfigHealthReport";
 
 export interface AppTestResetSummary {
   mode: AppTestResetSummaryMode;
@@ -15,4 +16,5 @@ export interface AppTestResetSummary {
   resetTables: AppTestResetTableSummary[];
   missingTables: string[];
   totalRowsBefore: number;
+  modelConfigHealth?: ModelConfigHealthReport;
 }

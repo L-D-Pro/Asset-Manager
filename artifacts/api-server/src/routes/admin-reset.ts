@@ -8,6 +8,7 @@ import {
   resetAppTestData,
 } from "../lib/app-test-reset";
 import { ensureModelConfigConstraints, seedModelConfigs } from "../lib/seed-model-configs";
+import { checkModelConfigHealth } from "../lib/model-config-health";
 
 const adminResetRouter = Router();
 
@@ -38,8 +39,11 @@ adminResetRouter.get(
   "/admin/test-reset/summary",
   requireAdmin,
   async (_req: JobOpsRequest, res): Promise<void> => {
-    const summary = await getAppTestResetSummary();
-    res.json(summary);
+    const [summary, modelConfigHealth] = await Promise.all([
+      getAppTestResetSummary(),
+      checkModelConfigHealth(),
+    ]);
+    res.json({ ...summary, modelConfigHealth });
   },
 );
 
@@ -83,7 +87,8 @@ adminResetRouter.post(
     await seedModelConfigs();
     logger.info({ adminId }, "Re-seeded model configs after data reset");
 
-    res.json(result);
+    const modelConfigHealth = await checkModelConfigHealth();
+    res.json({ ...result, modelConfigHealth });
   },
 );
 

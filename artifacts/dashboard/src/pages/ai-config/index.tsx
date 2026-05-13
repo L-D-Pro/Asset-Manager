@@ -8,7 +8,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { Settings, Plus, Pencil, Trash2, ArrowRight } from "lucide-react";
+import { Settings, Plus, Pencil, Trash2, ArrowRight, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -17,10 +18,26 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { getErrorMessage } from "@/lib/api-errors";
+
+interface ScopeHealthStatus {
+ scope: string;
+ hasActiveConfig: boolean;
+ activeModelName: string | null;
+ requiresFallback: boolean;
+ fallbackWired: boolean;
+ fallbackModelName: string | null;
+ healthy: boolean;
+}
+
+interface ModelConfigHealthReport {
+ healthy: boolean;
+ checkedAt: string;
+ scopes: ScopeHealthStatus[];
+ unhealthyScopes: string[];
+}
 
 const TASK_SCOPES = [
  "default",
@@ -72,6 +89,21 @@ export default function AiConfigPage() {
  const [isCustomScope, setIsCustomScope] = useState(false);
  const { toast } = useToast();
  const queryClient = useQueryClient();
+
+ const [healthReport, setHealthReport] = useState<ModelConfigHealthReport | null>(null);
+
+ useEffect(() => {
+   void (async () => {
+     try {
+       const res = await fetch("/api/admin/health/model-configs", { credentials: "include" });
+       if (res.ok || res.status === 207) {
+         setHealthReport((await res.json()) as ModelConfigHealthReport);
+       }
+     } catch {
+       // Non-critical — silently ignore
+     }
+   })();
+ }, [configs]);
 
  const form = useForm<FormValues>({
  resolver: zodResolver(configSchema),
@@ -222,6 +254,38 @@ export default function AiConfigPage() {
 
  return (
  <div className="space-y-6">
+ {healthReport && !healthReport.healthy && (
+   <div data-testid="model-config-health-banner" className="rounded-xl border border-destructive/40 bg-destructive/5 p-4">
+     <div className="flex gap-3">
+       <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
+       <div className="space-y-2">
+         <p className="font-semibold text-destructive">AI model config problem detected</p>
+         <p className="text-sm text-muted-foreground">
+           The following scopes are missing an active model or a required fallback. AI generation will fail for these scopes until the configs are fixed.
+         </p>
+         <div className="flex flex-wrap gap-2 pt-1">
+           {healthReport.scopes.filter((s) => !s.healthy).map((s) => (
+             <div key={s.scope} className="rounded-md border border-destructive/30 bg-background px-3 py-1.5 text-xs">
+               <span className="font-semibold font-mono">{s.scope}</span>
+               {!s.hasActiveConfig && (
+                 <span className="ml-1.5 text-muted-foreground">— no active model</span>
+               )}
+               {s.hasActiveConfig && s.requiresFallback && !s.fallbackWired && (
+                 <span className="ml-1.5 text-muted-foreground">— fallback not wired</span>
+               )}
+             </div>
+           ))}
+         </div>
+       </div>
+     </div>
+   </div>
+ )}
+ {healthReport?.healthy && (
+   <div data-testid="model-config-health-ok" className="rounded-xl border border-green-500/30 bg-green-500/5 px-4 py-2.5 flex items-center gap-2 text-sm text-green-700">
+     <CheckCircle2 className="h-4 w-4 shrink-0" />
+     All required model configs are active and properly wired.
+   </div>
+ )}
  <div className="flex justify-between items-center">
  <PageHeader
  title="AI Config"

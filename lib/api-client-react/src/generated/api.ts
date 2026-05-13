@@ -95,6 +95,7 @@ import type {
   ListResumeVersionsParams,
   ListSuggestedAiTrainingExamplesParams,
   ListSuggestedBestPracticesParams,
+  ModelConfigHealthReport,
   NotFoundResponse,
   NukeJobAttempts200,
   ParseJobBody,
@@ -112,6 +113,7 @@ import type {
   SuggestedBestPractice,
   TailorResumeBody,
   UiShellConfigResponse,
+  UnauthorizedResponse,
   UpdateAiModelConfigBody,
   UpdateAiPromptVersionBody,
   UpdateApplicationBody,
@@ -6036,6 +6038,84 @@ export const useResetAppTestData = <
 > => {
   return useMutation(getResetAppTestDataMutationOptions(options));
 };
+
+/**
+ * Returns per-scope health status for all managed task scopes. Returns 207 if any scope is unhealthy.
+ * @summary Check AI model config health per scope
+ */
+export const getGetModelConfigHealthUrl = () => {
+  return `/api/admin/health/model-configs`;
+};
+
+export const getModelConfigHealth = async (
+  options?: RequestInit,
+): Promise<ModelConfigHealthReport> => {
+  return customFetch<ModelConfigHealthReport>(getGetModelConfigHealthUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetModelConfigHealthQueryKey = () => {
+  return [`/api/admin/health/model-configs`] as const;
+};
+
+export const getGetModelConfigHealthQueryOptions = <
+  TData = Awaited<ReturnType<typeof getModelConfigHealth>>,
+  TError = ErrorType<UnauthorizedResponse | ErrorResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getModelConfigHealth>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetModelConfigHealthQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getModelConfigHealth>>
+  > = ({ signal }) => getModelConfigHealth({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getModelConfigHealth>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetModelConfigHealthQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getModelConfigHealth>>
+>;
+export type GetModelConfigHealthQueryError = ErrorType<
+  UnauthorizedResponse | ErrorResponse
+>;
+
+/**
+ * @summary Check AI model config health per scope
+ */
+
+export function useGetModelConfigHealth<
+  TData = Awaited<ReturnType<typeof getModelConfigHealth>>,
+  TError = ErrorType<UnauthorizedResponse | ErrorResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getModelConfigHealth>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetModelConfigHealthQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Get AI review overview

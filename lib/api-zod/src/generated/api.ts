@@ -1837,6 +1837,24 @@ export const GetAppTestResetSummaryResponse = zod.object({
   ),
   missingTables: zod.array(zod.string()),
   totalRowsBefore: zod.number(),
+  modelConfigHealth: zod
+    .object({
+      healthy: zod.boolean(),
+      checkedAt: zod.coerce.date(),
+      scopes: zod.array(
+        zod.object({
+          scope: zod.string(),
+          hasActiveConfig: zod.boolean(),
+          activeModelName: zod.string().nullable(),
+          requiresFallback: zod.boolean(),
+          fallbackWired: zod.boolean(),
+          fallbackModelName: zod.string().nullable(),
+          healthy: zod.boolean(),
+        }),
+      ),
+      unhealthyScopes: zod.array(zod.string()),
+    })
+    .optional(),
 });
 
 /**
@@ -1859,6 +1877,24 @@ export const ResetAppTestDataResponse = zod
     ),
     missingTables: zod.array(zod.string()),
     totalRowsBefore: zod.number(),
+    modelConfigHealth: zod
+      .object({
+        healthy: zod.boolean(),
+        checkedAt: zod.coerce.date(),
+        scopes: zod.array(
+          zod.object({
+            scope: zod.string(),
+            hasActiveConfig: zod.boolean(),
+            activeModelName: zod.string().nullable(),
+            requiresFallback: zod.boolean(),
+            fallbackWired: zod.boolean(),
+            fallbackModelName: zod.string().nullable(),
+            healthy: zod.boolean(),
+          }),
+        ),
+        unhealthyScopes: zod.array(zod.string()),
+      })
+      .optional(),
   })
   .and(
     zod.object({
@@ -1866,6 +1902,27 @@ export const ResetAppTestDataResponse = zod
       resetByAdminId: zod.number(),
     }),
   );
+
+/**
+ * Returns per-scope health status for all managed task scopes. Returns 207 if any scope is unhealthy.
+ * @summary Check AI model config health per scope
+ */
+export const GetModelConfigHealthResponse = zod.object({
+  healthy: zod.boolean(),
+  checkedAt: zod.coerce.date(),
+  scopes: zod.array(
+    zod.object({
+      scope: zod.string(),
+      hasActiveConfig: zod.boolean(),
+      activeModelName: zod.string().nullable(),
+      requiresFallback: zod.boolean(),
+      fallbackWired: zod.boolean(),
+      fallbackModelName: zod.string().nullable(),
+      healthy: zod.boolean(),
+    }),
+  ),
+  unhealthyScopes: zod.array(zod.string()),
+});
 
 /**
  * @summary Get AI review overview

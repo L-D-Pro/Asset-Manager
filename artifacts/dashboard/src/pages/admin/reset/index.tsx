@@ -14,6 +14,23 @@ interface ResetTableSummary {
   rowsBefore: number;
 }
 
+interface ScopeHealthStatus {
+  scope: string;
+  hasActiveConfig: boolean;
+  activeModelName: string | null;
+  requiresFallback: boolean;
+  fallbackWired: boolean;
+  fallbackModelName: string | null;
+  healthy: boolean;
+}
+
+interface ModelConfigHealthReport {
+  healthy: boolean;
+  checkedAt: string;
+  scopes: ScopeHealthStatus[];
+  unhealthyScopes: string[];
+}
+
 interface ResetSummary {
   mode: "app_test_data";
   resetsIdentity: boolean;
@@ -21,6 +38,7 @@ interface ResetSummary {
   resetTables: ResetTableSummary[];
   missingTables: string[];
   totalRowsBefore: number;
+  modelConfigHealth?: ModelConfigHealthReport;
 }
 
 interface ResetResult extends ResetSummary {
@@ -186,6 +204,30 @@ export default function AdminResetPage() {
                     <Badge variant="secondary">{row.rowsBefore}</Badge>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {summary?.modelConfigHealth && (
+            <div className={`rounded-xl border p-4 ${summary.modelConfigHealth.healthy ? "border-green-500/30 bg-green-500/5" : "border-destructive/30 bg-destructive/5"}`}>
+              <div className="flex items-start gap-3">
+                {summary.modelConfigHealth.healthy ? (
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-700" />
+                ) : (
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                )}
+                <div className="space-y-1">
+                  <p className={`text-sm font-semibold ${summary.modelConfigHealth.healthy ? "text-green-700" : "text-destructive"}`}>
+                    {summary.modelConfigHealth.healthy
+                      ? "AI model configs are healthy"
+                      : `AI model config issues: ${summary.modelConfigHealth.unhealthyScopes.join(", ")}`}
+                  </p>
+                  {!summary.modelConfigHealth.healthy && (
+                    <p className="text-xs text-muted-foreground">
+                      After reset, model configs are re-seeded automatically. Visit AI Config to verify.
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           )}
