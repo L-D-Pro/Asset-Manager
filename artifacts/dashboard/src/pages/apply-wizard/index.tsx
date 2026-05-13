@@ -58,7 +58,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { Sparkles, Link2, ClipboardCheck, Wand2, ShieldCheck, MousePointerClick, UserCircle, Tag, Check, AlertCircle, ChevronRight, Download, Save, Upload, Trash2 } from "lucide-react";
+import { Sparkles, Link2, ClipboardCheck, Wand2, ShieldCheck, MousePointerClick, UserCircle, Tag, Check, AlertCircle, ChevronRight, ChevronDown, Download, Save, Upload, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getErrorMessage, hasHttpStatus } from "@/lib/api-errors";
 import { Link } from "react-router-dom";
@@ -244,6 +244,10 @@ export default function ApplyWizardPage() {
  const [activeCoverTab, setActiveCoverTab] = useState<string | null>(null);
  const [activeDraftPreview, setActiveDraftPreview] = useState<"resume" | "cover" | null>(null);
  const [selectedResumeTemplateId, setSelectedResumeTemplateId] = useState("software_developer");
+ const [resumeReviewChecked, setResumeReviewChecked] = useState(false);
+ const [coverReviewChecked, setCoverReviewChecked] = useState(false);
+ const [resumeAiSummaryOpen, setResumeAiSummaryOpen] = useState(true);
+ const [coverAiSummaryOpen, setCoverAiSummaryOpen] = useState(true);
 
  const [quickProfile, setQuickProfile] = useState({
  name: "",
@@ -430,6 +434,16 @@ export default function ApplyWizardPage() {
  }, [resumeVersion?.templateId]);
 
  useEffect(() => {
+   setResumeReviewChecked(false);
+   setResumeAiSummaryOpen(true);
+ }, [resumeVersionId]);
+
+ useEffect(() => {
+   setCoverReviewChecked(false);
+   setCoverAiSummaryOpen(true);
+ }, [coverLetterVersionId]);
+
+ useEffect(() => {
  if (!job) return;
  const keywords = (job.parsedKeywords ?? []).join(", ");
  setParsedDraft({
@@ -572,6 +586,37 @@ export default function ApplyWizardPage() {
  !resumeHasPassingSemanticValidation ||
  /could not be repaired|truth lock failure|quality check failed|truth review failed|generation failed|source validation failed|semantic template validation failed|base resume parse failed/i.test(resumeVersion.notes ?? "")),
  );
+
+ const resumeTruthReview = (resumeVersion?.diffData as any)?.truthReview as {
+   supportStatus?: string;
+   supportedCount?: number;
+   partialCount?: number;
+   unsupportedCount?: number;
+   seriousViolationCount?: number;
+   unsupportedPhrases?: string[];
+   gapNotes?: string[];
+ } | undefined;
+
+ const resumeHasWarnings = Boolean(
+   resumeTruthReview && (
+     (resumeTruthReview.partialCount ?? 0) > 0 ||
+     (resumeTruthReview.unsupportedCount ?? 0) > 0 ||
+     (resumeTruthReview.seriousViolationCount ?? 0) > 0
+   )
+ );
+
+ const coverAnnotatedParagraphs = (
+   coverLetterVersion?.annotatedParagraphs && Array.isArray(coverLetterVersion.annotatedParagraphs)
+     ? coverLetterVersion.annotatedParagraphs as any[]
+     : []
+ );
+
+ const coverTruthWarningParagraphs = coverAnnotatedParagraphs.filter((para) => {
+   const status = para.supportStatus ?? para.truthReview?.supportStatus;
+   return status === "partial" || status === "unsupported";
+ });
+
+ const coverHasWarnings = coverTruthWarningParagraphs.length > 0;
 
  const updateBatchRun = (id: string, patch: Partial<BatchRun>) => {
  setBatchRuns((prev) => prev.map((run) => (run.id === id ? { ...run, ...patch } : run)));
@@ -2474,37 +2519,86 @@ export default function ApplyWizardPage() {
  </div>
  </div>
  )}
- {(() => {
- const truthReview = (resumeVersion?.diffData as any)?.truthReview;
- if (!truthReview) return null;
- return (
- <div className="rounded-md border bg-muted/30 p-3 text-xs space-y-2">
- <div className="flex flex-wrap items-center gap-2">
- <ShieldCheck className="h-4 w-4 text-primary" />
- <span className="font-semibold uppercase tracking-wide text-muted-foreground">Truth Review</span>
- <Badge variant="outline" className={truthBadgeClass(truthReview.supportStatus)}>
- {truthBadgeText(truthReview.supportStatus)}
+ {resumeTruthReview && (
+ <div className="rounded-md border bg-muted/30 text-xs">
+ <button
+ type="button"
+ className="w-full flex items-center justify-between gap-2 px-3 py-2.5 hover:bg-muted/50 rounded-t-md transition-colors"
+ onClick={() => setResumeAiSummaryOpen((v) => !v)}
+ >
+ <div className="flex items-center gap-2">
+ <ShieldCheck className="h-4 w-4 text-primary shrink-0" />
+ <span className="font-semibold uppercase tracking-wide text-muted-foreground">AI Review Summary</span>
+ <Badge variant="outline" className={truthBadgeClass(resumeTruthReview.supportStatus)}>
+ {truthBadgeText(resumeTruthReview.supportStatus)}
  </Badge>
- <span className="text-muted-foreground">
- {truthReview.supportedCount ?? 0} supported, {truthReview.partialCount ?? 0} needs review, {truthReview.unsupportedCount ?? 0} unsupported
- </span>
- </div>
- {truthReview.seriousViolationCount > 0 && (
- <p className="text-destructive">{truthReview.seriousViolationCount} serious issue{truthReview.seriousViolationCount === 1 ? "" : "s"} found before approval.</p>
+ {resumeHasWarnings && (
+ <Badge variant="outline" className="border-warning/50 text-warning">
+ Review required
+ </Badge>
  )}
  </div>
- );
- })()}
+ {resumeAiSummaryOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
+ </button>
+ {resumeAiSummaryOpen && (
+ <div className="px-3 pb-3 space-y-2 border-t">
+ <div className="flex flex-wrap gap-3 pt-2 text-muted-foreground">
+ <span><span className="font-medium text-foreground">{resumeTruthReview.supportedCount ?? 0}</span> supported</span>
+ <span><span className={`font-medium ${(resumeTruthReview.partialCount ?? 0) > 0 ? "text-warning" : "text-foreground"}`}>{resumeTruthReview.partialCount ?? 0}</span> needs review</span>
+ <span><span className={`font-medium ${(resumeTruthReview.unsupportedCount ?? 0) > 0 ? "text-destructive" : "text-foreground"}`}>{resumeTruthReview.unsupportedCount ?? 0}</span> unsupported</span>
+ {(resumeTruthReview.seriousViolationCount ?? 0) > 0 && (
+ <span className="text-destructive font-medium">{resumeTruthReview.seriousViolationCount} serious violation{resumeTruthReview.seriousViolationCount === 1 ? "" : "s"}</span>
+ )}
+ </div>
+ {(resumeTruthReview.unsupportedPhrases?.length ?? 0) > 0 && (
+ <div className="space-y-1">
+ <p className="text-muted-foreground font-medium">Unsupported phrases:</p>
+ <ul className="list-disc list-inside space-y-0.5">
+ {resumeTruthReview.unsupportedPhrases!.map((phrase, i) => (
+ <li key={i} className="text-destructive">{phrase}</li>
+ ))}
+ </ul>
+ </div>
+ )}
+ {(resumeTruthReview.gapNotes?.length ?? 0) > 0 && (
+ <div className="space-y-1">
+ <p className="text-muted-foreground font-medium">Gap notes:</p>
+ <ul className="list-disc list-inside space-y-0.5">
+ {resumeTruthReview.gapNotes!.map((note, i) => (
+ <li key={i} className="text-warning">{note}</li>
+ ))}
+ </ul>
+ </div>
+ )}
+ </div>
+ )}
+ </div>
+ )}
  <div className="max-h-96 overflow-y-auto bg-muted/50 rounded-md border p-4 text-sm whitespace-pre-wrap font-mono leading-relaxed">
  {resumePreviewText || (resumeVersionId && !resumeVersion ? "" : resumeVersionId ? "Resume content is still loading." : "Generate a resume in Step 4 first.")}
  </div>
+ {resumeHasWarnings && resumeVersion?.status !== "approved" && (
+ <label className="flex items-start gap-2.5 cursor-pointer rounded-md border border-warning/40 bg-warning/5 px-3 py-2.5 text-sm select-none">
+ <input
+ type="checkbox"
+ className="mt-0.5 h-4 w-4 shrink-0 accent-primary cursor-pointer"
+ checked={resumeReviewChecked}
+ onChange={(e) => setResumeReviewChecked(e.target.checked)}
+ data-testid="resume-review-checkbox"
+ />
+ <span className="text-muted-foreground">
+ I have reviewed this draft and acknowledge the flagged items above before approving.
+ </span>
+ </label>
+ )}
  <div className="flex gap-2">
  <Button
  variant={resumeVersion?.status === "approved" ? "outline" : "default"}
  onClick={handleApproveResume}
- disabled={resumeVersion?.status === "approved" || !resumeVersionId || resumeNeedsRegeneration}
+ disabled={resumeVersion?.status === "approved" || !resumeVersionId || resumeNeedsRegeneration || (resumeHasWarnings && !resumeReviewChecked)}
+ data-testid="btn-approve-resume"
  >
- {resumeNeedsRegeneration ? "Regenerate Resume Required" : resumeVersion?.status === "approved" ? <><Check className="h-4 w-4 mr-2" /> Resume Approved</> : "Approve Resume"}
+ {resumeNeedsRegeneration ? "Regenerate Resume Required" : resumeVersion?.status === "approved" ? <><Check className="h-4 w-4 mr-2" /> Resume Approved</> : resumeHasWarnings && !resumeReviewChecked ? "Check review box to approve" : "Approve Resume"}
  </Button>
  <Button
  variant="outline"
@@ -2677,13 +2771,69 @@ export default function ApplyWizardPage() {
   </div>
   )}
  </div>
+ {coverHasWarnings && (
+ <div className="rounded-md border bg-muted/30 text-xs">
+ <button
+ type="button"
+ className="w-full flex items-center justify-between gap-2 px-3 py-2.5 hover:bg-muted/50 rounded-t-md transition-colors"
+ onClick={() => setCoverAiSummaryOpen((v) => !v)}
+ >
+ <div className="flex items-center gap-2">
+ <ShieldCheck className="h-4 w-4 text-primary shrink-0" />
+ <span className="font-semibold uppercase tracking-wide text-muted-foreground">AI Review Summary</span>
+ <Badge variant="outline" className="border-warning/50 text-warning">
+ {coverTruthWarningParagraphs.length} paragraph{coverTruthWarningParagraphs.length === 1 ? "" : "s"} need review
+ </Badge>
+ </div>
+ {coverAiSummaryOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
+ </button>
+ {coverAiSummaryOpen && (
+ <div className="px-3 pb-3 space-y-2 border-t">
+ {coverTruthWarningParagraphs.map((para, i) => {
+ const status = para.supportStatus ?? para.truthReview?.supportStatus;
+ const unsupportedPhrases: string[] = para.truthReview?.unsupportedPhrases ?? [];
+ const gapNotes: string[] = para.truthReview?.gapNotes ?? [];
+ return (
+ <div key={i} className="pt-2 space-y-1">
+ <div className="flex items-center gap-2">
+ <span className={`text-[10px] font-bold uppercase rounded px-1.5 py-0.5 ${ROLE_LABEL_COLORS[para.role] || "bg-muted"}`}>{para.role}</span>
+ <Badge variant="outline" className={`text-[10px] ${truthBadgeClass(status)}`}>{truthBadgeText(status)}</Badge>
+ </div>
+ {unsupportedPhrases.length > 0 && (
+ <p className="text-destructive">Unsupported: {unsupportedPhrases.join("; ")}</p>
+ )}
+ {gapNotes.length > 0 && (
+ <p className="text-warning">Gaps: {gapNotes.join("; ")}</p>
+ )}
+ </div>
+ );
+ })}
+ </div>
+ )}
+ </div>
+ )}
+ {coverHasWarnings && coverLetterVersion?.status !== "approved" && (
+ <label className="flex items-start gap-2.5 cursor-pointer rounded-md border border-warning/40 bg-warning/5 px-3 py-2.5 text-sm select-none">
+ <input
+ type="checkbox"
+ className="mt-0.5 h-4 w-4 shrink-0 accent-primary cursor-pointer"
+ checked={coverReviewChecked}
+ onChange={(e) => setCoverReviewChecked(e.target.checked)}
+ data-testid="cover-review-checkbox"
+ />
+ <span className="text-muted-foreground">
+ I have reviewed this draft and acknowledge the flagged paragraphs above before approving.
+ </span>
+ </label>
+ )}
  <div className="flex gap-2">
  <Button
  variant={coverLetterVersion?.status === "approved" ? "outline" : "default"}
  onClick={handleApproveCover}
- disabled={coverLetterVersion?.status === "approved" || !coverLetterVersionId}
+ disabled={coverLetterVersion?.status === "approved" || !coverLetterVersionId || (coverHasWarnings && !coverReviewChecked)}
+ data-testid="btn-approve-cover"
  >
- {coverLetterVersion?.status === "approved" ? <><Check className="h-4 w-4 mr-2" /> Cover Approved</> : "Approve Cover Letter"}
+ {coverLetterVersion?.status === "approved" ? <><Check className="h-4 w-4 mr-2" /> Cover Approved</> : coverHasWarnings && !coverReviewChecked ? "Check review box to approve" : "Approve Cover Letter"}
  </Button>
  <Button variant="outline" onClick={handleRejectCover} disabled={!coverLetterVersionId || coverLetterVersion?.status !== "pending_approval"}>
  Reject & Regenerate
