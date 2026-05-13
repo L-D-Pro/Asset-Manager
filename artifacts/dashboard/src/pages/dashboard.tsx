@@ -12,9 +12,11 @@ import { NextActions } from "@/components/dashboard/next-actions";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/auth";
+import { AlertTriangle, X } from "lucide-react";
 
 function getGreeting(): string {
  const h = new Date().getHours();
@@ -70,12 +72,44 @@ function SkeletonRow() {
  );
 }
 
+interface ModelConfigHealthReport {
+  healthy: boolean;
+  unhealthyScopes: string[];
+}
+
 export default function Dashboard() {
  const { data: gStats, isLoading, isError, error } = useGamificationStats();
  const navigate = useNavigate();
  const { toast } = useToast();
+ const { user } = useAuth();
+
+ const [healthReport, setHealthReport] = useState<ModelConfigHealthReport | null>(null);
+ const [healthDismissed, setHealthDismissed] = useState(false);
 
   const [floatingXp, setFloatingXp] = useState<Array<{ id: number; xp: number }>>([]);
+
+  useEffect(() => {
+    if (user?.role !== "admin") return;
+    let cancelled = false;
+    fetch("/api/admin/health/model-configs", { credentials: "include" })
+      .then((res) => {
+        if (!res.ok) return;
+        return res.json();
+      })
+      .then((data: unknown) => {
+        if (cancelled || !data || typeof data !== "object") return;
+        const report = data as Record<string, unknown>;
+        if (typeof report.healthy !== "boolean") return;
+        setHealthReport({
+          healthy: report.healthy,
+          unhealthyScopes: Array.isArray(report.unhealthyScopes)
+            ? (report.unhealthyScopes as unknown[]).filter((s): s is string => typeof s === "string")
+            : [],
+        });
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [user?.role]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -123,6 +157,36 @@ export default function Dashboard() {
  initial="hidden"
  animate="show"
  >
+  {/* Admin: model config health warning */}
+  {healthReport && !healthReport.healthy && !healthDismissed && (
+    <motion.div variants={itemVariants}>
+      <div className="flex items-start gap-3 rounded-xl border border-destructive/40 bg-destructive/8 px-4 py-3">
+        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
+        <div className="flex-1 space-y-0.5">
+          <p className="text-sm font-semibold text-destructive">
+            AI model config issue detected
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {healthReport.unhealthyScopes.length > 0
+              ? `Unhealthy scopes: ${healthReport.unhealthyScopes.join(", ")}. `
+              : ""}
+            <Link to="/ai-config" className="underline underline-offset-2 hover:text-foreground transition-colors">
+              Go to AI Config to fix
+            </Link>
+          </p>
+        </div>
+        <button
+          type="button"
+          aria-label="Dismiss warning"
+          onClick={() => setHealthDismissed(true)}
+          className="ml-1 shrink-0 rounded p-0.5 text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+    </motion.div>
+  )}
+
   {/* Hero Strip */}
   <motion.div variants={itemVariants}>
     <TiltCard gradient="blue" className="p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
