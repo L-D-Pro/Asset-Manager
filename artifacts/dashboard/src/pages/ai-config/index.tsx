@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { Settings, Plus, Pencil, Trash2, ArrowRight, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Settings, Plus, Pencil, Trash2, ArrowRight, AlertTriangle, CheckCircle2, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
@@ -91,19 +91,52 @@ export default function AiConfigPage() {
  const queryClient = useQueryClient();
 
  const [healthReport, setHealthReport] = useState<ModelConfigHealthReport | null>(null);
+ const [isReseeding, setIsReseeding] = useState(false);
+
+ const fetchHealth = async () => {
+   try {
+     const res = await fetch("/api/admin/health/model-configs", { credentials: "include" });
+     if (res.ok || res.status === 207) {
+       setHealthReport((await res.json()) as ModelConfigHealthReport);
+     }
+   } catch {
+     // Non-critical — silently ignore
+   }
+ };
 
  useEffect(() => {
-   void (async () => {
-     try {
-       const res = await fetch("/api/admin/health/model-configs", { credentials: "include" });
-       if (res.ok || res.status === 207) {
-         setHealthReport((await res.json()) as ModelConfigHealthReport);
-       }
-     } catch {
-       // Non-critical — silently ignore
-     }
-   })();
+   void fetchHealth();
  }, [configs]);
+
+ const handleReseed = async () => {
+   setIsReseeding(true);
+   try {
+     const res = await fetch("/api/admin/health/model-configs/reseed", {
+       method: "POST",
+       credentials: "include",
+     });
+     if (res.ok || res.status === 207) {
+       const report = (await res.json()) as ModelConfigHealthReport;
+       setHealthReport(report);
+       queryClient.invalidateQueries({ queryKey: getListAiModelConfigsQueryKey() });
+       if (report.healthy) {
+         toast({ title: "Configs repaired", description: "All required model configs are now active." });
+       } else {
+         toast({
+           title: "Partially repaired",
+           description: `Still unhealthy: ${report.unhealthyScopes.join(", ")}`,
+           variant: "destructive",
+         });
+       }
+     } else {
+       toast({ title: "Re-seed failed", description: "Server returned an error.", variant: "destructive" });
+     }
+   } catch {
+     toast({ title: "Re-seed failed", description: "Could not reach the server.", variant: "destructive" });
+   } finally {
+     setIsReseeding(false);
+   }
+ };
 
  const form = useForm<FormValues>({
  resolver: zodResolver(configSchema),
@@ -258,8 +291,21 @@ export default function AiConfigPage() {
    <div data-testid="model-config-health-banner" className="rounded-xl border border-destructive/40 bg-destructive/5 p-4">
      <div className="flex gap-3">
        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
-       <div className="space-y-2">
-         <p className="font-semibold text-destructive">AI model config problem detected</p>
+       <div className="space-y-2 flex-1">
+         <div className="flex items-start justify-between gap-3">
+           <p className="font-semibold text-destructive">AI model config problem detected</p>
+           <Button
+             data-testid="btn-reseed-configs"
+             variant="outline"
+             size="sm"
+             className="shrink-0 border-destructive/40 text-destructive hover:bg-destructive/10"
+             onClick={() => void handleReseed()}
+             disabled={isReseeding}
+           >
+             <RefreshCw className={cn("mr-2 h-3.5 w-3.5", isReseeding && "animate-spin")} />
+             {isReseeding ? "Repairing…" : "Re-seed defaults"}
+           </Button>
+         </div>
          <p className="text-sm text-muted-foreground">
            The following scopes are missing an active model or a required fallback. AI generation will fail for these scopes until the configs are fixed.
          </p>

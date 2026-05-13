@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { adminUsersTable, db } from "@workspace/db";
 import type { JobOpsRequest } from "../lib/http-types";
 import { checkModelConfigHealth } from "../lib/model-config-health";
+import { ensureModelConfigConstraints, seedModelConfigs } from "../lib/seed-model-configs";
 
 const adminHealthRouter = Router();
 
@@ -29,6 +30,18 @@ adminHealthRouter.get(
   "/admin/health/model-configs",
   requireAdmin,
   async (_req: JobOpsRequest, res): Promise<void> => {
+    const report = await checkModelConfigHealth();
+    const status = report.healthy ? 200 : 207;
+    res.status(status).json(report);
+  },
+);
+
+adminHealthRouter.post(
+  "/admin/health/model-configs/reseed",
+  requireAdmin,
+  async (_req: JobOpsRequest, res): Promise<void> => {
+    await ensureModelConfigConstraints();
+    await seedModelConfigs();
     const report = await checkModelConfigHealth();
     const status = report.healthy ? 200 : 207;
     res.status(status).json(report);
