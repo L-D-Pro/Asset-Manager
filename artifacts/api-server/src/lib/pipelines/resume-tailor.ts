@@ -254,7 +254,7 @@ function expandAndNormalizeItems(items: ValidatedResumeItem[]): ValidatedResumeI
   return expanded;
 }
 
-interface SemanticTemplateValidation {
+export interface SemanticTemplateValidation {
   passed: boolean;
   issues: string[];
   sectionCounts: Partial<Record<ResumeSectionKey, number>>;
@@ -262,7 +262,7 @@ interface SemanticTemplateValidation {
   hasExperienceHeaderLikeLine: boolean;
 }
 
-function validateSemanticTemplateContract(args: {
+export function validateSemanticTemplateContract(args: {
   items: ValidatedResumeItem[];
   templateSections: ResumeSectionKey[];
 }): SemanticTemplateValidation {
