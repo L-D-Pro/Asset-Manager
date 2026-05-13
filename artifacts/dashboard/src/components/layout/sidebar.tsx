@@ -148,6 +148,7 @@ export function Sidebar() {
  { name: "AI Metrics", href: "/ai-metrics", icon: Activity },
  { name: "AI Config", href: "/ai-config", icon: Activity },
  { name: "AI Learning", href: "/ai-learning", icon: Brain },
+ { name: "Pipeline Diagram", href: "/pipeline-diagram", icon: LayoutTemplate },
  ],
  },
  {

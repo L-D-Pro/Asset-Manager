@@ -46,6 +46,7 @@ import AiLearningPage from "@/pages/ai-learning";
 import TrendsPage from "@/pages/trends";
 import ResourcesPage from "@/pages/resources";
 import StatsPage from "@/pages/stats";
+import PipelineDiagramPage from "@/pages/pipeline-diagram";
 import NotFound from "@/pages/not-found";
 import { WelcomeModal } from "@/components/onboarding/welcome-modal";
 
@@ -146,6 +147,7 @@ function ProtectedRoutes() {
  <Route path="/trends" element={<TrendsPage />} />
  <Route path="/resources" element={<ResourcesPage />} />
  <Route path="/stats" element={<StatsPage />} />
+ <Route path="/pipeline-diagram" element={<PipelineDiagramPage />} />
  <Route path="*" element={<NotFound />} />
  </Routes>
  </PageTransition>
