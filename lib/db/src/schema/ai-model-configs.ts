@@ -7,6 +7,7 @@ import {
   boolean,
   jsonb,
   index,
+  uniqueIndex,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
@@ -90,6 +91,10 @@ export const aiModelConfigsTable = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => [
+    uniqueIndex("ai_model_configs_scope_model_uidx").on(
+      table.taskScope,
+      table.modelName,
+    ),
     index("ai_model_configs_task_scope_active_idx").on(
       table.taskScope,
       table.isActive,

@@ -7,6 +7,7 @@ import {
   getAppTestResetSummary,
   resetAppTestData,
 } from "../lib/app-test-reset";
+import { ensureModelConfigConstraints, seedModelConfigs } from "../lib/seed-model-configs";
 
 const adminResetRouter = Router();
 
@@ -77,6 +78,10 @@ adminResetRouter.post(
       },
       "Admin reset app test data",
     );
+
+    await ensureModelConfigConstraints();
+    await seedModelConfigs();
+    logger.info({ adminId }, "Re-seeded model configs after data reset");
 
     res.json(result);
   },
