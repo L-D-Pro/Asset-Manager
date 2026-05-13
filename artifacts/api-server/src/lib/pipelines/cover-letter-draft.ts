@@ -91,18 +91,8 @@ const COVER_LETTER_JSON_SCHEMA = {
 const COVER_LETTER_STRUCTURED_OUTPUT_PARAMS = {
   temperature: 0.2,
   max_tokens: 3000,
-  timeoutMs: 45_000,
-  provider: {
-    require_parameters: true,
-  },
-  response_format: {
-    type: "json_schema",
-    json_schema: {
-      name: "cover_letter_plan",
-      strict: true,
-      schema: COVER_LETTER_JSON_SCHEMA,
-    },
-  },
+  timeoutMs: 30_000,
+  maxAttempts: 2,
 };
 
 const SYSTEM_PROMPT = `You are an expert career coach specializing in cover letters.

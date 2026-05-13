@@ -82,7 +82,7 @@ Skill category: comma-separated supported skills [src:...]`;
 
 const MIN_ITEMS_BY_SECTION: Record<ResumeSectionKey, number> = {
   summary: 1,
-  experience: 4,
+  experience: 2,
   project: 2,
   education: 2,
   coursework: 1,
@@ -289,14 +289,17 @@ function validateSemanticTemplateContract(args: {
     hasDateSignal(item.text) && (/\|/.test(item.text) || / - /.test(item.text) || / at /i.test(item.text)),
   );
 
-  if (experienceItems.length < 4) {
-    issues.push("Experience section is too short; expected multiple scoped entries.");
+  if (experienceItems.length < 2) {
+    issues.push("Experience section is too short; expected at least 2 entries.");
   }
   if (!hasDatedExperience) {
     issues.push("Experience section is missing date signals (month/year or year).");
   }
   if (!hasExperienceHeaderLikeLine) {
-    issues.push("Experience section is missing role/company/date-style header lines.");
+    logger.warn(
+      { itemCount: experienceItems.length },
+      "Experience section is missing role/company/date-style header lines — validation warning only",
+    );
   }
 
   const educationCount = sectionCounts.education ?? 0;

@@ -1,7 +1,8 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { db, pool } from "@workspace/db";
-import { adminUsersTable } from "@workspace/db";
+import { adminUsersTable, aiModelConfigsTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
 /**
@@ -52,6 +53,41 @@ async function bootstrapAdminUser() {
   );
 }
 
+const REQUIRED_MODEL_CONFIGS = [
+  { taskScope: "resume_tailoring", modelName: "anthropic/claude-3.5-haiku", provider: "openrouter", priority: 1 },
+  { taskScope: "cover_letter",     modelName: "anthropic/claude-3.5-haiku", provider: "openrouter", priority: 1 },
+  { taskScope: "claim_generation", modelName: "anthropic/claude-3.5-haiku", provider: "openrouter", priority: 1 },
+  { taskScope: "jd_parsing",       modelName: "anthropic/claude-3.5-haiku", provider: "openrouter", priority: 1 },
+  { taskScope: "default",          modelName: "anthropic/claude-3.5-haiku", provider: "openrouter", priority: 1 },
+] as const;
+
+/**
+ * Ensure every required task scope has at least one active model config.
+ * Inserts missing rows; does NOT overwrite or change existing active rows.
+ * Safe to call on every startup.
+ */
+async function seedModelConfigs() {
+  for (const config of REQUIRED_MODEL_CONFIGS) {
+    const existing = await db
+      .select({ id: aiModelConfigsTable.id })
+      .from(aiModelConfigsTable)
+      .where(eq(aiModelConfigsTable.taskScope, config.taskScope));
+
+    const hasActive = existing.length > 0;
+    if (!hasActive) {
+      await db.insert(aiModelConfigsTable).values({
+        taskScope: config.taskScope,
+        provider: config.provider,
+        modelName: config.modelName,
+        isActive: true,
+        priority: config.priority,
+        extraConfig: {},
+      });
+      logger.info({ taskScope: config.taskScope, modelName: config.modelName }, "Seeded missing model config");
+    }
+  }
+}
+
 async function ensureSessionTable() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS "session" (
@@ -84,6 +120,7 @@ if (Number.isNaN(port) || port <= 0) {
 async function main() {
   await ensureSessionTable();
   await bootstrapAdminUser();
+  await seedModelConfigs();
 
   app.listen(port, (err) => {
     if (err) {

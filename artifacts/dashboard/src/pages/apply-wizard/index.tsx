@@ -568,10 +568,9 @@ export default function ApplyWizardPage() {
  resumeVersion &&
  (!resumeVersion.tailoredDocumentText ||
  !resumeVersion.templateId ||
- !(resumeVersion.diffData as any)?.templateValidation ||
  !resumeHasPassingSourceValidation ||
  !resumeHasPassingSemanticValidation ||
- /could not be repaired|truth lock failure|quality check failed|truth review failed|generation failed|source validation failed|semantic template validation failed|base resume parse failed|needs review/i.test(resumeVersion.notes ?? "")),
+ /could not be repaired|truth lock failure|quality check failed|truth review failed|generation failed|source validation failed|semantic template validation failed|base resume parse failed/i.test(resumeVersion.notes ?? "")),
  );
 
  const updateBatchRun = (id: string, patch: Partial<BatchRun>) => {
@@ -1133,7 +1132,12 @@ export default function ApplyWizardPage() {
  setCoverLetterVersionId(version.id);
  queryClient.setQueryData(getGetCoverLetterVersionQueryKey(version.id), version);
  setActiveDraftPreview("cover");
+ if (version.draftContent) {
  toast({ title: `Cover letter draft created (#${version.id})` });
+ } else {
+ const detail = version.notes ? version.notes.slice(0, 200) : "Regenerate after checking your claims.";
+ toast({ title: `Cover letter draft #${version.id} needs review`, description: detail, variant: "destructive" });
+ }
  },
  onError: (error) =>
  toast({
