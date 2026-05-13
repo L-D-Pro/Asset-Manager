@@ -27,9 +27,9 @@ import type { Job, Claim } from "@workspace/db";
 import type { ResumeSectionKey } from "../resume-templates";
 
 const RESUME_PLAIN_TEXT_OUTPUT_PARAMS = {
-  temperature: 0.25,
-  max_tokens: 3200,
-  timeoutMs: 25_000,
+  temperature: 0.4,
+  max_tokens: 4000,
+  timeoutMs: 35_000,
   maxAttempts: 2,
 };
 
@@ -40,45 +40,69 @@ export class MissingBaseResumeError extends Error {
   }
 }
 
-const SYSTEM_PROMPT = `You are an expert ATS resume writer.
+const SYSTEM_PROMPT = `You are an expert ATS resume writer. Your task is to write a COMPLETE tailored plain-text resume draft.
 
-You write a plain-text ATS resume draft in a deterministic section format.
-The application will validate your source tags and render the final resume through a fixed ATS template.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SOURCE TAGGING — NON-NEGOTIABLE REQUIREMENT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Every content line you write MUST end with one or more inline source tags.
+Tag format:  [src:claim:5]  or  [src:base:experience:b002]
+Multiple:    [src:claim:3 src:base:skills:b001]
 
-Hard rules:
-1. Use only facts from the provided CLAIM SOURCES and BASE RESUME SOURCES.
-2. Every resume content line must end with one or more source tags like [src:claim:12] or [src:base:experience:b003].
-3. Use only exact source refs from the packet. Do not invent refs.
-4. Claims are strongest evidence. Base resume refs are valid truth sources when a claim is not available.
-5. Do not invent or inflate metrics, tools, titles, credentials, employers, dates, responsibilities, or company facts.
-6. If the job asks for something not supported by sources, omit it.
-7. Return clean plain text only: no markdown, no JSON, no commentary, no labels except section headings.
-8. Keep the draft concise: summary/profile lines plus the strongest relevant experience, project, education, and skills items.
-9. Mirror important job keywords only when the source material supports them.
-10. Experience must include multiple dated entries in this exact shape: Title | Company | Location | Date Range [src:...].
-11. Reject directive language. Never output instruction text like "Highlight..." or "Include...".
-12. Preserve candidate chronology and ATS readability.
+CORRECT line (has tag):
+  Led compliance training design across healthcare and IT domains [src:base:experience:b003 src:claim:2]
 
-Required output shape:
+WRONG line (missing tag — NEVER do this):
+  Led compliance training design across healthcare and IT domains
+
+IMPORTANT: The user message contains "BASE RESUME SOURCES" lines like:
+  base:skills:b001 [skills:detail] Instructional Design: Adult learning theory...
+These are READ-ONLY source material. The text after the ref and bracket label is the source content.
+Use those exact ref strings (e.g. base:skills:b001) in your [src:...] tags.
+Do NOT output XML tags, angle-bracket tags, or any block delimiters in your response.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+REQUIRED OUTPUT — WRITE ALL SECTIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+You must output EVERY section below. Do not skip any section.
+
 HEADER
-Candidate name and contact lines
+[Candidate full name]
+[City, State | email | phone | LinkedIn | Portfolio]
 
 SUMMARY
-Resume summary sentence [src:...]
+[One to two tailored sentences positioning the candidate for this specific job] [src:...]
 
 EXPERIENCE
-Title | Company | Location | Date Range [src:...]
-Achievement bullet text [src:...]
-Achievement bullet text [src:...]
+[Job Title] | [Company] | [Location] | [Start Date] - [End Date] [src:base:experience:bXXX]
+[Achievement bullet that matches job requirements] [src:...]
+[Achievement bullet with quantified impact where available] [src:...]
+[Repeat for each relevant role — include at least 2 dated experience entries]
 
 PROJECT
-Project line if relevant [src:...]
+[Project name]: [Brief description of relevance to job] [src:...]
 
 EDUCATION
-Education or certification line [src:...]
+[Degree], [Major] | [Institution] | [Year] [src:base:education:bXXX]
 
 SKILLS
-Skill category: comma-separated supported skills [src:...]`;
+[Category]: [comma-separated skills relevant to this job] [src:base:skills:bXXX]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HARD RULES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Use ONLY facts from CLAIM SOURCES and BASE RESUME SOURCES provided below.
+2. EVERY content line must end with one or more [src:...] tags — no exceptions.
+3. Use only exact ref strings shown in the source packet. Never invent a ref.
+4. Claims are the strongest evidence; use base resume refs when no claim covers the point.
+5. Do not invent or inflate metrics, tools, titles, credentials, employers, dates, or responsibilities.
+6. If the job requires something with no source support, omit it — do not fabricate.
+7. Return clean plain text only: no markdown, no JSON, no XML, no commentary.
+8. Mirror job keywords only when the source material actually supports them.
+9. Do NOT output directive text like "Highlight..." or "Include..." — write the content directly.
+10. Preserve candidate chronology. Experience entries must be in reverse-chronological order.`;
+
+
 
 const MIN_ITEMS_BY_SECTION: Record<ResumeSectionKey, number> = {
   summary: 1,

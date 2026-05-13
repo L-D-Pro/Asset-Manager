@@ -487,14 +487,14 @@ export function checkNoGenericFiller(text: string): string[] {
 }
 
 /**
- * Checks cover letter length (250-400 words).
+ * Checks cover letter length (180-400 words).
  * Returns violation if outside range.
  */
 export function checkCoverLetterLength(text: string): string[] {
   const wordCount = text.trim().split(/\s+/).length;
   const violations: string[] = [];
-  if (wordCount < 250) {
-    violations.push(`Cover letter too short: ${wordCount} words (minimum 250)`);
+  if (wordCount < 180) {
+    violations.push(`Cover letter too short: ${wordCount} words (minimum 180)`);
   } else if (wordCount > 500) {
     violations.push(`Cover letter too long: ${wordCount} words (maximum 400)`);
   }

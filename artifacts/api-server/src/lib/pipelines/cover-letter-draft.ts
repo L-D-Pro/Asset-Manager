@@ -113,7 +113,7 @@ You are given the candidate's resume as background context. The cover letter sho
 - Explain WHY the candidate is excited about THIS specific company and role
 - Address any gaps between the resume and job requirements (use claims to bridge)
 - Show personality and genuine enthusiasm
-- Be 250-400 words (roughly 3-4 paragraphs)
+- Be 200-400 words (roughly 3-4 paragraphs)
 
 QUALITY REQUIREMENTS:
 - Address the company's specific business problem or opportunity

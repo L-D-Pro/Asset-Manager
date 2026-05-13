@@ -1,0 +1,623 @@
+artifacts/api-server dev: [01:01:19.511] INFO (12580): Starting JD parse pipeline
+artifacts/api-server dev:     req: {
+artifacts/api-server dev:       "id": 107,
+artifacts/api-server dev:       "method": "POST",
+artifacts/api-server dev:       "url": "/api/jobs/1/parse"
+artifacts/api-server dev:     }
+artifacts/api-server dev:     jobId: 1
+artifacts/api-server dev: [01:01:19.512] INFO (12580): Starting JD parse pipeline
+artifacts/api-server dev:     jobId: 1
+artifacts/api-server dev: [01:01:19.745] INFO (12580): Resolved AI model fallback chain
+artifacts/api-server dev:     runId: "run_2026-05-13t080119512z_3b02784ee6bb"
+artifacts/api-server dev:     taskType: "jd_parsing"
+artifacts/api-server dev:     modelChain: [
+artifacts/api-server dev:       {
+artifacts/api-server dev:         "attemptNumber": 1,
+artifacts/api-server dev:         "modelId": 12,
+artifacts/api-server dev:         "modelName": "anthropic/claude-3.5-haiku",
+artifacts/api-server dev:         "provider": "openrouter"
+artifacts/api-server dev:       }
+artifacts/api-server dev:     ]
+artifacts/api-server dev:     configuredModelCount: 1
+artifacts/api-server dev:     maxAttempts: null
+artifacts/api-server dev: [01:01:19.745] INFO (12580): Dispatching AI request
+artifacts/api-server dev:     taskType: "jd_parsing"
+artifacts/api-server dev:     modelId: 12
+artifacts/api-server dev:     modelName: "anthropic/claude-3.5-haiku"
+artifacts/api-server dev:     attemptNumber: 1
+artifacts/api-server dev:     timeoutMs: 60000
+artifacts/api-server dev:     maxTokens: 8192
+artifacts/api-server dev:     runId: "run_2026-05-13t080119512z_3b02784ee6bb"
+artifacts/api-server dev: [01:01:26.411] INFO (12580): AI call completed
+artifacts/api-server dev:     taskType: "jd_parsing"
+artifacts/api-server dev:     modelId: 12
+artifacts/api-server dev:     modelName: "anthropic/claude-3.5-haiku"
+artifacts/api-server dev:     promptTokens: 1028
+artifacts/api-server dev:     completionTokens: 406
+artifacts/api-server dev:     totalCost: null
+artifacts/api-server dev:     finishReason: "stop"
+artifacts/api-server dev:     contentLength: 1449
+artifacts/api-server dev:     runId: "run_2026-05-13t080119512z_3b02784ee6bb"
+artifacts/api-server dev:     attemptNumber: 1
+artifacts/api-server dev:     elapsedMs: 6666
+artifacts/api-server dev: [01:01:26.598] INFO (12580): JD parse pipeline completed
+artifacts/api-server dev:     jobId: 1
+artifacts/api-server dev:     skills: 13
+artifacts/api-server dev:     niceToHave: 3
+artifacts/api-server dev: [01:01:26.667] INFO (12580): request completed
+artifacts/api-server dev:     req: {
+artifacts/api-server dev:       "id": 107,
+artifacts/api-server dev:       "method": "POST",
+artifacts/api-server dev:       "url": "/api/jobs/1/parse"
+artifacts/api-server dev:     }
+artifacts/api-server dev:     res: {
+artifacts/api-server dev:       "statusCode": 200
+artifacts/api-server dev:     }
+artifacts/api-server dev:     responseTime: 7425
+artifacts/api-server dev: [01:01:32.189] INFO (12580): request completed
+artifacts/api-server dev:     req: {
+artifacts/api-server dev:       "id": 108,
+artifacts/api-server dev:       "method": "PATCH",
+artifacts/api-server dev:       "url": "/api/jobs/1"
+artifacts/api-server dev:     }
+artifacts/api-server dev:     res: {
+artifacts/api-server dev:       "statusCode": 200
+artifacts/api-server dev:     }
+artifacts/api-server dev:     responseTime: 469
+artifacts/api-server dev: [01:01:32.553] INFO (12580): request completed
+artifacts/api-server dev:     req: {
+artifacts/api-server dev:       "id": 109,
+artifacts/api-server dev:       "method": "GET",
+artifacts/api-server dev:       "url": "/api/jobs/1"
+artifacts/api-server dev:     }
+artifacts/api-server dev:     res: {
+artifacts/api-server dev:       "statusCode": 200
+artifacts/api-server dev:     }
+artifacts/api-server dev:     responseTime: 350
+artifacts/api-server dev: [01:01:56.547] INFO (12580): Resolved AI model fallback chain
+artifacts/api-server dev:     runId: "run_2026-05-13t080156296z_5efdfe6a6ff0"
+artifacts/api-server dev:     taskType: "claim_generation"
+artifacts/api-server dev:     modelChain: [
+artifacts/api-server dev:       {
+artifacts/api-server dev:         "attemptNumber": 1,
+artifacts/api-server dev:         "modelId": 11,
+artifacts/api-server dev:         "modelName": "anthropic/claude-3.5-haiku",
+artifacts/api-server dev:         "provider": "openrouter"
+artifacts/api-server dev:       }
+artifacts/api-server dev:     ]
+artifacts/api-server dev:     configuredModelCount: 1
+artifacts/api-server dev:     maxAttempts: 1
+artifacts/api-server dev: [01:01:56.547] INFO (12580): Dispatching AI request
+artifacts/api-server dev:     taskType: "claim_generation"
+artifacts/api-server dev:     modelId: 11
+artifacts/api-server dev:     modelName: "anthropic/claude-3.5-haiku"
+artifacts/api-server dev:     attemptNumber: 1
+artifacts/api-server dev:     timeoutMs: 25000
+artifacts/api-server dev:     maxTokens: 1800
+artifacts/api-server dev:     runId: "run_2026-05-13t080156296z_5efdfe6a6ff0"
+artifacts/api-server dev: [01:02:13.975] INFO (12580): AI call completed
+artifacts/api-server dev:     taskType: "claim_generation"
+artifacts/api-server dev:     modelId: 11
+artifacts/api-server dev:     modelName: "anthropic/claude-3.5-haiku"
+artifacts/api-server dev:     promptTokens: 2252
+artifacts/api-server dev:     completionTokens: 914
+artifacts/api-server dev:     totalCost: null
+artifacts/api-server dev:     finishReason: "stop"
+artifacts/api-server dev:     contentLength: 3810
+artifacts/api-server dev:     runId: "run_2026-05-13t080156296z_5efdfe6a6ff0"
+artifacts/api-server dev:     attemptNumber: 1
+artifacts/api-server dev:     elapsedMs: 17428
+artifacts/api-server dev: [01:02:14.589] INFO (12580): request completed
+artifacts/api-server dev:     req: {
+artifacts/api-server dev:       "id": 110,
+artifacts/api-server dev:       "method": "POST",
+artifacts/api-server dev:       "url": "/api/claims/draft"
+artifacts/api-server dev:     }
+artifacts/api-server dev:     res: {
+artifacts/api-server dev:       "statusCode": 200
+artifacts/api-server dev:     }
+artifacts/api-server dev:     responseTime: 18939
+artifacts/api-server dev: [01:02:28.583] INFO (12580): [periodic] Model config health check passed
+artifacts/api-server dev:     checkedAt: "2026-05-13T08:02:28.583Z"
+artifacts/api-server dev: [01:02:31.043] INFO (12580): request completed
+artifacts/api-server dev:     req: {
+artifacts/api-server dev:       "id": 111,
+artifacts/api-server dev:       "method": "POST",
+artifacts/api-server dev:       "url": "/api/claims"
+artifacts/api-server dev:     }
+artifacts/api-server dev:     res: {
+artifacts/api-server dev:       "statusCode": 201
+artifacts/api-server dev:     }
+artifacts/api-server dev:     responseTime: 320
+artifacts/api-server dev: [01:02:31.664] INFO (12580): request completed
+artifacts/api-server dev:     req: {
+artifacts/api-server dev:       "id": 112,
+artifacts/api-server dev:       "method": "POST",
+artifacts/api-server dev:       "url": "/api/claims"
+artifacts/api-server dev:     }
+artifacts/api-server dev:     res: {
+artifacts/api-server dev:       "statusCode": 201
+artifacts/api-server dev:     }
+artifacts/api-server dev:     responseTime: 300
+artifacts/api-server dev: [01:02:31.960] INFO (12580): request completed
+artifacts/api-server dev:     req: {
+artifacts/api-server dev:       "id": 113,
+artifacts/api-server dev:       "method": "POST",
+artifacts/api-server dev:       "url": "/api/claims"
+artifacts/api-server dev:     }
+artifacts/api-server dev:     res: {
+artifacts/api-server dev:       "statusCode": 201
+artifacts/api-server dev:     }
+artifacts/api-server dev:     responseTime: 282
+artifacts/api-server dev: [01:02:32.589] INFO (12580): request completed
+artifacts/api-server dev:     req: {
+artifacts/api-server dev:       "id": 114,
+artifacts/api-server dev:       "method": "POST",
+artifacts/api-server dev:       "url": "/api/claims"
+artifacts/api-server dev:     }
+artifacts/api-server dev:     res: {
+artifacts/api-server dev:       "statusCode": 201
+artifacts/api-server dev:     }
+artifacts/api-server dev:     responseTime: 313
+artifacts/api-server dev: [01:02:32.944] INFO (12580): request completed
+artifacts/api-server dev:     req: {
+artifacts/api-server dev:       "id": 115,
+artifacts/api-server dev:       "method": "POST",
+artifacts/api-server dev:       "url": "/api/claims"
+artifacts/api-server dev:     }
+artifacts/api-server dev:     res: {
+artifacts/api-server dev:       "statusCode": 201
+artifacts/api-server dev:     }
+artifacts/api-server dev:     responseTime: 344
+artifacts/api-server dev: [01:02:33.429] INFO (12580): Listing claims
+artifacts/api-server dev:     req: {
+artifacts/api-server dev:       "id": 116,
+artifacts/api-server dev:       "method": "GET",
+artifacts/api-server dev:       "url": "/api/claims"
+artifacts/api-server dev:     }
+artifacts/api-server dev: [01:02:33.583] INFO (12580): request completed
+artifacts/api-server dev:     req: {
+artifacts/api-server dev:       "id": 116,
+artifacts/api-server dev:       "method": "GET",
+artifacts/api-server dev:       "url": "/api/claims"
+artifacts/api-server dev:     }
+artifacts/api-server dev:     res: {
+artifacts/api-server dev:       "statusCode": 200
+artifacts/api-server dev:     }
+artifacts/api-server dev:     responseTime: 314
+artifacts/api-server dev: [01:02:57.024] INFO (12580): request completed
+artifacts/api-server dev:     req: {
+artifacts/api-server dev:       "id": 117,
+artifacts/api-server dev:       "method": "POST",
+artifacts/api-server dev:       "url": "/api/role-profiles"
+artifacts/api-server dev:     }
+artifacts/api-server dev:     res: {
+artifacts/api-server dev:       "statusCode": 201
+artifacts/api-server dev:     }
+artifacts/api-server dev:     responseTime: 802
+artifacts/api-server dev: [01:02:57.664] INFO (12580): request completed
+artifacts/api-server dev:     req: {
+artifacts/api-server dev:       "id": 118,
+artifacts/api-server dev:       "method": "PATCH",
+artifacts/api-server dev:       "url": "/api/jobs/1"
+artifacts/api-server dev:     }
+artifacts/api-server dev:     res: {
+artifacts/api-server dev:       "statusCode": 200
+artifacts/api-server dev:     }
+artifacts/api-server dev:     responseTime: 315
+artifacts/api-server dev: [01:02:57.984] INFO (12580): request completed
+artifacts/api-server dev:     req: {
+artifacts/api-server dev:       "id": 119,
+artifacts/api-server dev:       "method": "GET",
+artifacts/api-server dev:       "url": "/api/jobs/1"
+artifacts/api-server dev:     }
+artifacts/api-server dev:     res: {
+artifacts/api-server dev:       "statusCode": 200
+artifacts/api-server dev:     }
+artifacts/api-server dev:     responseTime: 309
+artifacts/api-server dev: [01:03:06.374] INFO (12580): Wizard session saved
+artifacts/api-server dev:     req: {
+artifacts/api-server dev:       "id": 120,
+artifacts/api-server dev:       "method": "POST",
+artifacts/api-server dev:       "url": "/api/wizard-sessions"
+artifacts/api-server dev:     }
+artifacts/api-server dev:     sessionId: 1
+artifacts/api-server dev:     userId: 1
+artifacts/api-server dev: [01:03:06.464] INFO (12580): request completed
+artifacts/api-server dev:     req: {
+artifacts/api-server dev:       "id": 120,
+artifacts/api-server dev:       "method": "POST",
+artifacts/api-server dev:       "url": "/api/wizard-sessions"
+artifacts/api-server dev:     }
+artifacts/api-server dev:     res: {
+artifacts/api-server dev:       "statusCode": 201
+artifacts/api-server dev:     }
+artifacts/api-server dev:     responseTime: 428
+artifacts/api-server dev: [01:03:07.104] INFO (12580): request completed
+artifacts/api-server dev:     req: {
+artifacts/api-server dev:       "id": 121,
+artifacts/api-server dev:       "method": "GET",
+artifacts/api-server dev:       "url": "/api/wizard-sessions"
+artifacts/api-server dev:     }
+artifacts/api-server dev:     res: {
+artifacts/api-server dev:       "statusCode": 200
+artifacts/api-server dev:     }
+artifacts/api-server dev:     responseTime: 630
+artifacts/api-server dev: [01:03:15.311] INFO (12580): Listing jobs
+artifacts/api-server dev:     req: {
+artifacts/api-server dev:       "id": 122,
+artifacts/api-server dev:       "method": "GET",
+artifacts/api-server dev:       "url": "/api/jobs"
+artifacts/api-server dev:     }
+artifacts/api-server dev: [01:03:15.472] INFO (12580): request completed
+artifacts/api-server dev:     req: {
+artifacts/api-server dev:       "id": 122,
+artifacts/api-server dev:       "method": "GET",
+artifacts/api-server dev:       "url": "/api/jobs"
+artifacts/api-server dev:     }
+artifacts/api-server dev:     res: {
+artifacts/api-server dev:       "statusCode": 200
+artifacts/api-server dev:     }
+artifacts/api-server dev:     responseTime: 322
+artifacts/api-server dev: [01:03:15.825] INFO (12580): Listing role profiles
+artifacts/api-server dev:     req: {
+artifacts/api-server dev:       "id": 123,
+artifacts/api-server dev:       "method": "GET",
+artifacts/api-server dev:       "url": "/api/role-profiles"
+artifacts/api-server dev:     }
+artifacts/api-server dev: [01:03:15.974] INFO (12580): request completed
+artifacts/api-server dev:     req: {
+artifacts/api-server dev:       "id": 123,
+artifacts/api-server dev:       "method": "GET",
+artifacts/api-server dev:       "url": "/api/role-profiles"
+artifacts/api-server dev:     }
+artifacts/api-server dev:     res: {
+artifacts/api-server dev:       "statusCode": 200
+artifacts/api-server dev:     }
+artifacts/api-server dev:     responseTime: 824
+artifacts/api-server dev: [01:03:16.304] INFO (12580): Job scored
+artifacts/api-server dev:     req: {
+artifacts/api-server dev:       "id": 124,
+artifacts/api-server dev:       "method": "GET",
+artifacts/api-server dev:       "url": "/api/jobs/1/score"
+artifacts/api-server dev:     }
+artifacts/api-server dev:     jobId: 1
+artifacts/api-server dev:     roleProfileId: 1
+artifacts/api-server dev:     score: 0
+artifacts/api-server dev:     passesHardFilters: true
+artifacts/api-server dev: [01:03:16.385] INFO (12580): request completed
+artifacts/api-server dev:     req: {
+artifacts/api-server dev:       "id": 124,
+artifacts/api-server dev:       "method": "GET",
+artifacts/api-server dev:       "url": "/api/jobs/1/score"
+artifacts/api-server dev:     }
+artifacts/api-server dev:     res: {
+artifacts/api-server dev:       "statusCode": 200
+artifacts/api-server dev:     }
+artifacts/api-server dev:     responseTime: 392
+artifacts/api-server dev: [01:03:16.686] INFO (12580): request aborted
+artifacts/api-server dev:     req: {
+artifacts/api-server dev:       "id": 125,
+artifacts/api-server dev:       "method": "GET",
+artifacts/api-server dev:       "url": "/api/base-resume"
+artifacts/api-server dev:     }
+artifacts/api-server dev:     res: {
+artifacts/api-server dev:       "statusCode": null
+artifacts/api-server dev:     }
+artifacts/api-server dev:     responseTime: 156
+artifacts/api-server dev: [01:03:16.775] INFO (12580): request completed
+artifacts/api-server dev:     req: {
+artifacts/api-server dev:       "id": 126,
+artifacts/api-server dev:       "method": "GET",
+artifacts/api-server dev:       "url": "/api/ai-model-catalog"
+artifacts/api-server dev:     }
+artifacts/api-server dev:     res: {
+artifacts/api-server dev:       "statusCode": 304
+artifacts/api-server dev:     }
+artifacts/api-server dev:     responseTime: 242
+artifacts/api-server dev: [01:03:17.312] INFO (12580): request completed
+artifacts/api-server dev:     req: {
+artifacts/api-server dev:       "id": 128,
+artifacts/api-server dev:       "method": "GET",
+artifacts/api-server dev:       "url": "/api/ai-model-catalog"
+artifacts/api-server dev:     }
+artifacts/api-server dev:     res: {
+artifacts/api-server dev:       "statusCode": 304
+artifacts/api-server dev:     }
+artifacts/api-server dev:     responseTime: 231
+artifacts/api-server dev: [01:03:17.316] INFO (12580): request completed
+artifacts/api-server dev:     req: {
+artifacts/api-server dev:       "id": 127,
+artifacts/api-server dev:       "method": "GET",
+artifacts/api-server dev:       "url": "/api/base-resume"
+artifacts/api-server dev:     }
+artifacts/api-server dev:     res: {
+artifacts/api-server dev:       "statusCode": 200
+artifacts/api-server dev:     }
+artifacts/api-server dev:     responseTime: 312
+artifacts/api-server dev: [01:03:22.511] INFO (12580): request completed
+artifacts/api-server dev:     req: {
+artifacts/api-server dev:       "id": 129,
+artifacts/api-server dev:       "method": "PATCH",
+artifacts/api-server dev:       "url": "/api/jobs/1"
+artifacts/api-server dev:     }
+artifacts/api-server dev:     res: {
+artifacts/api-server dev:       "statusCode": 200
+artifacts/api-server dev:     }
+artifacts/api-server dev:     responseTime: 320
+artifacts/api-server dev: [01:03:22.865] INFO (12580): request completed
+artifacts/api-server dev:     req: {
+artifacts/api-server dev:       "id": 130,
+artifacts/api-server dev:       "method": "GET",
+artifacts/api-server dev:       "url": "/api/jobs/1"
+artifacts/api-server dev:     }
+artifacts/api-server dev:     res: {
+artifacts/api-server dev:       "statusCode": 200
+artifacts/api-server dev:     }
+artifacts/api-server dev:     responseTime: 341
+artifacts/api-server dev: [01:03:27.628] INFO (12580): Received resume tailor request
+artifacts/api-server dev:     req: {
+artifacts/api-server dev:       "id": 131,
+artifacts/api-server dev:       "method": "POST",
+artifacts/api-server dev:       "url": "/api/jobs/1/tailor"
+artifacts/api-server dev:     }
+artifacts/api-server dev:     jobId: 1
+artifacts/api-server dev: [01:03:27.629] INFO (12580): Starting resume tailor pipeline
+artifacts/api-server dev:     jobId: 1
+artifacts/api-server dev:     claimIds: [
+artifacts/api-server dev:       1,
+artifacts/api-server dev:       2,
+artifacts/api-server dev:       3,
+artifacts/api-server dev:       4,
+artifacts/api-server dev:       5
+artifacts/api-server dev:     ]
+artifacts/api-server dev: [01:03:28.104] INFO (12580): Resolved AI model fallback chain
+artifacts/api-server dev:     runId: "run_2026-05-13t080327795z_9d3423ed6a12"
+artifacts/api-server dev:     taskType: "resume_tailoring"
+artifacts/api-server dev:     modelChain: [
+artifacts/api-server dev:       {
+artifacts/api-server dev:         "attemptNumber": 1,
+artifacts/api-server dev:         "modelId": 7,
+artifacts/api-server dev:         "modelName": "anthropic/claude-3.5-haiku",
+artifacts/api-server dev:         "provider": "openrouter"
+artifacts/api-server dev:       },
+artifacts/api-server dev:       {
+artifacts/api-server dev:         "attemptNumber": 2,
+artifacts/api-server dev:         "modelId": 8,
+artifacts/api-server dev:         "modelName": "openai/gpt-4o-mini",
+artifacts/api-server dev:         "provider": "openrouter"
+artifacts/api-server dev:       }
+artifacts/api-server dev:     ]
+artifacts/api-server dev:     configuredModelCount: 2
+artifacts/api-server dev:     maxAttempts: 2
+artifacts/api-server dev: [01:03:28.104] INFO (12580): Dispatching AI request
+artifacts/api-server dev:     taskType: "resume_tailoring"
+artifacts/api-server dev:     modelId: 7
+artifacts/api-server dev:     modelName: "anthropic/claude-3.5-haiku"
+artifacts/api-server dev:     attemptNumber: 1
+artifacts/api-server dev:     timeoutMs: 25000
+artifacts/api-server dev:     maxTokens: 3200
+artifacts/api-server dev:     runId: "run_2026-05-13t080327795z_9d3423ed6a12"
+artifacts/api-server dev: [01:03:39.096] INFO (12580): AI call completed
+artifacts/api-server dev:     taskType: "resume_tailoring"
+artifacts/api-server dev:     modelId: 7
+artifacts/api-server dev:     modelName: "anthropic/claude-3.5-haiku"
+artifacts/api-server dev:     promptTokens: 3515
+artifacts/api-server dev:     completionTokens: 443
+artifacts/api-server dev:     totalCost: null
+artifacts/api-server dev:     finishReason: "stop"
+artifacts/api-server dev:     contentLength: 1705
+artifacts/api-server dev:     runId: "run_2026-05-13t080327795z_9d3423ed6a12"
+artifacts/api-server dev:     attemptNumber: 1
+artifacts/api-server dev:     elapsedMs: 10992
+artifacts/api-server dev: [01:03:39.674] INFO (12580): Resume plain-text draft parsed
+artifacts/api-server dev:     jobId: 1
+artifacts/api-server dev:     runId: "run_2026-05-13t080327795z_9d3423ed6a12"
+artifacts/api-server dev:     modelName: "anthropic/claude-3.5-haiku"
+artifacts/api-server dev:     requestMode: "plain_text_v1"
+artifacts/api-server dev:     finishReason: "stop"
+artifacts/api-server dev:     contentLength: 1705
+artifacts/api-server dev:     parsedSectionCounts: {
+artifacts/api-server dev:       "skills": 15,
+artifacts/api-server dev:       "education": 4
+artifacts/api-server dev:     }
+artifacts/api-server dev:     validSourceTagCount: 0
+artifacts/api-server dev:     invalidSourceTagCount: 0
+artifacts/api-server dev:     parsedLineCount: 19
+artifacts/api-server dev: [01:03:39.674] WARN (12580): Resume source validation failed
+artifacts/api-server dev:     jobId: 1
+artifacts/api-server dev:     sourceValidation: {
+artifacts/api-server dev:       "passed": false,
+artifacts/api-server dev:       "validItemCount": 0,
+artifacts/api-server dev:       "invalidItemCount": 19,
+artifacts/api-server dev:       "claimBackedCount": 0,
+artifacts/api-server dev:       "baseBackedCount": 0,
+artifacts/api-server dev:       "invalidItems": [
+artifacts/api-server dev:         {
+artifacts/api-server dev:           "text": "Instructional Design Tools: Articulate Storyline, Captivate, SCORM/xAPI",
+artifacts/api-server dev:           "reason": "No valid claim or base resume source reference",
+artifacts/api-server dev:           "sourceRefs": []
+artifacts/api-server dev:         },
+artifacts/api-server dev:         {
+artifacts/api-server dev:           "text": "Learning Platforms: SharePoint, JIRA, Confluence",
+artifacts/api-server dev:           "reason": "No valid claim or base resume source reference",
+artifacts/api-server dev:           "sourceRefs": []
+artifacts/api-server dev:         },
+artifacts/api-server dev:         {
+artifacts/api-server dev:           "text": "Methodologies: ADDIE, SAM, Agile Learning Design",
+artifacts/api-server dev:           "reason": "No valid claim or base resume source reference",
+artifacts/api-server dev:           "sourceRefs": []
+artifacts/api-server dev:         },
+artifacts/api-server dev:         {
+artifacts/api-server dev:           "text": "AI Learning Solutions: AI-assisted content development",
+artifacts/api-server dev:           "reason": "No valid claim or base resume source reference",
+artifacts/api-server dev:           "sourceRefs": []
+artifacts/api-server dev:         },
+artifacts/api-server dev:         {
+artifacts/api-server dev:           "text": "Accessibility: Section 508 compliance",
+artifacts/api-server dev:           "reason": "No valid claim or base resume source reference",
+artifacts/api-server dev:           "sourceRefs": []
+artifacts/api-server dev:         },
+artifacts/api-server dev:         {
+artifacts/api-server dev:           "text": "</source:skills>",
+artifacts/api-server dev:           "reason": "No valid claim or base resume source reference",
+artifacts/api-server dev:           "sourceRefs": []
+artifacts/api-server dev:         },
+artifacts/api-server dev:         {
+artifacts/api-server dev:           "text": "<source:skills>",
+artifacts/api-server dev:           "reason": "No valid claim or base resume source reference",
+artifacts/api-server dev:           "sourceRefs": []
+artifacts/api-server dev:         },
+artifacts/api-server dev:         {
+artifacts/api-server dev:           "text": "Large-scale Learning Solution Design",
+artifacts/api-server dev:           "reason": "No valid claim or base resume source reference",
+artifacts/api-server dev:           "sourceRefs": []
+artifacts/api-server dev:         },
+artifacts/api-server dev:         {
+artifacts/api-server dev:           "text": "eLearning Development",
+artifacts/api-server dev:           "reason": "No valid claim or base resume source reference",
+artifacts/api-server dev:           "sourceRefs": []
+artifacts/api-server dev:         },
+artifacts/api-server dev:         {
+artifacts/api-server dev:           "text": "Adult Learning Strategies",
+artifacts/api-server dev:           "reason": "No valid claim or base resume source reference",
+artifacts/api-server dev:           "sourceRefs": []
+artifacts/api-server dev:         },
+artifacts/api-server dev:         {
+artifacts/api-server dev:           "text": "AI Learning Innovation",
+artifacts/api-server dev:           "reason": "No valid claim or base resume source reference",
+artifacts/api-server dev:           "sourceRefs": []
+artifacts/api-server dev:         },
+artifacts/api-server dev:         {
+artifacts/api-server dev:           "text": "Stakeholder Engagement",
+artifacts/api-server dev:           "reason": "No valid claim or base resume source reference",
+artifacts/api-server dev:           "sourceRefs": []
+artifacts/api-server dev:         },
+artifacts/api-server dev:         {
+artifacts/api-server dev:           "text": "Performance Support Design",
+artifacts/api-server dev:           "reason": "No valid claim or base resume source reference",
+artifacts/api-server dev:           "sourceRefs": []
+artifacts/api-server dev:         },
+artifacts/api-server dev:         {
+artifacts/api-server dev:           "text": "</source:skills>",
+artifacts/api-server dev:           "reason": "No valid claim or base resume source reference",
+artifacts/api-server dev:           "sourceRefs": []
+artifacts/api-server dev:         },
+artifacts/api-server dev:         {
+artifacts/api-server dev:           "text": "<source:education>",
+artifacts/api-server dev:           "reason": "No valid claim or base resume source reference",
+artifacts/api-server dev:           "sourceRefs": []
+artifacts/api-server dev:         },
+artifacts/api-server dev:         {
+artifacts/api-server dev:           "text": "Master of Public Administration, Cybersecurity Concentration",
+artifacts/api-server dev:           "reason": "No valid claim or base resume source reference",
+artifacts/api-server dev:           "sourceRefs": []
+artifacts/api-server dev:         },
+artifacts/api-server dev:         {
+artifacts/api-server dev:           "text": "California State University, San Bernardino",
+artifacts/api-server dev:           "reason": "No valid claim or base resume source reference",
+artifacts/api-server dev:           "sourceRefs": []
+artifacts/api-server dev:         },
+artifacts/api-server dev:         {
+artifacts/api-server dev:           "text": "Certifications: ATD CPTD, Certified ScrumMaster (CSM)",
+artifacts/api-server dev:           "reason": "No valid claim or base resume source reference",
+artifacts/api-server dev:           "sourceRefs": []
+artifacts/api-server dev:         },
+artifacts/api-server dev:         {
+artifacts/api-server dev:           "text": "</source:education>",
+artifacts/api-server dev:           "reason": "No valid claim or base resume source reference",
+artifacts/api-server dev:           "sourceRefs": []
+artifacts/api-server dev:         }
+artifacts/api-server dev:       ]
+artifacts/api-server dev:     }
+artifacts/api-server dev: [01:03:40.582] INFO (12580): request completed
+artifacts/api-server dev:     req: {
+artifacts/api-server dev:       "id": 131,
+artifacts/api-server dev:       "method": "POST",
+artifacts/api-server dev:       "url": "/api/jobs/1/tailor"
+artifacts/api-server dev:     }
+artifacts/api-server dev:     res: {
+artifacts/api-server dev:       "statusCode": 201
+artifacts/api-server dev:     }
+artifacts/api-server dev:     responseTime: 13282
+artifacts/api-server dev: [01:07:24.861] INFO (12580): Starting cover letter draft pipeline
+artifacts/api-server dev:     req: {
+artifacts/api-server dev:       "id": 132,
+artifacts/api-server dev:       "method": "POST",
+artifacts/api-server dev:       "url": "/api/jobs/1/cover-letter"
+artifacts/api-server dev:     }
+artifacts/api-server dev:     jobId: 1
+artifacts/api-server dev: [01:07:24.861] INFO (12580): Starting cover letter draft pipeline
+artifacts/api-server dev:     jobId: 1
+artifacts/api-server dev:     claimIds: [
+artifacts/api-server dev:       1,
+artifacts/api-server dev:       2,
+artifacts/api-server dev:       3,
+artifacts/api-server dev:       4,
+artifacts/api-server dev:       5
+artifacts/api-server dev:     ]
+artifacts/api-server dev: [01:07:25.341] INFO (12580): Resolved AI model fallback chain
+artifacts/api-server dev:     runId: "run_2026-05-13t080725032z_224782040263"
+artifacts/api-server dev:     taskType: "cover_letter"
+artifacts/api-server dev:     modelChain: [
+artifacts/api-server dev:       {
+artifacts/api-server dev:         "attemptNumber": 1,
+artifacts/api-server dev:         "modelId": 9,
+artifacts/api-server dev:         "modelName": "anthropic/claude-3.5-haiku",
+artifacts/api-server dev:         "provider": "openrouter"
+artifacts/api-server dev:       },
+artifacts/api-server dev:       {
+artifacts/api-server dev:         "attemptNumber": 2,
+artifacts/api-server dev:         "modelId": 10,
+artifacts/api-server dev:         "modelName": "openai/gpt-4o-mini",
+artifacts/api-server dev:         "provider": "openrouter"
+artifacts/api-server dev:       }
+artifacts/api-server dev:     ]
+artifacts/api-server dev:     configuredModelCount: 2
+artifacts/api-server dev:     maxAttempts: 2
+artifacts/api-server dev: [01:07:25.697] INFO (12580): Dispatching AI request
+artifacts/api-server dev:     taskType: "cover_letter"
+artifacts/api-server dev:     modelId: 9
+artifacts/api-server dev:     modelName: "anthropic/claude-3.5-haiku"
+artifacts/api-server dev:     attemptNumber: 1
+artifacts/api-server dev:     timeoutMs: 30000
+artifacts/api-server dev:     maxTokens: 3000
+artifacts/api-server dev:     runId: "run_2026-05-13t080725032z_224782040263"
+artifacts/api-server dev: [01:07:28.214] INFO (12580): [periodic] Model config health check passed
+artifacts/api-server dev:     checkedAt: "2026-05-13T08:07:28.214Z"
+artifacts/api-server dev: [01:07:37.062] INFO (12580): AI call completed
+artifacts/api-server dev:     taskType: "cover_letter"
+artifacts/api-server dev:     modelId: 9
+artifacts/api-server dev:     modelName: "anthropic/claude-3.5-haiku"
+artifacts/api-server dev:     promptTokens: 1379
+artifacts/api-server dev:     completionTokens: 747
+artifacts/api-server dev:     totalCost: null
+artifacts/api-server dev:     finishReason: "stop"
+artifacts/api-server dev:     contentLength: 3857
+artifacts/api-server dev:     runId: "run_2026-05-13t080725032z_224782040263"
+artifacts/api-server dev:     attemptNumber: 1
+artifacts/api-server dev:     elapsedMs: 11721
+artifacts/api-server dev: [01:07:37.148] WARN (12580): Cover letter quality violations detected
+artifacts/api-server dev:     violations: [
+artifacts/api-server dev:       "Cover letter too short: 223 words (minimum 250)"
+artifacts/api-server dev:     ]
+artifacts/api-server dev: [01:07:37.149] WARN (12580): Cover letter quality violation — storing draft for review
+artifacts/api-server dev:     jobId: 1
+artifacts/api-server dev:     violations: [
+artifacts/api-server dev:       "Cover letter too short: 223 words (minimum 250)"
+artifacts/api-server dev:     ]
+artifacts/api-server dev: [01:07:37.149] ERROR (12580): Cover letter quality validation failed — storing version for review
+artifacts/api-server dev:     jobId: 1
+artifacts/api-server dev:     violations: [
+artifacts/api-server dev:       "Cover letter too short: 223 words (minimum 250)"
+artifacts/api-server dev:     ]
+artifacts/api-server dev: [01:07:37.302] INFO (12580): request completed
+artifacts/api-server dev:     req: {
+artifacts/api-server dev:       "id": 132,
+artifacts/api-server dev:       "method": "POST",
+artifacts/api-server dev:       "url": "/api/jobs/1/cover-letter"
+artifacts/api-server dev:     }
+artifacts/api-server dev:     res: {
+artifacts/api-server dev:       "statusCode": 201
+artifacts/api-server dev:     }
+artifacts/api-server dev:     responseTime: 13404
