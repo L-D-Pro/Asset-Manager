@@ -2,7 +2,7 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { db, pool } from "@workspace/db";
 import { adminUsersTable, aiModelConfigsTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
 /**
@@ -53,41 +53,175 @@ async function bootstrapAdminUser() {
   );
 }
 
-const REQUIRED_MODEL_CONFIGS = [
+/**
+ * Required primary model per managed task scope.
+ * Priority 1 = highest priority (lowest number wins).
+ */
+const REQUIRED_PRIMARIES: Array<{
+  taskScope: string;
+  modelName: string;
+  provider: string;
+  priority: number;
+}> = [
   { taskScope: "resume_tailoring", modelName: "anthropic/claude-3.5-haiku", provider: "openrouter", priority: 1 },
   { taskScope: "cover_letter",     modelName: "anthropic/claude-3.5-haiku", provider: "openrouter", priority: 1 },
   { taskScope: "claim_generation", modelName: "anthropic/claude-3.5-haiku", provider: "openrouter", priority: 1 },
   { taskScope: "jd_parsing",       modelName: "anthropic/claude-3.5-haiku", provider: "openrouter", priority: 1 },
   { taskScope: "default",          modelName: "anthropic/claude-3.5-haiku", provider: "openrouter", priority: 1 },
-] as const;
+];
 
 /**
- * Ensure every required task scope has at least one active model config.
- * Inserts missing rows; does NOT overwrite or change existing active rows.
- * Safe to call on every startup.
+ * For these scopes, enforce a DB-level fallback row (gpt-4o-mini) linked from the primary.
+ * callAI walks the fallbackModelId chain on model failure.
+ */
+const REQUIRED_FALLBACK_MODEL = "openai/gpt-4o-mini";
+const SCOPES_REQUIRING_FALLBACK = new Set(["resume_tailoring", "cover_letter"]);
+
+/**
+ * Model name substrings that must not be an active primary for managed scopes.
+ * Kimi/moonshot was previously (mis-)seeded and caused 45-second hangs.
+ */
+const DISALLOWED_PRIMARY_SUBSTRINGS = ["moonshot/", "kimi", "claude-3-5-haiku"]; // claude-3-5-haiku is the wrong slug (should be claude-3.5-haiku)
+
+/**
+ * Idempotent model config repair routine. Runs on every startup.
+ *
+ * For each managed scope it:
+ *  1. Deactivates active rows whose modelName matches a disallowed pattern.
+ *  2. Ensures an active row with the required model exists (re-activates an
+ *     existing inactive row, or inserts a new one).
+ *  3. For scopes in SCOPES_REQUIRING_FALLBACK: ensures a gpt-4o-mini fallback
+ *     row exists and links it from the primary via fallbackModelId.
+ *
+ * Safe to call on every startup — all operations are conditional.
  */
 async function seedModelConfigs() {
-  for (const config of REQUIRED_MODEL_CONFIGS) {
-    const existing = await db
-      .select({ id: aiModelConfigsTable.id })
+  for (const config of REQUIRED_PRIMARIES) {
+    // ── 1. Load all rows for this scope ────────────────────────────────────
+    const allRows = await db
+      .select()
       .from(aiModelConfigsTable)
-      .where(and(
-        eq(aiModelConfigsTable.taskScope, config.taskScope),
-        eq(aiModelConfigsTable.isActive, true),
-      ));
+      .where(eq(aiModelConfigsTable.taskScope, config.taskScope));
 
-    const hasActive = existing.length > 0;
-    if (!hasActive) {
-      await db.insert(aiModelConfigsTable).values({
-        taskScope: config.taskScope,
-        provider: config.provider,
-        modelName: config.modelName,
-        isActive: true,
-        priority: config.priority,
-        extraConfig: {},
-      });
-      logger.info({ taskScope: config.taskScope, modelName: config.modelName }, "Seeded missing model config");
+    const activeRows = allRows.filter((r) => r.isActive);
+    const disallowedActive = activeRows.filter((r) =>
+      DISALLOWED_PRIMARY_SUBSTRINGS.some((sub) => r.modelName.includes(sub)),
+    );
+
+    // ── 2. Deactivate disallowed active primaries ───────────────────────────
+    if (disallowedActive.length > 0) {
+      await db
+        .update(aiModelConfigsTable)
+        .set({ isActive: false })
+        .where(inArray(aiModelConfigsTable.id, disallowedActive.map((r) => r.id)));
+      for (const row of disallowedActive) {
+        logger.info(
+          { id: row.id, modelName: row.modelName, taskScope: config.taskScope },
+          "Deactivated disallowed model config",
+        );
+      }
     }
+
+    // ── 3. Ensure correct primary is active ────────────────────────────────
+    const requiredActive = activeRows.find(
+      (r) =>
+        r.modelName === config.modelName &&
+        !DISALLOWED_PRIMARY_SUBSTRINGS.some((sub) => r.modelName.includes(sub)),
+    );
+
+    let primaryId: number;
+
+    if (requiredActive) {
+      primaryId = requiredActive.id;
+    } else {
+      // Check for an existing (possibly inactive) row with the correct model
+      const existingInactive = allRows.find(
+        (r) =>
+          r.modelName === config.modelName &&
+          !DISALLOWED_PRIMARY_SUBSTRINGS.some((sub) => r.modelName.includes(sub)),
+      );
+
+      if (existingInactive) {
+        await db
+          .update(aiModelConfigsTable)
+          .set({ isActive: true, priority: config.priority })
+          .where(eq(aiModelConfigsTable.id, existingInactive.id));
+        primaryId = existingInactive.id;
+        logger.info(
+          { taskScope: config.taskScope, modelName: config.modelName, id: existingInactive.id },
+          "Re-activated required model config",
+        );
+      } else {
+        const [inserted] = await db
+          .insert(aiModelConfigsTable)
+          .values({
+            taskScope: config.taskScope,
+            provider: config.provider,
+            modelName: config.modelName,
+            isActive: true,
+            priority: config.priority,
+            extraConfig: {},
+          })
+          .returning({ id: aiModelConfigsTable.id });
+        primaryId = inserted!.id;
+        logger.info(
+          { taskScope: config.taskScope, modelName: config.modelName, id: primaryId },
+          "Seeded missing model config",
+        );
+      }
+    }
+
+    // ── 4. Enforce fallback chain for critical scopes ───────────────────────
+    if (!SCOPES_REQUIRING_FALLBACK.has(config.taskScope)) continue;
+
+    // Re-fetch the primary row to get its current fallbackModelId
+    const [primaryRow] = await db
+      .select()
+      .from(aiModelConfigsTable)
+      .where(eq(aiModelConfigsTable.id, primaryId));
+
+    if (!primaryRow || primaryRow.fallbackModelId != null) continue; // already linked
+
+    // Find or create the fallback node (inactive — it's a chain target, not a direct primary)
+    const reloadedAll = await db
+      .select()
+      .from(aiModelConfigsTable)
+      .where(eq(aiModelConfigsTable.taskScope, config.taskScope));
+
+    const existingFallback = reloadedAll.find((r) => r.modelName === REQUIRED_FALLBACK_MODEL);
+
+    let fallbackId: number;
+
+    if (existingFallback) {
+      fallbackId = existingFallback.id;
+    } else {
+      const [fb] = await db
+        .insert(aiModelConfigsTable)
+        .values({
+          taskScope: config.taskScope,
+          provider: "openrouter",
+          modelName: REQUIRED_FALLBACK_MODEL,
+          isActive: false, // fallback node only — not a candidate primary
+          priority: 90,
+          extraConfig: {},
+        })
+        .returning({ id: aiModelConfigsTable.id });
+      fallbackId = fb!.id;
+      logger.info(
+        { taskScope: config.taskScope, modelName: REQUIRED_FALLBACK_MODEL, id: fallbackId },
+        "Inserted fallback model node",
+      );
+    }
+
+    await db
+      .update(aiModelConfigsTable)
+      .set({ fallbackModelId: fallbackId })
+      .where(eq(aiModelConfigsTable.id, primaryId));
+
+    logger.info(
+      { taskScope: config.taskScope, primaryId, fallbackId, fallbackModel: REQUIRED_FALLBACK_MODEL },
+      "Linked fallback chain for scope",
+    );
   }
 }
 
