@@ -1,289 +1,128 @@
 # AGENTS.md
 
-This file is the canonical operating guide for agents working in this repository. Use it to get productive quickly and to stay safe/consistent across two development machines.
+Agent operating guide for Job Ops. Read before touching code.
 
-## Scope and precedence
+See `CONVENTIONS.md` for naming, imports, and logging rules. See `ARCHITECTURE.md` for package layout and runtime flow. See `AI_PIPELINE.md` for AI pipeline details.
 
-- Scope: entire repository tree rooted at this file.
-- If multiple instruction sources exist, follow this order:
-  1. System/developer/user prompt instructions
-  2. More deeply nested `AGENTS.md` files (if any)
-  3. This root `AGENTS.md`
+## Superpowers Skills
 
-## Project snapshot (current state)
+This repo uses the Superpowers plugin. Invoke the relevant skill before acting. Common mappings:
 
-- Product: Job Ops (single-user, human-in-the-loop job-ops platform).
-- Monorepo: `pnpm` workspace, Node `24.x`, TypeScript `5.9`, strict mode.
-- Core apps:
-  - `artifacts/api-server` (Express 5 API)
-  - `artifacts/dashboard` (React + Vite UI)
-- Shared libs:
-  - `lib/db` (Drizzle schema/client)
-  - `lib/api-spec` (OpenAPI source of truth)
-  - `lib/api-zod` (generated validation schemas)
-  - `lib/api-client-react` (generated hooks/types)
-  - `lib/integrations-openrouter-ai` (OpenRouter wrapper)
+| Scenario | Skill |
+|---|---|
+| New feature, design change | brainstorming |
+| Implementing approved design | writing-plans → executing-plans |
+| Bug, regression, unknown root cause | systematic-debugging |
+| Before claiming done | verification-before-completion |
+| Non-trivial handoff | requesting-code-review |
+| Finishing a branch | finishing-a-development-branch |
 
-### Current high-impact features
+Announce skills as: `[skill-name] to [purpose]`. Do not duplicate skill content here.
 
-- **Public landing page**: Unauthenticated visitors at `/` see a marketing page. Authenticated users redirect to `/dashboard`.
-- **AI Learning loop** (`/ai-learning`): Bayesian auto-optimizer that learns from application outcomes to improve prompt versions and model configs. Supports suggest mode (manual promote) and auto-promote mode (with revert).
-- **User Management** (`/admin/users`): Admin-only user CRUD with admin middleware, secure password generation, self-deletion/last-admin protection, rate-limited auth endpoints.
-- Apply Wizard route: `/apply-wizard` (feature flag `VITE_ENABLE_APPLY_WIZARD=true`).
-- Wizard tailor step supports:
-  - system-default generation
-  - custom model comparison (up to 3 models per artifact)
-- Hybrid model picker uses `GET /ai-model-catalog` and marks configured/default models.
-- Compare endpoints:
-  - `POST /jobs/:id/compare/resume`
-  - `POST /jobs/:id/compare/cover-letter`
-- Winner promotion endpoints:
-  - `POST /jobs/:id/compare/promote-resume`
-  - `POST /jobs/:id/compare/promote-cover-letter`
-- Comparison metadata is audit-logged; only promoted winners persist in normal queues.
+## Non-Negotiable Invariants
 
-## Canonical repo and remotes
+Violating these breaks the platform:
 
-- Canonical GitHub repo: `https://github.com/L-D-Pro/Asset-Manager`
-- Expected `origin` URL:
-  - `https://github.com/L-D-Pro/Asset-Manager.git`
+- **Truth-Lock** — AI content must cite Claims Ledger IDs. `validation.ts` drops hallucinated IDs structurally. Do not weaken.
+- **State Machines** — `resume/cover_letter/proposal_versions` follow `pending_approval → approved | rejected`. Repeat approve/reject must return 409.
+- **Immutable Base Resume** — `base_resume_versions` is append-only. Restore clones; no mutation endpoints.
+- **AI Call Routing** — All AI calls go through `callAI()` in `artifacts/api-server/src/lib/ai-client.ts`. Never call OpenRouter directly.
+- **Spec-First API** — `lib/api-spec/openapi.yaml` is source of truth. `lib/api-zod/src/generated/` and `lib/api-client-react/src/generated/` are generated — never hand-edit.
+- **M002 Run Lineage** — Use `mintRunId()`. Never invent or copy `run_id` values across unrelated records.
 
-Use this check at session start:
+## Commands
 
 ```powershell
-git remote -v
-```
-
-## Fresh-machine bootstrap checklist
-
-1. Install prerequisites:
-   - Git
-   - Node `24.x`
-   - Corepack enabled (`pnpm 10.x`)
-2. Clone repo and install:
-
-```powershell
-corepack pnpm install
-```
-
-3. Configure root `.env` (do not commit secrets):
-   - `DATABASE_URL`
-   - `SESSION_SECRET`
-   - `AI_INTEGRATIONS_OPENROUTER_API_KEY`
-   - `AI_INTEGRATIONS_OPENROUTER_BASE_URL`
-   - `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_EMAIL` (first-run bootstrap only)
-4. Sync DB schema:
-
-```powershell
-corepack pnpm --filter @workspace/db run push
-```
-
-If schema drift blocks push:
-
-```powershell
-corepack pnpm --filter @workspace/db run compat
-```
-
-5. Start local dev:
-
-```powershell
+# Dev (API :8080 + Dashboard :5173)
 corepack pnpm run dev
-```
 
-6. Optional wizard flag in dashboard env context:
-
-```powershell
-VITE_ENABLE_APPLY_WIZARD=true
-```
-
-## Strict two-PC git sync protocol (required)
-
-### Start-of-session (every time, every PC)
-
-Run in repo root:
-
-```powershell
-git status --short --branch
-git remote -v
-git fetch --all --prune
-git rev-list --left-right --count HEAD...origin/main
-```
-
-Interpret `git rev-list --left-right --count HEAD...origin/main` output as:
-- `<ahead> <behind>`
-- `0 0`: synced
-- `N 0`: local ahead (unpushed commits)
-- `0 N`: remote ahead (must integrate before new work)
-- `N M`: diverged (reconcile immediately)
-
-If remote is ahead or diverged, rebase before coding:
-
-```powershell
-git pull --rebase origin main
-```
-
-### During session
-
-- Make small, focused commits.
-- Keep working tree non-dirty when switching context.
-- Never use `git push --force` on `main`.
-- Do not rewrite shared history on `main`.
-- Avoid mixing unrelated changes in one commit.
-
-### End-of-session
-
-1. Validate (minimum):
-
-```powershell
+# Full typecheck (all workspace packages)
 corepack pnpm run typecheck
-```
 
-2. Commit and push:
+# Build all artifacts
+corepack pnpm run build
 
-```powershell
-git add -A
-git commit -m "<clear scope message>"
-git push origin main
-```
-
-3. Confirm clean state:
-
-```powershell
-git status --short --branch
-```
-
-### Conflict handling (when both PCs changed same areas)
-
-- Prefer `git pull --rebase origin main` and resolve commits one-by-one.
-- After resolving conflicts:
-
-```powershell
-git add <resolved-files>
-git rebase --continue
-```
-
-- Re-run typecheck, then push.
-- If conflict risk is high, stop and create a short handoff note before proceeding.
-
-### Prohibited commands on shared `main`
-
-- `git reset --hard`
-- `git checkout -- <file>`
-- `git push --force`
-
-(Unless explicitly requested by the user in-session.)
-
-### End-of-session DB note
-
-When schema changes have been committed, push the migration to the running database before handing off.
-
-**Load DATABASE_URL from .env first** (required because drizzle-kit and pg scripts don't auto-load `.env`):
-
-```powershell
-$env:DATABASE_URL = (Select-String -Path .env -Pattern "^DATABASE_URL=(.*)" | ForEach-Object { $_.Matches.Groups[1].Value })
-```
-
-Then push:
-
-```powershell
+# Push DB schema
 corepack pnpm --filter @workspace/db run push
+
+# Schema drift fix (when push fails)
+corepack pnpm --filter @workspace/db run compat
+
+# Regenerate API schemas + client hooks (after openapi.yaml changes)
+corepack pnpm --filter @workspace/api-spec run codegen
+
+# Smoke tests (requires running instance)
+corepack pnpm run smoke:test
 ```
 
-If that fails (schema drift) or the TUI blocks scripting, fall back to the compat script (which applies `lib/db/runtime-compat.sql` via plain SQL):
+Dependencies: `corepack pnpm install` when the lockfile changes, **before** any other command.
 
-```powershell
-$env:DATABASE_URL = (Select-String -Path .env -Pattern "^DATABASE_URL=(.*)" | ForEach-Object { $_.Matches.Groups[1].Value }); corepack pnpm --filter @workspace/db run compat
-```
-
-Note: `drizzle-kit push` is TUI-interactive and cannot be automated via stdin on Windows. When scripting, use a manual SQL migration script with `CREATE TABLE IF NOT EXISTS` and `CREATE INDEX IF NOT EXISTS` statements in `lib/db/runtime-compat.sql`, then execute via `compat`.
-
-## Change rules for agents
-
-- Follow spec-first API workflow when endpoints change:
-  1. edit `lib/api-spec/openapi.yaml`
-  2. run `corepack pnpm --filter @workspace/api-spec run codegen`
-  3. apply generated schema/client changes
-  4. wire route + dashboard usage
-- Prefer generated `@workspace/api-zod` schemas for request validation in API routes.
-- Use `safeParse()` in handlers (not `parse()` throwing in request path).
-- Keep truth-lock boundaries intact for resume/cover/proposal flows.
-- Preserve human-in-the-loop policy and no auto-submit guarantees.
-- Keep edits scoped; do not opportunistically refactor unrelated modules.
-
-## Validation checklist before handoff
-
-Run the smallest relevant checks first, then broader checks if needed.
-
-- API route/pipeline changes:
-
-```powershell
-corepack pnpm --filter @workspace/api-server run typecheck
-```
-
-- Dashboard page/UI changes:
-
-```powershell
-corepack pnpm --filter @workspace/dashboard run typecheck
-```
-
-- Cross-package/schema changes:
+## Validation Checklist (Before Claiming Done)
 
 ```powershell
 corepack pnpm run typecheck
+corepack pnpm --filter @workspace/api-server run build
+corepack pnpm --filter @workspace/dashboard run build
 ```
 
-If behavior changed, update docs in the same PR/commit set (`docs/USER_GUIDE.md`, `docs/CHANGELOG.md`, wizard docs as applicable).
+After OpenAPI changes: `corepack pnpm --filter @workspace/api-spec run codegen`
 
-## Guardrails and gotchas
+After schema changes: `corepack pnpm --filter @workspace/db run push` (or `compat` on drift)
 
-- Route `/apply-wizard` may render a disabled notice when flag is off; this can be expected behavior.
-- Generated code under `lib/api-zod` and `lib/api-client-react` should be regenerated, not hand-edited unless explicitly required.
-- `lib/db/runtime-compat.sql` is the recovery path for DB schema drift after schema changes.
-- Never hardcode secrets in code/docs.
-- After first deploy with User Management, the bootstrap admin must be promoted to admin role manually: `UPDATE admin_users SET role = 'admin' WHERE id = 1;`.
-- `drizzle-kit push` is TUI-interactive on Windows; use manual SQL migration scripts for CI/automation (see End-of-session DB note above).
+## Common Workflows
 
-## High-signal file map
+### Add an API endpoint
+1. Edit `lib/api-spec/openapi.yaml`
+2. `corepack pnpm --filter @workspace/api-spec run codegen`
+3. Create/update `artifacts/api-server/src/routes/<entity-plural>.ts`
+4. Register in `artifacts/api-server/src/routes/index.ts`
+5. Use generated hook from `@workspace/api-client-react` in the dashboard
 
-- Architecture and conventions:
-  - `ARCHITECTURE.md`
-  - `CONVENTIONS.md`
-- Core docs:
-  - `docs/USER_GUIDE.md`
-  - `docs/APPLY_WIZARD_MVP.md`
-  - `docs/CHANGELOG.md`
-  - `docs/DEPLOY_DIGITALOCEAN.md`
-  - `docs/HANDOFF.md` (cross-PC session transition checklist)
-- Spec/plan docs:
-  - `docs/superpowers/specs/` (design specs)
-  - `docs/superpowers/plans/` (implementation plans)
-- API hotspots:
-  - `artifacts/api-server/src/routes/jobs.ts`
-  - `artifacts/api-server/src/routes/ai-model-configs.ts`
-  - `artifacts/api-server/src/lib/ai-client.ts`
-  - `artifacts/api-server/src/lib/pipelines/resume-tailor.ts`
-  - `artifacts/api-server/src/lib/pipelines/cover-letter-draft.ts`
-- Dashboard hotspots:
-  - `artifacts/dashboard/src/pages/apply-wizard/index.tsx`
-  - `artifacts/dashboard/src/pages/guide/index.tsx`
-- Data/schema:
-  - `lib/db/src/schema/*`
-  - `lib/db/runtime-compat.sql`
+### Add a DB table
+1. Create `lib/db/src/schema/<entity-plural>.ts`
+2. Export from `lib/db/src/schema/index.ts`
+3. `corepack pnpm --filter @workspace/db run push`
 
-## Working style expectation
+### Add/modify an AI pipeline
+1. Create/edit `artifacts/api-server/src/lib/pipelines/<verb>-<noun>.ts`
+2. Call `callAI({ taskType, systemPrompt, userPrompt, jobId? })`
+3. Store result as `pending_approval`
 
-- Be precise, minimal, and verifiable.
-- Explain changes briefly with file paths.
-- Prefer safe, reversible operations.
-- If unexpected workspace changes appear, stop and ask before proceeding.
-- When invoking a superpowers skill, announce it explicitly with `[skill-name] to [purpose]` before acting on it.
+### Modify the learning loop
+Files: `learning-processor.ts`, `learning-aggregator.ts`, `bayesian-compare.ts`.
+Trigger recompute via `learning-processor.runRecompute()` — never from a request handler under user latency budget.
 
-## Tooling reliability: large-file write strategy
+## Key Constraints
 
-When creating or overwriting files with **> ~500 lines** of content, the `Write` or `Edit` tool may abort during the "preparing write" phase or fail to complete. When this happens, use this reliable two-step pattern:
+- Node.js **24.x** minimum, pnpm **10.x** via Corepack
+- TypeScript strict (individual flags in `tsconfig.base.json`), no `any`, use `safeParse()` not `.parse()`
+- Drizzle ORM only — no raw SQL, always `.returning()` after mutations
+- `@workspace/*` imports across packages, never relative paths
+- No silent fallbacks — log and surface errors
+- No automated test suite exists; rely on typecheck + smoke tests + dashboard manual testing
 
-1. **Write a temporary JS wrapper** to a temp file (e.g. `temp-write-<name>.js`) using the `Write` tool. Inside it, place the actual target content as a JavaScript template literal assigned to a variable.
-2. **Extract and write the real file** by running a short Python command via `Bash`. The Python script reads the temp JS file, extracts the content between the backtick delimiters, and writes it to the final destination.
-3. **Clean up** by deleting the temp file via `Bash`.
+## Environment
 
-This avoids template-literal escaping issues in shell `node -e` and bypasses the write-tool abort entirely. After extraction, verify the file was written correctly with a quick `Read`.
+Copy `.env.example` → `.env`. Must have: `DATABASE_URL`, `SESSION_SECRET`, `AI_INTEGRATIONS_OPENROUTER_API_KEY`, `AI_INTEGRATIONS_OPENROUTER_BASE_URL`. `ADMIN_*` vars for first-run bootstrap only — remove after.
+
+`VITE_ENABLE_APPLY_WIZARD=true` enables the Apply Wizard dashboard feature.
+
+## Hard Guardrails — Do Not Build
+
+MFA/CAPTCHA bypass, stealth login automation, mass auto-apply, auto-submit without user confirmation, unauthorized Upwork scraping/auto-bidding, credential vault forwarding to browser workers.
+
+Assisted Apply and Freelance Copilot are assist-only. No automation beyond official API permissions.
+
+## Documentation Map
+
+| File | Covers |
+|---|---|
+| `CLAUDE.md` | Commands, architecture, conventions summary |
+| `ARCHITECTURE.md` | Package graph, AI runtime, learning loop, state machines |
+| `CONVENTIONS.md` | Naming, imports, error handling, Drizzle patterns, testing |
+| `AI_PIPELINE.md` | OpenRouter contract, model/prompt routing, pipelines, truth-lock |
+| `lib/db/DATA_MODEL.md` | DB tables, M002 lineage |
+| `lib/api-spec/API_CONTRACT.md` | Endpoint inventory, Zod strategy |
+| `docs/APPLY_WIZARD_MVP.md` | Apply Wizard guide |
+| `docs/DEPLOY_DIGITALOCEAN.md` | Production deploy |
+| `DEV_SETUP_WINDOWS.md` | Windows dev environment setup |
