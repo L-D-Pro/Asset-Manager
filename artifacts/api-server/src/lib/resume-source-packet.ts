@@ -182,7 +182,7 @@ export function parseBaseResumeSources(baseResumeText: string): BaseResumeSource
   const lines = stripped.split(/\r?\n/);
   const sources: BaseResumeSource[] = [];
   const sectionCounts: Partial<Record<ResumeSectionKey, number>> = {};
-  let currentSection: ResumeSectionKey = "summary";
+  let currentSection: ResumeSectionKey | null = null;
   let sawSection = false;
 
   for (const rawLine of lines) {
@@ -199,17 +199,21 @@ export function parseBaseResumeSources(baseResumeText: string): BaseResumeSource
     const looksLikeUnknownHeading = /^[A-Z][A-Z0-9 &/.-]{2,}$/.test(line.replace(/[:\s]+$/g, ""));
     if (looksLikeUnknownHeading && sawSection) continue;
 
+    // Skip contact/header lines before the first recognized section heading.
+    if (!currentSection) continue;
+
     const text = cleanSourceLine(line);
     if (!text || text.length < 8) continue;
 
-    sectionCounts[currentSection] = (sectionCounts[currentSection] ?? 0) + 1;
-    const sourceId = `b${String(sectionCounts[currentSection]).padStart(3, "0")}`;
+    const activeSection = currentSection;
+    sectionCounts[activeSection] = (sectionCounts[activeSection] ?? 0) + 1;
+    const sourceId = `b${String(sectionCounts[activeSection]).padStart(3, "0")}`;
     sources.push({
-      ref: `base:${currentSection}:${sourceId}`,
-      section: currentSection,
+      ref: `base:${activeSection}:${sourceId}`,
+      section: activeSection,
       sourceId,
       text: text.slice(0, MAX_BASE_SOURCE_CHARS),
-      kind: classifySourceLine(currentSection, line),
+      kind: classifySourceLine(activeSection, line),
     });
 
     if (sources.length >= MAX_BASE_SOURCES) break;
@@ -315,6 +319,26 @@ function extractSourceTags(line: string): { text: string; sourceRefs: string[]; 
   };
 }
 
+function rescueUntaggedLine(
+  text: string,
+  section: ResumeSectionKey,
+  baseSources: BaseResumeSource[],
+): string[] {
+  const needle = text.toLowerCase().replace(/\s+/g, " ").trim();
+  if (needle.length < 12) return [];
+  const sectionSources = baseSources.filter((s) => s.section === section);
+  for (const source of sectionSources) {
+    const hay = source.text.toLowerCase().replace(/\s+/g, " ");
+    const needleWords = needle.split(" ").filter((w) => w.length > 3);
+    if (needleWords.length === 0) continue;
+    const matchCount = needleWords.filter((w) => hay.includes(w)).length;
+    if (matchCount / needleWords.length >= 0.4) {
+      return [source.ref];
+    }
+  }
+  return [];
+}
+
 export function parsePlainTextResumeDraft(
   content: string,
   packet: ResumeSourcePacket,
@@ -365,6 +389,21 @@ export function parsePlainTextResumeDraft(
       jobKeywordsUsed: [],
       gapNotes: [],
     });
+  }
+
+  // When every line lacked source tags (model ignored format), attempt fuzzy rescue by
+  // matching line text against base resume sources to recover attributable content.
+  if (validSourceTagCount === 0 && sectionItems.length > 0) {
+    for (const item of sectionItems) {
+      const refs = stringArray(item.sourceRefs);
+      if (refs.length === 0) {
+        const section = normalizeResumeSection(item.section) ?? "experience";
+        const rescued = rescueUntaggedLine(String(item.text ?? ""), section, packet.baseSources);
+        if (rescued.length > 0) {
+          (item as ResumeTailoringPlanItem & { sourceRefs: string[] }).sourceRefs = rescued;
+        }
+      }
+    }
   }
 
   const result = validateResumeTailoringPlan({ sectionItems, summary: "plain_text_v1" }, packet);

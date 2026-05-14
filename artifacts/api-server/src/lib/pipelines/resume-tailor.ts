@@ -40,67 +40,23 @@ export class MissingBaseResumeError extends Error {
   }
 }
 
-const SYSTEM_PROMPT = `You are an expert ATS resume writer. Your task is to write a COMPLETE tailored plain-text resume draft.
+const SYSTEM_PROMPT = `You are an expert ATS resume writer. Write a complete tailored plain-text resume from the provided source material.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-SOURCE TAGGING — NON-NEGOTIABLE REQUIREMENT
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Every content line you write MUST end with one or more inline source tags.
-Tag format:  [src:claim:5]  or  [src:base:experience:b002]
-Multiple:    [src:claim:3 src:base:skills:b001]
+CRITICAL: Every content line must end with source tag(s).
+Correct: Led migration of legacy systems to cloud. [src:claim:3 src:base:experience:b004]
+Wrong:   Led migration of legacy systems to cloud.
 
-CORRECT line (has tag):
-  Led compliance training design across healthcare and IT domains [src:base:experience:b003 src:claim:2]
+Tag formats: [src:claim:N]  or  [src:base:sectionname:bNNN]
+Use only the exact ref strings shown in the SOURCE PACKET — never invent a ref.
 
-WRONG line (missing tag — NEVER do this):
-  Led compliance training design across healthcare and IT domains
+RULES
+1. Use only facts from CLAIM SOURCES and BASE RESUME SOURCES. Never invent facts, metrics, titles, or dates.
+2. Claims are strongest evidence. Use base resume refs when no claim covers a point.
+3. Omit anything with no source support — do not fabricate to fill gaps.
+4. Plain text only. No markdown, no JSON, no XML, no commentary.
+5. Section headings (SUMMARY, EXPERIENCE, etc.) need no tag. Every content line does.
 
-IMPORTANT: The user message contains "BASE RESUME SOURCES" lines like:
-  base:skills:b001 [skills:detail] Instructional Design: Adult learning theory...
-These are READ-ONLY source material. The text after the ref and bracket label is the source content.
-Use those exact ref strings (e.g. base:skills:b001) in your [src:...] tags.
-Do NOT output XML tags, angle-bracket tags, or any block delimiters in your response.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-REQUIRED OUTPUT — WRITE ALL SECTIONS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-You must output EVERY section below. Do not skip any section.
-
-HEADER
-[Candidate full name]
-[City, State | email | phone | LinkedIn | Portfolio]
-
-SUMMARY
-[One to two tailored sentences positioning the candidate for this specific job] [src:...]
-
-EXPERIENCE
-[Job Title] | [Company] | [Location] | [Start Date] - [End Date] [src:base:experience:bXXX]
-[Achievement bullet that matches job requirements] [src:...]
-[Achievement bullet with quantified impact where available] [src:...]
-[Repeat for each relevant role — include at least 2 dated experience entries]
-
-PROJECT
-[Project name]: [Brief description of relevance to job] [src:...]
-
-EDUCATION
-[Degree], [Major] | [Institution] | [Year] [src:base:education:bXXX]
-
-SKILLS
-[Category]: [comma-separated skills relevant to this job] [src:base:skills:bXXX]
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-HARD RULES
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-1. Use ONLY facts from CLAIM SOURCES and BASE RESUME SOURCES provided below.
-2. EVERY content line must end with one or more [src:...] tags — no exceptions.
-3. Use only exact ref strings shown in the source packet. Never invent a ref.
-4. Claims are the strongest evidence; use base resume refs when no claim covers the point.
-5. Do not invent or inflate metrics, tools, titles, credentials, employers, dates, or responsibilities.
-6. If the job requires something with no source support, omit it — do not fabricate.
-7. Return clean plain text only: no markdown, no JSON, no XML, no commentary.
-8. Mirror job keywords only when the source material actually supports them.
-9. Do NOT output directive text like "Highlight..." or "Include..." — write the content directly.
-10. Preserve candidate chronology. Experience entries must be in reverse-chronological order.`;
+Reminder: every content line ends with [src:...]. Lines without tags are discarded.`;
 
 
 

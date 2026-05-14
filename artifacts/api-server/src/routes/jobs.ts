@@ -395,9 +395,29 @@ router.get("/jobs/:id/claim-matches", async (req, res): Promise<void> => {
 
   const matches = matchClaimsToJob(job, claims);
 
-  req.log.info({ jobId: job.id, totalClaims: claims.length, matched: matches.length }, "Claim matches computed");
+  const MIN_MATCHES = 3;
+  let responseMatches = matches;
 
-  res.json(GetJobClaimMatchesResponse.parse(matches));
+  if (matches.length < MIN_MATCHES) {
+    const matchedIds = new Set(matches.map((m) => m.claim.id));
+    const unmatched = claims
+      .filter((c) => !matchedIds.has(c.id))
+      .map((c) => ({
+        claim: c,
+        score: 0,
+        matchType: "available" as const,
+        matchedKeywords: [] as string[],
+      }));
+    responseMatches = [...matches, ...unmatched];
+    req.log.info(
+      { jobId: job.id, scored: matches.length, total: responseMatches.length },
+      "Claim matches below threshold — returning all active claims for manual selection",
+    );
+  } else {
+    req.log.info({ jobId: job.id, totalClaims: claims.length, matched: matches.length }, "Claim matches computed");
+  }
+
+  res.json(GetJobClaimMatchesResponse.parse(responseMatches));
 });
 
 router.post("/jobs/:id/tailor", async (req: JobOpsRequest, res): Promise<void> => {

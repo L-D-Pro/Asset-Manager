@@ -197,7 +197,7 @@ export interface ClaimMatchResult {
   /** Keywords that matched between this claim and the job. */
   matchedKeywords: string[];
   /** The best match type found: `"required"` > `"nice_to_have"` > `"keyword"`. */
-  matchType: "required" | "nice_to_have" | "keyword";
+  matchType: "required" | "nice_to_have" | "keyword" | "available";
 }
 
 /**
