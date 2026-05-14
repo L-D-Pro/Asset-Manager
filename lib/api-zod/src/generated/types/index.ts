@@ -25,6 +25,7 @@ export * from "./aiMetricsSnapshotResponseStatus";
 export * from "./aiMetricsSnapshotResponseWindow";
 export * from "./aiModelConfig";
 export * from "./aiModelConfigExtraConfig";
+export * from "./aiPipelineTaskSummary";
 export * from "./aiPromptVersion";
 export * from "./aiPromptVersionMetadata";
 export * from "./aiRecomputeResponse";

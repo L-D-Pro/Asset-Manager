@@ -1106,6 +1106,40 @@ export interface AiLearningLeaderboardEntry {
   lastComputedAt?: string | null;
 }
 
+export interface AiPipelineTaskSummary {
+  /** Canonical AI task scope identifier */
+  taskScope: string;
+  /**
+   * ID of the active prompt version for this task scope, or null
+   * @nullable
+   */
+  activePromptVersionId?: number | null;
+  /**
+   * Human-readable label of the active prompt version
+   * @nullable
+   */
+  activePromptLabel?: string | null;
+  /**
+   * Role label from the active prompt version
+   * @nullable
+   */
+  roleLabel?: string | null;
+  /**
+   * Model name from the active model config
+   * @nullable
+   */
+  modelName?: string | null;
+  /**
+   * ID of the active model config for this task scope
+   * @nullable
+   */
+  modelConfigId?: number | null;
+  /** Count of enabled best practices for the matching domain */
+  bestPracticesEnabledCount: number;
+  /** Count of training examples for this task scope */
+  trainingExampleCount: number;
+}
+
 export interface AiRecomputeResponse {
   /** Whether the recompute completed successfully */
   ok: boolean;

@@ -21,6 +21,7 @@ import type {
   AiLearningLeaderboardEntry,
   AiMetricsSnapshotResponse,
   AiModelConfig,
+  AiPipelineTaskSummary,
   AiPromptVersion,
   AiRecomputeResponse,
   AiReviewOverview,
@@ -7345,6 +7346,84 @@ export function useGetAiLearningLeaderboard<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetAiLearningLeaderboardQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Returns one entry per known AI task scope with aggregated configuration:
+active prompt version, active model config, count of enabled best practices
+for the matching domain, and count of training examples for the task scope.
+ * @summary Get unified per-task summary for the AI Pipeline Hub
+ */
+export const getGetAiPipelineOverviewUrl = () => {
+  return `/api/ai-pipeline/overview`;
+};
+
+export const getAiPipelineOverview = async (
+  options?: RequestInit,
+): Promise<AiPipelineTaskSummary[]> => {
+  return customFetch<AiPipelineTaskSummary[]>(getGetAiPipelineOverviewUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetAiPipelineOverviewQueryKey = () => {
+  return [`/api/ai-pipeline/overview`] as const;
+};
+
+export const getGetAiPipelineOverviewQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAiPipelineOverview>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAiPipelineOverview>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetAiPipelineOverviewQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getAiPipelineOverview>>
+  > = ({ signal }) => getAiPipelineOverview({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAiPipelineOverview>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetAiPipelineOverviewQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAiPipelineOverview>>
+>;
+export type GetAiPipelineOverviewQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get unified per-task summary for the AI Pipeline Hub
+ */
+
+export function useGetAiPipelineOverview<
+  TData = Awaited<ReturnType<typeof getAiPipelineOverview>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAiPipelineOverview>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAiPipelineOverviewQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

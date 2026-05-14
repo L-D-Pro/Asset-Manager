@@ -2402,6 +2402,45 @@ export const GetAiLearningLeaderboardResponse = zod.array(
 );
 
 /**
+ * Returns one entry per known AI task scope with aggregated configuration:
+active prompt version, active model config, count of enabled best practices
+for the matching domain, and count of training examples for the task scope.
+ * @summary Get unified per-task summary for the AI Pipeline Hub
+ */
+export const GetAiPipelineOverviewResponseItem = zod.object({
+  taskScope: zod.string().describe("Canonical AI task scope identifier"),
+  activePromptVersionId: zod
+    .number()
+    .nullish()
+    .describe("ID of the active prompt version for this task scope, or null"),
+  activePromptLabel: zod
+    .string()
+    .nullish()
+    .describe("Human-readable label of the active prompt version"),
+  roleLabel: zod
+    .string()
+    .nullish()
+    .describe("Role label from the active prompt version"),
+  modelName: zod
+    .string()
+    .nullish()
+    .describe("Model name from the active model config"),
+  modelConfigId: zod
+    .number()
+    .nullish()
+    .describe("ID of the active model config for this task scope"),
+  bestPracticesEnabledCount: zod
+    .number()
+    .describe("Count of enabled best practices for the matching domain"),
+  trainingExampleCount: zod
+    .number()
+    .describe("Count of training examples for this task scope"),
+});
+export const GetAiPipelineOverviewResponse = zod.array(
+  GetAiPipelineOverviewResponseItem,
+);
+
+/**
  * @summary List site adapters
  */
 export const ListSiteAdaptersResponseItem = zod.object({

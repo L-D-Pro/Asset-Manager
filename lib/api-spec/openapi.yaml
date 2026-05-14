@@ -1715,6 +1715,25 @@ paths:
                 items:
                   $ref: "#/components/schemas/AiLearningLeaderboardEntry"
 
+  /ai-pipeline/overview:
+    get:
+      operationId: getAiPipelineOverview
+      tags: [ai-learning]
+      summary: Get unified per-task summary for the AI Pipeline Hub
+      description: |-
+        Returns one entry per known AI task scope with aggregated configuration:
+        active prompt version, active model config, count of enabled best practices
+        for the matching domain, and count of training examples for the task scope.
+      responses:
+        "200":
+          description: One entry per AI task scope
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AiPipelineTaskSummary"
+
   # ── Assisted Apply ─────────────────────────────────────────────────────────
   /site-adapters:
     get:
@@ -4100,6 +4119,39 @@ components:
         - successes
         - failures
         - pending
+
+    # ── AI Pipeline Task Summary ──────────────────────────────────────────────
+    AiPipelineTaskSummary:
+      type: object
+      properties:
+        taskScope:
+          type: string
+          description: Canonical AI task scope identifier
+        activePromptVersionId:
+          type: ["integer", "null"]
+          description: ID of the active prompt version for this task scope, or null
+        activePromptLabel:
+          type: ["string", "null"]
+          description: Human-readable label of the active prompt version
+        roleLabel:
+          type: ["string", "null"]
+          description: Role label from the active prompt version
+        modelName:
+          type: ["string", "null"]
+          description: Model name from the active model config
+        modelConfigId:
+          type: ["integer", "null"]
+          description: ID of the active model config for this task scope
+        bestPracticesEnabledCount:
+          type: integer
+          description: Count of enabled best practices for the matching domain
+        trainingExampleCount:
+          type: integer
+          description: Count of training examples for this task scope
+      required:
+        - taskScope
+        - bestPracticesEnabledCount
+        - trainingExampleCount
 
     # ── AI Recompute Response ─────────────────────────────────────────────────
     AiRecomputeResponse:
