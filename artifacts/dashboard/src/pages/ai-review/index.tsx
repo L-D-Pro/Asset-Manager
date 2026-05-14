@@ -16,6 +16,7 @@ import { ContentCard } from "@/components/ui/content-card";
 import { Brain, ChevronDown, ChevronUp, FlaskConical, History, Pencil, ShieldCheck, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getErrorMessage } from "@/lib/api-errors";
+import { Link } from "react-router-dom";
 import { useState } from "react";
 import type React from "react";
 
@@ -62,6 +63,14 @@ export default function AiReviewPage() {
         subtitle="Version prompts, inspect AI runs, and curate supervised learning signals without fine-tuning prematurely."
         variant="data"
       />
+
+      <p className="text-sm text-muted-foreground">
+        Want to edit prompt + role + model + best practices for one task in a single panel?{" "}
+        <Link to="/pipeline-diagram" className="text-primary underline underline-offset-2">
+          Open the AI Pipeline Hub
+        </Link>
+        .
+      </p>
 
       <div className="grid gap-4 md:grid-cols-4">
         <Metric title="Recent AI Runs" value={stats?.recentAiEvents ?? 0} icon={<History className="h-4 w-4" />} />

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Brain, RefreshCw, TrendingUp, Trophy, AlertCircle, CheckCircle, Undo2, HeartPulse, Users, Activity } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
@@ -864,9 +865,16 @@ export default function AiLearningPage() {
   <Users className="h-5 w-5 text-primary" />
   <SectionHeader
   title="Agent Roles"
-  description="Agent role definitions with personality, goals, and skill tags."
+  description="Agent role definitions with personality, goals, and skill tags. Edit role fields in the AI Pipeline Hub → click a task → Role tab."
   />
   </div>
+  <p className="mb-4 text-sm text-muted-foreground">
+  Role personality, goals, and skill tags are now prepended to the system prompt at AI call time. Edit them in the{" "}
+  <Link to="/pipeline-diagram" className="text-primary underline underline-offset-2">
+  AI Pipeline Hub
+  </Link>{" "}
+  Role tab.
+  </p>
   {promptVersions?.some((pv) => pv.roleLabel) ? (
   <div className="grid gap-6 md:grid-cols-2">
   {promptVersions

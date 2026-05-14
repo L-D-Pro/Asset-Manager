@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page-header";
 import { ContentCard } from "@/components/ui/content-card";
 import { Button } from "@/components/ui/button";
@@ -285,6 +286,14 @@ export default function BestPracticesAdminPage() {
           Refresh from AI
         </Button>
       </PageHeader>
+
+      <p className="text-sm text-muted-foreground">
+        Edit best practices alongside the prompt, role, and model for one task in the{" "}
+        <Link to="/pipeline-diagram" className="text-primary underline underline-offset-2">
+          AI Pipeline Hub
+        </Link>
+        .
+      </p>
 
       {loading ? (
         <div className="flex items-center justify-center py-12">

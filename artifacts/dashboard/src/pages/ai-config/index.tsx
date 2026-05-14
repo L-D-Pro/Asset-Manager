@@ -1,4 +1,5 @@
 import { useListAiModelConfigs, useCreateAiModelConfig, useUpdateAiModelConfig, useDeleteAiModelConfig, getListAiModelConfigsQueryKey, type AiModelConfig } from "@workspace/api-client-react";
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { ContentCard } from "@/components/ui/content-card";
@@ -333,11 +334,20 @@ export default function AiConfigPage() {
    </div>
  )}
  <div className="flex justify-between items-center">
+ <div className="space-y-2">
  <PageHeader
  title="AI Config"
  subtitle="Configure AI model defaults per task type, manage cost caps, and set fallback behavior."
  variant="data"
  />
+ <p className="text-sm text-muted-foreground">
+ Tune model + prompt + role + best practices for one task at once in the{" "}
+ <Link to="/pipeline-diagram" className="text-primary underline underline-offset-2">
+ AI Pipeline Hub
+ </Link>
+ .
+ </p>
+ </div>
 
  <Dialog open={isDialogOpen} onOpenChange={(open) => { if(!open) handleClose(); else setIsDialogOpen(true); }}>
  <DialogTrigger asChild>
