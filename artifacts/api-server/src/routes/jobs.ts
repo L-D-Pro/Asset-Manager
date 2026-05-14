@@ -135,6 +135,22 @@ router.patch("/jobs/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  if (parsed.data.roleProfileId != null) {
+    const [exists] = await db
+      .select({ id: roleProfilesTable.id })
+      .from(roleProfilesTable)
+      .where(eq(roleProfilesTable.id, parsed.data.roleProfileId));
+    if (!exists) {
+      req.log.warn(
+        { jobId: params.data.id, roleProfileId: parsed.data.roleProfileId },
+        "PATCH job rejected: roleProfileId does not exist",
+      );
+      res.status(400).json({
+        error: `Role profile ${parsed.data.roleProfileId} not found. Refresh the page and try again.`,
+      });
+      return;
+    }
+  }
   const [row] = await db
     .update(jobsTable)
     .set(parsed.data)
