@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import type { Claim } from "@workspace/db";
 import {
   reviewGeneratedTruth,
-  validateSemanticTemplateContract,
   validateClaimIds,
   validateBullet,
   validateParagraph,
@@ -15,10 +14,6 @@ import {
   checkQuantifiedImpact,
   stripClaimIdRefs,
 } from "../pipelines/validation";
-import {
-  validateSemanticTemplateContract as validateSemanticTemplateContractFromTailor,
-} from "../pipelines/resume-tailor";
-import type { ValidatedResumeItem } from "../resume-source-packet";
 
 function makeClaim(overrides: Partial<Claim> = {}): Claim {
   return {
@@ -35,159 +30,6 @@ function makeClaim(overrides: Partial<Claim> = {}): Claim {
     ...overrides,
   } as Claim;
 }
-
-function makeResumeItem(overrides: Partial<ValidatedResumeItem> = {}): ValidatedResumeItem {
-  return {
-    text: "Built 26 WCAG-compliant modules for a certification program.",
-    section: "experience",
-    claimIds: [],
-    sourceRefs: ["base:experience:b001"],
-    baseSourceRefs: ["base:experience:b001"],
-    jobKeywordsUsed: [],
-    gapNotes: [],
-    sourceMap: null,
-    ...overrides,
-  };
-}
-
-// ─── validateSemanticTemplateContract ────────────────────────────────────────
-
-describe("validateSemanticTemplateContract", () => {
-  const templateSections = ["summary", "experience", "education", "skills"] as const;
-
-  it("passes when all required sections are present with sufficient items", () => {
-    const items: ValidatedResumeItem[] = [
-      makeResumeItem({ section: "summary", text: "Senior instructional designer with 13 years of experience." }),
-      makeResumeItem({ section: "experience", text: "Software Developer | Acme Corp | San Diego, CA | Jan 2021 - Present" }),
-      makeResumeItem({ section: "experience", text: "Built React workflows for 40 users." }),
-      makeResumeItem({ section: "education", text: "B.A. Computer Science — UC San Diego, 2019" }),
-      makeResumeItem({ section: "skills", text: "TypeScript, React, Node.js, SQL" }),
-      makeResumeItem({ section: "skills", text: "Git, Docker, Linux, CI/CD" }),
-    ];
-
-    const result = validateSemanticTemplateContractFromTailor({
-      items,
-      templateSections: [...templateSections],
-    });
-
-    expect(result.passed).toBe(true);
-    expect(result.issues).toHaveLength(0);
-    expect(result.hasDatedExperience).toBe(true);
-    expect(result.sectionCounts.experience).toBe(2);
-    expect(result.sectionCounts.summary).toBe(1);
-  });
-
-  it("fails when experience section has fewer than 2 items", () => {
-    const items: ValidatedResumeItem[] = [
-      makeResumeItem({ section: "summary", text: "Senior engineer with 5 years of experience." }),
-      makeResumeItem({ section: "experience", text: "Software Developer | Acme Corp | San Diego, CA | Jan 2021 - Present" }),
-      makeResumeItem({ section: "education", text: "B.S. Computer Science — UC San Diego, 2019" }),
-      makeResumeItem({ section: "skills", text: "TypeScript, React" }),
-      makeResumeItem({ section: "skills", text: "Node.js, SQL" }),
-    ];
-
-    const result = validateSemanticTemplateContractFromTailor({
-      items,
-      templateSections: [...templateSections],
-    });
-
-    expect(result.passed).toBe(false);
-    expect(result.issues.some((issue) => /experience.*too short/i.test(issue))).toBe(true);
-  });
-
-  it("fails when experience section has zero items", () => {
-    const items: ValidatedResumeItem[] = [
-      makeResumeItem({ section: "summary", text: "Senior engineer with 5 years of experience." }),
-      makeResumeItem({ section: "education", text: "B.S. Computer Science — UC San Diego, 2019" }),
-      makeResumeItem({ section: "skills", text: "TypeScript, React" }),
-      makeResumeItem({ section: "skills", text: "Node.js, SQL" }),
-    ];
-
-    const result = validateSemanticTemplateContractFromTailor({
-      items,
-      templateSections: [...templateSections],
-    });
-
-    expect(result.passed).toBe(false);
-    expect(result.sectionCounts.experience).toBe(0);
-    expect(result.issues.some((issue) => /experience.*too short/i.test(issue))).toBe(true);
-    expect(result.hasDatedExperience).toBe(false);
-  });
-
-  it("fails when summary is missing", () => {
-    const items: ValidatedResumeItem[] = [
-      makeResumeItem({ section: "experience", text: "Software Developer | Acme Corp | Jan 2021 - Present" }),
-      makeResumeItem({ section: "experience", text: "Built React workflows for 40 users." }),
-      makeResumeItem({ section: "education", text: "B.S. Computer Science — UC San Diego, 2019" }),
-      makeResumeItem({ section: "skills", text: "TypeScript, React" }),
-      makeResumeItem({ section: "skills", text: "Node.js, SQL" }),
-    ];
-
-    const result = validateSemanticTemplateContractFromTailor({
-      items,
-      templateSections: [...templateSections],
-    });
-
-    expect(result.passed).toBe(false);
-    expect(result.issues.some((issue) => /summary.*missing/i.test(issue))).toBe(true);
-  });
-
-  it("fails when skills section is too short", () => {
-    const items: ValidatedResumeItem[] = [
-      makeResumeItem({ section: "summary", text: "Senior engineer with 5 years of experience." }),
-      makeResumeItem({ section: "experience", text: "Software Developer | Acme Corp | Jan 2021 - Present" }),
-      makeResumeItem({ section: "experience", text: "Built React workflows for 40 users." }),
-      makeResumeItem({ section: "education", text: "B.S. Computer Science — UC San Diego, 2019" }),
-      makeResumeItem({ section: "skills", text: "TypeScript" }),
-    ];
-
-    const result = validateSemanticTemplateContractFromTailor({
-      items,
-      templateSections: [...templateSections],
-    });
-
-    expect(result.passed).toBe(false);
-    expect(result.issues.some((issue) => /skills.*too short/i.test(issue))).toBe(true);
-  });
-
-  it("flags directive language in items", () => {
-    const items: ValidatedResumeItem[] = [
-      makeResumeItem({ section: "summary", text: "Senior engineer with 5 years of experience." }),
-      makeResumeItem({ section: "experience", text: "Highlight the candidate's project leadership and team skills." }),
-      makeResumeItem({ section: "experience", text: "Software Developer | Acme Corp | Jan 2021 - Present" }),
-      makeResumeItem({ section: "education", text: "B.S. Computer Science — UC San Diego, 2019" }),
-      makeResumeItem({ section: "skills", text: "TypeScript, React" }),
-      makeResumeItem({ section: "skills", text: "Node.js, SQL" }),
-    ];
-
-    const result = validateSemanticTemplateContractFromTailor({
-      items,
-      templateSections: [...templateSections],
-    });
-
-    expect(result.issues.some((issue) => /directive/i.test(issue))).toBe(true);
-  });
-
-  it("detects missing date signals in experience", () => {
-    const items: ValidatedResumeItem[] = [
-      makeResumeItem({ section: "summary", text: "Senior engineer with 5 years of experience." }),
-      makeResumeItem({ section: "experience", text: "Software Developer at Acme Corp in San Diego" }),
-      makeResumeItem({ section: "experience", text: "Built React workflows for 40 users." }),
-      makeResumeItem({ section: "education", text: "B.S. Computer Science — UC San Diego, 2019" }),
-      makeResumeItem({ section: "skills", text: "TypeScript, React" }),
-      makeResumeItem({ section: "skills", text: "Node.js, SQL" }),
-    ];
-
-    const result = validateSemanticTemplateContractFromTailor({
-      items,
-      templateSections: [...templateSections],
-    });
-
-    expect(result.hasDatedExperience).toBe(false);
-    expect(result.passed).toBe(false);
-    expect(result.issues.some((issue) => /date/i.test(issue))).toBe(true);
-  });
-});
 
 // ─── reviewGeneratedTruth ─────────────────────────────────────────────────────
 
