@@ -216,6 +216,7 @@ export * from "./uIConfigVersion";
 export * from "./uiShellConfigResponse";
 export * from "./uISlotItem";
 export * from "./uISlotItemProps";
+export * from "./unauthorizedResponse";
 export * from "./updateAiModelConfigBody";
 export * from "./updateAiModelConfigBodyExtraConfig";
 export * from "./updateAiPromptVersionBody";

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useListAiPromptVersions,
+  useUpdateAiPromptVersion,
   getListAiPromptVersionsQueryKey,
   getGetAiReviewOverviewQueryKey,
   type AiPromptVersion,
@@ -25,63 +26,16 @@ interface RoleFormState {
   skillTags: string[];
 }
 
-interface RoleUpdateBody {
-  roleLabel: string;
-  personality: string;
-  goals: string;
-  skillTags: string[];
-}
-
-/**
- * Active prompt rows carry role metadata that lives on `ai_prompt_versions`
- * but is not (yet) part of the generated `AiPromptVersion` schema. We read
- * the values defensively and PATCH via a direct fetch so we can include the
- * role-only fields. Once the OpenAPI schema is widened, this can switch to
- * `useUpdateAiPromptVersion`.
- */
-function asRecord(value: unknown): Record<string, unknown> {
-  if (value && typeof value === "object") {
-    return value as Record<string, unknown>;
-  }
-  return {};
-}
-
 function readRoleFields(prompt: AiPromptVersion | undefined): RoleFormState {
   if (!prompt) {
     return { roleLabel: "", personality: "", goals: "", skillTags: [] };
   }
-  // Role fields are persisted on `ai_prompt_versions` but not yet present
-  // in the generated OpenAPI schema, so we read them via a safe record view.
-  const raw = asRecord(prompt);
-  const skillTagsRaw = raw.skillTags;
-  const skillTags = Array.isArray(skillTagsRaw)
-    ? skillTagsRaw.filter((tag): tag is string => typeof tag === "string")
-    : [];
   return {
-    roleLabel: typeof raw.roleLabel === "string" ? raw.roleLabel : "",
-    personality: typeof raw.personality === "string" ? raw.personality : "",
-    goals: typeof raw.goals === "string" ? raw.goals : "",
-    skillTags,
+    roleLabel: prompt.roleLabel ?? "",
+    personality: prompt.personality ?? "",
+    goals: prompt.goals ?? "",
+    skillTags: prompt.skillTags ?? [],
   };
-}
-
-async function patchPromptRoleFields(id: number, body: RoleUpdateBody): Promise<void> {
-  const response = await fetch(`/api/ai-prompt-versions/${id}`, {
-    method: "PATCH",
-    credentials: "include",
-    headers: { "Content-Type": "application/json", accept: "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!response.ok) {
-    let message = `HTTP ${response.status}`;
-    try {
-      const data = (await response.json()) as { detail?: string; message?: string; error?: string };
-      message = data.detail ?? data.message ?? data.error ?? message;
-    } catch {
-      // ignore parse failure
-    }
-    throw new Error(message);
-  }
 }
 
 export function RoleTab({ taskScope }: RoleTabProps) {
@@ -97,24 +51,23 @@ export function RoleTab({ taskScope }: RoleTabProps) {
     setForm(readRoleFields(activePrompt));
   }, [activePrompt]);
 
-  const mutation = useMutation({
-    mutationFn: async (vars: { id: number; body: RoleUpdateBody }) => {
-      await patchPromptRoleFields(vars.id, vars.body);
+  const updatePrompt = useUpdateAiPromptVersion({
+    mutation: {
+      onSuccess: () => {
+        toast({ title: "Role updated" });
+        queryClient.invalidateQueries({
+          queryKey: getListAiPromptVersionsQueryKey({ taskScope, isActive: true }),
+        });
+        queryClient.invalidateQueries({ queryKey: getGetAiReviewOverviewQueryKey() });
+        queryClient.invalidateQueries({ queryKey: AI_PIPELINE_OVERVIEW_QUERY_KEY });
+      },
+      onError: (error) =>
+        toast({
+          title: "Failed to update role",
+          description: getErrorMessage(error, "Please try again."),
+          variant: "destructive",
+        }),
     },
-    onSuccess: () => {
-      toast({ title: "Role updated" });
-      queryClient.invalidateQueries({
-        queryKey: getListAiPromptVersionsQueryKey({ taskScope, isActive: true }),
-      });
-      queryClient.invalidateQueries({ queryKey: getGetAiReviewOverviewQueryKey() });
-      queryClient.invalidateQueries({ queryKey: AI_PIPELINE_OVERVIEW_QUERY_KEY });
-    },
-    onError: (error) =>
-      toast({
-        title: "Failed to update role",
-        description: getErrorMessage(error, "Please try again."),
-        variant: "destructive",
-      }),
   });
 
   if (isLoading) {
@@ -153,9 +106,9 @@ export function RoleTab({ taskScope }: RoleTabProps) {
   };
 
   const handleSave = () => {
-    mutation.mutate({
+    updatePrompt.mutate({
       id: activePrompt.id,
-      body: {
+      data: {
         roleLabel: form.roleLabel,
         personality: form.personality,
         goals: form.goals,
@@ -243,8 +196,8 @@ export function RoleTab({ taskScope }: RoleTabProps) {
       </div>
 
       <div className="flex items-center justify-end pt-1">
-        <Button onClick={handleSave} disabled={mutation.isPending}>
-          {mutation.isPending ? "Saving…" : "Save changes"}
+        <Button onClick={handleSave} disabled={updatePrompt.isPending}>
+          {updatePrompt.isPending ? "Saving…" : "Save changes"}
         </Button>
       </div>
     </div>

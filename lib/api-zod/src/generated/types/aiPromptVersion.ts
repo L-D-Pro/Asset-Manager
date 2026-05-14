@@ -19,6 +19,13 @@ export interface AiPromptVersion {
   notes?: string | null;
   isActive: boolean;
   metadata: AiPromptVersionMetadata;
+  /** @nullable */
+  roleLabel?: string | null;
+  /** @nullable */
+  personality?: string | null;
+  /** @nullable */
+  goals?: string | null;
+  skillTags?: string[];
   createdAt: Date;
   updatedAt: Date;
 }

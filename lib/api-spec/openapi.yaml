@@ -2328,6 +2328,13 @@ components:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
 
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
   schemas:
     HealthStatus:
       type: object
@@ -3678,6 +3685,16 @@ components:
           type: boolean
         metadata:
           type: object
+        roleLabel:
+          type: ["string", "null"]
+        personality:
+          type: ["string", "null"]
+        goals:
+          type: ["string", "null"]
+        skillTags:
+          type: array
+          items:
+            type: string
         createdAt:
           type: string
           format: date-time
@@ -3714,6 +3731,16 @@ components:
           type: boolean
         metadata:
           type: object
+        roleLabel:
+          type: ["string", "null"]
+        personality:
+          type: ["string", "null"]
+        goals:
+          type: ["string", "null"]
+        skillTags:
+          type: array
+          items:
+            type: string
       required:
         - taskScope
         - label
@@ -3738,6 +3765,16 @@ components:
           type: boolean
         metadata:
           type: object
+        roleLabel:
+          type: ["string", "null"]
+        personality:
+          type: ["string", "null"]
+        goals:
+          type: ["string", "null"]
+        skillTags:
+          type: array
+          items:
+            type: string
 
     AiRunEvaluation:
       type: object

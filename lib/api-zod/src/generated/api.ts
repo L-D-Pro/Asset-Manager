@@ -1977,6 +1977,10 @@ export const GetAiReviewOverviewResponse = zod.object({
       notes: zod.string().nullish(),
       isActive: zod.boolean(),
       metadata: zod.object({}).passthrough(),
+      roleLabel: zod.string().nullish(),
+      personality: zod.string().nullish(),
+      goals: zod.string().nullish(),
+      skillTags: zod.array(zod.string()).optional(),
       createdAt: zod.coerce.date(),
       updatedAt: zod.coerce.date(),
     }),
@@ -2026,6 +2030,10 @@ export const ListAiPromptVersionsResponseItem = zod.object({
   notes: zod.string().nullish(),
   isActive: zod.boolean(),
   metadata: zod.object({}).passthrough(),
+  roleLabel: zod.string().nullish(),
+  personality: zod.string().nullish(),
+  goals: zod.string().nullish(),
+  skillTags: zod.array(zod.string()).optional(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -2045,6 +2053,10 @@ export const CreateAiPromptVersionBody = zod.object({
   notes: zod.string().nullish(),
   isActive: zod.boolean().optional(),
   metadata: zod.object({}).passthrough().optional(),
+  roleLabel: zod.string().nullish(),
+  personality: zod.string().nullish(),
+  goals: zod.string().nullish(),
+  skillTags: zod.array(zod.string()).optional(),
 });
 
 /**
@@ -2063,6 +2075,10 @@ export const UpdateAiPromptVersionBody = zod.object({
   notes: zod.string().nullish(),
   isActive: zod.boolean().optional(),
   metadata: zod.object({}).passthrough().optional(),
+  roleLabel: zod.string().nullish(),
+  personality: zod.string().nullish(),
+  goals: zod.string().nullish(),
+  skillTags: zod.array(zod.string()).optional(),
 });
 
 export const UpdateAiPromptVersionResponse = zod.object({
@@ -2075,6 +2091,10 @@ export const UpdateAiPromptVersionResponse = zod.object({
   notes: zod.string().nullish(),
   isActive: zod.boolean(),
   metadata: zod.object({}).passthrough(),
+  roleLabel: zod.string().nullish(),
+  personality: zod.string().nullish(),
+  goals: zod.string().nullish(),
+  skillTags: zod.array(zod.string()).optional(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });

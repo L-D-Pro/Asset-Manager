@@ -18,4 +18,11 @@ export interface UpdateAiPromptVersionBody {
   notes?: string | null;
   isActive?: boolean;
   metadata?: UpdateAiPromptVersionBodyMetadata;
+  /** @nullable */
+  roleLabel?: string | null;
+  /** @nullable */
+  personality?: string | null;
+  /** @nullable */
+  goals?: string | null;
+  skillTags?: string[];
 }

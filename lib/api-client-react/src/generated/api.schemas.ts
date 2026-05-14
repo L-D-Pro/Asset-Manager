@@ -789,6 +789,13 @@ export interface AiPromptVersion {
   notes?: string | null;
   isActive: boolean;
   metadata: AiPromptVersionMetadata;
+  /** @nullable */
+  roleLabel?: string | null;
+  /** @nullable */
+  personality?: string | null;
+  /** @nullable */
+  goals?: string | null;
+  skillTags?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -841,6 +848,13 @@ export interface CreateAiPromptVersionBody {
   notes?: string | null;
   isActive?: boolean;
   metadata?: CreateAiPromptVersionBodyMetadata;
+  /** @nullable */
+  roleLabel?: string | null;
+  /** @nullable */
+  personality?: string | null;
+  /** @nullable */
+  goals?: string | null;
+  skillTags?: string[];
 }
 
 export type UpdateAiPromptVersionBodyMetadata = { [key: string]: unknown };
@@ -856,6 +870,13 @@ export interface UpdateAiPromptVersionBody {
   notes?: string | null;
   isActive?: boolean;
   metadata?: UpdateAiPromptVersionBodyMetadata;
+  /** @nullable */
+  roleLabel?: string | null;
+  /** @nullable */
+  personality?: string | null;
+  /** @nullable */
+  goals?: string | null;
+  skillTags?: string[];
 }
 
 export type CreateAiRunEvaluationBodyMetadata = { [key: string]: unknown };
@@ -1977,6 +1998,11 @@ export type BadRequestResponse = ErrorResponse;
  * Not found
  */
 export type NotFoundResponse = ErrorResponse;
+
+/**
+ * Unauthorized
+ */
+export type UnauthorizedResponse = ErrorResponse;
 
 export type ListJobsParams = {
   status?: string;

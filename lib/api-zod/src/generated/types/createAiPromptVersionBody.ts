@@ -18,4 +18,11 @@ export interface CreateAiPromptVersionBody {
   notes?: string | null;
   isActive?: boolean;
   metadata?: CreateAiPromptVersionBodyMetadata;
+  /** @nullable */
+  roleLabel?: string | null;
+  /** @nullable */
+  personality?: string | null;
+  /** @nullable */
+  goals?: string | null;
+  skillTags?: string[];
 }
