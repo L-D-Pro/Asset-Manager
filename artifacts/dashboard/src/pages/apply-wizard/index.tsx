@@ -573,6 +573,16 @@ export default function ApplyWizardPage() {
  const resumeSourceValidation = (resumeVersion?.diffData as any)?.sourceValidation;
  const resumeSemanticValidation = (resumeVersion?.diffData as any)?.semanticValidation;
  const resumeAiAttemptSummary = (resumeVersion?.diffData as any)?.aiAttemptSummary as string | undefined;
+ const resumeAiAttemptErrors = (resumeVersion?.diffData as any)?.aiAttemptErrors as Array<{ modelName?: string; error?: string; category?: string }> | undefined;
+ const resumeModelName = (resumeVersion?.diffData as any)?.modelName as string | undefined;
+ const resumePromptTokens = (resumeVersion?.diffData as any)?.promptTokens as number | undefined;
+ const resumeCompletionTokens = (resumeVersion?.diffData as any)?.completionTokens as number | undefined;
+ const resumeFactReview = (resumeVersion?.diffData as any)?.factReview as {
+   findings?: Array<{ kind: string; value: string; line: string; lineIndex: number }>;
+   sourceCharCount?: number;
+ } | undefined;
+ const resumeIsV2Pipeline = (resumeVersion?.diffData as any)?.modelContract === "resume_tailoring_v2_simple";
+ const resumeRunSucceeded = (!resumeAiAttemptErrors || resumeAiAttemptErrors.length === 0) && resumeIsV2Pipeline;
  const resumeHasPassingSourceValidation = Boolean(
  resumeSourceValidation?.passed === true && Number(resumeSourceValidation?.validItemCount ?? 0) > 0,
  );
@@ -1035,7 +1045,19 @@ export default function ApplyWizardPage() {
  setSeedDrafts(response.claims.map((c, i) => ({ clientId: `seed-${i}`, summary: c.summary, selected: true })));
  toast({ title: `${response.claims.length} claim drafts ready — review and save` });
  },
- onError: (error) => toast({ title: "Draft failed", description: getErrorMessage(error, "Try again."), variant: "destructive" }),
+ onError: (error) => {
+ const status = (error as { response?: { status?: number }; status?: number })?.response?.status
+   ?? (error as { status?: number })?.status;
+ if (status === 503) {
+   toast({
+     title: "Claim drafting timed out",
+     description: "AI service is temporarily unavailable. Try again, or add claims manually.",
+     variant: "destructive",
+   });
+   return;
+ }
+ toast({ title: "Draft failed", description: getErrorMessage(error, "Try again."), variant: "destructive" });
+ },
  },
  );
  };
@@ -1090,7 +1112,8 @@ export default function ApplyWizardPage() {
  },
  {
  onSuccess: (profile) => {
- toast({ title: "Role profile created" });
+ toast({ title: `Role profile "${profile.name}" created` });
+ queryClient.invalidateQueries({ queryKey: getListRoleProfilesQueryKey() });
  setSelectedRoleProfileId(profile.id);
  handleAttachRoleProfile(profile.id);
  setQuickProfile({
@@ -2283,14 +2306,53 @@ export default function ApplyWizardPage() {
  {((resumeVersion.diffData as any)?.lengthPolicy?.target as string | undefined) ?? "Concise 1-2 pages"}
  </span>
  </p>
- {resumeAiAttemptSummary ? (
+ {resumeRunSucceeded ? (
+ <p className="text-muted-foreground">
+ Model: <span className="font-medium text-foreground">{resumeModelName ?? "unknown"}</span>
+ {" · "}
+ {resumePromptTokens ?? "?"} in / {resumeCompletionTokens ?? "?"} out tokens
+ </p>
+ ) : resumeAiAttemptSummary ? (
  <p className="text-muted-foreground">
  AI attempt summary: {resumeAiAttemptSummary}
  </p>
  ) : null}
  </div>
  ) : null}
- {(() => {
+ {resumeFactReview ? (
+ <div className="rounded-md border bg-muted/30 p-3 text-xs space-y-2">
+ <div className="flex flex-wrap items-center gap-2">
+ <ShieldCheck className="h-4 w-4 text-primary" />
+ <span className="font-semibold uppercase tracking-wide text-muted-foreground">Fact Review</span>
+ {(resumeFactReview.findings?.length ?? 0) === 0 ? (
+ <Badge variant="outline" className="bg-green-100 text-green-900 border-green-300">
+ No unverified facts detected
+ </Badge>
+ ) : (
+ <Badge variant="outline" className="bg-yellow-100 text-yellow-900 border-yellow-300">
+ {resumeFactReview.findings!.length} item{resumeFactReview.findings!.length === 1 ? "" : "s"} need review
+ </Badge>
+ )}
+ </div>
+ {(resumeFactReview.findings?.length ?? 0) > 0 && (
+ <details className="mt-2">
+ <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+ Show findings ({resumeFactReview.findings!.length})
+ </summary>
+ <ul className="mt-2 space-y-1 list-disc list-inside">
+ {resumeFactReview.findings!.map((f, i) => (
+ <li key={i}>
+ <span className="inline-block rounded bg-yellow-100 px-1 text-yellow-900 mr-1 text-[10px] uppercase">{f.kind}</span>
+ <code className="bg-muted px-1 rounded">{f.value}</code>
+ <span className="text-muted-foreground"> — {f.line}</span>
+ </li>
+ ))}
+ </ul>
+ </details>
+ )}
+ </div>
+ ) : (() => {
+ // Legacy truthReview rendering for pre-v2 resume versions
  const truthReview = (resumeVersion?.diffData as any)?.truthReview;
  if (!truthReview) return null;
  return (
