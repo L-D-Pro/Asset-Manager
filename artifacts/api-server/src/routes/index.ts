@@ -35,6 +35,7 @@ import bestPracticesRouter from "./best-practices";
 
 import resumeToProfileRouter from "./resume-to-profile";
 import resumeScoringRouter from "./resume-scoring";
+import chatRouter from "./chat";
 
 /**
  * Root API router. Aggregates all entity-specific sub-routers and mounts them
@@ -96,5 +97,6 @@ router.use(gamificationRouter);
 router.use(onboardingRouter);
 router.use(bestPracticesRouter);
 router.use(resumeToProfileRouter);
+router.use(chatRouter);
 
 export default router;

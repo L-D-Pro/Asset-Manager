@@ -144,6 +144,7 @@ export function Sidebar() {
  label: "AI Tools",
  icon: Brain,
  items: [
+ { name: "Chat", href: "/chat", icon: MessageSquare },
  { name: "AI Review", href: "/ai-review", icon: Brain },
  { name: "AI Metrics", href: "/ai-metrics", icon: Activity },
  { name: "AI Config", href: "/ai-config", icon: Activity },
