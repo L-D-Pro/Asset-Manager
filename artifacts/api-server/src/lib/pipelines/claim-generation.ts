@@ -3,6 +3,16 @@ import { callAI, parseJsonResponse } from "../ai-client";
 import { MAX_AI_SOURCE_CHARS, truncateForAi } from "../document-text";
 import { logger } from "../logger";
 
+export class ClaimDraftingUnavailableError extends Error {
+  readonly retryable = true;
+  constructor() {
+    super(
+      "AI claim drafting is temporarily unavailable. Please retry, or paste claims manually.",
+    );
+    this.name = "ClaimDraftingUnavailableError";
+  }
+}
+
 export interface DraftClaimsInput {
   sourceText: string;
   prompt: string;
@@ -75,9 +85,6 @@ export async function draftClaimsFromSource(
     prompt: input.prompt,
     evidenceType,
   });
-  const claims = aiClaims.length > 0
-    ? aiClaims
-    : draftClaimsDeterministically(aiSourceText, evidenceType);
 
   if (aiClaims.length === 0) {
     logger.warn(
@@ -86,11 +93,12 @@ export async function draftClaimsFromSource(
         extractedTextChars: input.extractedText.length,
         filename: input.filename,
       },
-      "Claim generation used deterministic source-text fallback",
+      "Claim generation AI returned no usable claims; surfacing error to user",
     );
+    throw new ClaimDraftingUnavailableError();
   }
 
-  const parsedClaims = CreateClaimBody.array().safeParse(claims);
+  const parsedClaims = CreateClaimBody.array().safeParse(aiClaims);
 
   if (!parsedClaims.success || parsedClaims.data.length === 0) {
     logger.warn(
@@ -189,31 +197,6 @@ function parseLineOrientedClaimDrafts(content: string): unknown[] {
   }));
 }
 
-function draftClaimsDeterministically(
-  sourceText: string,
-  evidenceType: "self_attestation" | "document",
-): Array<Record<string, unknown>> {
-  const lines = sourceText
-    .split(/\r?\n/)
-    .flatMap((line) => line.split(/(?<=\.)\s+(?=[A-Z])/))
-    .map((line) => sanitizeClaimText(line))
-    .filter((line) => isUsefulClaimLine(line))
-    .slice(0, 12);
-
-  const uniqueLines = Array.from(new Set(lines));
-
-  return uniqueLines.map((line) => ({
-    summary: line,
-    evidence: line,
-    evidenceType,
-    phrasingVariants: [],
-    disallowedImplications: inferDisallowedImplications(line),
-    domain: inferDomain(line),
-    applicableTags: inferTags(line),
-    isActive: true,
-  }));
-}
-
 function sanitizeClaimText(value: string): string {
   return value
     .replace(/^```[a-z]*\s*/i, "")
@@ -276,17 +259,6 @@ function inferTags(text: string): string[] {
   }
 
   return [...tags].slice(0, 10);
-}
-
-function inferDisallowedImplications(text: string): string[] {
-  const disallowed: string[] = [];
-  if (!/\b\d+%|\b\d+x|\$\d+|\b\d+\s*(hours|days|weeks|months|learners|users)\b/i.test(text)) {
-    disallowed.push("Do not add unsupported metrics or quantified outcomes.");
-  }
-  if (!/\bcertified|certification|certificate\b/i.test(text)) {
-    disallowed.push("Do not imply an unstated credential or certification.");
-  }
-  return disallowed;
 }
 
 function normalizeDraftClaim(

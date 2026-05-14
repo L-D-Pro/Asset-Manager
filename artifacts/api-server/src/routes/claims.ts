@@ -19,7 +19,10 @@ import {
   parseSingleDocumentUpload,
   UploadValidationError,
 } from "../lib/document-text";
-import { draftClaimsFromSource } from "../lib/pipelines/claim-generation";
+import {
+  draftClaimsFromSource,
+  ClaimDraftingUnavailableError,
+} from "../lib/pipelines/claim-generation";
 import { extractClaimsFromChatPipeline } from "../lib/pipelines/gap-analysis";
 
 const router: IRouter = Router();
@@ -91,6 +94,11 @@ router.post("/claims/draft", async (req, res): Promise<void> => {
   } catch (err) {
     if (err instanceof UploadValidationError) {
       res.status(err.statusCode).json({ error: err.message });
+      return;
+    }
+    if (err instanceof ClaimDraftingUnavailableError) {
+      req.log.warn({ err: err.message }, "Claim drafting unavailable");
+      res.status(503).json({ error: err.message, retryable: true });
       return;
     }
 
