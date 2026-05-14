@@ -10,6 +10,30 @@ export interface ResolvedPrompt {
 }
 
 /**
+ * Builds a structured role block to prepend to the system prompt when
+ * an `ai_prompt_versions` row has role metadata populated. Returns an
+ * empty string when every role field is null/blank so callers can safely
+ * prepend without conditional logic.
+ */
+export function buildRoleBlock(args: {
+  roleLabel: string | null;
+  personality: string | null;
+  goals: string | null;
+  skillTags: string[] | null;
+}): string {
+  const lines: string[] = [];
+  if (args.roleLabel?.trim()) lines.push(`ROLE: ${args.roleLabel.trim()}`);
+  if (args.personality?.trim())
+    lines.push(`PERSONALITY: ${args.personality.trim()}`);
+  if (args.goals?.trim()) lines.push(`GOALS: ${args.goals.trim()}`);
+  if (args.skillTags && args.skillTags.length > 0) {
+    lines.push(`SKILLS: ${args.skillTags.join(", ")}`);
+  }
+  if (lines.length === 0) return "";
+  return lines.join("\n\n") + "\n\n---\n\n";
+}
+
+/**
  * Applies the active prompt version for a task when present.
  *
  * `userPromptTemplate` supports a single `{{userPrompt}}` placeholder. If the
@@ -100,8 +124,15 @@ export async function resolvePromptForTask(
       : `${template}\n\n${fallbackUserPrompt}`
     : fallbackUserPrompt;
 
+  const roleBlock = buildRoleBlock({
+    roleLabel: row.roleLabel,
+    personality: row.personality,
+    goals: row.goals,
+    skillTags: row.skillTags ?? [],
+  });
+
   return {
-    systemPrompt: row.systemPrompt,
+    systemPrompt: `${roleBlock}${row.systemPrompt}`,
     userPrompt,
     promptVersionId: row.id,
     promptLabel: row.label,
