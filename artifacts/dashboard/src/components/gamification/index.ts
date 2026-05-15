@@ -1,12 +1,2 @@
-export { GradientButton } from "./GradientButton"
-export { ProgressRing } from "./ProgressRing"
-export { XPCard } from "./XPCard"
-export { GamifiedBadge } from "./GamifiedBadge"
-export { StreakFlame } from "./StreakFlame"
-export { QuestCard } from "./QuestCard"
-export { FloatingXP } from "./FloatingXP"
-export { LeaderboardStrip } from "./LeaderboardStrip"
-export { SpeechBubble } from "./SpeechBubble"
-export { MascotAvatar } from "./MascotAvatar"
-export { TiltCard } from "./TiltCard"
-export { MotivationalQuoteCard } from "./MotivationalQuoteCard"
+// Gamification components extracted — visual components removed.
+// Business logic moved to hooks/use-gamification.ts and hooks/use-motivational-quotes.ts.

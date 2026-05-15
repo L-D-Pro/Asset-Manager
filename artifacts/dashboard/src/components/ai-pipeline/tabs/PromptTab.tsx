@@ -68,14 +68,13 @@ export function PromptTab({ taskScope }: PromptTabProps) {
   });
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading prompt…</p>;
+    return <p>Loading prompt...</p>;
   }
 
   if (!activePrompt) {
     return (
-      <div className="quiet-card p-4 text-sm text-muted-foreground">
-        No active prompt version for <span className="font-mono">{taskScope}</span>. Create one in
-        <span className="font-medium"> AI Review</span> to start editing here.
+      <div>
+        No active prompt version for {taskScope}. Create one in AI Review to start editing here.
       </div>
     );
   }
@@ -93,9 +92,9 @@ export function PromptTab({ taskScope }: PromptTabProps) {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-1.5">
-        <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Label</label>
+    <div>
+      <div>
+        <label>Label</label>
         <Input
           value={form.label}
           onChange={(event) => setForm({ ...form, label: event.target.value })}
@@ -103,43 +102,39 @@ export function PromptTab({ taskScope }: PromptTabProps) {
         />
       </div>
 
-      <div className="space-y-1.5">
-        <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">System Prompt</label>
+      <div>
+        <label>System Prompt</label>
         <Textarea
           value={form.systemPrompt}
           onChange={(event) => setForm({ ...form, systemPrompt: event.target.value })}
-          className="min-h-48 font-mono text-xs"
         />
       </div>
 
-      <div className="space-y-1.5">
-        <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          User Prompt Template
-        </label>
+      <div>
+        <label>User Prompt Template</label>
         <Textarea
           value={form.userPromptTemplate}
           onChange={(event) => setForm({ ...form, userPromptTemplate: event.target.value })}
-          className="min-h-24 font-mono text-xs"
         />
-        <p className="text-xs text-muted-foreground">
+        <p>
           Use {"{{userPrompt}}"} where runtime content should be inserted.
         </p>
       </div>
 
-      <div className="flex items-center justify-between gap-3 pt-1">
-        <label className="flex items-center gap-2 text-sm">
+      <div>
+        <label>
           <input
             type="checkbox"
             checked={form.isActive}
             onChange={(event) => setForm({ ...form, isActive: event.target.checked })}
           />
-          <span className="font-medium">Active (used for production calls)</span>
+          Active (used for production calls)
         </label>
         <Button
           onClick={handleSave}
           disabled={updatePrompt.isPending || !form.label || !form.systemPrompt}
         >
-          {updatePrompt.isPending ? "Saving…" : "Save changes"}
+          {updatePrompt.isPending ? "Saving..." : "Save changes"}
         </Button>
       </div>
     </div>

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { smartApi } from "@/lib/smart-ai-api";
 import { toast } from "@/hooks/use-toast";
-import { Icon } from "@/components/quiet/icon";
+import { Plus, X, Sparkles, Check, FileText, Briefcase, Shield, Send, MessageCircle } from "lucide-react";
 
 import { chatApi, type ChatAttachment, type ChatMessage, type ChatThread } from "./api";
 import { useChatStream } from "./use-chat-stream";
@@ -218,7 +218,7 @@ export default function ChatPage() {
           </div>
         </div>
         <button className="btn primary" onClick={handleNewChat}>
-          <Icon name="plus" size={13} />
+          <Plus size={13} />
           New thread
         </button>
       </div>
@@ -445,7 +445,7 @@ function ThreadRail({
                 }}
                 className="thread-delete"
               >
-                <Icon name="x" size={12} />
+                <X size={12} />
               </button>
             </div>
           );
@@ -526,7 +526,7 @@ function MessageBubble({
           flexShrink: 0,
         }}
       >
-        <Icon name="spark" size={14} />
+        <Sparkles size={14} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
@@ -577,7 +577,7 @@ function MessageBubble({
                 className="btn ghost"
                 style={{ padding: "2px 6px", fontSize: 11, color: "var(--ink-3)" }}
               >
-                <Icon name="check" size={12} />
+                <Check size={12} />
               </button>
               <button
                 type="button"
@@ -586,7 +586,7 @@ function MessageBubble({
                 className="btn ghost"
                 style={{ padding: "2px 6px", fontSize: 11, color: "var(--ink-3)" }}
               >
-                <Icon name="x" size={12} />
+                <X size={12} />
               </button>
             </>
           )}
@@ -612,7 +612,7 @@ function StreamingBubble({ text }: { text: string }) {
           flexShrink: 0,
         }}
       >
-        <Icon name="spark" size={14} />
+        <Sparkles size={14} />
       </div>
       <div
         style={{
@@ -724,7 +724,7 @@ function Composer({
             style={{ padding: "3px 9px", fontSize: 11.5 }}
             onClick={() => setAttachBaseResume(!attachBaseResume)}
           >
-            <Icon name="resume" size={11} /> {attachBaseResume ? "Remove resume" : "Resume"}
+            <FileText size={11} /> {attachBaseResume ? "Remove resume" : "Resume"}
           </button>
           <button
             type="button"
@@ -732,7 +732,7 @@ function Composer({
             style={{ padding: "3px 9px", fontSize: 11.5 }}
             onClick={onOpenJobPicker}
           >
-            <Icon name="briefcase" size={11} /> Job
+            <Briefcase size={11} /> Job
           </button>
           <button
             type="button"
@@ -740,7 +740,7 @@ function Composer({
             style={{ padding: "3px 9px", fontSize: 11.5 }}
             onClick={onOpenClaimsPicker}
           >
-            <Icon name="shield" size={11} /> Claims
+            <Shield size={11} /> Claims
           </button>
         </div>
         <textarea
@@ -773,7 +773,7 @@ function Composer({
           </span>
           {streaming ? (
             <button type="button" className="btn" onClick={onStop} style={{ fontSize: 12 }}>
-              <Icon name="x" size={12} />
+              <X size={12} />
               Stop
             </button>
           ) : (
@@ -784,7 +784,7 @@ function Composer({
               disabled={sendDisabled}
               style={{ fontSize: 12, opacity: sendDisabled ? 0.5 : 1 }}
             >
-              <Icon name="send" size={12} />
+              <Send size={12} />
               Send
               <span
                 style={{
@@ -816,6 +816,7 @@ function AttachChip({
   label: string;
   onRemove?: () => void;
 }) {
+  const IconComponent = icon === "briefcase" ? Briefcase : icon === "resume" ? FileText : Shield;
   return (
     <span
       style={{
@@ -831,7 +832,7 @@ function AttachChip({
         fontWeight: 500,
       }}
     >
-      <Icon name={icon} size={11} />
+      <IconComponent size={11} />
       <span
         style={{
           maxWidth: 180,
@@ -857,7 +858,7 @@ function AttachChip({
             cursor: "pointer",
           }}
         >
-          <Icon name="x" size={10} />
+          <X size={10} />
         </button>
       )}
     </span>
@@ -930,7 +931,7 @@ function ContextRail({
             {VENDORED_SKILLS.map((s) => (
               <div key={s} style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ color: "var(--accent)", display: "inline-grid", placeItems: "center" }}>
-                  <Icon name="spark" size={12} />
+                  <Sparkles size={12} />
                 </span>
                 <span className="mono" style={{ fontSize: 11.5 }}>
                   {s}
@@ -955,7 +956,7 @@ function ContextRail({
           }}
         >
           <span style={{ color: "var(--accent)", flexShrink: 0, marginTop: 2 }}>
-            <Icon name="shield" size={12} />
+            <Shield size={12} />
           </span>
           <span>
             Claims cited in this thread resolve to your verified ledger. Unverified claims
@@ -978,6 +979,7 @@ function ContextBlock({
   title: string;
   meta?: string;
 }) {
+  const IconComponent = icon === "briefcase" ? Briefcase : icon === "resume" ? FileText : Shield;
   return (
     <div
       style={{
@@ -1000,7 +1002,7 @@ function ContextBlock({
           flexShrink: 0,
         }}
       >
-        <Icon name={icon} size={13} />
+        <IconComponent size={13} />
       </div>
       <div style={{ minWidth: 0 }}>
         <div className="label" style={{ fontSize: 10, marginBottom: 2 }}>
@@ -1051,7 +1053,7 @@ function EmptyState({ onNew }: { onNew: () => void }) {
           placeItems: "center",
         }}
       >
-        <Icon name="chat" size={20} />
+        <MessageCircle size={20} />
       </div>
       <div style={{ textAlign: "center" }}>
         <div className="h-section" style={{ marginBottom: 4 }}>
@@ -1063,7 +1065,7 @@ function EmptyState({ onNew }: { onNew: () => void }) {
         </div>
       </div>
       <button type="button" className="btn primary" onClick={onNew}>
-        <Icon name="plus" size={13} />
+        <Plus size={13} />
         New thread
       </button>
     </div>
@@ -1138,7 +1140,7 @@ function JobPickerDialog({
             }}
           >
             <span style={{ color: checked ? "var(--accent)" : "var(--ink-4)" }}>
-              <Icon name={checked ? "check" : "plus"} size={13} />
+              {checked ? <Check size={13} /> : <Plus size={13} />}
             </span>
             <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {j.title}
@@ -1212,7 +1214,7 @@ function ClaimsPickerDialog({
             }}
           >
             <span style={{ color: checked ? "var(--accent)" : "var(--ink-4)", marginTop: 2 }}>
-              <Icon name={checked ? "check" : "plus"} size={13} />
+              {checked ? <Check size={13} /> : <Plus size={13} />}
             </span>
             <span style={{ flex: 1 }}>
               {c.text}
@@ -1269,7 +1271,7 @@ function PickerSheet({
         <div className="quiet-card-header">
           <h2 className="quiet-card-title">{title}</h2>
           <button type="button" className="btn ghost" onClick={onClose} aria-label="Close">
-            <Icon name="x" size={13} />
+            <X size={13} />
           </button>
         </div>
         <div className="quiet-scroll" style={{ flex: 1, overflowY: "auto", padding: 6 }}>

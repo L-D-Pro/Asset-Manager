@@ -11,7 +11,7 @@ import {
 
 import { CompanyMark } from "@/components/quiet/company-mark";
 import { StatusChip } from "@/components/quiet/status-chip";
-import { Icon } from "@/components/quiet/icon";
+import { Search, Plus, ChevronRight, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const TABS: Array<{ id: string; label: string; match: (status: string) => boolean }> = [
@@ -84,7 +84,7 @@ export default function JobsPage() {
               minWidth: 240,
             }}
           >
-            <Icon name="search" size={13} />
+            <Search size={13} />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -100,7 +100,7 @@ export default function JobsPage() {
             />
           </div>
           <button type="button" className="btn primary" onClick={() => setCreateOpen(true)}>
-            <Icon name="plus" size={13} />
+            <Plus size={13} />
             New job
           </button>
         </div>
@@ -157,7 +157,7 @@ export default function JobsPage() {
             <div className="dim" style={{ padding: 24, textAlign: "center", fontSize: 13 }}>
               No jobs match.{" "}
               <button type="button" className="btn ghost" onClick={() => setCreateOpen(true)}>
-                <Icon name="plus" size={12} /> Add the first
+                <Plus size={12} /> Add the first
               </button>
             </div>
           )}
@@ -215,7 +215,7 @@ function JobRow({ job, last }: { job: Job; last: boolean }) {
       <span className="dim mono" style={{ fontSize: 13, textAlign: "right" }}>
         —
       </span>
-      <Icon name="chev-r" size={14} />
+      <ChevronRight size={14} />
     </div>
   );
 }
@@ -279,7 +279,7 @@ function CreateJobSheet({ onClose }: { onClose: () => void }) {
         <div className="quiet-card-header">
           <h2 className="quiet-card-title">New job</h2>
           <button type="button" className="btn ghost" onClick={onClose} aria-label="Close">
-            <Icon name="x" size={13} />
+            <X size={13} />
           </button>
         </div>
         <div className="quiet-card-body" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -337,7 +337,7 @@ function CreateJobSheet({ onClose }: { onClose: () => void }) {
             Cancel
           </button>
           <button type="submit" className="btn primary" disabled={createJob.isPending}>
-            <Icon name="plus" size={13} /> Add
+            <Plus size={13} /> Add
           </button>
         </div>
       </form>

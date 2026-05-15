@@ -1,10 +1,3 @@
-/**
- * Status badge for an application's pipeline state.
- *
- * Adapted from the design bundle. Uses `.chip.<variant>.dot` utility classes
- * defined in [index.css](../../index.css).
- */
-
 export type ApplicationStatus =
   | "saved"
   | "applied"
@@ -28,11 +21,10 @@ const STATUS_CONFIG: Record<ApplicationStatus, { label: string; variant: string 
 
 interface StatusChipProps {
   status: ApplicationStatus | string;
-  /** Override the rendered label. */
   label?: string;
 }
 
 export function StatusChip({ status, label }: StatusChipProps) {
   const config = STATUS_CONFIG[status as ApplicationStatus] ?? { label: status, variant: "ghost" };
-  return <span className={`chip ${config.variant} dot`}>{label ?? config.label}</span>;
+  return <span>{label ?? config.label}</span>;
 }

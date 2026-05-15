@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { smartApi } from "@/lib/smart-ai-api";
-import { Icon } from "@/components/quiet/icon";
+import { ExternalLink } from "lucide-react";
 import { CompanyMark } from "@/components/quiet/company-mark";
 
 interface BoardListing {
@@ -119,7 +119,7 @@ export default function JobBoardPage() {
                 <span className="dim mono" style={{ fontSize: 12 }}>
                   {l.sourcePlatform ?? "—"}
                 </span>
-                <Icon name="ext" size={13} />
+                <ExternalLink size={13} />
               </div>
             ))}
           </div>

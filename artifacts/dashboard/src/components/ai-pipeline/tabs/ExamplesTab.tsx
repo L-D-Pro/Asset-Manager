@@ -11,7 +11,7 @@ function summarize(example: AiTrainingExample): string {
   const trimmed = example.approvedOutput.trim();
   if (trimmed.length === 0) return "(empty approved output)";
   const firstLine = trimmed.split("\n").find((line) => line.trim() !== "") ?? trimmed;
-  return firstLine.length > 140 ? `${firstLine.slice(0, 137)}…` : firstLine;
+  return firstLine.length > 140 ? `${firstLine.slice(0, 137)}...` : firstLine;
 }
 
 export function ExamplesTab({ taskScope }: ExamplesTabProps) {
@@ -21,27 +21,26 @@ export function ExamplesTab({ taskScope }: ExamplesTabProps) {
   const examples = data ?? [];
 
   return (
-    <div className="space-y-3">
+    <div>
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading examples…</p>
+        <p>Loading examples...</p>
       ) : examples.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No training examples yet for <span className="font-mono">{taskScope}</span>. Approve outputs in AI Review to
+        <p>
+          No training examples yet for {taskScope}. Approve outputs in AI Review to
           seed this pool.
         </p>
       ) : (
         examples.map((example) => {
           const expanded = expandedId === example.id;
           return (
-            <div key={example.id} className="quiet-card text-sm">
+            <div key={example.id}>
               <button
                 type="button"
                 onClick={() => setExpandedId(expanded ? null : example.id)}
-                className="flex w-full items-center justify-between gap-3 p-3 text-left"
               >
-                <div className="min-w-0 flex-1 space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">Example #{example.id}</span>
+                <div>
+                  <div>
+                    <span>Example #{example.id}</span>
                     {typeof example.qualityScore === "number" && (
                       <Badge variant="outline">score: {example.qualityScore.toFixed(2)}</Badge>
                     )}
@@ -49,40 +48,32 @@ export function ExamplesTab({ taskScope }: ExamplesTabProps) {
                       <Badge variant="secondary">{example.sourceEntityType}</Badge>
                     )}
                   </div>
-                  <p className="truncate text-xs text-muted-foreground">{summarize(example)}</p>
+                  <p>{summarize(example)}</p>
                 </div>
-                <span className="shrink-0 text-muted-foreground">
-                  {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                <span>
+                  {expanded ? <ChevronUp /> : <ChevronDown />}
                 </span>
               </button>
 
               {expanded && (
-                <div className="space-y-2 border-t border-border/60 px-3 pb-3 pt-2 text-xs">
+                <div>
                   <div>
-                    <div className="mb-1 font-semibold uppercase tracking-wider text-muted-foreground">
-                      Approved Output
-                    </div>
-                    <pre className="whitespace-pre-wrap break-words rounded-md bg-muted/40 p-2 font-mono text-xs">
-                      {example.approvedOutput}
-                    </pre>
+                    <div>Approved Output</div>
+                    <pre>{example.approvedOutput}</pre>
                   </div>
                   {example.rejectedOutput && (
                     <div>
-                      <div className="mb-1 font-semibold uppercase tracking-wider text-muted-foreground">
-                        Rejected Output
-                      </div>
-                      <pre className="whitespace-pre-wrap break-words rounded-md bg-muted/40 p-2 font-mono text-xs">
-                        {example.rejectedOutput}
-                      </pre>
+                      <div>Rejected Output</div>
+                      <pre>{example.rejectedOutput}</pre>
                     </div>
                   )}
                   {example.notes && (
                     <div>
-                      <div className="mb-1 font-semibold uppercase tracking-wider text-muted-foreground">Notes</div>
+                      <div>Notes</div>
                       <p>{example.notes}</p>
                     </div>
                   )}
-                  <div className="text-muted-foreground">
+                  <div>
                     Created {new Date(example.createdAt).toLocaleString()}
                   </div>
                 </div>
@@ -92,7 +83,7 @@ export function ExamplesTab({ taskScope }: ExamplesTabProps) {
         })
       )}
 
-      <div className="rounded-md border border-dashed border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground">
+      <div>
         Editing training examples is coming soon. For now, examples are managed via approve/reject signals on AI
         Review.
       </div>

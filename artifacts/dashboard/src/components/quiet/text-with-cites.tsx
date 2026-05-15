@@ -2,12 +2,6 @@ import { Fragment } from "react";
 
 import { Cite } from "./cite";
 
-/**
- * Renders text followed by inline `[N]` citation markers.
- *
- * For text that has citation markers embedded mid-string, see
- * {@link interleavedTextWithCites} below.
- */
 export function TextWithCites({ text, cites = [] }: { text: string; cites?: number[] }) {
   if (!cites || cites.length === 0) return <>{text}</>;
   return (
@@ -23,16 +17,6 @@ export function TextWithCites({ text, cites = [] }: { text: string; cites?: numb
   );
 }
 
-/**
- * Renders text with `[N]` citation markers replaced inline by hoverable Cite
- * components. The input string may look like:
- *
- *   "Led the migration to gRPC [12], shipped under 6 weeks [14]."
- *
- * Any `[123]` sequence is treated as a citation reference. Other text is
- * rendered as-is. Unknown ids still render (the hover card just shows a
- * loading state until the fetch resolves or fails).
- */
 export function InterleavedTextWithCites({ text }: { text: string }) {
   const parts: Array<{ kind: "text"; value: string } | { kind: "cite"; id: number }> = [];
   let cursor = 0;

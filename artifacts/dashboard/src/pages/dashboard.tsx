@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 
-import { Icon } from "@/components/quiet/icon";
+import { Plus, Sparkles, ChevronRight, Flame, Trophy } from "lucide-react";
 import { CompanyMark } from "@/components/quiet/company-mark";
 import { StatusChip } from "@/components/quiet/status-chip";
 import { useAuth } from "@/context/auth";
@@ -108,11 +108,11 @@ export default function Dashboard() {
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <Link to="/jobs" className="btn">
-            <Icon name="plus" size={14} />
+            <Plus size={14} />
             Add job
           </Link>
           <Link to="/chat" className="btn primary">
-            <Icon name="spark" size={14} />
+            <Sparkles size={14} />
             Open copilot
           </Link>
         </div>
@@ -172,7 +172,7 @@ export default function Dashboard() {
               <h2 className="quiet-card-title">Recent jobs</h2>
               <Link to="/jobs" className="btn ghost">
                 See all
-                <Icon name="chev-r" size={13} />
+                <ChevronRight size={13} />
               </Link>
             </div>
             <div>
@@ -211,7 +211,7 @@ export default function Dashboard() {
                   </span>
                   <StatusChip status={j.status ?? "saved"} />
                   <FitBadge value={j.fitScore} />
-                  <Icon name="chev-r" size={14} />
+                  <ChevronRight size={14} />
                 </div>
               ))}
             </div>
@@ -314,7 +314,7 @@ export default function Dashboard() {
             >
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <span style={{ color: "var(--warn)" }}>
-                  <Icon name="flame" size={16} />
+                  <Flame size={16} />
                 </span>
                 <span className="mono" style={{ fontSize: 13 }}>
                   {gam?.currentStreak ?? 0} day streak
@@ -403,7 +403,7 @@ export default function Dashboard() {
                       placeItems: "center",
                     }}
                   >
-                    <Icon name="trophy" size={13} />
+                    <Trophy size={13} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 12.5, fontWeight: 500 }}>{a.name}</div>
@@ -477,7 +477,7 @@ function FocusItem({
         }}
         style={{ fontSize: 12 }}
       >
-        {cta} <Icon name="chev-r" size={12} />
+        {cta} <ChevronRight size={12} />
       </button>
     </div>
   );

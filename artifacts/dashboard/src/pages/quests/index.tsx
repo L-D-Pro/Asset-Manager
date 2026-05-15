@@ -1,5 +1,5 @@
 import { useGamificationStats } from "@/hooks/use-gamification";
-import { Icon } from "@/components/quiet/icon";
+import { Trophy } from "lucide-react";
 
 export default function QuestsPage() {
   const { data: gam, isLoading } = useGamificationStats();
@@ -145,7 +145,7 @@ export default function QuestsPage() {
                           placeItems: "center",
                         }}
                       >
-                        <Icon name="trophy" size={13} />
+                        <Trophy size={13} />
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 12.5, fontWeight: 500 }}>{a.name}</div>

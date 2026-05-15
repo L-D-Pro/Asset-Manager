@@ -1,30 +1,16 @@
-import * as React from "react"
+import * as React from "react";
 
-import { cn } from "@/lib/utils"
-
-function ScrollArea({
- className,
- children,
- ...props
-}: React.HTMLAttributes<HTMLDivElement>) {
- return (
- <div
- className={cn("overflow-auto", className)}
- {...props}
- >
- {children}
- </div>
- )
+function ScrollArea({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return <div {...props}>{children}</div>;
 }
 
 function ScrollBar({
- className,
- orientation = "vertical",
- ...props
+  orientation = "vertical",
+  ...props
 }: React.HTMLAttributes<HTMLDivElement> & {
- orientation?: "vertical" | "horizontal"
+  orientation?: "vertical" | "horizontal";
 }) {
- return null
+  return null;
 }
 
-export { ScrollArea, ScrollBar }
+export { ScrollArea, ScrollBar };

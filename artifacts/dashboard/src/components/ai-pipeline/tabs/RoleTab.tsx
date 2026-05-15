@@ -71,13 +71,13 @@ export function RoleTab({ taskScope }: RoleTabProps) {
   });
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading role…</p>;
+    return <p>Loading role...</p>;
   }
 
   if (!activePrompt) {
     return (
-      <div className="quiet-card p-4 text-sm text-muted-foreground">
-        No active prompt version for <span className="font-mono">{taskScope}</span>. Create one in AI Review first;
+      <div>
+        No active prompt version for {taskScope}. Create one in AI Review first;
         the role fields live on the same prompt-version row.
       </div>
     );
@@ -118,11 +118,9 @@ export function RoleTab({ taskScope }: RoleTabProps) {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-1.5">
-        <label htmlFor="role-label" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          Role Label
-        </label>
+    <div>
+      <div>
+        <label htmlFor="role-label">Role Label</label>
         <Input
           id="role-label"
           value={form.roleLabel}
@@ -131,57 +129,45 @@ export function RoleTab({ taskScope }: RoleTabProps) {
         />
       </div>
 
-      <div className="space-y-1.5">
-        <label
-          htmlFor="role-personality"
-          className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
-        >
-          Personality
-        </label>
+      <div>
+        <label htmlFor="role-personality">Personality</label>
         <Textarea
           id="role-personality"
           aria-label="Personality"
           value={form.personality}
           onChange={(event) => setForm({ ...form, personality: event.target.value })}
           placeholder="e.g., You are an expert resume writer specializing in ATS-optimized tailoring."
-          className="min-h-24"
         />
       </div>
 
-      <div className="space-y-1.5">
-        <label htmlFor="role-goals" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          Goals
-        </label>
+      <div>
+        <label htmlFor="role-goals">Goals</label>
         <Textarea
           id="role-goals"
           aria-label="Goals"
           value={form.goals}
           onChange={(event) => setForm({ ...form, goals: event.target.value })}
           placeholder="e.g., Match required skills accurately. Never invent facts."
-          className="min-h-20"
         />
       </div>
 
-      <div className="space-y-1.5">
-        <label htmlFor="role-skills" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          Skill Tags
-        </label>
-        <div className="flex flex-wrap gap-2">
+      <div>
+        <label htmlFor="role-skills">Skill Tags</label>
+        <div>
           {form.skillTags.map((tag) => (
-            <Badge key={tag} variant="secondary" className="gap-1">
+            <Badge key={tag} variant="secondary">
               <span>{tag}</span>
               <button
                 type="button"
                 onClick={() => removeSkill(tag)}
-                className="ml-1 rounded-sm text-muted-foreground hover:text-foreground"
                 aria-label={`Remove ${tag}`}
               >
-                ×
+                x
               </button>
             </Badge>
           ))}
         </div>
-        <div className="flex gap-2">
+        <div>
           <Input
             id="role-skills"
             value={skillInput}
@@ -195,9 +181,9 @@ export function RoleTab({ taskScope }: RoleTabProps) {
         </div>
       </div>
 
-      <div className="flex items-center justify-end pt-1">
+      <div>
         <Button onClick={handleSave} disabled={updatePrompt.isPending}>
-          {updatePrompt.isPending ? "Saving…" : "Save changes"}
+          {updatePrompt.isPending ? "Saving..." : "Save changes"}
         </Button>
       </div>
     </div>

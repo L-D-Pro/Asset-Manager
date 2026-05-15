@@ -94,17 +94,17 @@ export function ModelTab({ taskScope }: ModelTabProps) {
   });
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading model config…</p>;
+    return <p>Loading model config...</p>;
   }
 
   if (!primary) {
     return (
-      <div className="quiet-card space-y-2 p-4 text-sm">
-        <p className="text-muted-foreground">
-          No model config for <span className="font-mono">{taskScope}</span>.
+      <div>
+        <p>
+          No model config for {taskScope}.
         </p>
-        <Link className="text-primary underline" to="/ai-config">
-          ↗ Create one in AI Config
+        <Link to="/ai-config">
+          Create one in AI Config
         </Link>
       </div>
     );
@@ -178,25 +178,21 @@ export function ModelTab({ taskScope }: ModelTabProps) {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="grid gap-3 md:grid-cols-2">
-        <div className="space-y-1.5">
-          <label htmlFor="model-name" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Primary Model
-          </label>
+    <div>
+      <div>
+        <div>
+          <label htmlFor="model-name">Primary Model</label>
           <Input
             id="model-name"
             value={form.modelName}
             onChange={(event) => setForm({ ...form, modelName: event.target.value })}
             placeholder="anthropic/claude-3.5-haiku"
           />
-          <p className="text-xs text-muted-foreground">Provider: {primary.provider}</p>
+          <p>Provider: {primary.provider}</p>
         </div>
 
-        <div className="space-y-1.5">
-          <label htmlFor="model-temperature" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Temperature
-          </label>
+        <div>
+          <label htmlFor="model-temperature">Temperature</label>
           <Input
             id="model-temperature"
             value={form.temperature}
@@ -206,10 +202,8 @@ export function ModelTab({ taskScope }: ModelTabProps) {
           />
         </div>
 
-        <div className="space-y-1.5">
-          <label htmlFor="model-max-tokens" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Max Tokens
-          </label>
+        <div>
+          <label htmlFor="model-max-tokens">Max Tokens</label>
           <Input
             id="model-max-tokens"
             value={form.maxTokens}
@@ -219,41 +213,39 @@ export function ModelTab({ taskScope }: ModelTabProps) {
           />
         </div>
 
-        <div className="space-y-1.5">
-          <label htmlFor="model-fallback" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Fallback Config ID
-          </label>
+        <div>
+          <label htmlFor="model-fallback">Fallback Config ID</label>
           <Input
             id="model-fallback"
             value={form.fallbackModelId}
             onChange={(event) => setForm({ ...form, fallbackModelId: event.target.value })}
-            placeholder={fallback ? String(fallback.id) : "—"}
+            placeholder={fallback ? String(fallback.id) : "-"}
             inputMode="numeric"
           />
-          <p className="text-xs text-muted-foreground">
+          <p>
             {fallback ? `Currently: ${fallback.modelName}` : "No fallback wired."}
-            {secondFallback ? ` → ${secondFallback.modelName}` : ""}
+            {secondFallback ? ` -> ${secondFallback.modelName}` : ""}
           </p>
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-3 pt-1">
-        <label className="flex items-center gap-2 text-sm">
+      <div>
+        <label>
           <input
             type="checkbox"
             checked={form.isActive}
             onChange={(event) => setForm({ ...form, isActive: event.target.checked })}
           />
-          <span className="font-medium">Active</span>
+          Active
         </label>
         <Button onClick={handleSave} disabled={updateConfig.isPending}>
-          {updateConfig.isPending ? "Saving…" : "Save changes"}
+          {updateConfig.isPending ? "Saving..." : "Save changes"}
         </Button>
       </div>
 
-      <div className="border-t border-border/60 pt-3 text-xs">
-        <Link to="/ai-config" className="text-primary underline">
-          ↗ Open full editor in AI Config
+      <div>
+        <Link to="/ai-config">
+          Open full editor in AI Config
         </Link>
       </div>
     </div>

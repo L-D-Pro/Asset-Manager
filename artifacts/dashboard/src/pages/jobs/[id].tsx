@@ -14,7 +14,7 @@ import {
   type ClaimMatch,
 } from "@workspace/api-client-react";
 
-import { Icon } from "@/components/quiet/icon";
+import { ChevronLeft, ExternalLink, Sparkles, FileText } from "lucide-react";
 import { CompanyMark } from "@/components/quiet/company-mark";
 import { ScoreRing } from "@/components/quiet/score-ring";
 import { StatusChip } from "@/components/quiet/status-chip";
@@ -65,7 +65,7 @@ export default function JobDetail() {
       <div className="page fade-up">
         <h1 className="h-display">Job not found</h1>
         <Link to="/jobs" className="btn" style={{ marginTop: 16 }}>
-          <Icon name="chev-l" size={13} /> Back to pipeline
+          <ChevronLeft size={13} /> Back to pipeline
         </Link>
       </div>
     );
@@ -107,7 +107,7 @@ export default function JobDetail() {
                 className="dim mono"
                 style={{ fontSize: 12, display: "inline-flex", alignItems: "center", gap: 4 }}
               >
-                <Icon name="ext" size={11} /> source
+                <ExternalLink size={11} /> source
               </a>
             )}
           </div>
@@ -126,7 +126,7 @@ export default function JobDetail() {
               onClick={() => parse.mutate({ id: jobId, data: {} })}
               disabled={parse.isPending}
             >
-              <Icon name="spark" size={13} />
+              <Sparkles size={13} />
               {parse.isPending ? "Parsing…" : "Re-parse JD"}
             </button>
             <button
@@ -135,7 +135,7 @@ export default function JobDetail() {
               onClick={() => tailor.mutate({ id: jobId, data: {} })}
               disabled={tailor.isPending}
             >
-              <Icon name="resume" size={13} />
+              <FileText size={13} />
               {tailor.isPending ? "Drafting…" : "Tailor resume"}
             </button>
             <button
@@ -144,7 +144,7 @@ export default function JobDetail() {
               onClick={() => cover.mutate({ id: jobId, data: {} })}
               disabled={cover.isPending}
             >
-              <Icon name="doc" size={13} />
+              <FileText size={13} />
               {cover.isPending ? "Drafting…" : "Draft cover letter"}
             </button>
           </div>
@@ -309,7 +309,7 @@ function OverviewTab({ job }: { job: Job }) {
           <div className="quiet-card-body" style={{ padding: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
               <span style={{ color: "var(--accent)" }}>
-                <Icon name="spark" size={14} />
+                <Sparkles size={14} />
               </span>
               <span className="label" style={{ color: "var(--accent-ink)" }}>
                 Next step
@@ -427,7 +427,7 @@ function ResearchTab({
       <div className="quiet-card-header">
         <h2 className="quiet-card-title">Company research</h2>
         <button type="button" className="btn ghost" onClick={onRefresh} disabled={pending}>
-          <Icon name="spark" size={13} /> {pending ? "Refreshing…" : "Refresh"}
+          <Sparkles size={13} /> {pending ? "Refreshing…" : "Refresh"}
         </button>
       </div>
       <div
@@ -468,7 +468,7 @@ function AuditTab({ jobId }: { jobId: number }) {
       <div className="quiet-card-header">
         <h2 className="quiet-card-title">Audit trail</h2>
         <Link to={`/event-logs?jobId=${jobId}`} className="btn ghost" style={{ fontSize: 12 }}>
-          <Icon name="ext" size={12} /> Open in logs
+          <ExternalLink size={12} /> Open in logs
         </Link>
       </div>
       <div className="quiet-card-body">

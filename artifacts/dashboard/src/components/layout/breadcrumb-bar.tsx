@@ -1,16 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
 
-import { Icon } from "@/components/quiet/icon";
-
-/**
- * Quiet Operations top breadcrumb bar.
- *
- * Sits above each page. Renders `job-ops / <crumb1> / <crumb2>` derived
- * directly from the current pathname segments. We don't use `useMatches`
- * here because the app uses the legacy `<BrowserRouter>`, not a data
- * router — that hook would throw at runtime.
- */
-
 function humanise(segment: string): string {
   if (!segment) return "";
   if (segment === "ai-config") return "AI config";
@@ -33,41 +22,21 @@ export function BreadcrumbBar() {
   const crumbs = segments.map(humanise);
 
   return (
-    <header className="topbar">
-      <div className="crumbs">
-        <Link to="/dashboard" style={{ cursor: "pointer" }}>
+    <header>
+      <div>
+        <Link to="/dashboard">
           job-ops
         </Link>
         {crumbs.map((c, i) => (
-          <span key={i} style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
-            <span className="sep">/</span>
-            <span className={i === crumbs.length - 1 ? "here" : undefined}>{c}</span>
+          <span key={i}>
+            {" / "}
+            {c}
           </span>
         ))}
       </div>
-      <div style={{ flex: 1 }} />
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <Link
-          to="/chat"
-          className="btn ghost"
-          style={{ display: "inline-flex", gap: 6, alignItems: "center", padding: "5px 9px", fontSize: 12 }}
-        >
-          <Icon name="command" size={13} />
-          Run AI
-          <span
-            className="kbd"
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: 10,
-              padding: "1px 5px",
-              borderRadius: 5,
-              background: "var(--paper-3)",
-              border: "1px solid var(--line)",
-              color: "var(--ink-3)",
-            }}
-          >
-            ⌘J
-          </span>
+      <div>
+        <Link to="/chat">
+          Run AI [Ctrl+J]
         </Link>
       </div>
     </header>

@@ -11,7 +11,7 @@ import {
   type ResumeVersion,
 } from "@workspace/api-client-react";
 
-import { Icon } from "@/components/quiet/icon";
+import { ChevronDown, ChevronRight, Check, X, Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface DiffData {
@@ -242,7 +242,7 @@ function VersionRow({
         <span className="mono dim" style={{ fontSize: 11.5, textAlign: "right" }}>
           #{version.id}
         </span>
-        <Icon name={expanded ? "chev-d" : "chev-r"} size={14} />
+        {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
       </div>
 
       {expanded && (
@@ -350,7 +350,7 @@ function VersionRow({
                   onClick={onApprove}
                   disabled={version.status !== "pending_approval" || approve.isPending}
                 >
-                  <Icon name="check" size={14} />
+                  <Check size={14} />
                   {approve.isPending ? "Approving…" : "Approve"}
                 </button>
                 <button
@@ -359,7 +359,7 @@ function VersionRow({
                   onClick={onReject}
                   disabled={version.status !== "pending_approval" || reject.isPending}
                 >
-                  <Icon name="x" size={13} />
+                  <X size={13} />
                   {reject.isPending ? "Rejecting…" : "Reject"}
                 </button>
                 <button
@@ -409,7 +409,7 @@ function VersionRow({
                   }}
                 >
                   <span style={{ color: "var(--accent)", flexShrink: 0 }}>
-                    <Icon name="shield" size={12} />
+                    <Shield size={12} />
                   </span>
                   <span>
                     {cites} claim{cites === 1 ? "" : "s"} cited from your verified ledger.

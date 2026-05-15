@@ -115,14 +115,14 @@ export function BestPracticesTab({ taskScope }: BestPracticesTabProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading best practices…
+      <div>
+        <Loader2 /> Loading best practices...
       </div>
     );
   }
 
   if (!config) {
-    return <p className="text-sm text-muted-foreground">Failed to load best practices.</p>;
+    return <p>Failed to load best practices.</p>;
   }
 
   const toggleItem = (index: number) => {
@@ -153,10 +153,10 @@ export function BestPracticesTab({ taskScope }: BestPracticesTabProps) {
   };
 
   return (
-    <div className="space-y-3">
-      <p className="text-xs text-muted-foreground">
-        Editing domain <span className="font-mono">{config.domain}</span>
-        {" — "}{config.items.length} rules
+    <div>
+      <p>
+        Editing domain {config.domain}
+        {" - "}{config.items.length} rules
       </p>
 
       {config.items.map((item, index) => {
@@ -164,33 +164,29 @@ export function BestPracticesTab({ taskScope }: BestPracticesTabProps) {
         const isDisabled = item.enabled === false;
 
         return (
-          <div
-            key={index}
-            className={`quiet-card space-y-2 p-3 text-sm ${isDisabled ? "opacity-60" : ""}`}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1 space-y-2">
-                <div className="flex flex-wrap items-center gap-2 text-xs">
+          <div key={index}>
+            <div>
+              <div>
+                <div>
                   <Badge variant={item.source === "ai" ? "default" : "outline"}>{item.source}</Badge>
                   {typeof item.frequency === "number" && (
-                    <span className="text-muted-foreground">Frequency: {item.frequency}</span>
+                    <span>Frequency: {item.frequency}</span>
                   )}
                 </div>
                 {isEditing ? (
                   <Textarea
                     value={editDescription}
                     onChange={(event) => setEditDescription(event.target.value)}
-                    className="min-h-20 text-sm"
                   />
                 ) : (
-                  <p className={isDisabled ? "line-through text-muted-foreground" : ""}>{item.description}</p>
+                  <p>{item.description}</p>
                 )}
                 {item.rationale && !isEditing && (
-                  <p className="text-xs italic text-muted-foreground">{item.rationale}</p>
+                  <p>{item.rationale}</p>
                 )}
               </div>
 
-              <div className="flex shrink-0 items-center gap-2">
+              <div>
                 <Switch
                   checked={item.enabled !== false}
                   onCheckedChange={() => toggleItem(index)}
@@ -200,10 +196,10 @@ export function BestPracticesTab({ taskScope }: BestPracticesTabProps) {
                 {isEditing ? (
                   <>
                     <Button variant="ghost" size="icon" onClick={cancelEdit} disabled={saving}>
-                      <X className="h-4 w-4" />
+                      <X />
                     </Button>
                     <Button variant="ghost" size="icon" onClick={saveEdit} disabled={saving}>
-                      {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                      {saving ? <Loader2 /> : <Save />}
                     </Button>
                   </>
                 ) : (
@@ -213,7 +209,7 @@ export function BestPracticesTab({ taskScope }: BestPracticesTabProps) {
                     onClick={() => startEdit(index)}
                     disabled={editingIndex !== null || saving}
                   >
-                    <Pencil className="h-4 w-4" />
+                    <Pencil />
                   </Button>
                 )}
               </div>
@@ -222,9 +218,9 @@ export function BestPracticesTab({ taskScope }: BestPracticesTabProps) {
         );
       })}
 
-      <div className="border-t border-border/60 pt-3 text-xs">
-        <Link to="/admin/best-practices" className="text-primary underline">
-          ↗ Open in Admin → Best Practices
+      <div>
+        <Link to="/admin/best-practices">
+          Open in Admin - Best Practices
         </Link>
       </div>
     </div>

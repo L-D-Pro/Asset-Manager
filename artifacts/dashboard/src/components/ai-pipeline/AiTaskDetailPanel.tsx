@@ -11,27 +11,27 @@ interface AiTaskDetailPanelProps {
 
 export function AiTaskDetailPanel({ taskScope }: AiTaskDetailPanelProps) {
   return (
-    <Tabs defaultValue="prompt" className="w-full">
-      <TabsList className="flex-wrap gap-1">
+    <Tabs defaultValue="prompt">
+      <TabsList>
         <TabsTrigger value="prompt">Prompt</TabsTrigger>
         <TabsTrigger value="role">Role</TabsTrigger>
         <TabsTrigger value="model">Model</TabsTrigger>
         <TabsTrigger value="best-practices">Best Practices</TabsTrigger>
         <TabsTrigger value="examples">Examples</TabsTrigger>
       </TabsList>
-      <TabsContent value="prompt" className="mt-4">
+      <TabsContent value="prompt">
         <PromptTab taskScope={taskScope} />
       </TabsContent>
-      <TabsContent value="role" className="mt-4">
+      <TabsContent value="role">
         <RoleTab taskScope={taskScope} />
       </TabsContent>
-      <TabsContent value="model" className="mt-4">
+      <TabsContent value="model">
         <ModelTab taskScope={taskScope} />
       </TabsContent>
-      <TabsContent value="best-practices" className="mt-4">
+      <TabsContent value="best-practices">
         <BestPracticesTab taskScope={taskScope} />
       </TabsContent>
-      <TabsContent value="examples" className="mt-4">
+      <TabsContent value="examples">
         <ExamplesTab taskScope={taskScope} />
       </TabsContent>
     </Tabs>

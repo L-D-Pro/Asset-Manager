@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
-import { ProgressRing } from "@/components/gamification/ProgressRing";
-import { StreakFlame } from "@/components/gamification/StreakFlame";
-import { GamifiedBadge } from "@/components/gamification/GamifiedBadge";
+function ProgressRing({ progress, label }: { progress: number; size: number; strokeWidth: number; label: string }) {
+  return <div>{label} ({Math.round(progress)}%)</div>;
+}
+function StreakFlame({ days }: { days: number }) {
+  return <div>Streak: {days} days</div>;
+}
+function GamifiedBadge({ name, icon }: { name: string; icon: string; tier: string; unlocked: boolean; isNew?: boolean }) {
+  return <div>{icon} {name}</div>;
+}
 import { PageHeader } from "@/components/ui/page-header";
 import { ContentCard } from "@/components/ui/content-card";
 import { Skeleton } from "@/components/ui/skeleton";
