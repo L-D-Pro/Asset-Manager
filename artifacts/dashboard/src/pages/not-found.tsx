@@ -2,7 +2,6 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Home, ArrowLeft, AlertTriangle } from "lucide-react";
 import { motion } from "framer-motion";
-import { easing } from "@/lib/animations";
 import { ContentCard } from "@/components/ui/content-card";
 
 export default function NotFound() {
@@ -14,13 +13,13 @@ export default function NotFound() {
  <motion.div
  initial={{ opacity: 0, y: 20 }}
  animate={{ opacity: 1, y: 0 }}
- transition={{ duration: 0.5, ease: easing.smooth }}
+ transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] }}
  >
  <motion.div
  className="flex justify-center mb-6"
  initial={{ scale: 0.8, opacity: 0 }}
  animate={{ scale: 1, opacity: 1 }}
- transition={{ delay: 0.1, duration: 0.4, ease: easing.snappy }}
+ transition={{ delay: 0.1, duration: 0.4, ease: [0.4, 0, 0.2, 1] as [number, number, number, number] }}
  >
  <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-warning/10 border border-warning/30">
  <AlertTriangle className="h-10 w-10 text-warning" />

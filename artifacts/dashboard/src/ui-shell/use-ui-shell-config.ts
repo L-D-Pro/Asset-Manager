@@ -1,6 +1,34 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { UIConfigSchema, type ThemeDefinition, type UIConfig } from "@workspace/ui-core";
-import { defaultThemes, defaultUIConfig, UI_SHELL_APP_KEY } from "./default-config";
+
+export const UI_SHELL_APP_KEY = "dashboard";
+
+export const defaultUIConfig: UIConfig = {
+  version: 1,
+  appKey: UI_SHELL_APP_KEY,
+  themeID: "higo-pastel-02",
+  slots: {
+    navbar: [],
+    sidebar: [],
+    dashboardGrid: [],
+  },
+  updatedAt: new Date(0).toISOString(),
+  updatedBy: null,
+};
+
+export const defaultThemes: ThemeDefinition[] = [
+  {
+    id: "higo-pastel-02",
+    name: "Tranquil Sky",
+    mode: "light",
+    palette: {
+      bgPrimary: "#A7B1D7",
+      bgGlass: "#B7C8E5",
+      textMain: "#D2DDED",
+      brandPrimary: "#BCE1FE",
+    },
+  },
+];
 
 type UiShellConfigResponse = {
  themeID: string;

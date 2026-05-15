@@ -1,6 +1,5 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { variants } from "@/lib/animations";
 
 interface StaggerContainerProps {
  children: React.ReactNode;

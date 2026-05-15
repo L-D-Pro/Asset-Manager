@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { easing } from '@/lib/animations';
 import { cn } from '@/lib/utils';
 import {
   Briefcase,
@@ -28,7 +27,7 @@ const fadeInUp = {
   hidden: { opacity: 0, y: 20 },
   visible: (delay = 0) => ({
     opacity: 1, y: 0,
-    transition: { duration: 0.5, delay, ease: easing.smooth },
+    transition: { duration: 0.5, delay, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] },
   }),
 };
 
@@ -41,7 +40,7 @@ const staggerItem = {
   hidden: { opacity: 0, y: 16 },
   visible: {
     opacity: 1, y: 0,
-    transition: { duration: 0.4, ease: easing.smooth },
+    transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] },
   },
 };
 
@@ -187,7 +186,7 @@ function Navbar() {
     <motion.nav
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.5, ease: easing.smooth }}
+      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] }}
       className={cn(
         'fixed top-0 left-0 right-0 z-50 transition-all duration-300',
         scrolled
@@ -291,7 +290,7 @@ function Hero() {
           <motion.div
             initial={{ opacity: 0, y: shouldReduce ? 0 : 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: easing.smooth }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] }}
             className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60  px-4 py-1.5 text-sm text-muted-foreground mb-6"
           >
             <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
@@ -301,7 +300,7 @@ function Hero() {
           <motion.h1
             initial={{ opacity: 0, y: shouldReduce ? 0 : 24 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.08, ease: easing.smooth }}
+            transition={{ duration: 0.6, delay: 0.08, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] }}
             className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1]"
           >
             Land your dream job{' '}
@@ -313,7 +312,7 @@ function Hero() {
           <motion.p
             initial={{ opacity: 0, y: shouldReduce ? 0 : 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.16, ease: easing.smooth }}
+            transition={{ duration: 0.6, delay: 0.16, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] }}
             className="mt-6 text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed"
           >
             Human assistants + AI agents apply to jobs for you with custom resumes and cover letters.
@@ -323,7 +322,7 @@ function Hero() {
           <motion.div
             initial={{ opacity: 0, y: shouldReduce ? 0 : 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.24, ease: easing.smooth }}
+            transition={{ duration: 0.6, delay: 0.24, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] }}
             className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4"
           >
             <Link to="/login">
@@ -354,7 +353,7 @@ function Hero() {
         <motion.div
           initial={{ opacity: 0, y: shouldReduce ? 0 : 40, scale: shouldReduce ? 1 : 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.8, delay: 0.3, ease: easing.smooth }}
+          transition={{ duration: 0.8, delay: 0.3, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] }}
           className="mt-16 relative max-w-5xl mx-auto"
         >
           <div className="rounded-2xl border border-border/50 bg-card/40  shadow-2xl overflow-hidden">
@@ -796,7 +795,7 @@ function FAQ() {
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.25, ease: easing.smooth }}
+                    transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] }}
                   >
                     <div className="px-6 pb-4 text-sm text-muted-foreground leading-relaxed">
                       {faq.a}

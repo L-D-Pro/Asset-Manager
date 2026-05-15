@@ -9,7 +9,6 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Lock, AlertCircle, KeyRound } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { easing } from "@/lib/animations";
 
 type Step = "password" | "totp";
 
@@ -92,7 +91,7 @@ export default function LoginPage() {
  initial={{ opacity: 0, x: -12 }}
  animate={{ opacity: 1, x: 0 }}
  exit={{ opacity: 0, x: 12 }}
- transition={{ duration: 0.25, ease: easing.smooth }}
+ transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] }}
  >
  <CardHeader className="pb-4">
  <CardTitle className="flex items-center gap-2">
@@ -149,7 +148,7 @@ export default function LoginPage() {
  initial={{ opacity: 0, x: 12 }}
  animate={{ opacity: 1, x: 0 }}
  exit={{ opacity: 0, x: -12 }}
- transition={{ duration: 0.25, ease: easing.smooth }}
+ transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] }}
  >
  <CardHeader className="pb-4">
  <CardTitle className="flex items-center gap-2">

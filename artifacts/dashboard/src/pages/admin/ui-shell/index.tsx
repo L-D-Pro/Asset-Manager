@@ -15,11 +15,13 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import {
- useResetUiShellState,
- useSaveUiShellState,
- useUiShellState,
+  defaultThemes,
+  defaultUIConfig,
+  UI_SHELL_APP_KEY,
+  useResetUiShellState,
+  useSaveUiShellState,
+  useUiShellState,
 } from "@/ui-shell/use-ui-shell-config";
-import { defaultThemes, defaultUIConfig, UI_SHELL_APP_KEY } from "@/ui-shell/default-config";
 
 function sortByOrder(items: UISlotItem[]): UISlotItem[] {
  return [...items].sort((a, b) => a.order - b.order);

@@ -63,7 +63,6 @@ import { useToast } from "@/hooks/use-toast";
 import { getErrorMessage, hasHttpStatus } from "@/lib/api-errors";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { easing } from "@/lib/animations";
 
 const ENABLE_WIZARD = import.meta.env.VITE_ENABLE_APPLY_WIZARD === "true";
 
@@ -1583,7 +1582,7 @@ export default function ApplyWizardPage() {
  initial={{ opacity: 0, y: 12 }}
  animate={{ opacity: 1, y: 0 }}
  exit={{ opacity: 0, y: -8 }}
- transition={{ duration: 0.3, ease: easing.smooth }}
+ transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] }}
  >
  {step === "intake" ? (
  <ContentCard className="rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">

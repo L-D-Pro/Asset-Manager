@@ -1,7 +1,6 @@
 import { useReducedMotion, motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { easing } from "@/lib/animations";
 import {
   ClipboardList,
   Flame,
@@ -17,7 +16,7 @@ const fadeInUp = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.5, ease: easing.smooth },
+    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] },
   },
 };
 
@@ -31,7 +30,7 @@ const staggerItem = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.4, ease: easing.smooth },
+    transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] },
   },
 };
 
