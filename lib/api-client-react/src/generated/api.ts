@@ -39,6 +39,9 @@ import type {
   ApprovalEvaluationBody,
   BadRequestResponse,
   BaseResumeVersion,
+  ChatFeedbackBody,
+  ChatMessage,
+  ChatThread,
   Claim,
   ClaimMatch,
   ClientMessageTemplate,
@@ -52,6 +55,7 @@ import type {
   CreateApplicationFormFieldBody,
   CreateApplicationSessionBody,
   CreateBaseResumeBody,
+  CreateChatThreadBody,
   CreateClaimBody,
   CreateClientMessageTemplateBody,
   CreateEventLogBody,
@@ -86,6 +90,7 @@ import type {
   ListAiRunEvaluationsParams,
   ListAiTrainingExamplesParams,
   ListApplicationsParams,
+  ListChatThreadsParams,
   ListClaimsParams,
   ListCoverLetterVersionsParams,
   ListEventLogsParams,
@@ -100,6 +105,7 @@ import type {
   NotFoundResponse,
   NukeJobAttempts200,
   ParseJobBody,
+  PostChatMessageBody,
   ProjectSource,
   ProposalOutcome,
   ProposalVersion,
@@ -118,6 +124,7 @@ import type {
   UpdateAiModelConfigBody,
   UpdateAiPromptVersionBody,
   UpdateApplicationBody,
+  UpdateChatThreadBody,
   UpdateClaimBody,
   UpdateCoverLetterVersionBody,
   UpdateFeedbackSignalBody,
@@ -10224,3 +10231,660 @@ export function useListJobBoardSources<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary List the authenticated user's chat threads
+ */
+export const getListChatThreadsUrl = (params?: ListChatThreadsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/chat/threads?${stringifiedParams}`
+    : `/api/chat/threads`;
+};
+
+export const listChatThreads = async (
+  params?: ListChatThreadsParams,
+  options?: RequestInit,
+): Promise<ChatThread[]> => {
+  return customFetch<ChatThread[]>(getListChatThreadsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListChatThreadsQueryKey = (params?: ListChatThreadsParams) => {
+  return [`/api/chat/threads`, ...(params ? [params] : [])] as const;
+};
+
+export const getListChatThreadsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listChatThreads>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(
+  params?: ListChatThreadsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listChatThreads>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListChatThreadsQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listChatThreads>>> = ({
+    signal,
+  }) => listChatThreads(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listChatThreads>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListChatThreadsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listChatThreads>>
+>;
+export type ListChatThreadsQueryError = ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary List the authenticated user's chat threads
+ */
+
+export function useListChatThreads<
+  TData = Awaited<ReturnType<typeof listChatThreads>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(
+  params?: ListChatThreadsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listChatThreads>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListChatThreadsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a new empty chat thread
+ */
+export const getCreateChatThreadUrl = () => {
+  return `/api/chat/threads`;
+};
+
+export const createChatThread = async (
+  createChatThreadBody: CreateChatThreadBody,
+  options?: RequestInit,
+): Promise<ChatThread> => {
+  return customFetch<ChatThread>(getCreateChatThreadUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createChatThreadBody),
+  });
+};
+
+export const getCreateChatThreadMutationOptions = <
+  TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createChatThread>>,
+    TError,
+    { data: BodyType<CreateChatThreadBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createChatThread>>,
+  TError,
+  { data: BodyType<CreateChatThreadBody> },
+  TContext
+> => {
+  const mutationKey = ["createChatThread"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createChatThread>>,
+    { data: BodyType<CreateChatThreadBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createChatThread(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateChatThreadMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createChatThread>>
+>;
+export type CreateChatThreadMutationBody = BodyType<CreateChatThreadBody>;
+export type CreateChatThreadMutationError = ErrorType<
+  BadRequestResponse | UnauthorizedResponse
+>;
+
+/**
+ * @summary Create a new empty chat thread
+ */
+export const useCreateChatThread = <
+  TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createChatThread>>,
+    TError,
+    { data: BodyType<CreateChatThreadBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createChatThread>>,
+  TError,
+  { data: BodyType<CreateChatThreadBody> },
+  TContext
+> => {
+  return useMutation(getCreateChatThreadMutationOptions(options));
+};
+
+/**
+ * @summary Rename / archive / unarchive a chat thread
+ */
+export const getUpdateChatThreadUrl = (id: number) => {
+  return `/api/chat/threads/${id}`;
+};
+
+export const updateChatThread = async (
+  id: number,
+  updateChatThreadBody: UpdateChatThreadBody,
+  options?: RequestInit,
+): Promise<ChatThread> => {
+  return customFetch<ChatThread>(getUpdateChatThreadUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateChatThreadBody),
+  });
+};
+
+export const getUpdateChatThreadMutationOptions = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateChatThread>>,
+    TError,
+    { id: number; data: BodyType<UpdateChatThreadBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateChatThread>>,
+  TError,
+  { id: number; data: BodyType<UpdateChatThreadBody> },
+  TContext
+> => {
+  const mutationKey = ["updateChatThread"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateChatThread>>,
+    { id: number; data: BodyType<UpdateChatThreadBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateChatThread(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateChatThreadMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateChatThread>>
+>;
+export type UpdateChatThreadMutationBody = BodyType<UpdateChatThreadBody>;
+export type UpdateChatThreadMutationError = ErrorType<
+  BadRequestResponse | UnauthorizedResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Rename / archive / unarchive a chat thread
+ */
+export const useUpdateChatThread = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateChatThread>>,
+    TError,
+    { id: number; data: BodyType<UpdateChatThreadBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateChatThread>>,
+  TError,
+  { id: number; data: BodyType<UpdateChatThreadBody> },
+  TContext
+> => {
+  return useMutation(getUpdateChatThreadMutationOptions(options));
+};
+
+/**
+ * @summary Hard-delete a chat thread (cascades to messages)
+ */
+export const getDeleteChatThreadUrl = (id: number) => {
+  return `/api/chat/threads/${id}`;
+};
+
+export const deleteChatThread = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteChatThreadUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteChatThreadMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteChatThread>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteChatThread>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteChatThread"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteChatThread>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteChatThread(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteChatThreadMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteChatThread>>
+>;
+
+export type DeleteChatThreadMutationError = ErrorType<
+  UnauthorizedResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Hard-delete a chat thread (cascades to messages)
+ */
+export const useDeleteChatThread = <
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteChatThread>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteChatThread>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteChatThreadMutationOptions(options));
+};
+
+/**
+ * @summary List all messages in a chat thread (chronological)
+ */
+export const getListChatMessagesUrl = (id: number) => {
+  return `/api/chat/threads/${id}/messages`;
+};
+
+export const listChatMessages = async (
+  id: number,
+  options?: RequestInit,
+): Promise<ChatMessage[]> => {
+  return customFetch<ChatMessage[]>(getListChatMessagesUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListChatMessagesQueryKey = (id: number) => {
+  return [`/api/chat/threads/${id}/messages`] as const;
+};
+
+export const getListChatMessagesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listChatMessages>>,
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listChatMessages>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListChatMessagesQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listChatMessages>>
+  > = ({ signal }) => listChatMessages(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listChatMessages>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListChatMessagesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listChatMessages>>
+>;
+export type ListChatMessagesQueryError = ErrorType<
+  UnauthorizedResponse | NotFoundResponse
+>;
+
+/**
+ * @summary List all messages in a chat thread (chronological)
+ */
+
+export function useListChatMessages<
+  TData = Awaited<ReturnType<typeof listChatMessages>>,
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listChatMessages>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListChatMessagesQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Appends the user message to the thread (snapshotting any attached
+context), then streams the assistant reply as Server-Sent Events.
+
+SSE frame shape:
+  - default `message` event: `data: {"token": "..."}` (one per delta)
+  - `event: user-message` `data: {"id": <number>, "role": "user"}` (once at start)
+  - `event: error` `data: {"message": "..."}` (terminal failure)
+  - `event: done` `data: {"messageId": <number>, "runId": "chat_...", "promptVersionId": <number|null>, "eventLogId": <number|null>, "primarySkill": "<skill-slug>|general"}` (terminal success)
+
+The response Content-Type is `text/event-stream`; this endpoint is NOT
+consumed via the generated React Query hooks — clients read the body
+as a `ReadableStream` directly.
+
+ * @summary Append a user message and stream the assistant reply
+ */
+export const getPostChatMessageUrl = (id: number) => {
+  return `/api/chat/threads/${id}/messages`;
+};
+
+export const postChatMessage = async (
+  id: number,
+  postChatMessageBody: PostChatMessageBody,
+  options?: RequestInit,
+): Promise<string> => {
+  return customFetch<string>(getPostChatMessageUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(postChatMessageBody),
+  });
+};
+
+export const getPostChatMessageMutationOptions = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | NotFoundResponse | ErrorResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postChatMessage>>,
+    TError,
+    { id: number; data: BodyType<PostChatMessageBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof postChatMessage>>,
+  TError,
+  { id: number; data: BodyType<PostChatMessageBody> },
+  TContext
+> => {
+  const mutationKey = ["postChatMessage"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof postChatMessage>>,
+    { id: number; data: BodyType<PostChatMessageBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return postChatMessage(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PostChatMessageMutationResult = NonNullable<
+  Awaited<ReturnType<typeof postChatMessage>>
+>;
+export type PostChatMessageMutationBody = BodyType<PostChatMessageBody>;
+export type PostChatMessageMutationError = ErrorType<
+  BadRequestResponse | UnauthorizedResponse | NotFoundResponse | ErrorResponse
+>;
+
+/**
+ * @summary Append a user message and stream the assistant reply
+ */
+export const usePostChatMessage = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | NotFoundResponse | ErrorResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postChatMessage>>,
+    TError,
+    { id: number; data: BodyType<PostChatMessageBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof postChatMessage>>,
+  TError,
+  { id: number; data: BodyType<PostChatMessageBody> },
+  TContext
+> => {
+  return useMutation(getPostChatMessageMutationOptions(options));
+};
+
+/**
+ * Records the user's evaluation of an assistant turn. The endpoint looks
+up the message's canonical runId and the matching event_logs row, then
+inserts an ai_run_evaluations row (taskScope='chat',
+entityType='chat_message', entityId=<message id>) so the existing
+learning loop aggregates the outcome into ai_variant_stats.
+
+One feedback record per message — re-submitting returns 409.
+
+ * @summary Thumbs up/down on an assistant message — writes ai_run_evaluations
+ */
+export const getPostChatMessageFeedbackUrl = (id: number) => {
+  return `/api/chat/messages/${id}/feedback`;
+};
+
+export const postChatMessageFeedback = async (
+  id: number,
+  chatFeedbackBody: ChatFeedbackBody,
+  options?: RequestInit,
+): Promise<AiRunEvaluation> => {
+  return customFetch<AiRunEvaluation>(getPostChatMessageFeedbackUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(chatFeedbackBody),
+  });
+};
+
+export const getPostChatMessageFeedbackMutationOptions = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | NotFoundResponse | ErrorResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postChatMessageFeedback>>,
+    TError,
+    { id: number; data: BodyType<ChatFeedbackBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof postChatMessageFeedback>>,
+  TError,
+  { id: number; data: BodyType<ChatFeedbackBody> },
+  TContext
+> => {
+  const mutationKey = ["postChatMessageFeedback"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof postChatMessageFeedback>>,
+    { id: number; data: BodyType<ChatFeedbackBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return postChatMessageFeedback(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PostChatMessageFeedbackMutationResult = NonNullable<
+  Awaited<ReturnType<typeof postChatMessageFeedback>>
+>;
+export type PostChatMessageFeedbackMutationBody = BodyType<ChatFeedbackBody>;
+export type PostChatMessageFeedbackMutationError = ErrorType<
+  BadRequestResponse | UnauthorizedResponse | NotFoundResponse | ErrorResponse
+>;
+
+/**
+ * @summary Thumbs up/down on an assistant message — writes ai_run_evaluations
+ */
+export const usePostChatMessageFeedback = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | NotFoundResponse | ErrorResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postChatMessageFeedback>>,
+    TError,
+    { id: number; data: BodyType<ChatFeedbackBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof postChatMessageFeedback>>,
+  TError,
+  { id: number; data: BodyType<ChatFeedbackBody> },
+  TContext
+> => {
+  return useMutation(getPostChatMessageFeedbackMutationOptions(options));
+};

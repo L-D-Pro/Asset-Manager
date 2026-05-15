@@ -52,6 +52,8 @@ tags:
     description: Admin-only model config health checks
   - name: best-practices
     description: AI-suggested and curated best practices for job applications
+  - name: chat
+    description: Conversational UI — threads, streaming messages, and feedback for the chat MVP surface
 
 paths:
   /healthz:
@@ -2297,6 +2299,200 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/JobBoardSource"
+
+  # ── Chat (Conversational UI) ───────────────────────────────────────────────
+  /chat/threads:
+    get:
+      operationId: listChatThreads
+      tags: [chat]
+      summary: List the authenticated user's chat threads
+      parameters:
+        - name: include_archived
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ["1", "true"]
+          description: When set, archived threads are included in the response.
+      responses:
+        "200":
+          description: List of chat threads (newest updated first)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChatThread"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createChatThread
+      tags: [chat]
+      summary: Create a new empty chat thread
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateChatThreadBody"
+      responses:
+        "201":
+          description: Created chat thread
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatThread"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /chat/threads/{id}:
+    patch:
+      operationId: updateChatThread
+      tags: [chat]
+      summary: Rename / archive / unarchive a chat thread
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateChatThreadBody"
+      responses:
+        "200":
+          description: Updated thread
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatThread"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteChatThread
+      tags: [chat]
+      summary: Hard-delete a chat thread (cascades to messages)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /chat/threads/{id}/messages:
+    get:
+      operationId: listChatMessages
+      tags: [chat]
+      summary: List all messages in a chat thread (chronological)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Messages in send order
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChatMessage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: postChatMessage
+      tags: [chat]
+      summary: Append a user message and stream the assistant reply
+      description: |
+        Appends the user message to the thread (snapshotting any attached
+        context), then streams the assistant reply as Server-Sent Events.
+
+        SSE frame shape:
+          - default `message` event: `data: {"token": "..."}` (one per delta)
+          - `event: user-message` `data: {"id": <number>, "role": "user"}` (once at start)
+          - `event: error` `data: {"message": "..."}` (terminal failure)
+          - `event: done` `data: {"messageId": <number>, "runId": "chat_...", "promptVersionId": <number|null>, "eventLogId": <number|null>, "primarySkill": "<skill-slug>|general"}` (terminal success)
+
+        The response Content-Type is `text/event-stream`; this endpoint is NOT
+        consumed via the generated React Query hooks — clients read the body
+        as a `ReadableStream` directly.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostChatMessageBody"
+      responses:
+        "200":
+          description: SSE stream of assistant reply tokens, terminating in a `done` event with the persisted message id
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: Stream of SSE frames; see endpoint description for the framing.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          description: No active AI model configured for the thread's model scope
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /chat/messages/{id}/feedback:
+    post:
+      operationId: postChatMessageFeedback
+      tags: [chat]
+      summary: Thumbs up/down on an assistant message — writes ai_run_evaluations
+      description: |
+        Records the user's evaluation of an assistant turn. The endpoint looks
+        up the message's canonical runId and the matching event_logs row, then
+        inserts an ai_run_evaluations row (taskScope='chat',
+        entityType='chat_message', entityId=<message id>) so the existing
+        learning loop aggregates the outcome into ai_variant_stats.
+
+        One feedback record per message — re-submitting returns 409.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatFeedbackBody"
+      responses:
+        "201":
+          description: Feedback recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiRunEvaluation"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Feedback already recorded for this message, or no AI lineage event found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
 components:
   parameters:
@@ -5472,3 +5668,210 @@ components:
         - slots
         - updatedAt
         - updatedBy
+
+    # ── Chat (Conversational UI) ──────────────────────────────────────────
+    ChatThread:
+      type: object
+      description: A persistent chat conversation belonging to a single user.
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        title:
+          type: string
+        modelScope:
+          type: string
+          description: Maps to `ai_model_configs.task_scope`. Defaults to `chat`.
+        archivedAt:
+          type: ["string", "null"]
+          description: ISO timestamp when archived; null = active.
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - userId
+        - title
+        - modelScope
+        - archivedAt
+        - createdAt
+        - updatedAt
+
+    CreateChatThreadBody:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 200
+
+    UpdateChatThreadBody:
+      type: object
+      description: Provide at least one of `title` or `archived`.
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        archived:
+          type: boolean
+
+    ChatAttachmentBaseResume:
+      type: object
+      description: Snapshot of the user's base resume, captured at message send time.
+      properties:
+        kind:
+          type: string
+          enum: [base_resume]
+        refId:
+          type: integer
+        snapshot:
+          type: object
+          properties:
+            version:
+              type: integer
+            capturedAt:
+              type: string
+            contentText:
+              type: string
+          required:
+            - contentText
+      required:
+        - kind
+        - snapshot
+
+    ChatAttachmentJob:
+      type: object
+      description: Snapshot of a job listing's metadata + JD text.
+      properties:
+        kind:
+          type: string
+          enum: [job]
+        refId:
+          type: integer
+        snapshot:
+          type: object
+          properties:
+            title:
+              type: string
+            company:
+              type: string
+            location:
+              type: string
+            jdText:
+              type: string
+          required:
+            - title
+            - jdText
+      required:
+        - kind
+        - snapshot
+
+    ChatAttachmentClaims:
+      type: object
+      description: A selection of claims from the ledger; unverified claims are flagged.
+      properties:
+        kind:
+          type: string
+          enum: [claims]
+        refId:
+          type: integer
+        snapshot:
+          type: object
+          properties:
+            claims:
+              type: array
+              minItems: 1
+              items:
+                type: object
+                properties:
+                  text:
+                    type: string
+                  verified:
+                    type: boolean
+                required:
+                  - text
+                  - verified
+          required:
+            - claims
+      required:
+        - kind
+        - snapshot
+
+    ChatAttachment:
+      description: Discriminated union of attachment kinds.
+      oneOf:
+        - $ref: "#/components/schemas/ChatAttachmentBaseResume"
+        - $ref: "#/components/schemas/ChatAttachmentJob"
+        - $ref: "#/components/schemas/ChatAttachmentClaims"
+      discriminator:
+        propertyName: kind
+        mapping:
+          base_resume: "#/components/schemas/ChatAttachmentBaseResume"
+          job: "#/components/schemas/ChatAttachmentJob"
+          claims: "#/components/schemas/ChatAttachmentClaims"
+
+    ChatMessage:
+      type: object
+      description: One turn within a chat thread.
+      properties:
+        id:
+          type: integer
+        conversationId:
+          type: integer
+        role:
+          type: string
+          enum: [user, assistant, system, tool]
+        content:
+          type: string
+        attachments:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatAttachment"
+        runId:
+          type: ["string", "null"]
+          description: Canonical AI lineage id for assistant turns; matches `event_logs.runId`.
+        promptVersionId:
+          type: ["integer", "null"]
+        modelName:
+          type: ["string", "null"]
+        promptTokens:
+          type: ["integer", "null"]
+        completionTokens:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+      required:
+        - id
+        - conversationId
+        - role
+        - content
+        - attachments
+        - createdAt
+
+    PostChatMessageBody:
+      type: object
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 20000
+        attachments:
+          type: array
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/ChatAttachment"
+      required:
+        - content
+
+    ChatFeedbackBody:
+      type: object
+      properties:
+        outcome:
+          type: string
+          enum: [approved, rejected]
+        notes:
+          type: string
+          maxLength: 2000
+      required:
+        - outcome

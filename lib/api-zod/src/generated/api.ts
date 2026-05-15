@@ -3213,3 +3213,259 @@ export const ListJobBoardSourcesResponseItem = zod.object({
 export const ListJobBoardSourcesResponse = zod.array(
   ListJobBoardSourcesResponseItem,
 );
+
+/**
+ * @summary List the authenticated user's chat threads
+ */
+export const ListChatThreadsQueryParams = zod.object({
+  include_archived: zod
+    .enum(["1", "true"])
+    .optional()
+    .describe("When set, archived threads are included in the response."),
+});
+
+export const ListChatThreadsResponseItem = zod
+  .object({
+    id: zod.number(),
+    userId: zod.number(),
+    title: zod.string(),
+    modelScope: zod
+      .string()
+      .describe("Maps to `ai_model_configs.task_scope`. Defaults to `chat`."),
+    archivedAt: zod
+      .string()
+      .nullable()
+      .describe("ISO timestamp when archived; null = active."),
+    createdAt: zod.string(),
+    updatedAt: zod.string(),
+  })
+  .describe("A persistent chat conversation belonging to a single user.");
+export const ListChatThreadsResponse = zod.array(ListChatThreadsResponseItem);
+
+/**
+ * @summary Create a new empty chat thread
+ */
+export const createChatThreadBodyTitleMax = 200;
+
+export const CreateChatThreadBody = zod.object({
+  title: zod.string().max(createChatThreadBodyTitleMax).optional(),
+});
+
+/**
+ * @summary Rename / archive / unarchive a chat thread
+ */
+export const UpdateChatThreadParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const updateChatThreadBodyTitleMax = 200;
+
+export const UpdateChatThreadBody = zod
+  .object({
+    title: zod.string().max(updateChatThreadBodyTitleMax).optional(),
+    archived: zod.boolean().optional(),
+  })
+  .describe("Provide at least one of `title` or `archived`.");
+
+export const UpdateChatThreadResponse = zod
+  .object({
+    id: zod.number(),
+    userId: zod.number(),
+    title: zod.string(),
+    modelScope: zod
+      .string()
+      .describe("Maps to `ai_model_configs.task_scope`. Defaults to `chat`."),
+    archivedAt: zod
+      .string()
+      .nullable()
+      .describe("ISO timestamp when archived; null = active."),
+    createdAt: zod.string(),
+    updatedAt: zod.string(),
+  })
+  .describe("A persistent chat conversation belonging to a single user.");
+
+/**
+ * @summary Hard-delete a chat thread (cascades to messages)
+ */
+export const DeleteChatThreadParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary List all messages in a chat thread (chronological)
+ */
+export const ListChatMessagesParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ListChatMessagesResponseItem = zod
+  .object({
+    id: zod.number(),
+    conversationId: zod.number(),
+    role: zod.enum(["user", "assistant", "system", "tool"]),
+    content: zod.string(),
+    attachments: zod.array(
+      zod
+        .union([
+          zod
+            .object({
+              kind: zod.enum(["base_resume"]),
+              refId: zod.number().optional(),
+              snapshot: zod.object({
+                version: zod.number().optional(),
+                capturedAt: zod.string().optional(),
+                contentText: zod.string(),
+              }),
+            })
+            .describe(
+              "Snapshot of the user's base resume, captured at message send time.",
+            ),
+          zod
+            .object({
+              kind: zod.enum(["job"]),
+              refId: zod.number().optional(),
+              snapshot: zod.object({
+                title: zod.string(),
+                company: zod.string().optional(),
+                location: zod.string().optional(),
+                jdText: zod.string(),
+              }),
+            })
+            .describe("Snapshot of a job listing's metadata + JD text."),
+          zod
+            .object({
+              kind: zod.enum(["claims"]),
+              refId: zod.number().optional(),
+              snapshot: zod.object({
+                claims: zod
+                  .array(
+                    zod.object({
+                      text: zod.string(),
+                      verified: zod.boolean(),
+                    }),
+                  )
+                  .min(1),
+              }),
+            })
+            .describe(
+              "A selection of claims from the ledger; unverified claims are flagged.",
+            ),
+        ])
+        .describe("Discriminated union of attachment kinds."),
+    ),
+    runId: zod
+      .string()
+      .nullish()
+      .describe(
+        "Canonical AI lineage id for assistant turns; matches `event_logs.runId`.",
+      ),
+    promptVersionId: zod.number().nullish(),
+    modelName: zod.string().nullish(),
+    promptTokens: zod.number().nullish(),
+    completionTokens: zod.number().nullish(),
+    createdAt: zod.string(),
+  })
+  .describe("One turn within a chat thread.");
+export const ListChatMessagesResponse = zod.array(ListChatMessagesResponseItem);
+
+/**
+ * Appends the user message to the thread (snapshotting any attached
+context), then streams the assistant reply as Server-Sent Events.
+
+SSE frame shape:
+  - default `message` event: `data: {"token": "..."}` (one per delta)
+  - `event: user-message` `data: {"id": <number>, "role": "user"}` (once at start)
+  - `event: error` `data: {"message": "..."}` (terminal failure)
+  - `event: done` `data: {"messageId": <number>, "runId": "chat_...", "promptVersionId": <number|null>, "eventLogId": <number|null>, "primarySkill": "<skill-slug>|general"}` (terminal success)
+
+The response Content-Type is `text/event-stream`; this endpoint is NOT
+consumed via the generated React Query hooks — clients read the body
+as a `ReadableStream` directly.
+
+ * @summary Append a user message and stream the assistant reply
+ */
+export const PostChatMessageParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const postChatMessageBodyContentMax = 20000;
+
+export const postChatMessageBodyAttachmentsMax = 20;
+
+export const PostChatMessageBody = zod.object({
+  content: zod.string().min(1).max(postChatMessageBodyContentMax),
+  attachments: zod
+    .array(
+      zod
+        .union([
+          zod
+            .object({
+              kind: zod.enum(["base_resume"]),
+              refId: zod.number().optional(),
+              snapshot: zod.object({
+                version: zod.number().optional(),
+                capturedAt: zod.string().optional(),
+                contentText: zod.string(),
+              }),
+            })
+            .describe(
+              "Snapshot of the user's base resume, captured at message send time.",
+            ),
+          zod
+            .object({
+              kind: zod.enum(["job"]),
+              refId: zod.number().optional(),
+              snapshot: zod.object({
+                title: zod.string(),
+                company: zod.string().optional(),
+                location: zod.string().optional(),
+                jdText: zod.string(),
+              }),
+            })
+            .describe("Snapshot of a job listing's metadata + JD text."),
+          zod
+            .object({
+              kind: zod.enum(["claims"]),
+              refId: zod.number().optional(),
+              snapshot: zod.object({
+                claims: zod
+                  .array(
+                    zod.object({
+                      text: zod.string(),
+                      verified: zod.boolean(),
+                    }),
+                  )
+                  .min(1),
+              }),
+            })
+            .describe(
+              "A selection of claims from the ledger; unverified claims are flagged.",
+            ),
+        ])
+        .describe("Discriminated union of attachment kinds."),
+    )
+    .max(postChatMessageBodyAttachmentsMax)
+    .optional(),
+});
+
+/**
+ * Records the user's evaluation of an assistant turn. The endpoint looks
+up the message's canonical runId and the matching event_logs row, then
+inserts an ai_run_evaluations row (taskScope='chat',
+entityType='chat_message', entityId=<message id>) so the existing
+learning loop aggregates the outcome into ai_variant_stats.
+
+One feedback record per message — re-submitting returns 409.
+
+ * @summary Thumbs up/down on an assistant message — writes ai_run_evaluations
+ */
+export const PostChatMessageFeedbackParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const postChatMessageFeedbackBodyNotesMax = 2000;
+
+export const PostChatMessageFeedbackBody = zod.object({
+  outcome: zod.enum(["approved", "rejected"]),
+  notes: zod.string().max(postChatMessageFeedbackBodyNotesMax).optional(),
+});

@@ -1990,6 +1990,176 @@ export interface UpsertUiShellConfigBody {
 }
 
 /**
+ * A persistent chat conversation belonging to a single user.
+ */
+export interface ChatThread {
+  id: number;
+  userId: number;
+  title: string;
+  /** Maps to `ai_model_configs.task_scope`. Defaults to `chat`. */
+  modelScope: string;
+  /**
+   * ISO timestamp when archived; null = active.
+   * @nullable
+   */
+  archivedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateChatThreadBody {
+  /** @maxLength 200 */
+  title?: string;
+}
+
+/**
+ * Provide at least one of `title` or `archived`.
+ */
+export interface UpdateChatThreadBody {
+  /** @maxLength 200 */
+  title?: string;
+  archived?: boolean;
+}
+
+export type ChatAttachmentBaseResumeKind =
+  (typeof ChatAttachmentBaseResumeKind)[keyof typeof ChatAttachmentBaseResumeKind];
+
+export const ChatAttachmentBaseResumeKind = {
+  base_resume: "base_resume",
+} as const;
+
+export type ChatAttachmentBaseResumeSnapshot = {
+  version?: number;
+  capturedAt?: string;
+  contentText: string;
+};
+
+/**
+ * Snapshot of the user's base resume, captured at message send time.
+ */
+export interface ChatAttachmentBaseResume {
+  kind: ChatAttachmentBaseResumeKind;
+  refId?: number;
+  snapshot: ChatAttachmentBaseResumeSnapshot;
+}
+
+export type ChatAttachmentJobKind =
+  (typeof ChatAttachmentJobKind)[keyof typeof ChatAttachmentJobKind];
+
+export const ChatAttachmentJobKind = {
+  job: "job",
+} as const;
+
+export type ChatAttachmentJobSnapshot = {
+  title: string;
+  company?: string;
+  location?: string;
+  jdText: string;
+};
+
+/**
+ * Snapshot of a job listing's metadata + JD text.
+ */
+export interface ChatAttachmentJob {
+  kind: ChatAttachmentJobKind;
+  refId?: number;
+  snapshot: ChatAttachmentJobSnapshot;
+}
+
+export type ChatAttachmentClaimsKind =
+  (typeof ChatAttachmentClaimsKind)[keyof typeof ChatAttachmentClaimsKind];
+
+export const ChatAttachmentClaimsKind = {
+  claims: "claims",
+} as const;
+
+export type ChatAttachmentClaimsSnapshotClaimsItem = {
+  text: string;
+  verified: boolean;
+};
+
+export type ChatAttachmentClaimsSnapshot = {
+  /** @minItems 1 */
+  claims: ChatAttachmentClaimsSnapshotClaimsItem[];
+};
+
+/**
+ * A selection of claims from the ledger; unverified claims are flagged.
+ */
+export interface ChatAttachmentClaims {
+  kind: ChatAttachmentClaimsKind;
+  refId?: number;
+  snapshot: ChatAttachmentClaimsSnapshot;
+}
+
+/**
+ * Discriminated union of attachment kinds.
+ */
+export type ChatAttachment =
+  | ChatAttachmentBaseResume
+  | ChatAttachmentJob
+  | ChatAttachmentClaims;
+
+export type ChatMessageRole =
+  (typeof ChatMessageRole)[keyof typeof ChatMessageRole];
+
+export const ChatMessageRole = {
+  user: "user",
+  assistant: "assistant",
+  system: "system",
+  tool: "tool",
+} as const;
+
+/**
+ * One turn within a chat thread.
+ */
+export interface ChatMessage {
+  id: number;
+  conversationId: number;
+  role: ChatMessageRole;
+  content: string;
+  attachments: ChatAttachment[];
+  /**
+   * Canonical AI lineage id for assistant turns; matches `event_logs.runId`.
+   * @nullable
+   */
+  runId?: string | null;
+  /** @nullable */
+  promptVersionId?: number | null;
+  /** @nullable */
+  modelName?: string | null;
+  /** @nullable */
+  promptTokens?: number | null;
+  /** @nullable */
+  completionTokens?: number | null;
+  createdAt: string;
+}
+
+export interface PostChatMessageBody {
+  /**
+   * @minLength 1
+   * @maxLength 20000
+   */
+  content: string;
+  /** @maxItems 20 */
+  attachments?: ChatAttachment[];
+}
+
+export type ChatFeedbackBodyOutcome =
+  (typeof ChatFeedbackBodyOutcome)[keyof typeof ChatFeedbackBodyOutcome];
+
+export const ChatFeedbackBodyOutcome = {
+  approved: "approved",
+  rejected: "rejected",
+} as const;
+
+export interface ChatFeedbackBody {
+  outcome: ChatFeedbackBodyOutcome;
+  /** @maxLength 2000 */
+  notes?: string;
+}
+
+/**
  * Bad request
  */
 export type BadRequestResponse = ErrorResponse;
@@ -2133,3 +2303,18 @@ export type ListJobBoardListingsParams = {
   search?: string;
   location?: string;
 };
+
+export type ListChatThreadsParams = {
+  /**
+   * When set, archived threads are included in the response.
+   */
+  include_archived?: ListChatThreadsIncludeArchived;
+};
+
+export type ListChatThreadsIncludeArchived =
+  (typeof ListChatThreadsIncludeArchived)[keyof typeof ListChatThreadsIncludeArchived];
+
+export const ListChatThreadsIncludeArchived = {
+  NUMBER_1: "1",
+  true: "true",
+} as const;
