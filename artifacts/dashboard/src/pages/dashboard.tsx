@@ -91,24 +91,33 @@ export default function Dashboard() {
   useEffect(() => {
     if (user?.role !== "admin") return;
     let cancelled = false;
-    fetch("/api/admin/health/model-configs", { credentials: "include" })
-      .then((res) => {
-        if (!res.ok) return;
-        return res.json();
-      })
-      .then((data: unknown) => {
-        if (cancelled || !data || typeof data !== "object") return;
-        const report = data as Record<string, unknown>;
-        if (typeof report.healthy !== "boolean") return;
-        setHealthReport({
-          healthy: report.healthy,
-          unhealthyScopes: Array.isArray(report.unhealthyScopes)
-            ? (report.unhealthyScopes as unknown[]).filter((s): s is string => typeof s === "string")
-            : [],
-        });
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
+
+    const fetchHealth = () => {
+      fetch("/api/admin/health/model-configs", { credentials: "include" })
+        .then((res) => {
+          if (!res.ok) return;
+          return res.json();
+        })
+        .then((data: unknown) => {
+          if (cancelled || !data || typeof data !== "object") return;
+          const report = data as Record<string, unknown>;
+          if (typeof report.healthy !== "boolean") return;
+          setHealthReport({
+            healthy: report.healthy,
+            unhealthyScopes: Array.isArray(report.unhealthyScopes)
+              ? (report.unhealthyScopes as unknown[]).filter((s): s is string => typeof s === "string")
+              : [],
+          });
+        })
+        .catch(() => {});
+    };
+
+    fetchHealth();
+    const interval = setInterval(fetchHealth, 60_000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [user?.role]);
 
   useEffect(() => {

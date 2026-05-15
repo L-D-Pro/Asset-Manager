@@ -328,7 +328,7 @@ export default function ApplyWizardPage() {
  refetchOnReconnect: false,
  },
  });
- const baseResumeMissing = hasHttpStatus(baseResumeError, 404);
+  const baseResumeMissing = !baseResumeLoading && !baseResume;
 
  const { data: claimMatches = [] } = useGetJobClaimMatches(jobId ?? 0, {
  query: {

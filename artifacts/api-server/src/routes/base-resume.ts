@@ -28,7 +28,7 @@ router.get("/base-resume", async (_req, res): Promise<void> => {
     .where(eq(baseResumeVersionsTable.isCurrent, true));
 
   if (!row) {
-    res.status(404).json({ error: "Base resume not found" });
+    res.status(204).end();
     return;
   }
 
