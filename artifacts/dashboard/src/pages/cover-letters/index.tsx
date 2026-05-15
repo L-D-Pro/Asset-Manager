@@ -336,7 +336,7 @@ export default function CoverLettersPage() {
                       ))}
                     </div>
                   ) : (
-                    <div className="card-glass p-4 text-sm whitespace-pre-wrap max-h-96 overflow-y-auto">
+                    <div className="quiet-card p-4 text-sm whitespace-pre-wrap max-h-96 overflow-y-auto">
                       {version.draftContent || "No content generated yet."}
                     </div>
                   )}

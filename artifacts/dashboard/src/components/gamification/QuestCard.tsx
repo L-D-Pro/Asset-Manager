@@ -17,12 +17,12 @@ export function QuestCard({ title, description, progress, reward, emoji, onAccep
   return (
     <motion.div
       whileHover={{ y: -2 }}
-      className={cn("card-glass p-5 space-y-3", isComplete && "border-primary/30", className)}
+      className={cn("quiet-card p-5 space-y-3", isComplete && "border-primary/30", className)}
     >
       <div className="flex items-center gap-3">
         <div className={cn(
           "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xl",
-          isComplete ? "gradient-hero" : "bg-secondary/10",
+          isComplete ? "" : "bg-secondary/10",
         )}>
           {emoji}
         </div>
@@ -35,7 +35,7 @@ export function QuestCard({ title, description, progress, reward, emoji, onAccep
         <>
           <div className="h-2 rounded-full bg-border overflow-hidden">
             <div
-              className="h-full rounded-full gradient-hero transition-all duration-700"
+              className="h-full rounded-full  transition-all duration-700"
               style={{ width: `${progress}%` }}
             />
           </div>

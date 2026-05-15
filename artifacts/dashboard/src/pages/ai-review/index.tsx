@@ -229,7 +229,7 @@ function AiEventRow({
   const succeeded = meta?.succeeded;
 
   return (
-    <div className="card-glass rounded-lg text-sm">
+    <div className="quiet-card rounded-lg text-sm">
       <button
         type="button"
         className="flex w-full items-center justify-between gap-3 p-3 text-left"
@@ -344,7 +344,7 @@ function PromptVersionRow({
 
   if (!editing) {
     return (
-      <div className="card-glass p-3 text-sm">
+      <div className="quiet-card p-3 text-sm">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
@@ -365,7 +365,7 @@ function PromptVersionRow({
   }
 
   return (
-    <div className="card-glass rounded-lg border border-border/80 p-3 text-sm space-y-3">
+    <div className="quiet-card rounded-lg border border-border/80 p-3 text-sm space-y-3">
       <div className="flex items-center justify-between gap-2">
         <span className="font-medium text-sm">Editing: {prompt.label}</span>
         <button type="button" onClick={onCancel} className="text-muted-foreground hover:text-foreground">

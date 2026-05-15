@@ -73,7 +73,7 @@ export function PromptTab({ taskScope }: PromptTabProps) {
 
   if (!activePrompt) {
     return (
-      <div className="card-glass p-4 text-sm text-muted-foreground">
+      <div className="quiet-card p-4 text-sm text-muted-foreground">
         No active prompt version for <span className="font-mono">{taskScope}</span>. Create one in
         <span className="font-medium"> AI Review</span> to start editing here.
       </div>

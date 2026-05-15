@@ -20,7 +20,7 @@ export function LeaderboardStrip({ entries, className }: LeaderboardStripProps) 
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className={cn("card-glass p-5", className)}
+      className={cn("quiet-card p-5", className)}
     >
       <div className="flex items-center gap-2 mb-3">
         <Trophy className="h-5 w-5 text-amber-500" />

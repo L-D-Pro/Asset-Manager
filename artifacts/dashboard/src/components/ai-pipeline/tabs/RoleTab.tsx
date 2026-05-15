@@ -76,7 +76,7 @@ export function RoleTab({ taskScope }: RoleTabProps) {
 
   if (!activePrompt) {
     return (
-      <div className="card-glass p-4 text-sm text-muted-foreground">
+      <div className="quiet-card p-4 text-sm text-muted-foreground">
         No active prompt version for <span className="font-mono">{taskScope}</span>. Create one in AI Review first;
         the role fields live on the same prompt-version row.
       </div>

@@ -43,7 +43,7 @@ function StreakFlame({ days, intensity, className }: StreakFlameProps) {
   return (
     <div
       className={cn(
-        "card-glass flex flex-col items-center justify-center gap-3 p-6",
+        "quiet-card flex flex-col items-center justify-center gap-3 p-6",
         className
       )}
     >

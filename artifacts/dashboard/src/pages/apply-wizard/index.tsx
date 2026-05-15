@@ -1552,7 +1552,7 @@ export default function ApplyWizardPage() {
                     ? "bg-primary text-primary-foreground"
                     : isActive
                     ? "bg-primary text-primary-foreground ring-4 ring-primary/20"
-                    : "bg-card/50 backdrop-blur-md border-2 border-border text-muted-foreground"
+                    : "bg-card/50  border-2 border-border text-muted-foreground"
                 }`}
               >
  {isCompleted ? "✓" : index + 1}
@@ -2484,7 +2484,7 @@ export default function ApplyWizardPage() {
  </div>
 
  {useCustomComparison && resumeCandidates.length > 0 ? (
- <div className="rounded-md border bg-card/50 backdrop-blur-md overflow-hidden shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
+ <div className="rounded-md border bg-card/50  overflow-hidden shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
  <div className="flex border-b bg-muted/30 overflow-x-auto no-scrollbar">
  {resumeCandidates.map((c) => (
  <button
@@ -2698,7 +2698,7 @@ export default function ApplyWizardPage() {
  </div>
 
  {useCustomComparison && coverCandidates.length > 0 ? (
- <div className="rounded-md border bg-card/50 backdrop-blur-md overflow-hidden shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
+ <div className="rounded-md border bg-card/50  overflow-hidden shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
  <div className="flex border-b bg-muted/30 overflow-x-auto no-scrollbar">
  {coverCandidates.map((c) => (
  <button

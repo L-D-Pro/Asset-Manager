@@ -389,7 +389,7 @@ export default function ClaimsPage() {
 
  <div className="space-y-3">
  {draftReviews.map((draft, index) => (
-  <div key={draft.clientId} className="card-glass p-4 space-y-3">
+  <div key={draft.clientId} className="quiet-card p-4 space-y-3">
  <div className="flex items-center gap-3">
  <Checkbox
  checked={draft.selected}
@@ -681,7 +681,7 @@ export default function ClaimsPage() {
  <Skeleton className="h-24 w-full" />
  </>
  ) : claims?.length === 0 ? (
-  <div className="card-glass flex flex-col items-center justify-center p-12 text-center">
+  <div className="quiet-card flex flex-col items-center justify-center p-12 text-center">
   <CheckSquare className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
  <h3 className="text-lg font-semibold text-foreground">No claims</h3>
   <p className="text-sm text-muted-foreground mt-1 max-w-sm">

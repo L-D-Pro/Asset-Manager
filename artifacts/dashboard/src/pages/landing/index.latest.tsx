@@ -59,7 +59,7 @@ function Hero() {
       <div className="absolute top-0 left-0 right-0 z-10">
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-5 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl gradient-hero text-white shadow-sm">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl  text-white shadow-sm">
               <Rocket className="h-5 w-5" aria-hidden="true" />
             </span>
             <span className="text-sm font-extrabold tracking-tight text-foreground">
@@ -90,7 +90,7 @@ function Hero() {
             animation: shouldReduce ? "none" : "float 3s ease-in-out infinite",
           }}
         >
-          <span className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-card/70 backdrop-blur border border-border/60 shadow-sm text-primary">
+          <span className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-card/70  border border-border/60 shadow-sm text-primary">
             <Rocket className="h-7 w-7" aria-hidden="true" />
           </span>
         </motion.div>
@@ -123,7 +123,7 @@ function Hero() {
           {pills.map((item) => (
             <div
               key={item.k}
-              className="rounded-full border border-border/70 bg-card/70 backdrop-blur px-4 py-2"
+              className="rounded-full border border-border/70 bg-card/70  px-4 py-2"
             >
               <span className="text-xs font-bold text-foreground">{item.k}</span>
               <span className="text-xs text-muted-foreground">
@@ -246,7 +246,7 @@ function HowItWorks() {
               variants={shouldReduce ? undefined : staggerItem}
               className="p-8 text-center"
             >
-              <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-card/70 backdrop-blur border border-border/60 text-primary shadow-sm">
+              <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-card/70  border border-border/60 text-primary shadow-sm">
                 <card.icon className="h-6 w-6" aria-hidden="true" />
               </div>
               <h3 className="text-xl font-bold mb-2">{card.title}</h3>
@@ -312,7 +312,7 @@ function GamificationTeaser() {
               variants={shouldReduce ? undefined : staggerItem}
               className="p-8 text-center"
             >
-              <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-card/70 backdrop-blur border border-border/60 text-primary shadow-sm">
+              <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-card/70  border border-border/60 text-primary shadow-sm">
                 <card.icon className="h-6 w-6" aria-hidden="true" />
               </div>
               <h3 className="text-lg font-bold mb-2">{card.title}</h3>

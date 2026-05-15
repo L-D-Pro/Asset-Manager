@@ -241,7 +241,7 @@ export default function BestPracticesAdminPage() {
 
   if (user?.role !== "admin") {
     return (
-      <ContentCard className="card-glass">
+      <ContentCard className="quiet-card">
         <div className="p-6">
           <h2 className="text-lg font-semibold">Access Denied</h2>
           <p className="text-muted-foreground text-sm mt-1">Admin access required.</p>
@@ -313,7 +313,7 @@ export default function BestPracticesAdminPage() {
               return (
                 <ContentCard
                   key={index}
-                  className={`card-glass ${isDisabled ? "opacity-60" : ""}`}
+                  className={`quiet-card ${isDisabled ? "opacity-60" : ""}`}
                   index={index}
                 >
                   <div className="flex items-start justify-between gap-4">
@@ -403,7 +403,7 @@ export default function BestPracticesAdminPage() {
 
           {/* Hardcoded Guards */}
           {config.hardcodedGuards && Object.keys(config.hardcodedGuards).length > 0 && (
-            <ContentCard className="card-glass opacity-70">
+            <ContentCard className="quiet-card opacity-70">
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
                   Hardcoded Guards

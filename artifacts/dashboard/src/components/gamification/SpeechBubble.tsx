@@ -37,10 +37,10 @@ export function SpeechBubble({ message, show, onDismiss, className }: SpeechBubb
           exit={{ opacity: 0, y: -10, scale: 0.9 }}
           transition={{ type: "spring", stiffness: 400, damping: 25 }}
           className={cn(
-            "card-glass p-3 px-4 text-sm font-bold text-foreground tracking-tight relative",
+            "quiet-card p-3 px-4 text-sm font-bold text-foreground tracking-tight relative",
             "after:content-[''] after:absolute after:-bottom-2 after:left-6 after:w-4 after:h-4",
             "after:bg-card/70 after:border-r after:border-b after:border-border/50",
-            "after:rotate-45 after:backdrop-blur-md",
+            "after:rotate-45 after:",
             className
           )}
         >

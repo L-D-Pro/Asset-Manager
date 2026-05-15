@@ -13,7 +13,7 @@ function XPCard({ level, currentXp, xpToNext, totalXp, className }: XPCardProps)
  const progress = xpToNext > 0 ? Math.min((currentXp / xpToNext) * 100, 100) : 100
 
   return (
-    <div className={cn("card-glass flex flex-col items-center gap-4 p-6", className)}>
+    <div className={cn("quiet-card flex flex-col items-center gap-4 p-6", className)}>
  <ProgressRing
  progress={progress}
  size={100}

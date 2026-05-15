@@ -541,7 +541,7 @@ export default function AiConfigPage() {
  </div>
 
  {isLoading ? <Skeleton className="h-64 w-full" /> : sortedConfigs.length === 0 ? (
-  <div className="card-glass flex flex-col items-center justify-center p-12 text-center">
+  <div className="quiet-card flex flex-col items-center justify-center p-12 text-center">
   <Settings className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
   <h3 className="text-lg font-semibold text-foreground">No AI configs yet</h3>
   <p className="text-sm text-muted-foreground mt-1">Create your first model config to enable AI pipelines.</p>
@@ -551,7 +551,7 @@ export default function AiConfigPage() {
  {sortedConfigs.map(c => {
  const fallbackChain = getFallbackChain(c);
  return (
-  <div key={c.id} data-testid={`card-config-${c.id}`} className={cn("card-glass rounded-2xl overflow-hidden", !c.isActive && "opacity-70")}>
+  <div key={c.id} data-testid={`card-config-${c.id}`} className={cn("quiet-card rounded-2xl overflow-hidden", !c.isActive && "opacity-70")}>
   <div className="p-5 space-y-3">
  <div className="flex justify-between items-start">
  <div className="space-y-1 flex-1 min-w-0 pr-2">

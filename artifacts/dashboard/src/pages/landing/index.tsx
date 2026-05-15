@@ -191,7 +191,7 @@ function Navbar() {
       className={cn(
         'fixed top-0 left-0 right-0 z-50 transition-all duration-300',
         scrolled
-          ? 'bg-background/70 backdrop-blur-xl border-b border-border/50 shadow-sm'
+          ? 'bg-background/70  border-b border-border/50 shadow-sm'
           : 'bg-transparent'
       )}
     >
@@ -245,7 +245,7 @@ function Navbar() {
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.25 }}
-            className="md:hidden overflow-hidden bg-background/95 backdrop-blur-xl border-b border-border/50"
+            className="md:hidden overflow-hidden bg-background/95  border-b border-border/50"
           >
             <div className="px-4 py-4 space-y-3">
               {navLinks.map((l) => (
@@ -292,7 +292,7 @@ function Hero() {
             initial={{ opacity: 0, y: shouldReduce ? 0 : 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: easing.smooth }}
-            className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 backdrop-blur-sm px-4 py-1.5 text-sm text-muted-foreground mb-6"
+            className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60  px-4 py-1.5 text-sm text-muted-foreground mb-6"
           >
             <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
             Trusted by 3,500+ job seekers worldwide
@@ -357,7 +357,7 @@ function Hero() {
           transition={{ duration: 0.8, delay: 0.3, ease: easing.smooth }}
           className="mt-16 relative max-w-5xl mx-auto"
         >
-          <div className="rounded-2xl border border-border/50 bg-card/40 backdrop-blur-xl shadow-2xl overflow-hidden">
+          <div className="rounded-2xl border border-border/50 bg-card/40  shadow-2xl overflow-hidden">
             <div className="flex items-center gap-2 px-4 py-3 border-b border-border/30 bg-muted/30">
               <div className="flex gap-1.5">
                 <div className="w-3 h-3 rounded-full bg-red-400/80" />
@@ -452,7 +452,7 @@ function HowItWorks() {
             <motion.div
               key={s.num}
               variants={staggerItem}
-              className="group relative rounded-2xl border border-border/50 bg-card/40 backdrop-blur-sm p-8 hover:border-primary/30 hover:bg-card/60 transition-all duration-300"
+              className="group relative rounded-2xl border border-border/50 bg-card/40  p-8 hover:border-primary/30 hover:bg-card/60 transition-all duration-300"
             >
               <div className="text-5xl font-bold text-primary/10 group-hover:text-primary/20 transition-colors mb-4">
                 {s.num}
@@ -554,7 +554,7 @@ function Stats() {
               whileInView="visible"
               viewport={{ once: true }}
               custom={i * 0.1}
-              className="text-center rounded-2xl border border-border/50 bg-card/40 backdrop-blur-sm p-8"
+              className="text-center rounded-2xl border border-border/50 bg-card/40  p-8"
             >
               <div className="text-5xl md:text-6xl font-bold tracking-tight bg-gradient-to-br from-foreground to-muted-foreground bg-clip-text text-transparent">
                 {s.value}{s.suffix}
@@ -597,7 +597,7 @@ function ProofOfWork() {
             <motion.div
               key={card.title}
               variants={staggerItem}
-              className="rounded-xl border border-border/50 bg-card/60 backdrop-blur-sm p-5 hover:border-primary/30 transition-colors"
+              className="rounded-xl border border-border/50 bg-card/60  p-5 hover:border-primary/30 transition-colors"
             >
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
@@ -651,8 +651,8 @@ function Pricing() {
               className={cn(
                 'relative rounded-2xl border p-8 flex flex-col',
                 tier.featured
-                  ? 'border-primary/40 bg-primary/5 backdrop-blur-sm shadow-lg shadow-primary/5'
-                  : 'border-border/50 bg-card/40 backdrop-blur-sm'
+                  ? 'border-primary/40 bg-primary/5  shadow-lg shadow-primary/5'
+                  : 'border-border/50 bg-card/40 '
               )}
             >
               {tier.featured && (
@@ -722,7 +722,7 @@ function Testimonials() {
             <motion.div
               key={t.name}
               variants={staggerItem}
-              className="rounded-2xl border border-border/50 bg-card/60 backdrop-blur-sm p-8 flex flex-col"
+              className="rounded-2xl border border-border/50 bg-card/60  p-8 flex flex-col"
             >
               <div className="flex gap-1 mb-4">
                 {[1, 2, 3, 4, 5].map((s) => (
@@ -776,7 +776,7 @@ function FAQ() {
           {faqs.map((faq, i) => (
             <div
               key={i}
-              className="rounded-xl border border-border/50 bg-card/40 backdrop-blur-sm overflow-hidden"
+              className="rounded-xl border border-border/50 bg-card/40  overflow-hidden"
             >
               <button
                 onClick={() => setOpenIndex(openIndex === i ? null : i)}

@@ -23,7 +23,7 @@ export function FloatingXP({ xp, key }: FloatingXPProps) {
           animate={{ opacity: 0, y: -60, scale: 1.3 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 1.5, ease: "easeOut" }}
-          className="pointer-events-none fixed z-[200] font-extrabold text-2xl tracking-tight gradient-text animate-fade-slide-up"
+          className="pointer-events-none fixed z-[200] font-extrabold text-2xl tracking-tight  animate-fade-slide-up"
         >
           +{xp} XP
         </motion.div>

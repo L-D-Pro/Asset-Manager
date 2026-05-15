@@ -70,7 +70,7 @@ function ChangePasswordSection() {
  };
 
  return (
-  <ContentCard className="card-glass">
+  <ContentCard className="quiet-card">
   <CardHeader>
   <CardTitle className="flex items-center gap-2 text-base">
   <Lock className="h-4 w-4" /> Change Password
@@ -120,7 +120,7 @@ function ChangeEmailSection() {
  };
 
  return (
-  <ContentCard className="card-glass">
+  <ContentCard className="quiet-card">
   <CardHeader>
   <CardTitle className="flex items-center gap-2 text-base">
   <Mail className="h-4 w-4" /> Email Address
@@ -227,7 +227,7 @@ function TwoFactorSection() {
  };
 
  return (
-  <ContentCard className="card-glass">
+  <ContentCard className="quiet-card">
   <CardHeader>
   <CardTitle className="flex items-center gap-2 text-base">
   <Shield className="h-4 w-4" />

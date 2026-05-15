@@ -45,7 +45,7 @@ export function MotivationalQuoteCard({ className }: MotivationalQuoteCardProps)
     <div
       className={cn(
         "relative overflow-hidden rounded-2xl",
-        "bg-card/70 backdrop-blur-md border border-border/50",
+        "bg-card/70  border border-border/50",
         "shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06),0_10px_20px_-2px_rgba(0,0,0,0.03)]",
         className,
       )}
@@ -96,7 +96,7 @@ export function MotivationalQuoteCard({ className }: MotivationalQuoteCardProps)
         <motion.div
           animate={{ y: [0, -5, 0] }}
           transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-          className="shrink-0 flex h-12 w-12 items-center justify-center rounded-full gradient-hero shadow-[0_4px_15px_-3px_hsl(var(--primary)/0.4)] select-none"
+          className="shrink-0 flex h-12 w-12 items-center justify-center rounded-full  shadow-[0_4px_15px_-3px_hsl(var(--primary)/0.4)] select-none"
         >
           <span className="text-2xl">🦊</span>
         </motion.div>

@@ -328,7 +328,7 @@ export default function BaseResumePage() {
   {history.map((version) => (
   <div
   key={version.id}
-   className="card-glass p-4 space-y-3"
+   className="quiet-card p-4 space-y-3"
   data-testid={`card-base-resume-history-${version.id}`}
   >
   <div className="flex items-start justify-between gap-3">

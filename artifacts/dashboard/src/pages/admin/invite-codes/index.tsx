@@ -108,7 +108,7 @@ export default function AdminInviteCodesPage() {
 
  if (user?.role !== "admin") {
  return (
-  <ContentCard className="card-glass">
+  <ContentCard className="quiet-card">
   <CardHeader><CardTitle>Access Denied</CardTitle></CardHeader>
   </ContentCard>
  );
@@ -128,7 +128,7 @@ export default function AdminInviteCodesPage() {
  </PageHeader>
 
  {newCode && (
-  <ContentCard className="border-success card-glass">
+  <ContentCard className="border-success quiet-card">
   <CardContent className="pt-6">
  <div className="flex items-center justify-between">
  <div>
@@ -146,7 +146,7 @@ export default function AdminInviteCodesPage() {
  </ContentCard>
  )}
 
-  <ContentCard className="card-glass">
+  <ContentCard className="quiet-card">
   <CardContent className="p-0">
  {loading ? (
  <div className="p-8 text-center text-muted-foreground">Loading...</div>

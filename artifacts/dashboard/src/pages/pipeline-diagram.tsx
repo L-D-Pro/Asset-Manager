@@ -64,7 +64,7 @@ export default function PipelineDiagram() {
           {WORKFLOW_STAGES.map((stage, index) => (
             <div
               key={stage.id}
-              className="card-glass flex items-start gap-2 rounded-xl p-3 text-xs"
+              className="quiet-card flex items-start gap-2 rounded-xl p-3 text-xs"
             >
               <span className="text-base leading-none">{stage.icon}</span>
               <div className="min-w-0">
@@ -103,7 +103,7 @@ export default function PipelineDiagram() {
                 onClick={() => setSelected(isSelected ? null : task.taskScope)}
                 aria-pressed={isSelected}
                 aria-label={`${TASK_LABELS[task.taskScope] ?? task.taskScope} task`}
-                className={`card-glass rounded-xl p-3 text-left transition-all hover:-translate-y-0.5 ${
+                className={`quiet-card rounded-xl p-3 text-left transition-all hover:-translate-y-0.5 ${
                   isSelected ? "ring-2 ring-primary" : ""
                 }`}
               >

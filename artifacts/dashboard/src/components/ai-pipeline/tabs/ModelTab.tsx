@@ -99,7 +99,7 @@ export function ModelTab({ taskScope }: ModelTabProps) {
 
   if (!primary) {
     return (
-      <div className="card-glass space-y-2 p-4 text-sm">
+      <div className="quiet-card space-y-2 p-4 text-sm">
         <p className="text-muted-foreground">
           No model config for <span className="font-mono">{taskScope}</span>.
         </p>

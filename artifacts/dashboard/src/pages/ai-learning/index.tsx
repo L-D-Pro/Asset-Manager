@@ -264,7 +264,7 @@ export default function AiLearningPage() {
  )}
 
  {!hasData && !statsLoading && (
-  <div className="card-glass flex flex-col items-center justify-center py-12 text-center">
+  <div className="quiet-card flex flex-col items-center justify-center py-12 text-center">
   <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
   <h3 className="text-lg font-semibold mb-2">Not Enough Data</h3>
   <p className="text-muted-foreground max-w-md">
@@ -282,7 +282,7 @@ export default function AiLearningPage() {
  {hasData && (
  <>
  <StaggerContainer className="grid gap-4 md:grid-cols-3">
-  <div className="card-glass p-6">
+  <div className="quiet-card p-6">
   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
   <CardTitle className="text-sm font-medium">
   Total Applications
@@ -296,7 +296,7 @@ export default function AiLearningPage() {
   </p>
   </CardContent>
   </div>
-  <div className="card-glass p-6">
+  <div className="quiet-card p-6">
   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
   <CardTitle className="text-sm font-medium">
   Suggestions
@@ -312,7 +312,7 @@ export default function AiLearningPage() {
   </p>
   </CardContent>
   </div>
-  <div className="card-glass p-6">
+  <div className="quiet-card p-6">
   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
   <CardTitle className="text-sm font-medium">
   Auto Promotions
@@ -330,7 +330,7 @@ export default function AiLearningPage() {
   </div>
  </StaggerContainer>
 
-  <div className="card-glass p-6">
+  <div className="quiet-card p-6">
   <CardHeader>
   <CardTitle>Variant Leaderboard</CardTitle>
   <CardDescription>
@@ -382,7 +382,7 @@ export default function AiLearningPage() {
  </div>
 
  {suggestedComparisons.length > 0 && (
-  <div className="card-glass p-6">
+  <div className="quiet-card p-6">
   <CardHeader>
   <CardTitle className="flex items-center gap-2">
   <Trophy className="h-5 w-5 text-warning" />
@@ -398,7 +398,7 @@ export default function AiLearningPage() {
   return (
   <div
   key={comp.id}
-  className="panel-glass border-warning/30 rounded-2xl p-6"
+  className="quiet-card border-warning/30 rounded-2xl p-6"
   >
   <div className="flex items-center justify-between mb-4">
   <div>
@@ -460,7 +460,7 @@ export default function AiLearningPage() {
  )}
 
  {autoComparisons.length > 0 && (
-  <div className="card-glass p-6">
+  <div className="quiet-card p-6">
   <CardHeader>
   <CardTitle className="flex items-center gap-2">
   <CheckCircle className="h-5 w-5 text-success" />
@@ -476,7 +476,7 @@ export default function AiLearningPage() {
   return (
   <div
   key={comp.id}
-  className="panel-glass border-success/30 rounded-2xl p-6"
+  className="quiet-card border-success/30 rounded-2xl p-6"
   >
   <div className="flex items-center justify-between mb-4">
   <div>
@@ -543,7 +543,7 @@ export default function AiLearningPage() {
   </div>
  )}
 
-  <div className="card-glass p-6">
+  <div className="quiet-card p-6">
   <CardHeader>
   <CardTitle>Learning Configuration</CardTitle>
   <CardDescription>
@@ -688,7 +688,7 @@ export default function AiLearningPage() {
 
    {/* Health Overview */}
    {health && (
-    <div className="card-glass p-6">
+    <div className="quiet-card p-6">
       <CardHeader className="px-0 pb-4">
         <div className="flex items-center gap-2">
           <Activity className="h-5 w-5" />
@@ -735,7 +735,7 @@ export default function AiLearningPage() {
   )}
 
    {/* Loop Status Section */}
-  <div className="card-glass p-6">
+  <div className="quiet-card p-6">
   <CardHeader className="flex flex-row items-center gap-2 space-y-0 px-0 pb-4">
   <HeartPulse className="h-5 w-5 text-primary" />
   <div>
@@ -880,7 +880,7 @@ export default function AiLearningPage() {
   {promptVersions
   .filter((pv: any) => pv.roleLabel)
   .map((pv: any) => (
-  <div key={pv.id} className="card-glass rounded-xl p-5 space-y-3">
+  <div key={pv.id} className="quiet-card rounded-xl p-5 space-y-3">
   <div className="flex items-center justify-between">
   <div className="flex items-center gap-2">
   <h3 className="font-semibold text-base">{pv.roleLabel}</h3>

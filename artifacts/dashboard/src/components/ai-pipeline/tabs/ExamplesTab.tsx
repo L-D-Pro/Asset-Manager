@@ -33,7 +33,7 @@ export function ExamplesTab({ taskScope }: ExamplesTabProps) {
         examples.map((example) => {
           const expanded = expandedId === example.id;
           return (
-            <div key={example.id} className="card-glass text-sm">
+            <div key={example.id} className="quiet-card text-sm">
               <button
                 type="button"
                 onClick={() => setExpandedId(expanded ? null : example.id)}

@@ -25,7 +25,7 @@ export function MascotAvatar({ className }: MascotAvatarProps) {
       className={cn(
         "fixed bottom-6 right-6 z-40",
         "flex h-16 w-16 items-center justify-center rounded-full",
-        "gradient-hero shadow-[0_8px_30px_-4px_hsl(var(--primary)/0.5)]",
+        " shadow-[0_8px_30px_-4px_hsl(var(--primary)/0.5)]",
         "cursor-pointer select-none",
         className
       )}

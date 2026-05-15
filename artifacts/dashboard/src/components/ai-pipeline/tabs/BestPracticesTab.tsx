@@ -166,7 +166,7 @@ export function BestPracticesTab({ taskScope }: BestPracticesTabProps) {
         return (
           <div
             key={index}
-            className={`card-glass space-y-2 p-3 text-sm ${isDisabled ? "opacity-60" : ""}`}
+            className={`quiet-card space-y-2 p-3 text-sm ${isDisabled ? "opacity-60" : ""}`}
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 space-y-2">
