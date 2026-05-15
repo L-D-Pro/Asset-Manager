@@ -234,7 +234,7 @@ export default function AiLearningPage() {
  ) ?? 0;
 
  return (
- <div className="space-y-6">
+ <div>
  <PageHeader
  title="AI Learning"
  subtitle="Bayesian auto-optimizer that learns from feedback signals to improve prompt versions over time."
@@ -245,17 +245,13 @@ export default function AiLearningPage() {
  disabled={recomputeMutation.isPending}
  >
  <RefreshCw
- className={cn(
- "h-4 w-4 mr-2",
- recomputeMutation.isPending && "animate-spin",
- )}
  />
  Recompute Now
  </Button>
  </PageHeader>
 
  {stats?.some((s) => s.lastComputedAt) && (
- <p className="text-xs text-muted-foreground">
+ <p>
  Last computed:{" "}
  {new Date(
  stats.find((s) => s.lastComputedAt)!.lastComputedAt!,
@@ -264,16 +260,16 @@ export default function AiLearningPage() {
  )}
 
  {!hasData && !statsLoading && (
-  <div className="quiet-card flex flex-col items-center justify-center py-12 text-center">
-  <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-  <h3 className="text-lg font-semibold mb-2">Not Enough Data</h3>
-  <p className="text-muted-foreground max-w-md">
+  <div>
+  <AlertCircle />
+  <h3>Not Enough Data</h3>
+  <p>
   Collect at least 10 applications with outcomes to start
   learning. Your application outcomes
   (accepted/rejected/offer) automatically feed the learning
   engine.
   </p>
-  <p className="text-sm text-muted-foreground mt-2">
+  <p>
   Currently: {totalApplications} applications recorded
   </p>
   </div>
@@ -281,56 +277,56 @@ export default function AiLearningPage() {
 
  {hasData && (
  <>
- <StaggerContainer className="grid gap-4 md:grid-cols-3">
-  <div className="quiet-card p-6">
-  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-  <CardTitle className="text-sm font-medium">
+ <StaggerContainer>
+  <div>
+  <CardHeader>
+  <CardTitle>
   Total Applications
   </CardTitle>
-  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+  <TrendingUp />
   </CardHeader>
   <CardContent>
-  <div className="text-2xl font-bold">{totalApplications}</div>
-  <p className="text-xs text-muted-foreground">
+  <div>{totalApplications}</div>
+  <p>
   Across all variants
   </p>
   </CardContent>
   </div>
-  <div className="quiet-card p-6">
-  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-  <CardTitle className="text-sm font-medium">
+  <div>
+  <CardHeader>
+  <CardTitle>
   Suggestions
   </CardTitle>
-  <Trophy className="h-4 w-4 text-warning" />
+  <Trophy />
   </CardHeader>
   <CardContent>
-  <div className="text-2xl font-bold">
+  <div>
   {suggestedComparisons.length}
   </div>
-  <p className="text-xs text-muted-foreground">
+  <p>
   Promotions awaiting review
   </p>
   </CardContent>
   </div>
-  <div className="quiet-card p-6">
-  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-  <CardTitle className="text-sm font-medium">
+  <div>
+  <CardHeader>
+  <CardTitle>
   Auto Promotions
   </CardTitle>
-  <CheckCircle className="h-4 w-4 text-success" />
+  <CheckCircle />
   </CardHeader>
   <CardContent>
-  <div className="text-2xl font-bold">
+  <div>
   {autoComparisons.length}
   </div>
-  <p className="text-xs text-muted-foreground">
+  <p>
   System-promoted variants
   </p>
   </CardContent>
   </div>
  </StaggerContainer>
 
-  <div className="quiet-card p-6">
+  <div>
   <CardHeader>
   <CardTitle>Variant Leaderboard</CardTitle>
   <CardDescription>
@@ -344,9 +340,9 @@ export default function AiLearningPage() {
  <TableHead>Variant</TableHead>
  <TableHead>Type</TableHead>
  <TableHead>Task Scope</TableHead>
- <TableHead className="text-right">Success Rate</TableHead>
- <TableHead className="text-right">Sample Size</TableHead>
- <TableHead className="text-right">Cost/App</TableHead>
+ <TableHead>Success Rate</TableHead>
+ <TableHead>Sample Size</TableHead>
+ <TableHead>Cost/App</TableHead>
  </TableRow>
  </TableHeader>
  <TableBody>
@@ -359,18 +355,18 @@ export default function AiLearningPage() {
  : "0.0";
  return (
  <TableRow key={stat.id}>
- <TableCell className="font-medium">
+ <TableCell>
  {stat.label ?? `#${stat.variantId}`}
  </TableCell>
  <TableCell>
  <Badge variant="outline">{stat.variantType}</Badge>
  </TableCell>
- <TableCell className="text-xs text-muted-foreground">
+ <TableCell>
  {stat.taskScope}
  </TableCell>
- <TableCell className="text-right">{rate}%</TableCell>
- <TableCell className="text-right">{total}</TableCell>
- <TableCell className="text-right">
+ <TableCell>{rate}%</TableCell>
+ <TableCell>{total}</TableCell>
+ <TableCell>
  ${parseFloat(stat.avgCostPerApp || "0").toFixed(4)}
  </TableCell>
  </TableRow>
@@ -382,31 +378,30 @@ export default function AiLearningPage() {
  </div>
 
  {suggestedComparisons.length > 0 && (
-  <div className="quiet-card p-6">
+  <div>
   <CardHeader>
-  <CardTitle className="flex items-center gap-2">
-  <Trophy className="h-5 w-5 text-warning" />
+  <CardTitle>
+  <Trophy />
   Suggested Promotions
   </CardTitle>
   <CardDescription>
   Bayesian comparison results — promote the winning variant
   </CardDescription>
   </CardHeader>
-  <CardContent className="space-y-4">
+  <CardContent>
   {suggestedComparisons.map((comp) => {
   const confPct = confidencePercent(comp.confidence);
   return (
   <div
   key={comp.id}
-  className="quiet-card border-warning/30 rounded-2xl p-6"
   >
-  <div className="flex items-center justify-between mb-4">
   <div>
-  <h4 className="font-semibold">
+  <div>
+  <h4>
   {comp.variantAType} #{comp.variantAId} vs #
   {comp.variantBId}
   </h4>
-  <p className="text-xs text-muted-foreground">
+  <p>
   {comp.taskScope}
   </p>
   </div>
@@ -414,33 +409,32 @@ export default function AiLearningPage() {
   {confPct}% confidence
   </Badge>
   </div>
-  <div className="grid grid-cols-2 gap-4 mb-4">
   <div>
-  <p className="text-xs text-muted-foreground">
+  <div>
+  <p>
   Winner (A)
   </p>
-  <p className="text-lg font-bold">
+  <p>
   {confidencePercent(comp.successRateA)}%
   </p>
-  <p className="text-xs text-muted-foreground">
+  <p>
   N={comp.sampleSizeA}
   </p>
   </div>
   <div>
-  <p className="text-xs text-muted-foreground">
+  <p>
   Loser (B)
   </p>
-  <p className="text-lg font-bold text-muted-foreground">
+  <p>
   {confidencePercent(comp.successRateB)}%
   </p>
-  <p className="text-xs text-muted-foreground">
+  <p>
   N={comp.sampleSizeB}
   </p>
   </div>
   </div>
-  <div className="w-full bg-muted rounded-full h-2 mb-4">
+  <div>
   <div
-  className="bg-warning h-2 rounded-full transition-all"
   style={{ width: `${confPct}%` }}
   />
   </div>
@@ -460,70 +454,68 @@ export default function AiLearningPage() {
  )}
 
  {autoComparisons.length > 0 && (
-  <div className="quiet-card p-6">
+  <div>
   <CardHeader>
-  <CardTitle className="flex items-center gap-2">
-  <CheckCircle className="h-5 w-5 text-success" />
+  <CardTitle>
+  <CheckCircle />
   Auto-Promoted
   </CardTitle>
   <CardDescription>
   System promoted — review and revert if needed
   </CardDescription>
   </CardHeader>
-  <CardContent className="space-y-4">
+  <CardContent>
   {autoComparisons.map((comp) => {
   const confPct = confidencePercent(comp.confidence);
   return (
   <div
   key={comp.id}
-  className="quiet-card border-success/30 rounded-2xl p-6"
   >
-  <div className="flex items-center justify-between mb-4">
   <div>
-  <h4 className="font-semibold">
+  <div>
+  <h4>
   {comp.variantAType} #{comp.variantAId} vs #
   {comp.variantBId}
   </h4>
-  <p className="text-xs text-muted-foreground">
+  <p>
   {comp.taskScope}
   </p>
   </div>
-  <Badge variant="default" className="bg-success">
+  <Badge variant="default">
   Promoted
   </Badge>
   </div>
-  <div className="grid grid-cols-2 gap-4 mb-4">
   <div>
-  <p className="text-xs text-muted-foreground">
+  <div>
+  <p>
   Promoted (A)
   </p>
-  <p className="text-lg font-bold text-success">
+  <p>
   {confidencePercent(comp.successRateA)}%
   </p>
-  <p className="text-xs text-muted-foreground">
+  <p>
   N={comp.sampleSizeA}
   </p>
   </div>
   <div>
-  <p className="text-xs text-muted-foreground">
+  <p>
   Replaced (B)
   </p>
-  <p className="text-lg font-bold text-muted-foreground">
+  <p>
   {confidencePercent(comp.successRateB)}%
   </p>
-  <p className="text-xs text-muted-foreground">
+  <p>
   N={comp.sampleSizeB}
   </p>
   </div>
   </div>
-  <div className="w-full bg-muted rounded-full h-2 mb-4">
+  <div>
   <div
-  className="bg-success h-2 rounded-full transition-all"
   style={{ width: `${confPct}%` }}
   />
   </div>
   {comp.promotedAt && (
-  <p className="text-xs text-muted-foreground mb-4">
+  <p>
   Promoted: {new Date(comp.promotedAt).toLocaleString()}
   </p>
   )}
@@ -533,7 +525,7 @@ export default function AiLearningPage() {
   onClick={() => revertMutation.mutate(comp.id)}
   disabled={revertMutation.isPending}
   >
-  <Undo2 className="h-4 w-4 mr-2" />
+  <Undo2 />
   Revert Promotion
   </Button>
   </div>
@@ -543,15 +535,15 @@ export default function AiLearningPage() {
   </div>
  )}
 
-  <div className="quiet-card p-6">
+  <div>
   <CardHeader>
   <CardTitle>Learning Configuration</CardTitle>
   <CardDescription>
   Thresholds and automation settings
   </CardDescription>
   </CardHeader>
-  <CardContent className="space-y-4">
- <div className="flex items-center justify-between">
+  <CardContent>
+ <div>
  <Label htmlFor="auto-promote">Auto-Promote Enabled</Label>
  <Switch
  id="auto-promote"
@@ -562,7 +554,7 @@ export default function AiLearningPage() {
  />
  </div>
  {configEditing ? (
- <div className="space-y-3">
+ <div>
  <div>
  <Label htmlFor="confidence-threshold">
  Confidence Threshold (0-1)
@@ -629,8 +621,8 @@ export default function AiLearningPage() {
 
  {/* Outcome Analytics Section */}
  <ContentCard>
- <div className="flex items-center gap-2 mb-4">
- <TrendingUp className="h-5 w-5 text-primary" />
+ <div>
+ <TrendingUp />
  <SectionHeader
  title="Outcome Analytics"
  description="Approval rates, quality scores, and active training examples per task scope."
@@ -641,35 +633,31 @@ export default function AiLearningPage() {
  <TableHeader>
  <TableRow>
  <TableHead>Task Scope</TableHead>
- <TableHead className="text-right">Evaluations</TableHead>
- <TableHead className="text-right">Approval Rate</TableHead>
- <TableHead className="text-right">Approved</TableHead>
- <TableHead className="text-right">Rejected</TableHead>
- <TableHead className="text-right">Avg Truthfulness</TableHead>
- <TableHead className="text-right">Avg Relevance</TableHead>
- <TableHead className="text-right">Training Examples</TableHead>
+ <TableHead>Evaluations</TableHead>
+ <TableHead>Approval Rate</TableHead>
+ <TableHead>Approved</TableHead>
+ <TableHead>Rejected</TableHead>
+ <TableHead>Avg Truthfulness</TableHead>
+ <TableHead>Avg Relevance</TableHead>
+ <TableHead>Training Examples</TableHead>
  </TableRow>
  </TableHeader>
  <TableBody>
  {outcomeStats!.map((stat) => (
  <TableRow key={stat.taskScope}>
- <TableCell className="font-mono text-sm">{stat.taskScope}</TableCell>
- <TableCell className="text-right">{stat.totalEvaluations}</TableCell>
- <TableCell className="text-right">
+ <TableCell>{stat.taskScope}</TableCell>
+ <TableCell>{stat.totalEvaluations}</TableCell>
+ <TableCell>
  <span
- className={cn(
- "font-semibold",
- stat.approvalRate >= 70 ? "text-green-600" : stat.approvalRate >= 40 ? "text-yellow-600" : "text-red-600",
- )}
  >
  {stat.approvalRate}%
  </span>
  </TableCell>
- <TableCell className="text-right text-green-600">{stat.approved}</TableCell>
- <TableCell className="text-right text-red-600">{stat.rejected}</TableCell>
- <TableCell className="text-right">{stat.avgTruthfulnessScore ?? "—"}</TableCell>
- <TableCell className="text-right">{stat.avgRelevanceScore ?? "—"}</TableCell>
- <TableCell className="text-right">
+ <TableCell>{stat.approved}</TableCell>
+ <TableCell>{stat.rejected}</TableCell>
+ <TableCell>{stat.avgTruthfulnessScore ?? "—"}</TableCell>
+ <TableCell>{stat.avgRelevanceScore ?? "—"}</TableCell>
+ <TableCell>
  <Badge variant={stat.activeTrainingExamples > 0 ? "default" : "secondary"}>
  {stat.activeTrainingExamples}
  </Badge>
@@ -679,32 +667,32 @@ export default function AiLearningPage() {
  </TableBody>
  </Table>
  ) : (
- <div className="py-8 text-center text-muted-foreground">
- <CheckCircle className="h-8 w-8 mx-auto mb-2 opacity-40" />
- <p className="text-sm">No evaluations recorded yet. Approve or reject resume and cover letter versions to start building outcome data.</p>
+ <div>
+ <CheckCircle />
+ <p>No evaluations recorded yet. Approve or reject resume and cover letter versions to start building outcome data.</p>
  </div>
   )}
    </ContentCard>
 
    {/* Health Overview */}
    {health && (
-    <div className="quiet-card p-6">
-      <CardHeader className="px-0 pb-4">
-        <div className="flex items-center gap-2">
-          <Activity className="h-5 w-5" />
-          <CardTitle className="text-lg font-semibold">Health Overview</CardTitle>
+    <div>
+      <CardHeader>
+        <div>
+          <Activity />
+          <CardTitle>Health Overview</CardTitle>
         </div>
         <CardDescription>Loop health check and system status.</CardDescription>
       </CardHeader>
-      <CardContent className="px-0 space-y-4">
-        <div className="flex items-center gap-3">
+      <CardContent>
+        <div>
           <Badge variant={
             health.overallStatus === "healthy" ? "default" :
             health.overallStatus === "warning" ? "secondary" : "destructive"
-          } className="capitalize">
+          }>
             {health.overallStatus}
           </Badge>
-          <span className="text-sm text-muted-foreground">
+          <span>
             {health.overallStatus === "healthy"
               ? "All systems operating normally"
               : health.overallStatus === "warning"
@@ -712,22 +700,22 @@ export default function AiLearningPage() {
               : "High backlog — run recompute"}
           </span>
         </div>
-        <div className="grid gap-4 md:grid-cols-4">
-          <div className="rounded-lg border bg-card/50 p-4">
-            <p className="text-sm font-medium text-muted-foreground mb-1">Unprocessed</p>
-            <div className="text-2xl font-bold">{health.unprocessedSignalCount}</div>
+        <div>
+          <div>
+            <p>Unprocessed</p>
+            <div>{health.unprocessedSignalCount}</div>
           </div>
-          <div className="rounded-lg border bg-card/50 p-4">
-            <p className="text-sm font-medium text-muted-foreground mb-1">Variant Stats</p>
-            <div className="text-2xl font-bold">{health.totalVariantStats}</div>
+          <div>
+            <p>Variant Stats</p>
+            <div>{health.totalVariantStats}</div>
           </div>
-          <div className="rounded-lg border bg-card/50 p-4">
-            <p className="text-sm font-medium text-muted-foreground mb-1">Comparisons</p>
-            <div className="text-2xl font-bold">{health.totalComparisons}</div>
+          <div>
+            <p>Comparisons</p>
+            <div>{health.totalComparisons}</div>
           </div>
-          <div className="rounded-lg border bg-card/50 p-4">
-            <p className="text-sm font-medium text-muted-foreground mb-1">Suggested</p>
-            <div className="text-2xl font-bold">{health.suggestedComparisons}</div>
+          <div>
+            <p>Suggested</p>
+            <div>{health.suggestedComparisons}</div>
           </div>
         </div>
       </CardContent>
@@ -735,58 +723,58 @@ export default function AiLearningPage() {
   )}
 
    {/* Loop Status Section */}
-  <div className="quiet-card p-6">
-  <CardHeader className="flex flex-row items-center gap-2 space-y-0 px-0 pb-4">
-  <HeartPulse className="h-5 w-5 text-primary" />
   <div>
-  <CardTitle className="text-lg font-semibold">Loop Status</CardTitle>
+  <CardHeader>
+  <HeartPulse />
+  <div>
+  <CardTitle>Loop Status</CardTitle>
   <CardDescription>
   Feedback signal processing health and data distribution.
   </CardDescription>
   </div>
   </CardHeader>
-  <CardContent className="px-0 space-y-6">
-  <div className="grid gap-4 md:grid-cols-3">
-  <div className="rounded-lg border bg-card/50 p-4">
-  <p className="text-sm font-medium text-muted-foreground mb-1">
+  <CardContent>
+  <div>
+  <div>
+  <p>
   Unprocessed Signals
   </p>
-  <div className="text-2xl font-bold text-yellow-600">
+  <div>
   {stats?.reduce((sum, s) => sum + s.pending, 0) ?? 0}
   </div>
-  <p className="text-xs text-muted-foreground mt-1">
+  <p>
   Waiting for recompute
   </p>
   </div>
-  <div className="rounded-lg border bg-card/50 p-4">
-  <p className="text-sm font-medium text-muted-foreground mb-1">
+  <div>
+  <p>
   Processed Signals
   </p>
-  <div className="text-2xl font-bold text-green-600">
+  <div>
   {stats?.reduce((sum, s) => sum + s.successes + s.failures, 0) ?? 0}
   </div>
-  <p className="text-xs text-muted-foreground mt-1">
+  <p>
   Successfully analyzed
   </p>
   </div>
-  <div className="rounded-lg border bg-card/50 p-4">
-  <p className="text-sm font-medium text-muted-foreground mb-1">
+  <div>
+  <p>
   Total Signals
   </p>
-  <div className="text-2xl font-bold">
+  <div>
   {stats?.reduce((sum, s) => sum + s.successes + s.failures + s.pending, 0) ?? 0}
   </div>
-  <p className="text-xs text-muted-foreground mt-1">
+  <p>
   All feedback received
   </p>
   </div>
   </div>
 
-  <div className="space-y-4">
-  <div className="flex items-center justify-between">
-  <h4 className="text-sm font-semibold">Variant Breakdown</h4>
+  <div>
+  <div>
+  <h4>Variant Breakdown</h4>
   {stats?.some((s) => s.lastComputedAt) && (
-  <span className="text-xs text-muted-foreground">
+  <span>
   Last recompute:{" "}
   {new Date(
   Math.max(...stats.filter(s => s.lastComputedAt).map(s => new Date(s.lastComputedAt!).getTime()))
@@ -798,10 +786,10 @@ export default function AiLearningPage() {
   <TableHeader>
   <TableRow>
   <TableHead>Type</TableHead>
-  <TableHead className="text-right">Successes</TableHead>
-  <TableHead className="text-right">Failures</TableHead>
-  <TableHead className="text-right">Pending</TableHead>
-  <TableHead className="text-right">Total Sample</TableHead>
+  <TableHead>Successes</TableHead>
+  <TableHead>Failures</TableHead>
+  <TableHead>Pending</TableHead>
+  <TableHead>Total Sample</TableHead>
   </TableRow>
   </TableHeader>
   <TableBody>
@@ -815,19 +803,19 @@ export default function AiLearningPage() {
   if (typeStats.length === 0) {
   return (
   <TableRow key={type}>
-  <TableCell className="font-medium capitalize">{type}</TableCell>
-  <TableCell colSpan={4} className="text-right text-muted-foreground italic">No data</TableCell>
+  <TableCell>{type}</TableCell>
+  <TableCell colSpan={4}>No data</TableCell>
   </TableRow>
   );
   }
 
   return (
   <TableRow key={type}>
-  <TableCell className="font-medium capitalize">{type}</TableCell>
-  <TableCell className="text-right">{successes}</TableCell>
-  <TableCell className="text-right">{failures}</TableCell>
-  <TableCell className="text-right">{pending}</TableCell>
-  <TableCell className="text-right font-bold">{total}</TableCell>
+  <TableCell>{type}</TableCell>
+  <TableCell>{successes}</TableCell>
+  <TableCell>{failures}</TableCell>
+  <TableCell>{pending}</TableCell>
+  <TableCell>{total}</TableCell>
   </TableRow>
   );
   })}
@@ -841,11 +829,11 @@ export default function AiLearningPage() {
   
   if (promptTotal < config.minSampleSize && modelTotal < config.minSampleSize) {
   return (
-  <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 flex items-start gap-3">
-  <AlertCircle className="h-5 w-5 text-yellow-600 shrink-0 mt-0.5" />
   <div>
-  <p className="text-sm font-medium text-yellow-800">Waiting for more data</p>
-  <p className="text-xs text-yellow-700">
+  <AlertCircle />
+  <div>
+  <p>Waiting for more data</p>
+  <p>
   Current samples (Prompt: {promptTotal}, Model: {modelTotal}) are below the minimum threshold of {config.minSampleSize}. Suggestions will become more accurate as more signals are processed.
   </p>
   </div>
@@ -861,53 +849,53 @@ export default function AiLearningPage() {
 
   {/* Agent Roles Section */}
   <ContentCard>
-  <div className="flex items-center gap-2 mb-4">
-  <Users className="h-5 w-5 text-primary" />
+  <div>
+  <Users />
   <SectionHeader
   title="Agent Roles"
   description="Agent role definitions with personality, goals, and skill tags. Edit role fields in the AI Pipeline Hub → click a task → Role tab."
   />
   </div>
-  <p className="mb-4 text-sm text-muted-foreground">
+  <p>
   Role personality, goals, and skill tags are now prepended to the system prompt at AI call time. Edit them in the{" "}
-  <Link to="/pipeline-diagram" className="text-primary underline underline-offset-2">
+  <Link to="/pipeline-diagram">
   AI Pipeline Hub
   </Link>{" "}
   Role tab.
   </p>
   {promptVersions?.some((pv) => pv.roleLabel) ? (
-  <div className="grid gap-6 md:grid-cols-2">
+  <div>
   {promptVersions
   .filter((pv: any) => pv.roleLabel)
   .map((pv: any) => (
-  <div key={pv.id} className="quiet-card rounded-xl p-5 space-y-3">
-  <div className="flex items-center justify-between">
-  <div className="flex items-center gap-2">
-  <h3 className="font-semibold text-base">{pv.roleLabel}</h3>
-  <Badge variant="outline" className="text-xs">{pv.taskScope}</Badge>
+  <div key={pv.id}>
+  <div>
+  <div>
+  <h3>{pv.roleLabel}</h3>
+  <Badge variant="outline">{pv.taskScope}</Badge>
   </div>
-  <Badge variant={pv.isActive ? "default" : "secondary"} className="text-xs">
+  <Badge variant={pv.isActive ? "default" : "secondary"}>
   {pv.isActive ? "Active" : "Inactive"} v{pv.version}
   </Badge>
   </div>
   {pv.personality && (
   <div>
-  <p className="text-xs font-medium text-muted-foreground mb-1">Personality</p>
-  <p className="text-sm text-muted-foreground line-clamp-3">{pv.personality}</p>
+  <p>Personality</p>
+  <p>{pv.personality}</p>
   </div>
   )}
   {pv.goals && (
   <div>
-  <p className="text-xs font-medium text-muted-foreground mb-1">Goals</p>
-  <p className="text-sm text-muted-foreground line-clamp-3">{pv.goals}</p>
+  <p>Goals</p>
+  <p>{pv.goals}</p>
   </div>
   )}
   {pv.skillTags?.length > 0 && (
   <div>
-  <p className="text-xs font-medium text-muted-foreground mb-1">Skill Tags</p>
-  <div className="flex flex-wrap gap-1.5">
+  <p>Skill Tags</p>
+  <div>
   {pv.skillTags.map((tag: string) => (
-  <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+  <Badge key={tag} variant="secondary">{tag}</Badge>
   ))}
   </div>
   </div>
@@ -916,9 +904,9 @@ export default function AiLearningPage() {
   ))}
   </div>
   ) : (
-  <div className="py-8 text-center text-muted-foreground">
-  <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-40" />
-  <p className="text-sm">Agent roles will appear here once prompt versions are seeded. Run the DB migration to populate role definitions.</p>
+  <div>
+  <AlertCircle />
+  <p>Agent roles will appear here once prompt versions are seeded. Run the DB migration to populate role definitions.</p>
   </div>
   )}
   </ContentCard>

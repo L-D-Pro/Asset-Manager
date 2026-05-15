@@ -191,46 +191,24 @@ export default function ChatPage() {
 
   return (
     <div
-      className="page fade-up"
-      style={{
-        maxWidth: 1280,
-        padding: "20px 24px 24px",
-        height: "calc(100vh - 56px)",
-        display: "flex",
-        flexDirection: "column",
-        gap: 0,
-      }}
     >
       <div
-        style={{
-          display: "flex",
-          alignItems: "flex-end",
-          justifyContent: "space-between",
-          marginBottom: 18,
-        }}
       >
         <div>
-          <h1 className="h-display">
+          <h1>
             Chat <em>· copilot</em>
           </h1>
-          <div className="dim" style={{ fontSize: 13, marginTop: 6 }}>
+          <div>
             Attach a job, your base resume, or claims. Citations resolve to your ledger.
           </div>
         </div>
-        <button className="btn primary" onClick={handleNewChat}>
+        <button onClick={handleNewChat}>
           <Plus size={13} />
           New thread
         </button>
       </div>
 
       <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "260px 1fr 280px",
-          gap: 14,
-          flex: 1,
-          minHeight: 0,
-        }}
       >
         {/* ── Threads rail ────────────────────────────────────────── */}
         <ThreadRail
@@ -242,8 +220,6 @@ export default function ChatPage() {
 
         {/* ── Conversation pane ───────────────────────────────────── */}
         <div
-          className="quiet-card"
-          style={{ display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0 }}
         >
           {activeThread ? (
             <>
@@ -251,18 +227,9 @@ export default function ChatPage() {
 
               <div
                 ref={scrollRef}
-                className="quiet-scroll"
-                style={{
-                  flex: 1,
-                  overflowY: "auto",
-                  padding: "14px 22px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 18,
-                }}
               >
                 {loadingMessages && (
-                  <div className="dim" style={{ display: "flex", justifyContent: "center", padding: 20 }}>
+                  <div>
                     Loading…
                   </div>
                 )}
@@ -274,15 +241,6 @@ export default function ChatPage() {
                 )}
                 {stream.state.error && (
                   <div
-                    style={{
-                      alignSelf: "center",
-                      padding: "8px 12px",
-                      background: "var(--danger-bg)",
-                      color: "var(--danger)",
-                      border: "1px solid oklch(0.86 0.07 25)",
-                      borderRadius: "var(--r-sm)",
-                      fontSize: 12,
-                    }}
                   >
                     {stream.state.error}
                   </div>
@@ -341,12 +299,12 @@ export default function ChatPage() {
 
 function ConversationHeader({ thread }: { thread: ChatThread }) {
   return (
-    <div className="quiet-card-header">
-      <div style={{ minWidth: 0 }}>
-        <div className="eyebrow" style={{ marginBottom: 2 }}>
+    <div>
+      <div>
+        <div>
           thread #{thread.id} · scope: {thread.modelScope}
         </div>
-        <h2 className="quiet-card-title">{thread.title}</h2>
+        <h2>{thread.title}</h2>
       </div>
     </div>
   );
@@ -364,16 +322,16 @@ function ThreadRail({
   onDelete: (t: ChatThread) => void;
 }) {
   return (
-    <div className="quiet-card" style={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      <div className="quiet-card-header" style={{ padding: "10px 14px" }}>
-        <span className="label">Threads</span>
-        <span className="dim mono" style={{ fontSize: 11 }}>
+    <div>
+      <div>
+        <span>Threads</span>
+        <span>
           {threads.length}
         </span>
       </div>
-      <div className="quiet-scroll" style={{ flex: 1, overflowY: "auto" }}>
+      <div>
         {threads.length === 0 && (
-          <div className="dim" style={{ padding: 16, fontSize: 12 }}>
+          <div>
             No chats yet. Click "New thread" to start.
           </div>
         )}
@@ -383,44 +341,18 @@ function ThreadRail({
             <div
               key={t.id}
               onClick={() => onPick(t)}
-              style={{
-                padding: "10px 14px",
-                borderBottom: "1px solid var(--line-soft)",
-                cursor: "pointer",
-                background: active ? "var(--paper-2)" : "transparent",
-                borderLeft: active ? "2px solid var(--accent)" : "2px solid transparent",
-                position: "relative",
-              }}
-              className="group"
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+              <div>
                 <span
-                  className="dim mono"
-                  style={{
-                    fontSize: 10.5,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.06em",
-                  }}
                 >
                   {t.modelScope}
                 </span>
               </div>
               <div
-                style={{
-                  fontSize: 13,
-                  fontWeight: active ? 500 : 400,
-                  color: "var(--ink)",
-                  lineHeight: 1.4,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  display: "-webkit-box",
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: "vertical",
-                }}
               >
                 {t.title}
               </div>
-              <div className="dim mono" style={{ fontSize: 11, marginTop: 4 }}>
+              <div>
                 {new Date(t.updatedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
               </div>
               <button
@@ -430,20 +362,6 @@ function ThreadRail({
                   e.stopPropagation();
                   onDelete(t);
                 }}
-                style={{
-                  position: "absolute",
-                  top: 8,
-                  right: 8,
-                  border: "none",
-                  background: "transparent",
-                  color: "var(--ink-4)",
-                  opacity: 0,
-                  cursor: "pointer",
-                  padding: 2,
-                  borderRadius: 4,
-                  transition: "opacity 0.12s",
-                }}
-                className="thread-delete"
               >
                 <X size={12} />
               </button>
@@ -470,17 +388,9 @@ function MessageBubble({
   if (isUser) {
     return (
       <div
-        style={{
-          alignSelf: "flex-end",
-          maxWidth: "75%",
-          display: "flex",
-          flexDirection: "column",
-          gap: 6,
-          alignItems: "flex-end",
-        }}
       >
         {message.attachments.length > 0 && (
-          <div style={{ display: "flex", gap: 4, flexWrap: "wrap", justifyContent: "flex-end" }}>
+          <div>
             {message.attachments.map((a, i) => (
               <AttachChip
                 key={i}
@@ -491,20 +401,10 @@ function MessageBubble({
           </div>
         )}
         <div
-          style={{
-            background: "var(--ink)",
-            color: "var(--paper)",
-            padding: "10px 14px",
-            borderRadius: 12,
-            fontSize: 13.5,
-            lineHeight: 1.55,
-            borderBottomRightRadius: 4,
-            whiteSpace: "pre-wrap",
-          }}
         >
           {message.content}
         </div>
-        <span className="dim mono" style={{ fontSize: 10.5 }}>
+        <span>
           {new Date(message.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
         </span>
       </div>
@@ -512,70 +412,38 @@ function MessageBubble({
   }
 
   return (
-    <div style={{ alignSelf: "flex-start", maxWidth: "90%", display: "flex", gap: 10 }}>
+    <div>
       <div
-        style={{
-          width: 28,
-          height: 28,
-          borderRadius: "50%",
-          background: "var(--accent-bg)",
-          color: "var(--accent-ink)",
-          display: "grid",
-          placeItems: "center",
-          marginTop: 2,
-          flexShrink: 0,
-        }}
       >
         <Sparkles size={14} />
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div>
         <div
-          style={{
-            background: "var(--paper-2)",
-            padding: "12px 16px",
-            borderRadius: 12,
-            borderBottomLeftRadius: 4,
-            fontSize: 13.5,
-            lineHeight: 1.6,
-            color: "var(--ink)",
-            whiteSpace: "pre-wrap",
-            border: "1px solid var(--line-soft)",
-          }}
         >
           {message.content}
         </div>
         <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            marginTop: 6,
-            fontSize: 11,
-            color: "var(--ink-4)",
-          }}
         >
-          <span className="mono">
+          <span>
             {new Date(message.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
           </span>
           {message.modelName && (
             <span>
-              · <span className="mono">{message.modelName}</span>
+              · <span>{message.modelName}</span>
             </span>
           )}
           {message.completionTokens != null && (
             <span>
-              · <span className="mono">{message.completionTokens} tok</span>
+              · <span>{message.completionTokens} tok</span>
             </span>
           )}
-          <span style={{ flex: 1 }} />
+          <span />
           {message.runId && (
             <>
               <button
                 type="button"
                 onClick={() => onFeedback(message, "approved")}
                 aria-label="Helpful"
-                className="btn ghost"
-                style={{ padding: "2px 6px", fontSize: 11, color: "var(--ink-3)" }}
               >
                 <Check size={12} />
               </button>
@@ -583,8 +451,6 @@ function MessageBubble({
                 type="button"
                 onClick={() => onFeedback(message, "rejected")}
                 aria-label="Not helpful"
-                className="btn ghost"
-                style={{ padding: "2px 6px", fontSize: 11, color: "var(--ink-3)" }}
               >
                 <X size={12} />
               </button>
@@ -598,48 +464,16 @@ function MessageBubble({
 
 function StreamingBubble({ text }: { text: string }) {
   return (
-    <div style={{ alignSelf: "flex-start", maxWidth: "90%", display: "flex", gap: 10 }}>
+    <div>
       <div
-        style={{
-          width: 28,
-          height: 28,
-          borderRadius: "50%",
-          background: "var(--accent-bg)",
-          color: "var(--accent-ink)",
-          display: "grid",
-          placeItems: "center",
-          marginTop: 2,
-          flexShrink: 0,
-        }}
       >
         <Sparkles size={14} />
       </div>
       <div
-        style={{
-          background: "var(--paper-2)",
-          padding: "12px 16px",
-          borderRadius: 12,
-          borderBottomLeftRadius: 4,
-          fontSize: 13.5,
-          lineHeight: 1.6,
-          color: "var(--ink)",
-          whiteSpace: "pre-wrap",
-          border: "1px solid var(--line-soft)",
-          flex: 1,
-        }}
       >
-        {text || <span className="dim italic-display">thinking…</span>}
+        {text || <span>thinking…</span>}
         {text && (
           <span
-            style={{
-              display: "inline-block",
-              width: 6,
-              height: 14,
-              background: "var(--accent)",
-              marginLeft: 2,
-              verticalAlign: "middle",
-              animation: "blink 1s steps(2) infinite",
-            }}
           />
         )}
       </div>
@@ -683,19 +517,10 @@ function Composer({
 }) {
   const sendDisabled = !input.trim() || streaming;
   return (
-    <div style={{ borderTop: "1px solid var(--line)", padding: 14 }}>
+    <div>
       <div
-        style={{
-          border: "1px solid var(--line)",
-          borderRadius: 12,
-          background: "var(--card)",
-          padding: 12,
-          display: "flex",
-          flexDirection: "column",
-          gap: 10,
-        }}
       >
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        <div>
           {attachBaseResume && (
             <AttachChip
               icon="resume"
@@ -720,24 +545,18 @@ function Composer({
           )}
           <button
             type="button"
-            className="btn ghost"
-            style={{ padding: "3px 9px", fontSize: 11.5 }}
             onClick={() => setAttachBaseResume(!attachBaseResume)}
           >
             <FileText size={11} /> {attachBaseResume ? "Remove resume" : "Resume"}
           </button>
           <button
             type="button"
-            className="btn ghost"
-            style={{ padding: "3px 9px", fontSize: 11.5 }}
             onClick={onOpenJobPicker}
           >
             <Briefcase size={11} /> Job
           </button>
           <button
             type="button"
-            className="btn ghost"
-            style={{ padding: "3px 9px", fontSize: 11.5 }}
             onClick={onOpenClaimsPicker}
           >
             <Shield size={11} /> Claims
@@ -754,48 +573,25 @@ function Composer({
               onSend();
             }
           }}
-          style={{
-            border: "none",
-            outline: "none",
-            resize: "none",
-            minHeight: 56,
-            fontFamily: "var(--font-ui)",
-            fontSize: 13.5,
-            color: "var(--ink)",
-            background: "transparent",
-            padding: 0,
-            lineHeight: 1.55,
-          }}
         />
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span className="dim mono" style={{ fontSize: 11 }}>
+        <div>
+          <span>
             chat scope · {stagedCount} attached
           </span>
           {streaming ? (
-            <button type="button" className="btn" onClick={onStop} style={{ fontSize: 12 }}>
+            <button type="button" onClick={onStop}>
               <X size={12} />
               Stop
             </button>
           ) : (
             <button
               type="button"
-              className="btn accent"
               onClick={onSend}
               disabled={sendDisabled}
-              style={{ fontSize: 12, opacity: sendDisabled ? 0.5 : 1 }}
             >
               <Send size={12} />
               Send
               <span
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  fontSize: 10,
-                  padding: "1px 5px",
-                  borderRadius: 5,
-                  background: "rgba(255,255,255,0.18)",
-                  color: "rgba(255,255,255,0.85)",
-                  marginLeft: 4,
-                }}
               >
                 ⏎
               </span>
@@ -819,27 +615,9 @@ function AttachChip({
   const IconComponent = icon === "briefcase" ? Briefcase : icon === "resume" ? FileText : Shield;
   return (
     <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        padding: "3px 9px",
-        background: "var(--accent-bg)",
-        color: "var(--accent-ink)",
-        border: "1px solid var(--accent-line)",
-        borderRadius: 99,
-        fontSize: 11.5,
-        fontWeight: 500,
-      }}
     >
       <IconComponent size={11} />
       <span
-        style={{
-          maxWidth: 180,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
       >
         {label}
       </span>
@@ -848,15 +626,6 @@ function AttachChip({
           type="button"
           onClick={onRemove}
           aria-label="Remove attachment"
-          style={{
-            border: "none",
-            background: "transparent",
-            color: "var(--accent-ink)",
-            display: "grid",
-            placeItems: "center",
-            padding: 0,
-            cursor: "pointer",
-          }}
         >
           <X size={10} />
         </button>
@@ -877,21 +646,17 @@ function ContextRail({
   const anyAttached = attachBaseResume || attachedJobs.length > 0 || attachedClaims.length > 0;
   return (
     <aside
-      className="quiet-scroll"
-      style={{ display: "flex", flexDirection: "column", gap: 14, overflowY: "auto", minHeight: 0 }}
     >
-      <div className="quiet-card">
-        <div className="quiet-card-header">
-          <h2 className="quiet-card-title" style={{ fontSize: 15 }}>
+      <div>
+        <div>
+          <h2>
             Attached context
           </h2>
         </div>
         <div
-          className="quiet-card-body"
-          style={{ padding: 12, display: "flex", flexDirection: "column", gap: 8 }}
         >
           {!anyAttached && (
-            <div className="dim" style={{ fontSize: 12, padding: 8 }}>
+            <div>
               Nothing attached yet. Use the buttons in the composer to pull in your base
               resume, a saved job, or claims from the ledger.
             </div>
@@ -919,21 +684,19 @@ function ContextRail({
         </div>
       </div>
 
-      <div className="quiet-card flat">
+      <div>
         <div
-          className="quiet-card-body"
-          style={{ padding: 14, fontSize: 12.5, lineHeight: 1.55 }}
         >
-          <div className="label" style={{ marginBottom: 8 }}>
+          <div>
             Vendored skills
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div>
             {VENDORED_SKILLS.map((s) => (
-              <div key={s} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ color: "var(--accent)", display: "inline-grid", placeItems: "center" }}>
+              <div key={s}>
+                <span>
                   <Sparkles size={12} />
                 </span>
-                <span className="mono" style={{ fontSize: 11.5 }}>
+                <span>
                   {s}
                 </span>
               </div>
@@ -942,20 +705,10 @@ function ContextRail({
         </div>
       </div>
 
-      <div className="quiet-card flat">
+      <div>
         <div
-          className="quiet-card-body"
-          style={{
-            padding: 14,
-            fontSize: 12,
-            lineHeight: 1.5,
-            color: "var(--ink-3)",
-            display: "flex",
-            gap: 8,
-            alignItems: "flex-start",
-          }}
         >
-          <span style={{ color: "var(--accent)", flexShrink: 0, marginTop: 2 }}>
+          <span>
             <Shield size={12} />
           </span>
           <span>
@@ -982,45 +735,21 @@ function ContextBlock({
   const IconComponent = icon === "briefcase" ? Briefcase : icon === "resume" ? FileText : Shield;
   return (
     <div
-      style={{
-        display: "flex",
-        gap: 10,
-        padding: "8px 10px",
-        borderRadius: 8,
-        background: "var(--paper-2)",
-      }}
     >
       <div
-        style={{
-          width: 28,
-          height: 28,
-          borderRadius: 7,
-          background: "var(--accent-bg)",
-          color: "var(--accent-ink)",
-          display: "grid",
-          placeItems: "center",
-          flexShrink: 0,
-        }}
       >
         <IconComponent size={13} />
       </div>
-      <div style={{ minWidth: 0 }}>
-        <div className="label" style={{ fontSize: 10, marginBottom: 2 }}>
+      <div>
+        <div>
           {label}
         </div>
         <div
-          style={{
-            fontSize: 12.5,
-            fontWeight: 500,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
         >
           {title}
         </div>
         {meta && (
-          <div className="dim" style={{ fontSize: 11, marginTop: 2 }}>
+          <div>
             {meta}
           </div>
         )}
@@ -1032,39 +761,21 @@ function ContextBlock({
 function EmptyState({ onNew }: { onNew: () => void }) {
   return (
     <div
-      style={{
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 14,
-        padding: 40,
-      }}
     >
       <div
-        style={{
-          width: 44,
-          height: 44,
-          borderRadius: 11,
-          background: "var(--accent-bg)",
-          color: "var(--accent-ink)",
-          display: "grid",
-          placeItems: "center",
-        }}
       >
         <MessageCircle size={20} />
       </div>
-      <div style={{ textAlign: "center" }}>
-        <div className="h-section" style={{ marginBottom: 4 }}>
+      <div>
+        <div>
           No thread selected
         </div>
-        <div className="dim" style={{ fontSize: 13, maxWidth: 320 }}>
+        <div>
           Pick a conversation from the rail, or start a fresh one to ask about a job,
           tailor a resume, or draft a cover letter.
         </div>
       </div>
-      <button type="button" className="btn primary" onClick={onNew}>
+      <button type="button" onClick={onNew}>
         <Plus size={13} />
         New thread
       </button>
@@ -1124,29 +835,15 @@ function JobPickerDialog({
             type="button"
             key={j.id}
             onClick={() => toggle(j)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              padding: "8px 12px",
-              width: "100%",
-              textAlign: "left",
-              border: "none",
-              background: checked ? "var(--accent-bg)" : "transparent",
-              color: "var(--ink)",
-              borderRadius: "var(--r-sm)",
-              fontSize: 13,
-              cursor: "pointer",
-            }}
           >
-            <span style={{ color: checked ? "var(--accent)" : "var(--ink-4)" }}>
+            <span>
               {checked ? <Check size={13} /> : <Plus size={13} />}
             </span>
-            <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <span>
               {j.title}
             </span>
             {j.company && (
-              <span className="dim mono" style={{ fontSize: 11 }}>
+              <span>
                 {j.company}
               </span>
             )}
@@ -1197,29 +894,14 @@ function ClaimsPickerDialog({
             type="button"
             key={c.id}
             onClick={() => toggle(c)}
-            style={{
-              display: "flex",
-              alignItems: "flex-start",
-              gap: 10,
-              padding: "8px 12px",
-              width: "100%",
-              textAlign: "left",
-              border: "none",
-              background: checked ? "var(--accent-bg)" : "transparent",
-              color: "var(--ink)",
-              borderRadius: "var(--r-sm)",
-              fontSize: 13,
-              cursor: "pointer",
-              lineHeight: 1.5,
-            }}
           >
-            <span style={{ color: checked ? "var(--accent)" : "var(--ink-4)", marginTop: 2 }}>
+            <span>
               {checked ? <Check size={13} /> : <Plus size={13} />}
             </span>
-            <span style={{ flex: 1 }}>
+            <span>
               {c.text}
               {!c.verified && (
-                <span className="chip warn dot" style={{ marginLeft: 8, fontSize: 10.5 }}>
+                <span>
                   unverified
                 </span>
               )}
@@ -1247,52 +929,28 @@ function PickerSheet({
   return (
     <div
       onClick={onClose}
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(40, 35, 30, 0.18)",
-        display: "grid",
-        placeItems: "center",
-        zIndex: 100,
-      }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="quiet-card"
-        style={{
-          width: "min(520px, 90vw)",
-          maxHeight: "min(640px, 80vh)",
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-          boxShadow: "var(--shadow-pop)",
-        }}
       >
-        <div className="quiet-card-header">
-          <h2 className="quiet-card-title">{title}</h2>
-          <button type="button" className="btn ghost" onClick={onClose} aria-label="Close">
+        <div>
+          <h2>{title}</h2>
+          <button type="button" onClick={onClose} aria-label="Close">
             <X size={13} />
           </button>
         </div>
-        <div className="quiet-scroll" style={{ flex: 1, overflowY: "auto", padding: 6 }}>
-          {loading && <div className="dim" style={{ padding: 24, textAlign: "center" }}>Loading…</div>}
+        <div>
+          {loading && <div>Loading…</div>}
           {empty && (
-            <div className="dim" style={{ padding: 24, textAlign: "center", fontSize: 13 }}>
+            <div>
               Nothing to attach yet.
             </div>
           )}
           {!loading && !empty && children}
         </div>
         <div
-          style={{
-            padding: 12,
-            borderTop: "1px solid var(--line)",
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: 8,
-          }}
         >
-          <button type="button" className="btn" onClick={onClose}>
+          <button type="button" onClick={onClose}>
             Done
           </button>
         </div>

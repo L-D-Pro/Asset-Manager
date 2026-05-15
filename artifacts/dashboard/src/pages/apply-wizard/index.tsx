@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  approveCoverLetterVersion,
-  approveResumeVersion,
-  createApplication as createApplicationRequest,
-  createJob as createJobRequest,
-  draftCoverLetter as draftCoverLetterRequest,
-  getJobClaimMatches,
-  parseJobDescription,
-  tailorJobResume as tailorJobResumeRequest,
-  updateApplication as updateApplicationRequest,
+ approveCoverLetterVersion,
+ approveResumeVersion,
+ createApplication as createApplicationRequest,
+ createJob as createJobRequest,
+ draftCoverLetter as draftCoverLetterRequest,
+ getJobClaimMatches,
+ parseJobDescription,
+ tailorJobResume as tailorJobResumeRequest,
+ updateApplication as updateApplicationRequest,
  updateJob as updateJobRequest,
  useApproveCoverLetterVersion,
  useApproveResumeVersion,
@@ -26,9 +26,9 @@ import {
  useListResumeVersions,
  useListResumeTemplates,
  useListWizardSessions,
-  getGetCoverLetterVersionQueryKey,
+ getGetCoverLetterVersionQueryKey,
  getGetBaseResumeQueryKey,
-  getGetJobClaimMatchesQueryKey,
+ getGetJobClaimMatchesQueryKey,
  getGetJobQueryKey,
  getGetResumeVersionQueryKey,
  getListClaimsQueryKey,
@@ -39,7 +39,7 @@ import {
  getListWizardSessionsQueryKey,
  useGetCoverLetterVersion,
  useGetBaseResume,
-  useGetJob,
+ useGetJob,
  useGetJobClaimMatches,
  useGetResumeVersion,
  useListRoleProfiles,
@@ -327,7 +327,7 @@ export default function ApplyWizardPage() {
  refetchOnReconnect: false,
  },
  });
-  const baseResumeMissing = !baseResumeLoading && !baseResume;
+ const baseResumeMissing = !baseResumeLoading && !baseResume;
 
  const { data: claimMatches = [] } = useGetJobClaimMatches(jobId ?? 0, {
  query: {
@@ -433,13 +433,13 @@ export default function ApplyWizardPage() {
  }, [resumeVersion?.templateId]);
 
  useEffect(() => {
-   setResumeReviewChecked(false);
-   setResumeAiSummaryOpen(true);
+ setResumeReviewChecked(false);
+ setResumeAiSummaryOpen(true);
  }, [resumeVersionId]);
 
  useEffect(() => {
-   setCoverReviewChecked(false);
-   setCoverAiSummaryOpen(true);
+ setCoverReviewChecked(false);
+ setCoverAiSummaryOpen(true);
  }, [coverLetterVersionId]);
 
  useEffect(() => {
@@ -577,8 +577,8 @@ export default function ApplyWizardPage() {
  const resumePromptTokens = (resumeVersion?.diffData as any)?.promptTokens as number | undefined;
  const resumeCompletionTokens = (resumeVersion?.diffData as any)?.completionTokens as number | undefined;
  const resumeFactReview = (resumeVersion?.diffData as any)?.factReview as {
-   findings?: Array<{ kind: string; value: string; line: string; lineIndex: number }>;
-   sourceCharCount?: number;
+ findings?: Array<{ kind: string; value: string; line: string; lineIndex: number }>;
+ sourceCharCount?: number;
  } | undefined;
  const resumeIsV2Pipeline = (resumeVersion?.diffData as any)?.modelContract === "resume_tailoring_v2_simple";
  const resumeRunSucceeded = (!resumeAiAttemptErrors || resumeAiAttemptErrors.length === 0) && resumeIsV2Pipeline;
@@ -597,32 +597,32 @@ export default function ApplyWizardPage() {
  );
 
  const resumeTruthReview = (resumeVersion?.diffData as any)?.truthReview as {
-   supportStatus?: string;
-   supportedCount?: number;
-   partialCount?: number;
-   unsupportedCount?: number;
-   seriousViolationCount?: number;
-   unsupportedPhrases?: string[];
-   gapNotes?: string[];
+ supportStatus?: string;
+ supportedCount?: number;
+ partialCount?: number;
+ unsupportedCount?: number;
+ seriousViolationCount?: number;
+ unsupportedPhrases?: string[];
+ gapNotes?: string[];
  } | undefined;
 
  const resumeHasWarnings = Boolean(
-   resumeTruthReview && (
-     (resumeTruthReview.partialCount ?? 0) > 0 ||
-     (resumeTruthReview.unsupportedCount ?? 0) > 0 ||
-     (resumeTruthReview.seriousViolationCount ?? 0) > 0
-   )
+ resumeTruthReview && (
+ (resumeTruthReview.partialCount ?? 0) > 0 ||
+ (resumeTruthReview.unsupportedCount ?? 0) > 0 ||
+ (resumeTruthReview.seriousViolationCount ?? 0) > 0
+ )
  );
 
  const coverAnnotatedParagraphs = (
-   coverLetterVersion?.annotatedParagraphs && Array.isArray(coverLetterVersion.annotatedParagraphs)
-     ? coverLetterVersion.annotatedParagraphs as any[]
-     : []
+ coverLetterVersion?.annotatedParagraphs && Array.isArray(coverLetterVersion.annotatedParagraphs)
+ ? coverLetterVersion.annotatedParagraphs as any[]
+ : []
  );
 
  const coverTruthWarningParagraphs = coverAnnotatedParagraphs.filter((para) => {
-   const status = para.supportStatus ?? para.truthReview?.supportStatus;
-   return status === "partial" || status === "unsupported";
+ const status = para.supportStatus ?? para.truthReview?.supportStatus;
+ return status === "partial" || status === "unsupported";
  });
 
  const coverHasWarnings = coverTruthWarningParagraphs.length > 0;
@@ -1046,14 +1046,14 @@ export default function ApplyWizardPage() {
  },
  onError: (error) => {
  const status = (error as { response?: { status?: number }; status?: number })?.response?.status
-   ?? (error as { status?: number })?.status;
+ ?? (error as { status?: number })?.status;
  if (status === 503) {
-   toast({
-     title: "Claim drafting timed out",
-     description: "AI service is temporarily unavailable. Try again, or add claims manually.",
-     variant: "destructive",
-   });
-   return;
+ toast({
+ title: "Claim drafting timed out",
+ description: "AI service is temporarily unavailable. Try again, or add claims manually.",
+ variant: "destructive",
+ });
+ return;
  }
  toast({ title: "Draft failed", description: getErrorMessage(error, "Try again."), variant: "destructive" });
  },
@@ -1282,22 +1282,22 @@ export default function ApplyWizardPage() {
  };
 
  const handlePromoteResumeWinner = async () => {
-  if (!jobId || !selectedResumeWinner) return;
-  const winner = resumeCandidates.find((c) => c.modelName === selectedResumeWinner && c.status === "succeeded");
-  if (!winner?.versionId) {
-    toast({ title: "Winner candidate is missing version data", variant: "destructive" });
-    return;
-  }
-  setPromoting("resume");
-  try {
-  const version = await requestJson<{ id: number }>(`/api/jobs/${jobId}/compare/promote-resume`, {
-  method: "POST",
-  body: JSON.stringify({
-   claimIds: selectedClaimIds,
-   templateId: selectedResumeTemplateId,
-   model: { provider: "openrouter", modelName: selectedResumeWinner },
-   candidateVersionId: winner.versionId,
-  }),
+ if (!jobId || !selectedResumeWinner) return;
+ const winner = resumeCandidates.find((c) => c.modelName === selectedResumeWinner && c.status === "succeeded");
+ if (!winner?.versionId) {
+ toast({ title: "Winner candidate is missing version data", variant: "destructive" });
+ return;
+ }
+ setPromoting("resume");
+ try {
+ const version = await requestJson<{ id: number }>(`/api/jobs/${jobId}/compare/promote-resume`, {
+ method: "POST",
+ body: JSON.stringify({
+ claimIds: selectedClaimIds,
+ templateId: selectedResumeTemplateId,
+ model: { provider: "openrouter", modelName: selectedResumeWinner },
+ candidateVersionId: winner.versionId,
+ }),
  });
  setResumeVersionId(version.id);
  setActiveDraftPreview("resume");
@@ -1314,21 +1314,21 @@ export default function ApplyWizardPage() {
  };
 
  const handlePromoteCoverWinner = async () => {
-  if (!jobId || !selectedCoverWinner) return;
-  const winner = coverCandidates.find((c) => c.modelName === selectedCoverWinner && c.status === "succeeded");
-  if (!winner?.versionId) {
-    toast({ title: "Winner candidate is missing version data", variant: "destructive" });
-    return;
-  }
-  setPromoting("cover");
-  try {
-  const version = await requestJson<{ id: number }>(`/api/jobs/${jobId}/compare/promote-cover-letter`, {
-  method: "POST",
-  body: JSON.stringify({
-   claimIds: selectedClaimIds,
-   model: { provider: "openrouter", modelName: selectedCoverWinner },
-   candidateVersionId: winner.versionId,
-  }),
+ if (!jobId || !selectedCoverWinner) return;
+ const winner = coverCandidates.find((c) => c.modelName === selectedCoverWinner && c.status === "succeeded");
+ if (!winner?.versionId) {
+ toast({ title: "Winner candidate is missing version data", variant: "destructive" });
+ return;
+ }
+ setPromoting("cover");
+ try {
+ const version = await requestJson<{ id: number }>(`/api/jobs/${jobId}/compare/promote-cover-letter`, {
+ method: "POST",
+ body: JSON.stringify({
+ claimIds: selectedClaimIds,
+ model: { provider: "openrouter", modelName: selectedCoverWinner },
+ candidateVersionId: winner.versionId,
+ }),
  });
  setCoverLetterVersionId(version.id);
  setActiveDraftPreview("cover");
@@ -1422,7 +1422,7 @@ export default function ApplyWizardPage() {
 
  const handleCreateAssistedSession = () => {
  if (!jobId || !resumeVersionId || !coverLetterVersionId) return;
-  createSession.mutate(
+ createSession.mutate(
  {
  data: {
  platform: assistedForm.platform,
@@ -1438,29 +1438,29 @@ export default function ApplyWizardPage() {
  },
  },
  },
-  {
-  onSuccess: (session) => {
-  (async () => {
-    setAssistedSessionId(session.id);
-    const createdApp = await createApplicationRequest({
-      jobId,
-      resumeVersionId,
-      coverLetterVersionId,
-      applyMode: "assisted",
-      status: "draft",
-      platform: assistedForm.platform || null,
-      notes: assistedForm.notes || null,
-    });
-    setApplicationId(createdApp.id);
-    toast({ title: `Assisted session created (#${session.id}) and linked to application #${createdApp.id}` });
-  })().catch((error) => {
-    toast({
-      title: "Assisted session created, but failed to create application record",
-      description: getErrorMessage(error, "Open Applications and create one manually."),
-      variant: "destructive",
-    });
-  });
-  },
+ {
+ onSuccess: (session) => {
+ (async () => {
+ setAssistedSessionId(session.id);
+ const createdApp = await createApplicationRequest({
+ jobId,
+ resumeVersionId,
+ coverLetterVersionId,
+ applyMode: "assisted",
+ status: "draft",
+ platform: assistedForm.platform || null,
+ notes: assistedForm.notes || null,
+ });
+ setApplicationId(createdApp.id);
+ toast({ title: `Assisted session created (#${session.id}) and linked to application #${createdApp.id}` });
+ })().catch((error) => {
+ toast({
+ title: "Assisted session created, but failed to create application record",
+ description: getErrorMessage(error, "Open Applications and create one manually."),
+ variant: "destructive",
+ });
+ });
+ },
  onError: (error) =>
  toast({
  title: "Failed to create assisted session",
@@ -1468,60 +1468,60 @@ export default function ApplyWizardPage() {
  variant: "destructive",
  }),
  },
-  );
+ );
  };
 
  const handleMarkSubmitted = async () => {
  if (!applicationId) return;
  try {
-  await updateApplicationRequest(applicationId, {
-   status: "submitted",
-   appliedAt: submissionDate ? new Date(`${submissionDate}T12:00:00.000Z`).toISOString() : null,
-   confirmationRef: submissionRef || null,
-   notes: assistedForm.notes || null,
-  });
-  toast({ title: `Application #${applicationId} marked submitted` });
+ await updateApplicationRequest(applicationId, {
+ status: "submitted",
+ appliedAt: submissionDate ? new Date(`${submissionDate}T12:00:00.000Z`).toISOString() : null,
+ confirmationRef: submissionRef || null,
+ notes: assistedForm.notes || null,
+ });
+ toast({ title: `Application #${applicationId} marked submitted` });
  } catch (error) {
-  toast({
-   title: "Failed to mark submitted",
-   description: getErrorMessage(error, "Try again from Applications page."),
-   variant: "destructive",
-  });
+ toast({
+ title: "Failed to mark submitted",
+ description: getErrorMessage(error, "Try again from Applications page."),
+ variant: "destructive",
+ });
  }
  };
 
  return (
- <div className="space-y-8">
+ <div>
  <PageHeader title="Apply Wizard" subtitle="Multi-step AI-powered job application assistant." variant="workflow" />
 
  {savedSessions.length > 0 ? (
- <ContentCard className="border-dashed shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
- <CardHeader className="pb-2">
- <CardTitle className="text-base flex items-center gap-2">
- <Save className="h-4 w-4" />
+ <ContentCard>
+ <CardHeader>
+ <CardTitle>
+ <Save />
  Saved Sessions
  </CardTitle>
  <CardDescription>Resume a previous wizard session or delete it.</CardDescription>
  </CardHeader>
- <CardContent className="space-y-2">
+ <CardContent>
  {savedSessions.map((session) => (
- <div key={session.id} className="flex items-center justify-between rounded border p-2 text-sm">
+ <div key={session.id}>
  <div>
- <p className="font-medium">
+ <p>
  {(session.state as Record<string, unknown>)?.intake
  ? `${((session.state as Record<string, unknown>).intake as { title?: string; company?: string }).title || "Untitled"} — ${((session.state as Record<string, unknown>).intake as { company?: string }).company || "No company"}`
  : "New job"}
  </p>
- <p className="text-xs text-muted-foreground">
+ <p>
  Step: {session.currentStep} · {new Date(session.updatedAt ?? session.createdAt).toLocaleString()}
  </p>
  </div>
- <div className="flex gap-2">
+ <div>
  <Button size="sm" variant="outline" onClick={() => handleResumeSession(session)}>
  Resume
  </Button>
  <Button size="sm" variant="ghost" onClick={() => handleDeleteSession(session.id)}>
- <Trash2 className="h-3 w-3" />
+ <Trash2 />
  </Button>
  </div>
  </div>
@@ -1530,35 +1530,23 @@ export default function ApplyWizardPage() {
  </ContentCard>
  ) : null}
 
- <div className="flex items-start justify-center gap-0">
+ <div>
  {STEP_ORDER.map((name, index) => {
  const isCompleted = index < currentStepIndex;
  const isActive = index === currentStepIndex;
  const isFuture = index > currentStepIndex;
  return (
- <div key={name} className="flex items-start">
+ <div key={name}>
  {index > 0 && (
  <div
- className={`h-1 w-6 md:w-10 mt-4 ${
- isCompleted || isActive ? "bg-primary" : "bg-border"
- }`}
  />
  )}
- <div className="flex flex-col items-center gap-1">
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
-                  isCompleted
-                    ? "bg-primary text-primary-foreground"
-                    : isActive
-                    ? "bg-primary text-primary-foreground ring-4 ring-primary/20"
-                    : "bg-card/50  border-2 border-border text-muted-foreground"
-                }`}
-              >
+ <div>
+ <div
+ >
  {isCompleted ? "✓" : index + 1}
  </div>
-              <span className={`text-[10px] font-semibold capitalize hidden md:block ${
-                isActive ? "text-primary" : isFuture ? "text-muted-foreground" : "text-foreground"
-              }`}>
+ <span>
  {name}
  </span>
  </div>
@@ -1567,7 +1555,7 @@ export default function ApplyWizardPage() {
  })}
  </div>
 
- <div className="grid gap-4 md:grid-cols-3">
+ <div>
  <StatusCard title="Ingested" ok={progress.hasJob} />
  <StatusCard title="Parsed" ok={progress.hasParse} />
  <StatusCard title="Role Profile" ok={progress.hasRole} />
@@ -1585,16 +1573,16 @@ export default function ApplyWizardPage() {
  transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] }}
  >
  {step === "intake" ? (
- <ContentCard className="rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
+ <ContentCard>
  <CardHeader>
- <CardTitle className="flex items-center gap-2">
- <Link2 className="h-5 w-5" />
+ <CardTitle>
+ <Link2 />
  1) Intake Job
  </CardTitle>
  <CardDescription>Use single mode for guided end-to-end, or batch mode for Phase 2 bulk intake.</CardDescription>
  </CardHeader>
- <CardContent className="space-y-3">
- <div className="flex items-center gap-2">
+ <CardContent>
+ <div>
  <Button
  variant={intakeMode === "single" ? "default" : "outline"}
  onClick={() => setIntakeMode("single")}
@@ -1611,7 +1599,7 @@ export default function ApplyWizardPage() {
 
  {intakeMode === "single" ? (
  <>
- <div className="grid gap-3 md:grid-cols-2">
+ <div>
  <Input
  placeholder="Job title"
  value={intake.title}
@@ -1623,7 +1611,7 @@ export default function ApplyWizardPage() {
  onChange={(e) => setIntake((prev) => ({ ...prev, company: e.target.value }))}
  />
  </div>
- <div className="grid gap-3 md:grid-cols-2">
+ <div>
  <Input
  placeholder="Location"
  value={intake.location}
@@ -1637,23 +1625,22 @@ export default function ApplyWizardPage() {
  </div>
  <Textarea
  placeholder="Paste full job description"
- className="min-h-40"
  value={intake.rawJdText}
  onChange={(e) => setIntake((prev) => ({ ...prev, rawJdText: e.target.value }))}
  />
- <div className="flex justify-end gap-2">
+ <div>
  <Button
  variant="outline"
  onClick={handleSaveSession}
  disabled={savingSession}
  >
- <Save className="h-3.5 w-3.5 mr-1.5" />
+ <Save />
  {savingSession ? "Saving..." : "Save & Continue Later"}
  </Button>
  <Button
  onClick={handleCreateJob}
  disabled={!intake.title || !intake.company || createJob.isPending}
- 
+
  >
  {createJob.isPending ? "Ingesting..." : "Create Job & Continue"}
  </Button>
@@ -1661,23 +1648,21 @@ export default function ApplyWizardPage() {
  </>
  ) : (
  <>
- <div className="rounded-md border p-3 space-y-3">
- <p className="text-sm font-medium">Batch paste / CSV format</p>
- <p className="text-xs text-muted-foreground">
+ <div>
+ <p>Batch paste / CSV format</p>
+ <p>
  One row per job: <code>title,company,location,url,jd</code>. Optional header row supported.
  </p>
  <Textarea
  placeholder="title,company,location,url,jd"
- className="min-h-44"
  value={batchText}
  onChange={(e) => setBatchText(e.target.value)}
  />
- <div className="flex flex-wrap items-center gap-2">
+ <div>
  <input
  ref={fileInputRef}
  type="file"
  accept=".csv,text/csv,text/plain"
- className="hidden"
  onChange={(event) => {
  const file = event.target.files?.[0];
  if (file) handleBatchFileUpload(file);
@@ -1688,11 +1673,11 @@ export default function ApplyWizardPage() {
  size="sm"
  onClick={() => fileInputRef.current?.click()}
  >
- <Upload className="h-3.5 w-3.5 mr-1.5" />
+ <Upload />
  Choose File
  </Button>
  <Button variant="ghost" size="sm" onClick={handleDownloadTemplate}>
- <Download className="h-3.5 w-3.5 mr-1.5" />
+ <Download />
  Download Template
  </Button>
  <Button onClick={handleRunBatch} disabled={batchRunning || !batchText.trim()} >
@@ -1708,10 +1693,10 @@ export default function ApplyWizardPage() {
  </div>
  </div>
 
- <div className="rounded-md border p-3 space-y-3">
- <div className="flex items-center justify-between gap-2">
- <p className="text-sm font-medium">Batch status</p>
- <div className="flex items-center gap-2">
+ <div>
+ <div>
+ <p>Batch status</p>
+ <div>
  <Button variant={batchFilter === "all" ? "default" : "outline"} onClick={() => setBatchFilter("all")}>All</Button>
  <Button variant={batchFilter === "failed" ? "default" : "outline"} onClick={() => setBatchFilter("failed")}>Failed</Button>
  <Button variant={batchFilter === "generated" ? "default" : "outline"} onClick={() => setBatchFilter("generated")}>Generated</Button>
@@ -1720,22 +1705,22 @@ export default function ApplyWizardPage() {
  </div>
 
  {visibleBatchRuns.length === 0 ? (
- <p className="text-sm text-muted-foreground">No rows for this filter yet.</p>
+ <p>No rows for this filter yet.</p>
  ) : (
- <div className="space-y-2 max-h-80 overflow-auto">
+ <div>
  {visibleBatchRuns.map((run) => (
- <div key={run.id} className="rounded border p-2 text-sm">
- <div className="flex items-center justify-between gap-3">
- <p className="font-medium">#{run.index} {run.title} - {run.company}</p>
+ <div key={run.id}>
+ <div>
+ <p>#{run.index} {run.title} - {run.company}</p>
  <Badge variant={run.status === "failed" ? "destructive" : run.status === "approved" ? "default" : "outline"}>
  {run.status}
  </Badge>
  </div>
- <p className="text-xs text-muted-foreground mt-1">{run.message}</p>
- <div className="text-xs mt-1 flex flex-wrap gap-3">
- {run.jobId ? <Link className="underline" to={`/jobs/${run.jobId}`}>Job #{run.jobId}</Link> : null}
- {run.resumeVersionId ? <Link className="underline" to="/resume-versions">Resume #{run.resumeVersionId}</Link> : null}
- {run.coverLetterVersionId ? <Link className="underline" to="/cover-letters">Cover #{run.coverLetterVersionId}</Link> : null}
+ <p>{run.message}</p>
+ <div>
+ {run.jobId ? <Link to={`/jobs/${run.jobId}`}>Job #{run.jobId}</Link> : null}
+ {run.resumeVersionId ? <Link to="/resume-versions">Resume #{run.resumeVersionId}</Link> : null}
+ {run.coverLetterVersionId ? <Link to="/cover-letters">Cover #{run.coverLetterVersionId}</Link> : null}
  </div>
  </div>
  ))}
@@ -1749,55 +1734,50 @@ export default function ApplyWizardPage() {
  ) : null}
 
  {step === "parse" ? (
- <ContentCard className="rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
+ <ContentCard>
  <CardHeader>
  <CardTitle>2) Parse and Edit JD</CardTitle>
  <CardDescription>
  Run parser, then edit parsed fields inline before continuing.
  </CardDescription>
  </CardHeader>
- <CardContent className="space-y-3">
- {jobLoading ? <p className="text-sm text-muted-foreground">Loading job...</p> : null}
+ <CardContent>
+ {jobLoading ? <p>Loading job...</p> : null}
  <Textarea
  placeholder="Raw JD text"
- className="min-h-32"
  value={intake.rawJdText}
  onChange={(e) => setIntake((prev) => ({ ...prev, rawJdText: e.target.value }))}
  />
 
- <div className="grid gap-3 md:grid-cols-2">
+ <div>
  <Textarea
  placeholder="Required skills (one per line or comma separated)"
- className="min-h-28"
  value={parsedDraft.requiredSkills}
  onChange={(e) => setParsedDraft((prev) => ({ ...prev, requiredSkills: e.target.value }))}
  />
  <Textarea
  placeholder="Nice-to-have skills"
- className="min-h-28"
  value={parsedDraft.niceSkills}
  onChange={(e) => setParsedDraft((prev) => ({ ...prev, niceSkills: e.target.value }))}
  />
  </div>
- <div className="grid gap-3 md:grid-cols-2">
+ <div>
  <Textarea
  placeholder="Responsibilities"
- className="min-h-28"
  value={parsedDraft.responsibilities}
  onChange={(e) => setParsedDraft((prev) => ({ ...prev, responsibilities: e.target.value }))}
  />
  <Textarea
  placeholder="Keywords"
- className="min-h-28"
  value={parsedDraft.keywords}
  onChange={(e) => setParsedDraft((prev) => ({ ...prev, keywords: e.target.value }))}
  />
  </div>
 
- <div className="flex flex-wrap gap-2 justify-end">
+ <div>
  <Button variant="outline" onClick={() => setStep("intake")}>Back</Button>
  <Button variant="outline" onClick={handleSaveSession} disabled={savingSession}>
- <Save className="h-3.5 w-3.5 mr-1.5" />
+ <Save />
  {savingSession ? "Saving..." : "Save & Continue Later"}
  </Button>
  <Button variant="secondary" onClick={handleParse} disabled={parseJob.isPending}>
@@ -1806,12 +1786,12 @@ export default function ApplyWizardPage() {
  <Button
  onClick={handleSaveParsedEdits}
  disabled={updateJob.isPending || !intake.rawJdText.trim()}
- 
+
  >
  {updateJob.isPending ? "Saving..." : "Save & Continue"}
  </Button>
  </div>
- <p className="text-xs text-muted-foreground">
+ <p>
  Continue unlocks Role + Claims after saving and reparsing JD text.
  </p>
  </CardContent>
@@ -1819,26 +1799,26 @@ export default function ApplyWizardPage() {
  ) : null}
 
  {step === "role" ? (
- <ContentCard className="rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
+ <ContentCard>
  <CardHeader>
- <CardTitle className="flex items-center gap-2">
- <UserCircle className="h-5 w-5" />
+ <CardTitle>
+ <UserCircle />
  3) Claims &amp; Role Profile
  </CardTitle>
  <CardDescription>
  Review matched claims for this job, then optionally attach a role profile for scoring.
  </CardDescription>
  </CardHeader>
- <CardContent className="space-y-4">
+ <CardContent>
  {activeClaims.length === 0 && (
- <div className="rounded-md border border-warning/40 bg-warning/10 p-4 space-y-3">
- <div className="flex items-start gap-2">
- <AlertCircle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
- <div className="space-y-1">
- <p className="text-sm font-semibold">Your Claims Ledger is empty</p>
- <p className="text-xs text-muted-foreground">
+ <div>
+ <div>
+ <AlertCircle />
+ <div>
+ <p>Your Claims Ledger is empty</p>
+ <p>
  AI tailoring needs claims — past achievements, skills, and projects — to personalise your resume and cover letter. Add a few now or{" "}
- <Link to="/claims" className="underline text-primary">go to the full Claims Ledger</Link>.
+ <Link to="/claims">go to the full Claims Ledger</Link>.
  </p>
  </div>
  </div>
@@ -1846,25 +1826,24 @@ export default function ApplyWizardPage() {
  placeholder="Paste career notes, a resume, or a project summary…"
  value={seedSourceText}
  onChange={(e) => setSeedSourceText(e.target.value)}
- className="min-h-28 text-sm"
  />
  {seedDrafts.length === 0 ? (
- <div className="flex justify-end">
+ <div>
  <Button size="sm" variant="secondary" onClick={handleSeedDraftClaims} disabled={draftClaimsHook.isPending}>
- <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+ <Sparkles />
  {draftClaimsHook.isPending ? "Drafting…" : "AI Draft Claims"}
  </Button>
  </div>
  ) : (
- <div className="space-y-2">
- <p className="text-xs font-medium text-muted-foreground">Review drafts — uncheck any you don't want to save:</p>
+ <div>
+ <p>Review drafts — uncheck any you don't want to save:</p>
  {seedDrafts.map((d) => (
- <label key={d.clientId} className="flex items-start gap-2 text-sm cursor-pointer">
- <input type="checkbox" className="mt-1" checked={d.selected} onChange={(e) => setSeedDrafts((prev) => prev.map((x) => x.clientId === d.clientId ? { ...x, selected: e.target.checked } : x))} />
- <Textarea value={d.summary} onChange={(e) => setSeedDrafts((prev) => prev.map((x) => x.clientId === d.clientId ? { ...x, summary: e.target.value } : x))} className="min-h-12 text-xs" />
+ <label key={d.clientId}>
+ <input type="checkbox" checked={d.selected} onChange={(e) => setSeedDrafts((prev) => prev.map((x) => x.clientId === d.clientId ? { ...x, selected: e.target.checked } : x))} />
+ <Textarea value={d.summary} onChange={(e) => setSeedDrafts((prev) => prev.map((x) => x.clientId === d.clientId ? { ...x, summary: e.target.value } : x))} />
  </label>
  ))}
- <div className="flex justify-end gap-2">
+ <div>
  <Button size="sm" variant="outline" onClick={() => setSeedDrafts([])}>Discard</Button>
  <Button size="sm" onClick={handleSeedSaveClaims} disabled={seedingClaims}>
  {seedingClaims ? "Saving…" : `Save ${seedDrafts.filter((d) => d.selected).length} Claims`}
@@ -1874,10 +1853,9 @@ export default function ApplyWizardPage() {
  )}
  </div>
  )}
- <div className="rounded-md border p-3 space-y-3">
- <p className="text-sm font-medium">Select existing role profile <span className="text-muted-foreground font-normal">(optional)</span></p>
+ <div>
+ <p>Select existing role profile <span>(optional)</span></p>
  <select
- className="w-full rounded border bg-background px-3 py-2 text-sm"
  value={selectedRoleProfileId ?? ""}
  onChange={(e) => setSelectedRoleProfileId(e.target.value ? Number(e.target.value) : null)}
  >
@@ -1888,7 +1866,7 @@ export default function ApplyWizardPage() {
  </option>
  ))}
  </select>
- <div className="flex justify-end">
+ <div>
  <Button
  variant="outline"
  disabled={selectedRoleProfileId == null || updateJob.isPending}
@@ -1899,8 +1877,8 @@ export default function ApplyWizardPage() {
  </div>
  </div>
 
- <div className="rounded-md border p-3 space-y-3">
- <p className="text-sm font-medium">Quick create role profile <span className="text-muted-foreground font-normal">(optional)</span></p>
+ <div>
+ <p>Quick create role profile <span>(optional)</span></p>
  <Input
  placeholder="Profile name"
  value={quickProfile.name}
@@ -1916,7 +1894,7 @@ export default function ApplyWizardPage() {
  value={quickProfile.blockedKeywords}
  onChange={(e) => setQuickProfile((prev) => ({ ...prev, blockedKeywords: e.target.value }))}
  />
- <div className="grid gap-3 md:grid-cols-2">
+ <div>
  <Input
  type="number"
  placeholder="Minimum salary"
@@ -1929,38 +1907,37 @@ export default function ApplyWizardPage() {
  onChange={(e) => setQuickProfile((prev) => ({ ...prev, softKeywords: e.target.value }))}
  />
  </div>
- <div className="flex justify-end">
+ <div>
  <Button variant="secondary" onClick={handleQuickCreateRoleProfile} disabled={createRoleProfile.isPending}>
  {createRoleProfile.isPending ? "Creating..." : "Quick Create & Attach"}
  </Button>
  </div>
  </div>
 
- <div className="rounded-md border p-3 space-y-3">
- <p className="text-sm font-medium">Matched claims</p>
+ <div>
+ <p>Matched claims</p>
  {matchedClaimIds.length === 0 ? (
- <div className="space-y-3">
- <p className="text-sm text-muted-foreground">
+ <div>
+ <p>
  No automatic matches yet. Select claims manually from your active ledger, or use Skip to let generation auto-select later.
  </p>
  {activeClaims.length > 0 ? (
- <div className="space-y-2 max-h-72 overflow-auto">
+ <div>
  {activeClaims.map((claim) => {
  const isSelected = selectedClaimIds.includes(claim.id);
  return (
- <label key={claim.id} className="flex items-start gap-3 rounded border p-2 text-sm">
+ <label key={claim.id}>
  <input
  type="checkbox"
  checked={isSelected}
  onChange={() => handleToggleClaim(claim.id)}
- className="mt-1"
  />
- <div className="space-y-1">
- <p className="font-medium">{claim.summary}</p>
- <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+ <div>
+ <p>{claim.summary}</p>
+ <div>
  {claim.domain ? <span>{claim.domain}</span> : null}
  {claim.applicableTags?.slice(0, 4).map((tag) => (
- <span key={tag} className="rounded bg-muted px-1.5 py-0.5">{tag}</span>
+ <span key={tag}>{tag}</span>
  ))}
  </div>
  </div>
@@ -1969,12 +1946,11 @@ export default function ApplyWizardPage() {
  })}
  </div>
  ) : null}
- <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+ <label>
  <input
  type="checkbox"
  checked={skipClaims}
  onChange={(e) => setSkipClaims(e.target.checked)}
- className="rounded"
  />
  <span>
  Skip — let the AI auto-select relevant claims when generating drafts.
@@ -1982,22 +1958,21 @@ export default function ApplyWizardPage() {
  </label>
  </div>
  ) : (
- <div className="space-y-2 max-h-72 overflow-auto">
+ <div>
  {claimMatches.map((match: any) => {
  const claimId = getMatchClaimId(match);
  if (claimId == null) return null;
  const isSelected = selectedClaimIds.includes(claimId);
  return (
- <label key={claimId} className="flex items-start gap-3 rounded border p-2 text-sm">
+ <label key={claimId}>
  <input
  type="checkbox"
  checked={isSelected}
  onChange={() => handleToggleClaim(claimId)}
- className="mt-1"
  />
- <div className="space-y-1">
- <p className="font-medium">{match.claim?.summary ?? "Claim"}</p>
- <div className="flex gap-2 text-xs text-muted-foreground">
+ <div>
+ <p>{match.claim?.summary ?? "Claim"}</p>
+ <div>
  <span>Score: {match.score}</span>
  <span>Type: {match.matchType}</span>
  </div>
@@ -2009,10 +1984,10 @@ export default function ApplyWizardPage() {
  )}
  </div>
 
- <div className="flex justify-end gap-2">
+ <div>
  <Button variant="outline" onClick={() => setStep("parse")}>Back</Button>
  <Button variant="outline" onClick={handleSaveSession} disabled={savingSession}>
- <Save className="h-3.5 w-3.5 mr-1.5" />
+ <Save />
  {savingSession ? "Saving..." : "Save & Continue Later"}
  </Button>
  <Button
@@ -2022,7 +1997,7 @@ export default function ApplyWizardPage() {
  Continue
  </Button>
  </div>
- <p className="text-xs text-muted-foreground">
+ <p>
  Continue requires at least one selected claim, or an explicit Skip choice to let the AI auto-select from your active Claims Ledger.
  </p>
  </CardContent>
@@ -2030,48 +2005,48 @@ export default function ApplyWizardPage() {
  ) : null}
 
  {step === "tailor" ? (
- <ContentCard className="rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
+ <ContentCard>
  <CardHeader>
- <CardTitle className="flex items-center gap-2">
- <Wand2 className="h-5 w-5" />
+ <CardTitle>
+ <Wand2 />
  4) Generate Drafts
  </CardTitle>
  <CardDescription>
  Generate tailored resume and cover letter from selected claims.
  </CardDescription>
  </CardHeader>
- <CardContent className="space-y-3">
+ <CardContent>
  {baseResumeMissing ? (
- <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 flex items-start gap-2">
- <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
- <p className="text-sm">
+ <div>
+ <AlertCircle />
+ <p>
  Base resume is missing. The reset tool clears base resumes too, so upload or paste one on the{" "}
- <Link to="/base-resume" className="underline font-medium">Base Resume</Link>{" "}
+ <Link to="/base-resume">Base Resume</Link>{" "}
  page before generating a tailored resume.
  </p>
  </div>
  ) : null}
  {activeClaims.length === 0 ? (
- <div className="rounded-md border border-warning/40 bg-warning/10 p-3 flex items-start gap-2">
- <AlertCircle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
- <p className="text-sm">
+ <div>
+ <AlertCircle />
+ <p>
  No active claims are selected. Resume generation can still use your base resume as a truth source, but claim-backed tailoring will be limited.
  </p>
  </div>
  ) : selectedClaimIds.length === 0 ? (
- <div className="rounded-md border border-warning/40 bg-warning/10 p-3 flex items-start gap-2">
- <AlertCircle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
- <p className="text-sm">
+ <div>
+ <AlertCircle />
+ <p>
  No specific claims selected. The system will use your base resume and auto-select from your {activeClaims.length} active claim{activeClaims.length === 1 ? "" : "s"} when there is a strong match.
  </p>
  </div>
  ) : (
- <p className="text-sm text-muted-foreground">
- Selected claims: <span className="font-medium text-foreground">{selectedClaimIds.length}</span>
+ <p>
+ Selected claims: <span>{selectedClaimIds.length}</span>
  </p>
  )}
 
- <div className="flex flex-wrap gap-2">
+ <div>
  <Button variant={useCustomComparison ? "outline" : "default"} onClick={() => setUseCustomComparison(false)}>
  Use system defaults
  </Button>
@@ -2080,16 +2055,15 @@ export default function ApplyWizardPage() {
  </Button>
  </div>
 
- <div className="rounded-md border bg-muted/20 p-3 space-y-2">
- <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
  <div>
- <p className="text-sm font-medium">Resume template</p>
- <p className="text-xs text-muted-foreground">
+ <div>
+ <div>
+ <p>Resume template</p>
+ <p>
  Templates control headings, section order, spacing, and export style. Length remains adaptive up to 2 pages.
  </p>
  </div>
  <select
- className="h-10 rounded-md border bg-background px-3 text-sm"
  value={selectedResumeTemplateId}
  onChange={(event) => {
  setSelectedResumeTemplateId(event.target.value);
@@ -2107,18 +2081,18 @@ export default function ApplyWizardPage() {
  </select>
  </div>
  {selectedResumeTemplate ? (
- <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+ <div>
  <Badge variant="outline">{selectedResumeTemplate.lengthPolicy.target}</Badge>
  <Badge variant="outline">Max {selectedResumeTemplate.lengthPolicy.maxPages} pages</Badge>
  <span>{selectedResumeTemplate.sectionOrder.join(" -> ")}</span>
  </div>
  ) : (
- <p className="text-xs text-destructive">Template metadata is still loading.</p>
+ <p>Template metadata is still loading.</p>
  )}
  </div>
 
  {!useCustomComparison ? (
- <div className="flex flex-wrap gap-2">
+ <div>
  <Button variant="secondary" onClick={handleGenerateResume} disabled={tailorResume.isPending || !selectedResumeTemplate || baseResumeLoading || baseResumeMissing}>
  {tailorResume.isPending ? "Generating Resume..." : "Generate Resume"}
  </Button>
@@ -2127,36 +2101,35 @@ export default function ApplyWizardPage() {
  </Button>
  </div>
  ) : (
- <div className="grid gap-4 lg:grid-cols-2">
- <div className="rounded-md border p-3 space-y-3">
- <p className="text-sm font-medium">Resume model comparison</p>
+ <div>
+ <div>
+ <p>Resume model comparison</p>
  <Input
  placeholder="Type model ID (e.g. openai/gpt-4o-mini)"
  value={resumeModelQuery}
  onChange={(e) => setResumeModelQuery(e.target.value)}
  disabled={catalogLoading}
  />
- <div className="flex flex-wrap gap-2">
+ <div>
  {resumeCompareModels.map((model) => (
- <Badge key={model} variant="secondary" className="gap-2">
+ <Badge key={model} variant="secondary">
  {model}
  <button type="button" onClick={() => removeCompareModel("resume", model)}>x</button>
  </Badge>
  ))}
  </div>
- <div className="space-y-2 max-h-48 overflow-auto">
+ <div>
  {filteredResumeModels.map((model) => (
  <button
  type="button"
  key={model.id}
- className="w-full rounded border px-2 py-1 text-left text-xs hover:bg-muted"
  onClick={() => addCompareModel("resume", model.id)}
  disabled={resumeCompareModels.length >= 3}
  >
- <span className="font-medium">{model.id}</span>
- <span className="ml-2 text-muted-foreground">{model.name}</span>
- {model.isConfigured ? <Badge variant="outline" className="ml-2">Configured</Badge> : null}
- {model.isDefaultForResumeTailoring ? <Badge className="ml-2">Resume Default</Badge> : null}
+ <span>{model.id}</span>
+ <span>{model.name}</span>
+ {model.isConfigured ? <Badge variant="outline">Configured</Badge> : null}
+ {model.isDefaultForResumeTailoring ? <Badge>Resume Default</Badge> : null}
  </button>
  ))}
  </div>
@@ -2164,14 +2137,14 @@ export default function ApplyWizardPage() {
  {comparisonRunning ? "Running..." : "Run Resume Comparison"}
  </Button>
  {resumeCandidates.length > 0 ? (
- <div className="space-y-2">
+ <div>
  {resumeCandidates.map((candidate) => (
- <div key={`resume-${candidate.modelName}`} className="rounded border p-2 text-xs space-y-1">
- <div className="flex items-center justify-between">
- <p className="font-medium">{candidate.modelName}</p>
+ <div key={`resume-${candidate.modelName}`}>
+ <div>
+ <p>{candidate.modelName}</p>
  <Badge variant={candidate.status === "failed" ? "destructive" : "outline"}>{candidate.status}</Badge>
  </div>
- <p className="text-muted-foreground whitespace-pre-wrap line-clamp-4">
+ <p>
  {candidate.status === "failed" ? candidate.error : candidate.preview || candidate.notes || "No preview"}
  </p>
  </div>
@@ -2180,35 +2153,34 @@ export default function ApplyWizardPage() {
  ) : null}
  </div>
 
- <div className="rounded-md border p-3 space-y-3">
- <p className="text-sm font-medium">Cover letter model comparison</p>
+ <div>
+ <p>Cover letter model comparison</p>
  <Input
  placeholder="Type model ID (e.g. anthropic/claude-3.5-haiku)"
  value={coverModelQuery}
  onChange={(e) => setCoverModelQuery(e.target.value)}
  disabled={catalogLoading}
  />
- <div className="flex flex-wrap gap-2">
+ <div>
  {coverCompareModels.map((model) => (
- <Badge key={model} variant="secondary" className="gap-2">
+ <Badge key={model} variant="secondary">
  {model}
  <button type="button" onClick={() => removeCompareModel("cover", model)}>x</button>
  </Badge>
  ))}
  </div>
- <div className="space-y-2 max-h-48 overflow-auto">
+ <div>
  {filteredCoverModels.map((model) => (
  <button
  type="button"
  key={model.id}
- className="w-full rounded border px-2 py-1 text-left text-xs hover:bg-muted"
  onClick={() => addCompareModel("cover", model.id)}
  disabled={coverCompareModels.length >= 3}
  >
- <span className="font-medium">{model.id}</span>
- <span className="ml-2 text-muted-foreground">{model.name}</span>
- {model.isConfigured ? <Badge variant="outline" className="ml-2">Configured</Badge> : null}
- {model.isDefaultForCoverLetter ? <Badge className="ml-2">Cover Default</Badge> : null}
+ <span>{model.id}</span>
+ <span>{model.name}</span>
+ {model.isConfigured ? <Badge variant="outline">Configured</Badge> : null}
+ {model.isDefaultForCoverLetter ? <Badge>Cover Default</Badge> : null}
  </button>
  ))}
  </div>
@@ -2216,14 +2188,14 @@ export default function ApplyWizardPage() {
  {comparisonRunning ? "Running..." : "Run Cover Comparison"}
  </Button>
  {coverCandidates.length > 0 ? (
- <div className="space-y-2">
+ <div>
  {coverCandidates.map((candidate) => (
- <div key={`cover-${candidate.modelName}`} className="rounded border p-2 text-xs space-y-1">
- <div className="flex items-center justify-between">
- <p className="font-medium">{candidate.modelName}</p>
+ <div key={`cover-${candidate.modelName}`}>
+ <div>
+ <p>{candidate.modelName}</p>
  <Badge variant={candidate.status === "failed" ? "destructive" : "outline"}>{candidate.status}</Badge>
  </div>
- <p className="text-muted-foreground whitespace-pre-wrap line-clamp-4">
+ <p>
  {candidate.status === "failed" ? candidate.error : candidate.preview || candidate.notes || "No preview"}
  </p>
  </div>
@@ -2233,7 +2205,7 @@ export default function ApplyWizardPage() {
  </div>
  </div>
  )}
- <div className="flex flex-wrap gap-2">
+ <div>
  <Button
  type="button"
  size="sm"
@@ -2256,18 +2228,18 @@ export default function ApplyWizardPage() {
  </Button>
  </div>
  {activeDraftPreview ? (
- <div className="rounded-xl border bg-card/70 p-4 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)] space-y-3">
- <div className="flex flex-wrap items-center justify-between gap-3">
  <div>
- <p className="text-sm font-semibold">
+ <div>
+ <div>
+ <p>
  {activeDraftPreview === "resume" ? "Resume Draft Preview" : "Cover Letter Draft Preview"}
  </p>
- <p className="text-xs text-muted-foreground">
+ <p>
  Review this content before continuing to approval.
  </p>
  {activeDraftPreview === "resume" ? (
- <p className="text-xs text-muted-foreground">
- Template: <span className="font-medium text-foreground">{selectedResumeTemplate?.label ?? resumeVersion?.templateId ?? "Unknown"}</span>
+ <p>
+ Template: <span>{selectedResumeTemplate?.label ?? resumeVersion?.templateId ?? "Unknown"}</span>
  {selectedResumeTemplate ? ` (${selectedResumeTemplate.lengthPolicy.target}, max ${selectedResumeTemplate.lengthPolicy.maxPages} pages)` : ""}
  </p>
  ) : null}
@@ -2278,15 +2250,15 @@ export default function ApplyWizardPage() {
  </div>
 
  {activeDraftPreview === "resume" ? (
- <div className="space-y-3">
+ <div>
  {resumeVersionId && !resumeVersion ? (
- <Skeleton className="h-48 w-full rounded-md" />
+ <Skeleton />
  ) : (
  <>
  {(resumePreviewIsRaw || resumeNeedsRegeneration) && (
- <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm space-y-1">
- <p className="font-medium text-destructive">Resume must be regenerated before approval</p>
- <p className="text-xs text-muted-foreground">
+ <div>
+ <p>Resume must be regenerated before approval</p>
+ <p>
  {resumePreviewIsRaw && !resumeVersion?.tailoredDocumentText
  ? "AI returned a draft but source attribution failed. Review the raw draft below or regenerate."
  : getResumeDiagnosticMessage(resumeVersion?.notes)}
@@ -2294,56 +2266,56 @@ export default function ApplyWizardPage() {
  </div>
  )}
  {resumeVersion ? (
- <div className="rounded-md border bg-muted/30 p-3 text-xs space-y-1">
- <p className="font-semibold uppercase tracking-wide text-muted-foreground">Template</p>
+ <div>
+ <p>Template</p>
  <p>
- <span className="font-medium text-foreground">
+ <span>
  {((resumeVersion.diffData as any)?.templateLabel as string | undefined) ?? selectedResumeTemplate?.label ?? resumeVersion.templateId ?? "Unknown"}
  </span>
  {" "}
- <span className="text-muted-foreground">
+ <span>
  {((resumeVersion.diffData as any)?.lengthPolicy?.target as string | undefined) ?? "Concise 1-2 pages"}
  </span>
  </p>
  {resumeRunSucceeded ? (
- <p className="text-muted-foreground">
- Model: <span className="font-medium text-foreground">{resumeModelName ?? "unknown"}</span>
+ <p>
+ Model: <span>{resumeModelName ?? "unknown"}</span>
  {" · "}
  {resumePromptTokens ?? "?"} in / {resumeCompletionTokens ?? "?"} out tokens
  </p>
  ) : resumeAiAttemptSummary ? (
- <p className="text-muted-foreground">
+ <p>
  AI attempt summary: {resumeAiAttemptSummary}
  </p>
  ) : null}
  </div>
  ) : null}
  {resumeFactReview ? (
- <div className="rounded-md border bg-muted/30 p-3 text-xs space-y-2">
- <div className="flex flex-wrap items-center gap-2">
- <ShieldCheck className="h-4 w-4 text-primary" />
- <span className="font-semibold uppercase tracking-wide text-muted-foreground">Fact Review</span>
+ <div>
+ <div>
+ <ShieldCheck />
+ <span>Fact Review</span>
  {(resumeFactReview.findings?.length ?? 0) === 0 ? (
- <Badge variant="outline" className="bg-green-100 text-green-900 border-green-300">
+ <Badge variant="outline">
  No unverified facts detected
  </Badge>
  ) : (
- <Badge variant="outline" className="bg-yellow-100 text-yellow-900 border-yellow-300">
+ <Badge variant="outline">
  {resumeFactReview.findings!.length} item{resumeFactReview.findings!.length === 1 ? "" : "s"} need review
  </Badge>
  )}
  </div>
  {(resumeFactReview.findings?.length ?? 0) > 0 && (
- <details className="mt-2">
- <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+ <details>
+ <summary>
  Show findings ({resumeFactReview.findings!.length})
  </summary>
- <ul className="mt-2 space-y-1 list-disc list-inside">
+ <ul>
  {resumeFactReview.findings!.map((f, i) => (
  <li key={i}>
- <span className="inline-block rounded bg-yellow-100 px-1 text-yellow-900 mr-1 text-[10px] uppercase">{f.kind}</span>
- <code className="bg-muted px-1 rounded">{f.value}</code>
- <span className="text-muted-foreground"> — {f.line}</span>
+ <span>{f.kind}</span>
+ <code>{f.value}</code>
+ <span> — {f.line}</span>
  </li>
  ))}
  </ul>
@@ -2355,63 +2327,62 @@ export default function ApplyWizardPage() {
  const truthReview = (resumeVersion?.diffData as any)?.truthReview;
  if (!truthReview) return null;
  return (
- <div className="rounded-md border bg-muted/30 p-3 text-xs space-y-2">
- <div className="flex flex-wrap items-center gap-2">
- <ShieldCheck className="h-4 w-4 text-primary" />
- <span className="font-semibold uppercase tracking-wide text-muted-foreground">Truth Review</span>
- <Badge variant="outline" className={truthBadgeClass(truthReview.supportStatus)}>
+ <div>
+ <div>
+ <ShieldCheck />
+ <span>Truth Review</span>
+ <Badge variant="outline">
  {truthBadgeText(truthReview.supportStatus)}
  </Badge>
- <span className="text-muted-foreground">
+ <span>
  {truthReview.supportedCount ?? 0} supported, {truthReview.partialCount ?? 0} needs review, {truthReview.unsupportedCount ?? 0} unsupported
  </span>
  </div>
  {truthReview.seriousViolationCount > 0 && (
- <p className="text-destructive">{truthReview.seriousViolationCount} serious issue{truthReview.seriousViolationCount === 1 ? "" : "s"} found before approval.</p>
+ <p>{truthReview.seriousViolationCount} serious issue{truthReview.seriousViolationCount === 1 ? "" : "s"} found before approval.</p>
  )}
  </div>
  );
  })()}
- <div className="max-h-[28rem] overflow-y-auto bg-muted/50 rounded-md border p-4 text-sm whitespace-pre-wrap font-mono leading-relaxed">
+ <div>
  {resumePreviewText || "Resume content is still loading."}
  </div>
  </>
  )}
  </div>
  ) : (
- <div className="space-y-3">
+ <div>
  {coverLetterVersionId && !coverLetterVersion ? (
- <Skeleton className="h-48 w-full rounded-md" />
+ <Skeleton />
  ) : (
- <div className="max-h-[28rem] overflow-y-auto rounded-md border p-4 bg-muted/30">
+ <div>
  {coverLetterVersion?.annotatedParagraphs && Array.isArray(coverLetterVersion.annotatedParagraphs) && coverLetterVersion.annotatedParagraphs.length > 0 ? (
- <div className="space-y-3">
+ <div>
  {(coverLetterVersion.annotatedParagraphs as any[]).map((para, i) => (
  <div
  key={i}
- className={`p-3 rounded-md border text-sm ${ROLE_COLORS[para.role] || "bg-card"}`}
  >
- <div className="flex items-center gap-2 mb-2 flex-wrap">
- <span className={`text-[10px] font-bold uppercase rounded px-1.5 py-0.5 ${ROLE_LABEL_COLORS[para.role] || "bg-muted"}`}>
+ <div>
+ <span>
  {para.role}
  </span>
- <Badge variant="outline" className={`text-[10px] ${truthBadgeClass(para.supportStatus ?? para.truthReview?.supportStatus)}`}>
+ <Badge variant="outline">
  {truthBadgeText(para.supportStatus ?? para.truthReview?.supportStatus)}
  </Badge>
  {para.claimIds?.length > 0 && (
- <span className="text-[10px] text-muted-foreground">
+ <span>
  Claims: {para.claimIds.join(", ")}
  </span>
  )}
  </div>
- <p className="leading-relaxed">{para.text}</p>
+ <p>{para.text}</p>
  {para.truthReview && (
- <div className="mt-3 rounded border bg-background/70 p-2 text-xs space-y-1">
+ <div>
  {(para.truthReview.unsupportedPhrases?.length ?? 0) > 0 && (
- <p className="text-destructive">Unsupported: {para.truthReview.unsupportedPhrases.join("; ")}</p>
+ <p>Unsupported: {para.truthReview.unsupportedPhrases.join("; ")}</p>
  )}
  {(para.truthReview.gapNotes?.length ?? 0) > 0 && (
- <p className="text-warning">Gaps: {para.truthReview.gapNotes.join("; ")}</p>
+ <p>Gaps: {para.truthReview.gapNotes.join("; ")}</p>
  )}
  </div>
  )}
@@ -2419,7 +2390,7 @@ export default function ApplyWizardPage() {
  ))}
  </div>
  ) : (
- <div className="text-sm whitespace-pre-wrap leading-relaxed">
+ <div>
  {coverLetterVersion?.draftContent || "No tailored content available yet."}
  </div>
  )}
@@ -2429,10 +2400,10 @@ export default function ApplyWizardPage() {
  )}
  </div>
  ) : null}
- <div className="flex justify-end gap-2">
+ <div>
  <Button variant="outline" onClick={() => setStep("role")}>Back</Button>
  <Button variant="outline" onClick={handleSaveSession} disabled={savingSession}>
- <Save className="h-3.5 w-3.5 mr-1.5" />
+ <Save />
  {savingSession ? "Saving..." : "Save & Continue Later"}
  </Button>
  <Button
@@ -2442,12 +2413,12 @@ export default function ApplyWizardPage() {
  ? resumeCandidates.length === 0 || coverCandidates.length === 0
  : !resumeVersionId || !coverLetterVersionId || resumeNeedsRegeneration
  }
- 
+
  >
  Continue
  </Button>
  </div>
- <p className="text-xs text-muted-foreground">
+ <p>
  Continue requires both draft artifacts: one resume version and one cover letter version.
  </p>
  </CardContent>
@@ -2455,10 +2426,10 @@ export default function ApplyWizardPage() {
  ) : null}
 
  {step === "approve" ? (
- <ContentCard className="rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
+ <ContentCard>
  <CardHeader>
- <CardTitle className="flex items-center gap-2">
- <ShieldCheck className="h-5 w-5" />
+ <CardTitle>
+ <ShieldCheck />
  5) Human Approval & Selection
  </CardTitle>
  <CardDescription>
@@ -2467,12 +2438,12 @@ export default function ApplyWizardPage() {
  : "Review and explicitly approve/reject drafts before application prep."}
  </CardDescription>
  </CardHeader>
- <CardContent className="space-y-8">
+ <CardContent>
  {/* Resume Section */}
- <div className="space-y-3">
- <div className="flex items-center justify-between">
- <h3 className="text-lg font-semibold flex items-center gap-2">
- <ClipboardCheck className="h-5 w-5 text-primary" />
+ <div>
+ <div>
+ <h3>
+ <ClipboardCheck />
  Resume
  </h3>
  {resumeVersionId && (
@@ -2483,49 +2454,45 @@ export default function ApplyWizardPage() {
  </div>
 
  {useCustomComparison && resumeCandidates.length > 0 ? (
- <div className="rounded-md border bg-card/50  overflow-hidden shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
- <div className="flex border-b bg-muted/30 overflow-x-auto no-scrollbar">
+ <div>
+ <div>
  {resumeCandidates.map((c) => (
  <button
  key={c.modelName}
  onClick={() => setActiveResumeTab(c.modelName)}
- className={`px-4 py-2 text-xs font-medium border-r transition-colors flex items-center gap-2 whitespace-nowrap
- ${activeResumeTab === c.modelName ? "bg-background border-b-2 border-b-primary" : "text-muted-foreground hover:bg-muted/50"}
- ${c.status === "failed" ? "text-destructive" : ""}
- `}
  >
  {c.modelName}
- {selectedResumeWinner === c.modelName && <Check className="h-3 w-3 text-primary" />}
- {c.status === "failed" && <AlertCircle className="h-3 w-3" />}
+ {selectedResumeWinner === c.modelName && <Check />}
+ {c.status === "failed" && <AlertCircle />}
  </button>
  ))}
  </div>
- <div className="p-4">
+ <div>
  {(() => {
  const activeCandidate = resumeCandidates.find((c) => c.modelName === activeResumeTab);
  if (activeCandidate?.status === "failed") {
  return (
- <div className="p-8 text-center space-y-2">
- <AlertCircle className="h-8 w-8 text-destructive mx-auto" />
- <p className="text-sm font-medium">Generation Failed</p>
- <p className="text-xs text-muted-foreground">{activeCandidate.error}</p>
+ <div>
+ <AlertCircle />
+ <p>Generation Failed</p>
+ <p>{activeCandidate.error}</p>
  </div>
  );
  }
  return (
- <div className="space-y-4">
- <div className="max-h-[28rem] overflow-y-auto bg-muted/50 rounded-md border p-4 text-sm whitespace-pre-wrap font-mono leading-relaxed">
+ <div>
+ <div>
  {activeCandidate?.preview || "No preview content available."}
  </div>
- <div className="flex items-center justify-between gap-4">
- <div className="flex items-center gap-2">
+ <div>
+ <div>
  <Button
  size="sm"
  variant={selectedResumeWinner === activeResumeTab ? "default" : "outline"}
  onClick={() => setSelectedResumeWinner(activeResumeTab)}
  >
  {selectedResumeWinner === activeResumeTab ? (
- <><Check className="h-4 w-4 mr-1.5" /> Winner Selected</>
+ <><Check /> Winner Selected</>
  ) : (
  "Select as Winner"
  )}
@@ -2549,31 +2516,31 @@ export default function ApplyWizardPage() {
  ) : null}
 
  {(!useCustomComparison || resumeVersionId) && (
- <div className="space-y-3">
+ <div>
  {resumeVersionId && !resumeVersion && (
- <Skeleton className="h-48 w-full rounded-md" />
+ <Skeleton />
  )}
  {resumeVersion?.notes?.includes("No matching claims") && (
- <div className="rounded-md border border-warning/40 bg-warning/10 p-3 flex items-start gap-2">
- <AlertCircle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
  <div>
- <p className="text-sm font-medium">This is your unmodified base resume</p>
- <p className="text-xs text-muted-foreground">No claims were available when this was generated. Add claims in Step 3 and regenerate for a tailored version.</p>
+ <AlertCircle />
+ <div>
+ <p>This is your unmodified base resume</p>
+ <p>No claims were available when this was generated. Add claims in Step 3 and regenerate for a tailored version.</p>
  </div>
  </div>
  )}
  {(resumePreviewIsRaw || resumeNeedsRegeneration) && (
- <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 flex items-start gap-2">
- <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
  <div>
- <p className="text-sm font-medium text-destructive">Resume must be regenerated before approval</p>
- <p className="text-xs text-muted-foreground">
+ <AlertCircle />
+ <div>
+ <p>Resume must be regenerated before approval</p>
+ <p>
  {resumePreviewIsRaw && !resumeVersion?.tailoredDocumentText
  ? "AI returned a draft but source attribution failed. Review the raw draft below or regenerate."
  : getResumeDiagnosticMessage(resumeVersion?.notes)}
  </p>
  {resumeAiAttemptSummary ? (
- <p className="text-xs text-muted-foreground mt-1">
+ <p>
  Attempts: {resumeAiAttemptSummary}
  </p>
  ) : null}
@@ -2581,52 +2548,51 @@ export default function ApplyWizardPage() {
  </div>
  )}
  {resumeTruthReview && (
- <div className="rounded-md border bg-muted/30 text-xs">
+ <div>
  <button
  type="button"
- className="w-full flex items-center justify-between gap-2 px-3 py-2.5 hover:bg-muted/50 rounded-t-md transition-colors"
  onClick={() => setResumeAiSummaryOpen((v) => !v)}
  >
- <div className="flex items-center gap-2">
- <ShieldCheck className="h-4 w-4 text-primary shrink-0" />
- <span className="font-semibold uppercase tracking-wide text-muted-foreground">AI Review Summary</span>
- <Badge variant="outline" className={truthBadgeClass(resumeTruthReview.supportStatus)}>
+ <div>
+ <ShieldCheck />
+ <span>AI Review Summary</span>
+ <Badge variant="outline">
  {truthBadgeText(resumeTruthReview.supportStatus)}
  </Badge>
  {resumeHasWarnings && (
- <Badge variant="outline" className="border-warning/50 text-warning">
+ <Badge variant="outline">
  Review required
  </Badge>
  )}
  </div>
- {resumeAiSummaryOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
+ {resumeAiSummaryOpen ? <ChevronDown /> : <ChevronRight />}
  </button>
  {resumeAiSummaryOpen && (
- <div className="px-3 pb-3 space-y-2 border-t">
- <div className="flex flex-wrap gap-3 pt-2 text-muted-foreground">
- <span><span className="font-medium text-foreground">{resumeTruthReview.supportedCount ?? 0}</span> supported</span>
- <span><span className={`font-medium ${(resumeTruthReview.partialCount ?? 0) > 0 ? "text-warning" : "text-foreground"}`}>{resumeTruthReview.partialCount ?? 0}</span> needs review</span>
- <span><span className={`font-medium ${(resumeTruthReview.unsupportedCount ?? 0) > 0 ? "text-destructive" : "text-foreground"}`}>{resumeTruthReview.unsupportedCount ?? 0}</span> unsupported</span>
+ <div>
+ <div>
+ <span><span>{resumeTruthReview.supportedCount ?? 0}</span> supported</span>
+ <span><span>{resumeTruthReview.partialCount ?? 0}</span> needs review</span>
+ <span><span>{resumeTruthReview.unsupportedCount ?? 0}</span> unsupported</span>
  {(resumeTruthReview.seriousViolationCount ?? 0) > 0 && (
- <span className="text-destructive font-medium">{resumeTruthReview.seriousViolationCount} serious violation{resumeTruthReview.seriousViolationCount === 1 ? "" : "s"}</span>
+ <span>{resumeTruthReview.seriousViolationCount} serious violation{resumeTruthReview.seriousViolationCount === 1 ? "" : "s"}</span>
  )}
  </div>
  {(resumeTruthReview.unsupportedPhrases?.length ?? 0) > 0 && (
- <div className="space-y-1">
- <p className="text-muted-foreground font-medium">Unsupported phrases:</p>
- <ul className="list-disc list-inside space-y-0.5">
+ <div>
+ <p>Unsupported phrases:</p>
+ <ul>
  {resumeTruthReview.unsupportedPhrases!.map((phrase, i) => (
- <li key={i} className="text-destructive">{phrase}</li>
+ <li key={i}>{phrase}</li>
  ))}
  </ul>
  </div>
  )}
  {(resumeTruthReview.gapNotes?.length ?? 0) > 0 && (
- <div className="space-y-1">
- <p className="text-muted-foreground font-medium">Gap notes:</p>
- <ul className="list-disc list-inside space-y-0.5">
+ <div>
+ <p>Gap notes:</p>
+ <ul>
  {resumeTruthReview.gapNotes!.map((note, i) => (
- <li key={i} className="text-warning">{note}</li>
+ <li key={i}>{note}</li>
  ))}
  </ul>
  </div>
@@ -2635,31 +2601,30 @@ export default function ApplyWizardPage() {
  )}
  </div>
  )}
- <div className="max-h-96 overflow-y-auto bg-muted/50 rounded-md border p-4 text-sm whitespace-pre-wrap font-mono leading-relaxed">
+ <div>
  {resumePreviewText || (resumeVersionId && !resumeVersion ? "" : resumeVersionId ? "Resume content is still loading." : "Generate a resume in Step 4 first.")}
  </div>
  {resumeHasWarnings && resumeVersion?.status !== "approved" && (
- <label className="flex items-start gap-2.5 cursor-pointer rounded-md border border-warning/40 bg-warning/5 px-3 py-2.5 text-sm select-none">
+ <label>
  <input
  type="checkbox"
- className="mt-0.5 h-4 w-4 shrink-0 accent-primary cursor-pointer"
  checked={resumeReviewChecked}
  onChange={(e) => setResumeReviewChecked(e.target.checked)}
  data-testid="resume-review-checkbox"
  />
- <span className="text-muted-foreground">
+ <span>
  I have reviewed this draft and acknowledge the flagged items above before approving.
  </span>
  </label>
  )}
- <div className="flex gap-2">
+ <div>
  <Button
  variant={resumeVersion?.status === "approved" ? "outline" : "default"}
  onClick={handleApproveResume}
  disabled={resumeVersion?.status === "approved" || !resumeVersionId || resumeNeedsRegeneration || (resumeHasWarnings && !resumeReviewChecked)}
  data-testid="btn-approve-resume"
  >
- {resumeNeedsRegeneration ? "Regenerate Resume Required" : resumeVersion?.status === "approved" ? <><Check className="h-4 w-4 mr-2" /> Resume Approved</> : resumeHasWarnings && !resumeReviewChecked ? "Check review box to approve" : "Approve Resume"}
+ {resumeNeedsRegeneration ? "Regenerate Resume Required" : resumeVersion?.status === "approved" ? <><Check /> Resume Approved</> : resumeHasWarnings && !resumeReviewChecked ? "Check review box to approve" : "Approve Resume"}
  </Button>
  <Button
  variant="outline"
@@ -2671,7 +2636,7 @@ export default function ApplyWizardPage() {
  {resumeVersion?.status === "approved" && !resumeNeedsRegeneration && (
  <Button variant="secondary" asChild>
  <a href={`/api/resume-versions/${resumeVersionId}/export`} target="_blank" rel="noopener noreferrer">
- <Download className="h-4 w-4 mr-2" /> Export DOCX
+ <Download /> Export DOCX
  </a>
  </Button>
  )}
@@ -2683,10 +2648,10 @@ export default function ApplyWizardPage() {
  <Separator />
 
  {/* Cover Letter Section */}
- <div className="space-y-3">
- <div className="flex items-center justify-between">
- <h3 className="text-lg font-semibold flex items-center gap-2">
- <Wand2 className="h-5 w-5 text-primary" />
+ <div>
+ <div>
+ <h3>
+ <Wand2 />
  Cover Letter
  </h3>
  {coverLetterVersionId && (
@@ -2697,49 +2662,45 @@ export default function ApplyWizardPage() {
  </div>
 
  {useCustomComparison && coverCandidates.length > 0 ? (
- <div className="rounded-md border bg-card/50  overflow-hidden shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
- <div className="flex border-b bg-muted/30 overflow-x-auto no-scrollbar">
+ <div>
+ <div>
  {coverCandidates.map((c) => (
  <button
  key={c.modelName}
  onClick={() => setActiveCoverTab(c.modelName)}
- className={`px-4 py-2 text-xs font-medium border-r transition-colors flex items-center gap-2 whitespace-nowrap
- ${activeCoverTab === c.modelName ? "bg-background border-b-2 border-b-primary" : "text-muted-foreground hover:bg-muted/50"}
- ${c.status === "failed" ? "text-destructive" : ""}
- `}
  >
  {c.modelName}
- {selectedCoverWinner === c.modelName && <Check className="h-3 w-3 text-primary" />}
- {c.status === "failed" && <AlertCircle className="h-3 w-3" />}
+ {selectedCoverWinner === c.modelName && <Check />}
+ {c.status === "failed" && <AlertCircle />}
  </button>
  ))}
  </div>
- <div className="p-4">
+ <div>
  {(() => {
  const activeCandidate = coverCandidates.find((c) => c.modelName === activeCoverTab);
  if (activeCandidate?.status === "failed") {
  return (
- <div className="p-8 text-center space-y-2">
- <AlertCircle className="h-8 w-8 text-destructive mx-auto" />
- <p className="text-sm font-medium">Generation Failed</p>
- <p className="text-xs text-muted-foreground">{activeCandidate.error}</p>
+ <div>
+ <AlertCircle />
+ <p>Generation Failed</p>
+ <p>{activeCandidate.error}</p>
  </div>
  );
  }
  return (
- <div className="space-y-4">
- <div className="max-h-[28rem] overflow-y-auto bg-muted/50 rounded-md border p-4 text-sm whitespace-pre-wrap leading-relaxed">
+ <div>
+ <div>
  {activeCandidate?.preview || "No preview content available."}
  </div>
- <div className="flex items-center justify-between gap-4">
- <div className="flex items-center gap-2">
+ <div>
+ <div>
  <Button
  size="sm"
  variant={selectedCoverWinner === activeCoverTab ? "default" : "outline"}
  onClick={() => setSelectedCoverWinner(activeCoverTab)}
  >
  {selectedCoverWinner === activeCoverTab ? (
- <><Check className="h-4 w-4 mr-1.5" /> Winner Selected</>
+ <><Check /> Winner Selected</>
  ) : (
  "Select as Winner"
  )}
@@ -2763,43 +2724,41 @@ export default function ApplyWizardPage() {
  ) : null}
 
  {(!useCustomComparison || coverLetterVersionId) && (
- <div className="space-y-3">
+ <div>
  {coverLetterVersionId && !coverLetterVersion && (
- <Skeleton className="h-48 w-full rounded-md" />
+ <Skeleton />
  )}
  {coverLetterVersion?.notes?.includes("No matching claims") && (
- <div className="rounded-md border border-warning/40 bg-warning/10 p-3 flex items-start gap-2">
- <AlertCircle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
  <div>
- <p className="text-sm font-medium">This is a fallback cover letter</p>
- <p className="text-xs text-muted-foreground">No claims were available when this was generated. Add claims in Step 3 and regenerate.</p>
+ <AlertCircle />
+ <div>
+ <p>This is a fallback cover letter</p>
+ <p>No claims were available when this was generated. Add claims in Step 3 and regenerate.</p>
  </div>
  </div>
  )}
- <div className="max-h-[32rem] overflow-y-auto rounded-md border p-4 bg-muted/30">
+ <div>
  {coverLetterVersion?.annotatedParagraphs && Array.isArray(coverLetterVersion.annotatedParagraphs) && coverLetterVersion.annotatedParagraphs.length > 0 ? (
- <div className="space-y-3">
+ <div>
  {(coverLetterVersion.annotatedParagraphs as any[]).map((para, i) => (
  <div
  key={i}
- className={`p-3 rounded-md border text-sm ${ROLE_COLORS[para.role] || "bg-card"}`}
  >
- <div className="flex items-center gap-2 mb-2">
- <span className={`text-[10px] font-bold uppercase rounded px-1.5 py-0.5 ${ROLE_LABEL_COLORS[para.role] || "bg-muted"}`}>
+ <div>
+ <span>
  {para.role}
  </span>
- <Badge variant="outline" className={`text-[10px] ${truthBadgeClass(para.supportStatus ?? para.truthReview?.supportStatus)}`}>
+ <Badge variant="outline">
  {truthBadgeText(para.supportStatus ?? para.truthReview?.supportStatus)}
  </Badge>
  {para.claimIds?.length > 0 && (
- <div className="flex items-center gap-1 flex-wrap">
- <Tag className="h-3 w-3 text-muted-foreground" />
+ <div>
+ <Tag />
  {para.claimIds.map((cid: number) => {
  const claim = claimMatches.find((m: any) => m.claim?.id === cid)?.claim;
  return (
  <span
  key={cid}
- className="text-[10px] bg-primary/10 text-primary rounded px-1.5 py-0.5"
  title={claim?.summary}
  >
  {claim ? claim.summary.slice(0, 30) + (claim.summary.length > 30 ? "…" : "") : `Claim #${cid}`}
@@ -2809,17 +2768,17 @@ export default function ApplyWizardPage() {
  </div>
  )}
  </div>
- <p className="leading-relaxed">{para.text}</p>
+ <p>{para.text}</p>
  {para.truthReview && (
- <div className="mt-3 rounded border bg-background/70 p-2 text-xs space-y-1">
+ <div>
  {(para.truthReview.unsupportedPhrases?.length ?? 0) > 0 && (
- <p className="text-destructive">{para.truthReview.unsupportedPhrases.join("; ")}</p>
+ <p>{para.truthReview.unsupportedPhrases.join("; ")}</p>
  )}
  {(para.truthReview.gapNotes?.length ?? 0) > 0 && (
- <p className="text-warning">Gaps: {para.truthReview.gapNotes.join("; ")}</p>
+ <p>Gaps: {para.truthReview.gapNotes.join("; ")}</p>
  )}
  {(para.truthReview.jobKeywordsUsed?.length ?? 0) > 0 && (
- <p className="text-muted-foreground">JD keywords: {para.truthReview.jobKeywordsUsed.join(", ")}</p>
+ <p>JD keywords: {para.truthReview.jobKeywordsUsed.join(", ")}</p>
  )}
  </div>
  )}
@@ -2827,44 +2786,43 @@ export default function ApplyWizardPage() {
  ))}
  </div>
  ) : (
- <div className="text-sm whitespace-pre-wrap leading-relaxed">
-  {coverLetterVersionId ? (coverLetterVersion?.draftContent || "No tailored content available.") : "Generate a cover letter in Step 4 first."}
-  </div>
-  )}
+ <div>
+ {coverLetterVersionId ? (coverLetterVersion?.draftContent || "No tailored content available.") : "Generate a cover letter in Step 4 first."}
+ </div>
+ )}
  </div>
  {coverHasWarnings && (
- <div className="rounded-md border bg-muted/30 text-xs">
+ <div>
  <button
  type="button"
- className="w-full flex items-center justify-between gap-2 px-3 py-2.5 hover:bg-muted/50 rounded-t-md transition-colors"
  onClick={() => setCoverAiSummaryOpen((v) => !v)}
  >
- <div className="flex items-center gap-2">
- <ShieldCheck className="h-4 w-4 text-primary shrink-0" />
- <span className="font-semibold uppercase tracking-wide text-muted-foreground">AI Review Summary</span>
- <Badge variant="outline" className="border-warning/50 text-warning">
+ <div>
+ <ShieldCheck />
+ <span>AI Review Summary</span>
+ <Badge variant="outline">
  {coverTruthWarningParagraphs.length} paragraph{coverTruthWarningParagraphs.length === 1 ? "" : "s"} need review
  </Badge>
  </div>
- {coverAiSummaryOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
+ {coverAiSummaryOpen ? <ChevronDown /> : <ChevronRight />}
  </button>
  {coverAiSummaryOpen && (
- <div className="px-3 pb-3 space-y-2 border-t">
+ <div>
  {coverTruthWarningParagraphs.map((para, i) => {
  const status = para.supportStatus ?? para.truthReview?.supportStatus;
  const unsupportedPhrases: string[] = para.truthReview?.unsupportedPhrases ?? [];
  const gapNotes: string[] = para.truthReview?.gapNotes ?? [];
  return (
- <div key={i} className="pt-2 space-y-1">
- <div className="flex items-center gap-2">
- <span className={`text-[10px] font-bold uppercase rounded px-1.5 py-0.5 ${ROLE_LABEL_COLORS[para.role] || "bg-muted"}`}>{para.role}</span>
- <Badge variant="outline" className={`text-[10px] ${truthBadgeClass(status)}`}>{truthBadgeText(status)}</Badge>
+ <div key={i}>
+ <div>
+ <span>{para.role}</span>
+ <Badge variant="outline">{truthBadgeText(status)}</Badge>
  </div>
  {unsupportedPhrases.length > 0 && (
- <p className="text-destructive">Unsupported: {unsupportedPhrases.join("; ")}</p>
+ <p>Unsupported: {unsupportedPhrases.join("; ")}</p>
  )}
  {gapNotes.length > 0 && (
- <p className="text-warning">Gaps: {gapNotes.join("; ")}</p>
+ <p>Gaps: {gapNotes.join("; ")}</p>
  )}
  </div>
  );
@@ -2874,27 +2832,26 @@ export default function ApplyWizardPage() {
  </div>
  )}
  {coverHasWarnings && coverLetterVersion?.status !== "approved" && (
- <label className="flex items-start gap-2.5 cursor-pointer rounded-md border border-warning/40 bg-warning/5 px-3 py-2.5 text-sm select-none">
+ <label>
  <input
  type="checkbox"
- className="mt-0.5 h-4 w-4 shrink-0 accent-primary cursor-pointer"
  checked={coverReviewChecked}
  onChange={(e) => setCoverReviewChecked(e.target.checked)}
  data-testid="cover-review-checkbox"
  />
- <span className="text-muted-foreground">
+ <span>
  I have reviewed this draft and acknowledge the flagged paragraphs above before approving.
  </span>
  </label>
  )}
- <div className="flex gap-2">
+ <div>
  <Button
  variant={coverLetterVersion?.status === "approved" ? "outline" : "default"}
  onClick={handleApproveCover}
  disabled={coverLetterVersion?.status === "approved" || !coverLetterVersionId || (coverHasWarnings && !coverReviewChecked)}
  data-testid="btn-approve-cover"
  >
- {coverLetterVersion?.status === "approved" ? <><Check className="h-4 w-4 mr-2" /> Cover Approved</> : coverHasWarnings && !coverReviewChecked ? "Check review box to approve" : "Approve Cover Letter"}
+ {coverLetterVersion?.status === "approved" ? <><Check /> Cover Approved</> : coverHasWarnings && !coverReviewChecked ? "Check review box to approve" : "Approve Cover Letter"}
  </Button>
  <Button variant="outline" onClick={handleRejectCover} disabled={!coverLetterVersionId || coverLetterVersion?.status !== "pending_approval"}>
  Reject & Regenerate
@@ -2902,7 +2859,7 @@ export default function ApplyWizardPage() {
  {coverLetterVersion?.status === "approved" && (
  <Button variant="secondary" asChild>
  <a href={`/api/cover-letter-versions/${coverLetterVersionId}/export`} target="_blank" rel="noopener noreferrer">
- <Download className="h-4 w-4 mr-2" /> Export DOCX
+ <Download /> Export DOCX
  </a>
  </Button>
  )}
@@ -2911,19 +2868,18 @@ export default function ApplyWizardPage() {
  )}
  </div>
 
- <div className="flex justify-end gap-2 pt-4">
+ <div>
  <Button variant="outline" onClick={() => setStep("tailor")}>Back to Generate</Button>
  <Button variant="outline" onClick={handleSaveSession} disabled={savingSession}>
- <Save className="h-3.5 w-3.5 mr-1.5" />
+ <Save />
  {savingSession ? "Saving..." : "Save & Continue Later"}
  </Button>
  <Button
  size="lg"
- className="px-8"
  onClick={() => setStep("assisted")}
  disabled={resumeVersion?.status !== "approved" || coverLetterVersion?.status !== "approved" || resumeNeedsRegeneration}
  >
- Continue to Submission <ChevronRight className="ml-2 h-4 w-4" />
+ Continue to Submission <ChevronRight />
  </Button>
  </div>
  </CardContent>
@@ -2931,18 +2887,18 @@ export default function ApplyWizardPage() {
  ) : null}
 
  {step === "assisted" ? (
- <ContentCard className="rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
+ <ContentCard>
  <CardHeader>
- <CardTitle className="flex items-center gap-2">
- <MousePointerClick className="h-5 w-5" />
+ <CardTitle>
+ <MousePointerClick />
  6) Assisted Apply Preparation
  </CardTitle>
  <CardDescription>
  Prepare audit-first assisted session. Final submission remains manual.
  </CardDescription>
  </CardHeader>
- <CardContent className="space-y-3">
- <div className="grid gap-3 md:grid-cols-3">
+ <CardContent>
+ <div>
  <Input
  placeholder="Platform"
  value={assistedForm.platform}
@@ -2970,48 +2926,48 @@ export default function ApplyWizardPage() {
  onChange={(e) => setAssistedForm((prev) => ({ ...prev, notes: e.target.value }))}
  />
 
- <div className="flex flex-wrap items-center gap-3">
-  <Button onClick={handleCreateAssistedSession} disabled={createSession.isPending || !assistedForm.platform || !resumeVersionId || !coverLetterVersionId} >
-  {createSession.isPending ? "Creating Session..." : "Create Assisted Session"}
-  </Button>
+ <div>
+ <Button onClick={handleCreateAssistedSession} disabled={createSession.isPending || !assistedForm.platform || !resumeVersionId || !coverLetterVersionId} >
+ {createSession.isPending ? "Creating Session..." : "Create Assisted Session"}
+ </Button>
  {assistedSessionId ? (
  <Badge>
- Session #{assistedSessionId} ready - <Link className="underline ml-1" to="/assisted-apply">open</Link>
+ Session #{assistedSessionId} ready - <Link to="/assisted-apply">open</Link>
  </Badge>
  ) : null}
-  </div>
+ </div>
 
-  {applicationId ? (
-  <div className="rounded-md border p-3 space-y-3">
-  <p className="text-sm font-medium">Mark final submission (manual action completed)</p>
-  <div className="grid gap-3 md:grid-cols-2">
-  <Input
-  type="date"
-  value={submissionDate}
-  onChange={(e) => setSubmissionDate(e.target.value)}
-  />
-  <Input
-  placeholder="Confirmation/reference ID"
-  value={submissionRef}
-  onChange={(e) => setSubmissionRef(e.target.value)}
-  />
-  </div>
-  <div className="flex items-center gap-2">
-  <Button variant="secondary" onClick={handleMarkSubmitted}>
-  Mark Submitted
-  </Button>
-  <Badge>
-  Application #{applicationId} - <Link className="underline ml-1" to="/applications">open</Link>
-  </Badge>
-  </div>
-  </div>
-  ) : null}
+ {applicationId ? (
+ <div>
+ <p>Mark final submission (manual action completed)</p>
+ <div>
+ <Input
+ type="date"
+ value={submissionDate}
+ onChange={(e) => setSubmissionDate(e.target.value)}
+ />
+ <Input
+ placeholder="Confirmation/reference ID"
+ value={submissionRef}
+ onChange={(e) => setSubmissionRef(e.target.value)}
+ />
+ </div>
+ <div>
+ <Button variant="secondary" onClick={handleMarkSubmitted}>
+ Mark Submitted
+ </Button>
+ <Badge>
+ Application #{applicationId} - <Link to="/applications">open</Link>
+ </Badge>
+ </div>
+ </div>
+ ) : null}
 
- <div className="flex justify-between">
+ <div>
  <Button variant="outline" onClick={() => setStep("approve")}>Back</Button>
- <div className="flex gap-2">
+ <div>
  <Button variant="outline" onClick={handleSaveSession} disabled={savingSession}>
- <Save className="h-3.5 w-3.5 mr-1.5" />
+ <Save />
  {savingSession ? "Saving..." : "Save & Continue Later"}
  </Button>
  <Button variant="secondary" onClick={() => setStep("intake")}>Start New Job</Button>
@@ -3023,39 +2979,39 @@ export default function ApplyWizardPage() {
  </motion.div>
  </AnimatePresence>
 
-<ContentCard className="shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
-  <CardHeader>
-  <CardTitle className="flex items-center gap-2">
-  <ClipboardCheck className="h-5 w-5" />
-  Wizard Summary
+<ContentCard>
+ <CardHeader>
+ <CardTitle>
+ <ClipboardCheck />
+ Wizard Summary
  </CardTitle>
  </CardHeader>
- <CardContent className="grid gap-2 text-sm md:grid-cols-2">
+ <CardContent>
  <p>
  Job ID: <strong>{jobId ?? "-"}</strong>
- {jobId ? <Link className="ml-2 text-primary underline" to={`/jobs/${jobId}`}>open</Link> : null}
+ {jobId ? <Link to={`/jobs/${jobId}`}>open</Link> : null}
  </p>
  <p>
  Role Profile: <strong>{selectedRoleProfileId ?? "-"}</strong>
- {selectedRoleProfileId ? <Link className="ml-2 text-primary underline" to="/role-profiles">open</Link> : null}
+ {selectedRoleProfileId ? <Link to="/role-profiles">open</Link> : null}
  </p>
  <p>Selected Claims: <strong>{selectedClaimIds.length}</strong></p>
  <p>
  Resume Version: <strong>{resumeVersionId ?? "-"}</strong>
- {resumeVersionId ? <Link className="ml-2 text-primary underline" to="/resume-versions">open queue</Link> : null}
+ {resumeVersionId ? <Link to="/resume-versions">open queue</Link> : null}
  </p>
  <p>
  Cover Letter Version: <strong>{coverLetterVersionId ?? "-"}</strong>
- {coverLetterVersionId ? <Link className="ml-2 text-primary underline" to="/cover-letters">open queue</Link> : null}
+ {coverLetterVersionId ? <Link to="/cover-letters">open queue</Link> : null}
  </p>
-  <p>
-  Application: <strong>{applicationId ?? "-"}</strong>
-  {applicationId ? <Link className="ml-2 text-primary underline" to="/applications">open</Link> : null}
-  </p>
-  <p>
-  Assisted Session: <strong>{assistedSessionId ?? "-"}</strong>
-  {assistedSessionId ? <Link className="ml-2 text-primary underline" to="/assisted-apply">open</Link> : null}
-  </p>
+ <p>
+ Application: <strong>{applicationId ?? "-"}</strong>
+ {applicationId ? <Link to="/applications">open</Link> : null}
+ </p>
+ <p>
+ Assisted Session: <strong>{assistedSessionId ?? "-"}</strong>
+ {assistedSessionId ? <Link to="/assisted-apply">open</Link> : null}
+ </p>
  </CardContent>
  </ContentCard>
  </div>
@@ -3064,9 +3020,9 @@ export default function ApplyWizardPage() {
 
 function StatusCard({ title, ok }: { title: string; ok: boolean }) {
  return (
-<ContentCard className="shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
-  <CardContent className="p-3 flex items-center justify-between">
- <span className="text-sm font-medium">{title}</span>
+<ContentCard>
+ <CardContent>
+ <span>{title}</span>
  <Badge variant={ok ? "default" : "outline"}>{ok ? "Done" : "Pending"}</Badge>
  </CardContent>
  </ContentCard>

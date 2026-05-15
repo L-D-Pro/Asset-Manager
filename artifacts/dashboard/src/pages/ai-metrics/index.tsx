@@ -38,7 +38,7 @@ export default function AiMetricsPage() {
  const windowStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
  return (
- <div className="space-y-6">
+ <div>
  <PageHeader
  title="AI Metrics"
  subtitle="Track prompt version performance, success rates, and cost efficiency over time."
@@ -54,7 +54,7 @@ export default function AiMetricsPage() {
  ))}
  </TabsList>
  {TASK_SCOPES.map((scope) => (
- <TabsContent key={scope} value={scope} className="space-y-6">
+ <TabsContent key={scope} value={scope}>
  <TaskScopePanel scope={scope} windowStart={windowStart} windowEnd={windowEnd} />
  </TabsContent>
  ))}
@@ -86,8 +86,8 @@ function TaskScopePanel({ scope, windowStart, windowEnd }: { scope: TaskScope; w
  const lift = useMemo(() => computeLift(promptRows), [promptRows]);
 
  return (
- <div className="space-y-6">
- {query.isLoading ? <p className="text-sm text-muted-foreground">Loading…</p> : null}
+ <div>
+ {query.isLoading ? <p>Loading…</p> : null}
  {query.isError ? (
  <Alert variant="destructive">
  <AlertTitle>Failed to load snapshot</AlertTitle>
@@ -98,13 +98,13 @@ function TaskScopePanel({ scope, windowStart, windowEnd }: { scope: TaskScope; w
  {snapshot ? <DegradedBanner snapshot={snapshot} /> : null}
 
  {snapshot?.lastKnownGoodSnapshot === null ? (
- <p className="text-xs text-muted-foreground">
+ <p>
  No last-known-good snapshot recorded yet. (Persistence is a follow-up; this page currently surfaces the field
  only.)
  </p>
  ) : null}
 
- <div className="grid gap-4 md:grid-cols-4">
+ <div>
  <MetricCard title="Evaluations" value={snapshot?.aggregates?.evaluationCount ?? 0} />
  <MetricCard title="Approval Rate" value={formatPercent(approvalRate)} />
  <MetricCard title="Avg Edit Distance" value={formatNumber(avgEditDistance)} />
@@ -115,10 +115,10 @@ function TaskScopePanel({ scope, windowStart, windowEnd }: { scope: TaskScope; w
  />
  </div>
 
-  <ContentCard className="rounded-2xl shadow-sm">
+  <ContentCard>
   <CardHeader>
-  <CardTitle className="flex items-center gap-2">
- <TrendingUp className="h-4 w-4" />
+  <CardTitle>
+ <TrendingUp />
  Trend (bucketed)
  </CardTitle>
  <CardDescription>
@@ -126,30 +126,30 @@ function TaskScopePanel({ scope, windowStart, windowEnd }: { scope: TaskScope; w
  </CardDescription>
  </CardHeader>
  <CardContent>
- <div className="overflow-auto">
- <table className="w-full text-sm">
+ <div>
+ <table>
  <thead>
- <tr className="text-left border-b">
- <th className="py-2 pr-3 font-medium">Bucket</th>
- <th className="py-2 pr-3 font-medium">n</th>
- <th className="py-2 pr-3 font-medium">Approval</th>
- <th className="py-2 pr-3 font-medium">Avg edit dist</th>
+ <tr>
+ <th>Bucket</th>
+ <th>n</th>
+ <th>Approval</th>
+ <th>Avg edit dist</th>
  </tr>
  </thead>
  <tbody>
  {seriesRows.length === 0 ? (
  <tr>
- <td className="py-3 text-muted-foreground" colSpan={4}>
+ <td colSpan={4}>
  No data in this window.
  </td>
  </tr>
  ) : (
  seriesRows.map((row) => (
- <tr key={row.bucketStartInclusive} className="border-b last:border-b-0">
- <td className="py-2 pr-3 whitespace-nowrap">{formatIsoDateTime(row.bucketStartInclusive)}</td>
- <td className="py-2 pr-3">{row.evaluationCount}</td>
- <td className="py-2 pr-3">{formatPercent(row.approvalRate)}</td>
- <td className="py-2 pr-3">{formatNumber(row.avgEditDistance)}</td>
+ <tr key={row.bucketStartInclusive}>
+ <td>{formatIsoDateTime(row.bucketStartInclusive)}</td>
+ <td>{row.evaluationCount}</td>
+ <td>{formatPercent(row.approvalRate)}</td>
+ <td>{formatNumber(row.avgEditDistance)}</td>
  </tr>
  ))
  )}
@@ -159,21 +159,21 @@ function TaskScopePanel({ scope, windowStart, windowEnd }: { scope: TaskScope; w
  </CardContent>
  </ContentCard>
 
-  <ContentCard className="rounded-2xl shadow-sm">
+  <ContentCard>
   <CardHeader>
   <CardTitle>Prompt-version comparison</CardTitle>
  <CardDescription>Grouped by promptVersionId ("unknown" means built-in / not captured).</CardDescription>
  </CardHeader>
- <CardContent className="space-y-4">
+ <CardContent>
  {lift ? (
  <Alert>
- <AlertTitle className="flex items-center gap-2">
- <TrendingUp className="h-4 w-4" />
+ <AlertTitle>
+ <TrendingUp />
  Lift summary
  </AlertTitle>
  <AlertDescription>
  Best prompt ({lift.best.promptVersionId}) vs baseline ({lift.baseline.promptVersionId}): approval Δ{" "}
- <span className={cn(lift.deltaApprovalRate !== null && lift.deltaApprovalRate > 0 ? "text-success" : "text-muted-foreground")}> 
+ <span> 
  {formatPercent(lift.deltaApprovalRate)}
  </span>
  , edit distance Δ {formatNumber(lift.deltaAvgEditDistance)}.
@@ -181,35 +181,35 @@ function TaskScopePanel({ scope, windowStart, windowEnd }: { scope: TaskScope; w
  </Alert>
  ) : null}
 
- <div className="overflow-auto">
- <table className="w-full text-sm">
+ <div>
+ <table>
  <thead>
- <tr className="text-left border-b">
- <th className="py-2 pr-3 font-medium">Prompt</th>
- <th className="py-2 pr-3 font-medium">n</th>
- <th className="py-2 pr-3 font-medium">Approval</th>
- <th className="py-2 pr-3 font-medium">Avg edit dist</th>
- <th className="py-2 pr-3 font-medium">Avg rubric</th>
+ <tr>
+ <th>Prompt</th>
+ <th>n</th>
+ <th>Approval</th>
+ <th>Avg edit dist</th>
+ <th>Avg rubric</th>
  </tr>
  </thead>
  <tbody>
  {promptRows.length === 0 ? (
  <tr>
- <td className="py-3 text-muted-foreground" colSpan={5}>
+ <td colSpan={5}>
  No prompt-version aggregates in this window.
  </td>
  </tr>
  ) : (
  promptRows.map((row) => (
- <tr key={row.promptVersionId} className="border-b last:border-b-0">
- <td className="py-2 pr-3 whitespace-nowrap">
- <span className="font-medium">{row.promptVersionId}</span>
- {row.promptVersionId === "unknown" ? <Badge className="ml-2" variant="outline">built-in</Badge> : null}
+ <tr key={row.promptVersionId}>
+ <td>
+ <span>{row.promptVersionId}</span>
+ {row.promptVersionId === "unknown" ? <Badge variant="outline">built-in</Badge> : null}
  </td>
- <td className="py-2 pr-3">{row.evaluationCount}</td>
- <td className="py-2 pr-3">{formatPercent(row.approvalRate)}</td>
- <td className="py-2 pr-3">{formatNumber(row.avgEditDistance)}</td>
- <td className="py-2 pr-3">{formatNumber(overallFromRubric(row.avgRubricScores))}</td>
+ <td>{row.evaluationCount}</td>
+ <td>{formatPercent(row.approvalRate)}</td>
+ <td>{formatNumber(row.avgEditDistance)}</td>
+ <td>{formatNumber(overallFromRubric(row.avgRubricScores))}</td>
  </tr>
  ))
  )}
@@ -226,18 +226,18 @@ function DegradedBanner({ snapshot }: { snapshot: any }) {
  if (snapshot.status !== "degraded") return null;
 
  return (
- <Alert className="border-warning/30 bg-warning/10">
- <AlertTriangle className="h-4 w-4" />
+ <Alert>
+ <AlertTriangle />
  <AlertTitle>Metrics snapshot degraded</AlertTitle>
- <AlertDescription className="space-y-2">
- <p className="text-sm">
+ <AlertDescription>
+ <p>
  Some evaluations were excluded because reproducibility or lineage checks failed. Use the normalized window to
  reproduce the exact snapshot.
  </p>
- <div className="text-xs">
  <div>
- Window: <span className="font-mono">{snapshot.window.startInclusive}</span> →{" "}
- <span className="font-mono">{snapshot.window.endExclusive}</span>
+ <div>
+ Window: <span>{snapshot.window.startInclusive}</span> →{" "}
+ <span>{snapshot.window.endExclusive}</span>
  </div>
  <div>
  Reasons: {snapshot.degradedReasons.length ? snapshot.degradedReasons.join(", ") : "(none)"}
@@ -250,13 +250,13 @@ function DegradedBanner({ snapshot }: { snapshot: any }) {
 
 function MetricCard({ title, value, description }: { title: string; value: string | number; description?: string }) {
  return (
-  <ContentCard className="shadow-sm">
-  <CardContent className="p-4">
- <div className="flex items-center justify-between text-sm text-muted-foreground">
+  <ContentCard>
+  <CardContent>
+ <div>
  <span>{title}</span>
  </div>
- <div className="mt-2 text-2xl font-bold">{value}</div>
- {description ? <div className="mt-1 text-xs text-muted-foreground">{description}</div> : null}
+ <div>{value}</div>
+ {description ? <div>{description}</div> : null}
  </CardContent>
  </ContentCard>
  );

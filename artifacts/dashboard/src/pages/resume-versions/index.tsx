@@ -40,35 +40,27 @@ export default function ResumeVersionsPage() {
   );
 
   return (
-    <div className="page fade-up">
-      <div
-        style={{
-          display: "flex",
-          alignItems: "flex-end",
-          justifyContent: "space-between",
-          marginBottom: 22,
-        }}
-      >
+    <div>
+      <div>
         <div>
-          <h1 className="h-display">
+          <h1>
             Resume review <em>· truth-locked drafts</em>
           </h1>
-          <div className="dim" style={{ marginTop: 6, fontSize: 13 }}>
+          <div>
             Every AI-tailored resume needs your explicit nod. Approve to unlock export and
             application attachment.
           </div>
         </div>
       </div>
 
-      <div className="tabs" style={{ marginBottom: 14 }}>
+      <div>
         {TABS.map((t) => (
           <div
             key={t.id}
-            className={`tab ${activeTab === t.id ? "active" : ""}`}
             onClick={() => setActiveTab(t.id)}
           >
             {t.label}
-            <span className="mono dim" style={{ marginLeft: 6, fontSize: 11 }}>
+            <span>
               {counts[t.id] ?? 0}
             </span>
           </div>
@@ -76,15 +68,15 @@ export default function ResumeVersionsPage() {
       </div>
 
       {isLoading && (
-        <div className="quiet-card" style={{ padding: 32, textAlign: "center" }}>
-          <span className="dim">Loading…</span>
+        <div>
+          <span>Loading…</span>
         </div>
       )}
       {!isLoading && filtered.length === 0 && (
-        <div className="quiet-card" style={{ padding: 32, textAlign: "center" }}>
-          <span className="dim" style={{ fontSize: 13 }}>
+        <div>
+          <span>
             No resume versions in this state.{" "}
-            <Link to="/jobs" style={{ color: "var(--accent)" }}>
+            <Link to="/jobs">
               Tailor one from a job
             </Link>
             .
@@ -92,7 +84,7 @@ export default function ResumeVersionsPage() {
         </div>
       )}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div>
         {filtered.map((v) => (
           <VersionRow
             key={v.id}
@@ -187,98 +179,59 @@ function VersionRow({
 
   const stateChip =
     version.status === "approved" ? (
-      <span className="chip success dot">approved</span>
+      <span>approved</span>
     ) : version.status === "rejected" ? (
-      <span className="chip danger dot">rejected</span>
+      <span>rejected</span>
     ) : (
-      <span className="chip warn dot">pending approval</span>
+      <span>pending approval</span>
     );
 
   return (
-    <div className="quiet-card">
-      <div
-        onClick={onToggle}
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 140px 130px 70px 24px",
-          gap: 16,
-          alignItems: "center",
-          padding: "16px 20px",
-          cursor: "pointer",
-        }}
-      >
-        <div style={{ minWidth: 0 }}>
-          <div
-            style={{
-              fontSize: 14,
-              fontWeight: 500,
-              color: "var(--ink)",
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-            }}
-          >
+    <div>
+      <div onClick={onToggle}>
+        <div>
+          <div>
             {version.label ?? `Resume version #${version.id}`}
             {version.jobId && (
               <Link
                 to={`/jobs/${version.jobId}`}
                 onClick={(e) => e.stopPropagation()}
-                className="dim mono"
-                style={{ fontSize: 11 }}
               >
                 · job #{version.jobId}
               </Link>
             )}
           </div>
-          <div className="dim mono" style={{ fontSize: 11, marginTop: 3 }}>
+          <div>
             +{adds} / −{dels} · {cites} citation{cites === 1 ? "" : "s"} ·{" "}
             {new Date(version.createdAt).toLocaleString()}
           </div>
         </div>
         {stateChip}
-        <span className="dim mono" style={{ fontSize: 12 }}>
+        <span>
           {version.templateId ?? "—"}
         </span>
-        <span className="mono dim" style={{ fontSize: 11.5, textAlign: "right" }}>
+        <span>
           #{version.id}
         </span>
         {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
       </div>
 
       {expanded && (
-        <div
-          style={{
-            borderTop: "1px solid var(--line-soft)",
-            padding: 20,
-            display: "grid",
-            gridTemplateColumns: "1fr 280px",
-            gap: 20,
-          }}
-        >
+        <div>
           <div>
             {diff.summary && (
-              <p
-                className="dim"
-                style={{
-                  fontSize: 13.5,
-                  lineHeight: 1.55,
-                  marginTop: 0,
-                  marginBottom: 14,
-                  fontStyle: "italic",
-                  fontFamily: "var(--font-display)",
-                }}
-              >
+              <p>
                 {diff.summary}
               </p>
             )}
-            <div className="diff">
-              <div className="diff-h">
+            <div>
+              <div>
                 <span>
-                  <span className="filename">
+                  <span>
                     {version.label ?? `resume-v${version.id}.md`}
                   </span>
                   {version.jobId && (
-                    <span className="dim"> · tailored for job #{version.jobId}</span>
+                    <span> · tailored for job #{version.jobId}</span>
                   )}
                 </span>
                 <span>
@@ -287,66 +240,48 @@ function VersionRow({
               </div>
               <div>
                 {(diff.addedBullets ?? []).map((line, i) => (
-                  <div className="diff-row add" key={`add-${i}`}>
-                    <div className="ln"></div>
-                    <div className="ln">{i + 1}</div>
-                    <div className="content">{line}</div>
+                  <div key={`add-${i}`}>
+                    <div></div>
+                    <div>{i + 1}</div>
+                    <div>{line}</div>
                   </div>
                 ))}
                 {(diff.removedBullets ?? []).map((line, i) => (
-                  <div className="diff-row del" key={`del-${i}`}>
-                    <div className="ln">{i + 1}</div>
-                    <div className="ln"></div>
-                    <div className="content">{line}</div>
+                  <div key={`del-${i}`}>
+                    <div>{i + 1}</div>
+                    <div></div>
+                    <div>{line}</div>
                   </div>
                 ))}
                 {adds === 0 && dels === 0 && (
-                  <div className="diff-row ctx">
-                    <div className="ln" />
-                    <div className="ln" />
-                    <div className="content">
-                      <span className="dim">No structured diff available.</span>
+                  <div>
+                    <div />
+                    <div />
+                    <div>
+                      <span>No structured diff available.</span>
                     </div>
                   </div>
                 )}
               </div>
             </div>
             {version.tailoredDocumentText && (
-              <details style={{ marginTop: 14 }}>
-                <summary
-                  style={{ fontSize: 12.5, color: "var(--ink-3)", cursor: "pointer" }}
-                >
+              <details>
+                <summary>
                   Full rendered text
                 </summary>
-                <pre
-                  style={{
-                    background: "var(--paper-2)",
-                    padding: 14,
-                    borderRadius: 8,
-                    fontFamily: "var(--font-display)",
-                    fontSize: 13,
-                    lineHeight: 1.6,
-                    color: "var(--ink-2)",
-                    whiteSpace: "pre-wrap",
-                    margin: "10px 0 0",
-                    border: "1px solid var(--line-soft)",
-                    maxHeight: 420,
-                    overflow: "auto",
-                  }}
-                >
+                <pre>
                   {version.tailoredDocumentText}
                 </pre>
               </details>
             )}
           </div>
 
-          <aside style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div className="approve-bar" style={{ flexDirection: "column", alignItems: "stretch", padding: 16, gap: 12 }}>
+          <aside>
+            <div>
               <div>{stateChip}</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <div>
                 <button
                   type="button"
-                  className="btn accent"
                   onClick={onApprove}
                   disabled={version.status !== "pending_approval" || approve.isPending}
                 >
@@ -355,7 +290,6 @@ function VersionRow({
                 </button>
                 <button
                   type="button"
-                  className="btn"
                   onClick={onReject}
                   disabled={version.status !== "pending_approval" || reject.isPending}
                 >
@@ -364,30 +298,19 @@ function VersionRow({
                 </button>
                 <button
                   type="button"
-                  className="btn ghost"
                   onClick={onDelete}
                   disabled={remove.isPending}
-                  style={{ color: "var(--danger)" }}
                 >
                   Delete
                 </button>
               </div>
             </div>
 
-            <div className="quiet-card flat">
-              <div
-                className="quiet-card-body"
-                style={{ padding: 14, fontSize: 12.5, lineHeight: 1.55 }}
-              >
-                <span className="label">What happens on approve</span>
-                <ul
-                  style={{
-                    margin: "8px 0 0",
-                    paddingLeft: 16,
-                    color: "var(--ink-2)",
-                  }}
-                >
-                  <li>State moves to <span className="mono">approved</span>.</li>
+            <div>
+              <div>
+                <span>What happens on approve</span>
+                <ul>
+                  <li>State moves to approved.</li>
                   <li>DOCX + PDF export unlocked.</li>
                   <li>Attachable to an application.</li>
                   <li>Logged with runId for lineage.</li>
@@ -396,19 +319,9 @@ function VersionRow({
             </div>
 
             {cites > 0 && (
-              <div className="quiet-card flat">
-                <div
-                  className="quiet-card-body"
-                  style={{
-                    padding: 14,
-                    fontSize: 12,
-                    color: "var(--ink-3)",
-                    display: "flex",
-                    gap: 8,
-                    alignItems: "flex-start",
-                  }}
-                >
-                  <span style={{ color: "var(--accent)", flexShrink: 0 }}>
+              <div>
+                <div>
+                  <span>
                     <Shield size={12} />
                   </span>
                   <span>

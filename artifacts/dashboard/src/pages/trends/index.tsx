@@ -67,16 +67,16 @@ export default function TrendsPage() {
  };
 
  return (
-  <div className="flex flex-col h-full space-y-6">
-  <div className="px-6 pt-4 space-y-4">
+  <div>
+  <div>
   <PageHeader title="Market Trends" subtitle="AI-powered market analysis to understand demand, skills, salaries, and certifications for any job role." />
   <TrendsSearchForm
   onSearch={handleSearch}
   isLoading={mutation.isPending}
   />
   {sources && sources.length > 0 && (
-  <p className="text-xs text-muted-foreground flex items-center gap-1">
-  <Database className="h-3 w-3" />
+  <p>
+  <Database />
   {sources.length} job board source
   {sources.length !== 1 ? "s" : ""} configured — results will be
   enriched with live listings
@@ -84,10 +84,10 @@ export default function TrendsPage() {
   )}
   </div>
 
- <div className="flex-1 overflow-auto p-6">
+ <div>
  {mutation.isError && (
- <Alert variant="destructive" className="mb-4">
- <AlertCircle className="h-4 w-4" />
+ <Alert variant="destructive">
+ <AlertCircle />
  <AlertDescription>
  Failed to generate market analysis. The AI service may be
  temporarily unavailable. Please try again.
@@ -96,15 +96,15 @@ export default function TrendsPage() {
  )}
 
  {analysis ? (
- <div className="space-y-6">
+ <div>
  {isCached && (
- <div className="flex items-center gap-2 text-xs text-muted-foreground">
- <Clock className="h-3 w-3" />
+ <div>
+ <Clock />
  Served from cache (refreshes daily)
  </div>
  )}
 
- <Tabs defaultValue="overview" className="space-y-4 rounded-2xl">
+ <Tabs defaultValue="overview">
  <TabsList>
  <TabsTrigger value="overview">Overview</TabsTrigger>
  <TabsTrigger value="skills">Skills</TabsTrigger>
@@ -114,47 +114,47 @@ export default function TrendsPage() {
  </TabsList>
 
  <TabsContent value="overview">
- <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+ <div>
  <MarketOverviewCard overview={analysis.marketOverview} />
   <ContentCard padding="none">
   <CardHeader>
-  <CardTitle className="text-lg">
+  <CardTitle>
   Salary Insights
   </CardTitle>
   </CardHeader>
-  <CardContent className="space-y-4">
- <div className="flex gap-4">
- <div className="flex-1 text-center p-3 rounded-lg bg-muted">
- <p className="text-xs text-muted-foreground">Low</p>
- <p className="text-xl font-bold">
+  <CardContent>
+ <div>
+ <div>
+ <p>Low</p>
+ <p>
  $
  {analysis.salaryInsights.rangeLow.toLocaleString()}
  </p>
  </div>
- <div className="flex-1 text-center p-3 rounded-lg bg-primary/10">
- <p className="text-xs text-muted-foreground">
+ <div>
+ <p>
  Median
  </p>
- <p className="text-xl font-bold text-primary">
+ <p>
  $
  {analysis.salaryInsights.median.toLocaleString()}
  </p>
  </div>
- <div className="flex-1 text-center p-3 rounded-lg bg-muted">
- <p className="text-xs text-muted-foreground">High</p>
- <p className="text-xl font-bold">
+ <div>
+ <p>High</p>
+ <p>
  $
  {analysis.salaryInsights.rangeHigh.toLocaleString()}
  </p>
  </div>
  </div>
  <div>
- <p className="text-xs font-medium mb-1">
+ <p>
  Key Factors
  </p>
- <div className="flex flex-wrap gap-1">
+ <div>
  {analysis.salaryInsights.factors.map((f) => (
- <Badge key={f} variant="outline" className="text-xs">
+ <Badge key={f} variant="outline">
  {f}
  </Badge>
  ))}
@@ -185,11 +185,11 @@ export default function TrendsPage() {
  </Tabs>
 
  {jobMatches.length > 0 && (
- <div className="space-y-3">
- <h2 className="text-lg font-semibold">
+ <div>
+ <h2>
  Matching Job Listings ({jobMatches.length})
  </h2>
- <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+ <div>
  {jobMatches.map((job) => (
  <JobMatchCard key={job.id} job={job} />
  ))}
@@ -199,8 +199,8 @@ export default function TrendsPage() {
  </div>
  ) : (
  !mutation.isPending && (
- <div className="text-center text-muted-foreground py-16">
- <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-20" />
+ <div>
+ <TrendingUp />
  <p>
  Enter a job title above to generate a market analysis with
  AI-powered insights.
@@ -210,8 +210,8 @@ export default function TrendsPage() {
  )}
 
  {mutation.isPending && (
- <div className="flex items-center justify-center py-16">
- <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+ <div>
+ <div />
  </div>
  )}
  </div>

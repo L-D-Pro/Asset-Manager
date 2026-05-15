@@ -1,16 +1,4 @@
 import { useEffect, useState } from "react";
-function ProgressRing({ progress, label }: { progress: number; size: number; strokeWidth: number; label: string }) {
-  return <div>{label} ({Math.round(progress)}%)</div>;
-}
-function StreakFlame({ days }: { days: number }) {
-  return <div>Streak: {days} days</div>;
-}
-function GamifiedBadge({ name, icon }: { name: string; icon: string; tier: string; unlocked: boolean; isNew?: boolean }) {
-  return <div>{icon} {name}</div>;
-}
-import { PageHeader } from "@/components/ui/page-header";
-import { ContentCard } from "@/components/ui/content-card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Trophy, TrendingUp, Loader2 } from "lucide-react";
 
 interface GamificationStats {
@@ -94,27 +82,24 @@ export default function StatsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <PageHeader title="Stats" subtitle="Your gamification journey" />
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Skeleton className="h-48 rounded-2xl" />
-          <Skeleton className="h-48 rounded-2xl" />
-          <Skeleton className="h-48 rounded-2xl" />
-          <Skeleton className="h-48 rounded-2xl" />
-        </div>
+      <div>
+        <h1>Stats</h1>
+        <p>Your gamification journey</p>
+        <p>Loading…</p>
       </div>
     );
   }
 
   if (error || !stats) {
     return (
-      <div className="space-y-6">
-        <PageHeader title="Stats" subtitle="Your gamification journey" />
-        <ContentCard className="flex flex-col items-center justify-center py-12 text-center">
-          <Loader2 className="h-10 w-10 text-muted-foreground animate-spin mb-4" />
-          <p className="text-foreground font-semibold text-lg">Unable to load stats</p>
-          <p className="text-muted-foreground text-sm mt-1">Start using the app to earn XP!</p>
-        </ContentCard>
+      <div>
+        <h1>Stats</h1>
+        <p>Your gamification journey</p>
+        <div>
+          <Loader2 />
+          <p>Unable to load stats</p>
+          <p>Start using the app to earn XP!</p>
+        </div>
       </div>
     );
   }
@@ -123,26 +108,26 @@ export default function StatsPage() {
 
   if (isNewUser) {
     return (
-      <div className="space-y-6">
-        <PageHeader title="Stats" subtitle="Your gamification journey" />
-        <ContentCard className="flex flex-col items-center justify-center py-12 text-center">
-          <Trophy className="h-16 w-16 text-muted-foreground opacity-40 mb-4" />
-          <h2 className="text-xl font-bold text-foreground">Start your journey!</h2>
-          <p className="text-muted-foreground text-sm mt-2 max-w-sm">
+      <div>
+        <h1>Stats</h1>
+        <p>Your gamification journey</p>
+        <div>
+          <Trophy />
+          <h2>Start your journey!</h2>
+          <p>
             Start using the app to earn XP! Apply to jobs, tailor resumes, draft cover letters — every action earns points.
           </p>
-        </ContentCard>
+        </div>
       </div>
     );
   }
 
-  const currentLevelXp = stats.totalXp - (stats.xpToNextLevel - (stats.totalXp % (stats.totalXp - stats.xpToNextLevel + stats.xpToNextLevel)) || 0);
   const levelProgress = stats.xpToNextLevel > 0
     ? Math.min(((stats.totalXp - ((stats.currentLevel - 1) * (stats.currentLevel - 1) * 100)) / stats.xpToNextLevel) * 100, 100)
     : 100;
 
-  const unlockedIds = new Set((allAchievements?.unlocked ?? []).map((u: any) => u.achievementId ?? u.id));
-  const mergedAchievements = (allAchievements?.achievements ?? []).map((a: any) => ({
+  const unlockedIds = new Set((allAchievements?.unlocked ?? []).map((u: AchievementRecord) => u.achievementId ?? u.id));
+  const mergedAchievements = (allAchievements?.achievements ?? []).map((a: AchievementRecord) => ({
     ...a,
     unlocked: unlockedIds.has(a.id),
   }));
@@ -150,135 +135,120 @@ export default function StatsPage() {
   const maxXpInHistory = xpHistory.length > 0 ? Math.max(...xpHistory.map((h) => h.xpAmount), 1) : 1;
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="Stats" subtitle="Your gamification journey" />
+    <div>
+      <h1>Stats</h1>
+      <p>Your gamification journey</p>
 
       {/* Level + Streak Overview */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <ContentCard className="flex flex-col items-center gap-4">
-          <ProgressRing
-            progress={levelProgress}
-            size={140}
-            strokeWidth={10}
-            label={String(stats.currentLevel)}
-          />
-          <div className="w-full space-y-2">
-            <div className="h-4 rounded-full bg-border overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all duration-700"
-                style={{
-                  width: `${levelProgress}%`,
-                  background: "linear-gradient(90deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%)",
-                }}
-              />
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Level {stats.currentLevel}</span>
-              <span className="font-bold text-foreground">{stats.totalXp.toLocaleString()} XP total</span>
-            </div>
-            <div className="text-xs text-muted-foreground text-center">
-              {(stats.totalXp - currentLevelXp).toLocaleString()} / {stats.xpToNextLevel.toLocaleString()} XP to level {stats.currentLevel + 1}
-            </div>
+      <div>
+        <div>
+          <h2>Level {stats.currentLevel}</h2>
+          <div>
+            Level Progress: {Math.round(levelProgress)}%
           </div>
-        </ContentCard>
+          <div>
+            <span>Level {stats.currentLevel}</span>
+            <span>{stats.totalXp.toLocaleString()} XP total</span>
+          </div>
+          <div>
+            {stats.xpToNextLevel.toLocaleString()} XP to level {stats.currentLevel + 1}
+          </div>
+        </div>
 
-        <ContentCard className="flex items-center justify-center">
-          <StreakFlame days={stats.currentStreak} />
-        </ContentCard>
+        <div>
+          <h2>Streak: {stats.currentStreak} days</h2>
+          <p>Longest streak: {stats.longestStreak}</p>
+        </div>
       </div>
 
       {/* Achievements */}
-      <ContentCard>
-        <div className="flex items-center gap-2 mb-4">
-          <Trophy className="h-5 w-5 text-warning" />
-          <h2 className="text-lg font-bold text-foreground tracking-tight">
-            Achievements
-          </h2>
-          <span className="text-sm text-muted-foreground">
+      <div>
+        <div>
+          <Trophy />
+          <h2>Achievements</h2>
+          <span>
             {stats.achievementsUnlocked} / {mergedAchievements.length} unlocked
           </span>
         </div>
         {mergedAchievements.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No achievements available yet.</p>
+          <p>No achievements available yet.</p>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div>
             {mergedAchievements.map((a) => {
-              const tier =
-                a.unlocked && a.slug.includes("master") ? "gold" as const :
-                a.unlocked && a.slug.includes("streak") ? "gold" as const :
-                a.unlocked ? "silver" as const :
-                "bronze" as const;
-              const unlockedRecord = allAchievements?.unlocked?.find((u: any) => (u.achievementId ?? u.id) === a.id);
+              const tierLabel =
+                a.unlocked && a.slug.includes("master") ? "gold" :
+                a.unlocked && a.slug.includes("streak") ? "gold" :
+                a.unlocked ? "silver" :
+                "bronze";
+              const iconEmoji =
+                a.iconName === "fire" ? "🔥" :
+                a.iconName === "star" ? "⭐" :
+                a.iconName === "brain" ? "🧠" :
+                "🏆";
+              const unlockedRecord = allAchievements?.unlocked?.find((u: AchievementRecord) => (u.achievementId ?? u.id) === a.id);
+              const isNew = unlockedRecord && !unlockedRecord.seen;
               return (
-                <GamifiedBadge
-                  key={a.id ?? a.slug}
-                  name={a.name}
-                  icon={a.iconName === "fire" ? "🔥" : a.iconName === "star" ? "⭐" : a.iconName === "brain" ? "🧠" : "🏆"}
-                  tier={tier}
-                  unlocked={a.unlocked}
-                  isNew={unlockedRecord && !unlockedRecord.seen}
-                />
+                <div key={a.id ?? a.slug}>
+                  <span>{iconEmoji}</span>
+                  <div>
+                    <div>{a.name} [{tierLabel}]</div>
+                    <div>{a.description}</div>
+                  </div>
+                  {!a.unlocked && <span>Locked</span>}
+                  {isNew && <span>New!</span>}
+                </div>
               );
             })}
           </div>
         )}
-      </ContentCard>
+      </div>
 
       {/* XP History */}
-      <ContentCard>
-        <div className="flex items-center gap-2 mb-4">
-          <TrendingUp className="h-5 w-5 text-primary" />
-          <h2 className="text-lg font-bold text-foreground tracking-tight">
-            Recent Activity
-          </h2>
+      <div>
+        <div>
+          <TrendingUp />
+          <h2>Recent Activity</h2>
         </div>
         {xpHistory.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No activity yet.</p>
+          <p>No activity yet.</p>
         ) : (
-          <div className="space-y-3">
+          <div>
             {xpHistory.slice(0, 12).map((item) => (
-              <div key={item.id} className="flex items-center gap-3">
-                <div className="w-32 text-xs text-muted-foreground shrink-0 text-right">
+              <div key={item.id}>
+                <span>
                   {new Date(item.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-                </div>
-                <div className="flex-1">
-                  <div className="h-5 rounded-full bg-border overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-primary transition-all duration-500 flex items-center justify-end pr-2"
-                      style={{ width: `${(item.xpAmount / maxXpInHistory) * 100}%` }}
-                    >
-                      {item.xpAmount / maxXpInHistory > 0.2 && (
-                        <span className="text-[10px] font-bold text-primary-foreground">+{item.xpAmount}</span>
-                      )}
-                    </div>
+                </span>
+                <div>
+                  <div>
+                    XP bar: {Math.round((item.xpAmount / maxXpInHistory) * 100)}%
                   </div>
                 </div>
-                <span className="text-xs text-muted-foreground w-28 shrink-0 truncate">{actionLabel(item.actionType)}</span>
-                <span className="text-xs font-bold text-primary w-12 text-right shrink-0">+{item.xpAmount}</span>
+                <span>{actionLabel(item.actionType)}</span>
+                <span>+{item.xpAmount}</span>
               </div>
             ))}
           </div>
         )}
-      </ContentCard>
+      </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <ContentCard className="text-center py-5">
-          <p className="text-2xl font-extrabold text-foreground tracking-tight">{stats.currentStreak}</p>
-          <p className="text-xs text-muted-foreground mt-1">Day Streak</p>
-        </ContentCard>
-        <ContentCard className="text-center py-5">
-          <p className="text-2xl font-extrabold text-foreground tracking-tight">{stats.longestStreak}</p>
-          <p className="text-xs text-muted-foreground mt-1">Longest Streak</p>
-        </ContentCard>
-        <ContentCard className="text-center py-5">
-          <p className="text-2xl font-extrabold text-foreground tracking-tight">{stats.questsCompleted}</p>
-          <p className="text-xs text-muted-foreground mt-1">Quests Done</p>
-        </ContentCard>
-        <ContentCard className="text-center py-5">
-          <p className="text-2xl font-extrabold text-foreground tracking-tight">{stats.achievementsUnlocked}</p>
-          <p className="text-xs text-muted-foreground mt-1">Achievements</p>
-        </ContentCard>
+      <div>
+        <div>
+          <div>{stats.currentStreak}</div>
+          <div>Day Streak</div>
+        </div>
+        <div>
+          <div>{stats.longestStreak}</div>
+          <div>Longest Streak</div>
+        </div>
+        <div>
+          <div>{stats.questsCompleted}</div>
+          <div>Quests Done</div>
+        </div>
+        <div>
+          <div>{stats.achievementsUnlocked}</div>
+          <div>Achievements</div>
+        </div>
       </div>
     </div>
   );

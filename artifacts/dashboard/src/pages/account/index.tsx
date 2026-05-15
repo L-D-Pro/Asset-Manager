@@ -70,30 +70,30 @@ function ChangePasswordSection() {
  };
 
  return (
-  <ContentCard className="quiet-card">
+  <ContentCard>
   <CardHeader>
-  <CardTitle className="flex items-center gap-2 text-base">
-  <Lock className="h-4 w-4" /> Change Password
+  <CardTitle>
+  <Lock /> Change Password
  </CardTitle>
  <CardDescription>Minimum 12 characters. Use a strong, unique password.</CardDescription>
  </CardHeader>
  <CardContent>
- <form onSubmit={handleSubmit} className="space-y-4">
- {error && <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertDescription>{error}</AlertDescription></Alert>}
- {success && <Alert className="border-success/30 bg-success/10 text-success"><CheckCircle2 className="h-4 w-4" /><AlertDescription>{success}</AlertDescription></Alert>}
- <div className="space-y-2">
+ <form onSubmit={handleSubmit}>
+ {error && <Alert variant="destructive"><AlertCircle /><AlertDescription>{error}</AlertDescription></Alert>}
+ {success && <Alert><CheckCircle2 /><AlertDescription>{success}</AlertDescription></Alert>}
+ <div>
  <Label htmlFor="current-pw">Current password</Label>
  <Input id="current-pw" type="password" value={current} onChange={e => setCurrent(e.target.value)} required disabled={loading} autoComplete="current-password" />
  </div>
- <div className="space-y-2">
+ <div>
  <Label htmlFor="new-pw">New password</Label>
  <Input id="new-pw" type="password" value={next} onChange={e => setNext(e.target.value)} required minLength={12} disabled={loading} autoComplete="new-password" />
  </div>
- <div className="space-y-2">
+ <div>
  <Label htmlFor="confirm-pw">Confirm new password</Label>
  <Input id="confirm-pw" type="password" value={confirm} onChange={e => setConfirm(e.target.value)} required disabled={loading} autoComplete="new-password" />
  {next && confirm && next !== confirm && (
- <p className="text-xs text-destructive">Passwords do not match</p>
+ <p>Passwords do not match</p>
  )}
  </div>
  <Button type="submit" disabled={loading || (!!next && !!confirm && next !== confirm)}>
@@ -120,18 +120,18 @@ function ChangeEmailSection() {
  };
 
  return (
-  <ContentCard className="quiet-card">
+  <ContentCard>
   <CardHeader>
-  <CardTitle className="flex items-center gap-2 text-base">
-  <Mail className="h-4 w-4" /> Email Address
+  <CardTitle>
+  <Mail /> Email Address
  </CardTitle>
  <CardDescription>Used for account identification only — not for login.</CardDescription>
  </CardHeader>
  <CardContent>
- <form onSubmit={handleSubmit} className="space-y-4">
- {error && <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertDescription>{error}</AlertDescription></Alert>}
- {success && <Alert className="border-success/30 bg-success/10 text-success"><CheckCircle2 className="h-4 w-4" /><AlertDescription>{success}</AlertDescription></Alert>}
- <div className="space-y-2">
+ <form onSubmit={handleSubmit}>
+ {error && <Alert variant="destructive"><AlertCircle /><AlertDescription>{error}</AlertDescription></Alert>}
+ {success && <Alert><CheckCircle2 /><AlertDescription>{success}</AlertDescription></Alert>}
+ <div>
  <Label htmlFor="email">Email</Label>
  <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} required disabled={loading} autoComplete="email" />
  </div>
@@ -227,30 +227,30 @@ function TwoFactorSection() {
  };
 
  return (
-  <ContentCard className="quiet-card">
+  <ContentCard>
   <CardHeader>
-  <CardTitle className="flex items-center gap-2 text-base">
-  <Shield className="h-4 w-4" />
+  <CardTitle>
+  <Shield />
   Two-Factor Authentication
  {user?.totpEnabled
- ? <Badge className="ml-2 bg-success/10 text-success border-success/30">Enabled</Badge>
- : <Badge variant="secondary" className="ml-2">Disabled</Badge>
+ ? <Badge>Enabled</Badge>
+ : <Badge variant="secondary">Disabled</Badge>
  }
  </CardTitle>
  <CardDescription>
  Use Google Authenticator, Authy, or any TOTP-compatible app.
  </CardDescription>
  </CardHeader>
- <CardContent className="space-y-4">
+ <CardContent>
  {/* Disabled state — offer to enable */}
  {!user?.totpEnabled && !setupData && (
- <div className="space-y-3">
- {setup.error && <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertDescription>{setup.error}</AlertDescription></Alert>}
- <p className="text-sm text-muted-foreground">
+ <div>
+ {setup.error && <Alert variant="destructive"><AlertCircle /><AlertDescription>{setup.error}</AlertDescription></Alert>}
+ <p>
  Add a second authentication factor for stronger account security.
  </p>
  <Button onClick={startSetup} disabled={setup.loading} variant="outline">
- <Shield className="h-4 w-4 mr-2" />
+ <Shield />
  {setup.loading ? "Generating…" : "Set up 2FA"}
  </Button>
  </div>
@@ -258,22 +258,22 @@ function TwoFactorSection() {
 
  {/* Setup in progress — show QR code */}
  {setupData && (
- <div className="space-y-4">
+ <div>
  {setup.success && (
- <Alert className="border-primary/30 bg-primary/10 text-primary">
+ <Alert>
  <AlertDescription>{setup.success}</AlertDescription>
  </Alert>
  )}
- <div className="flex justify-center">
- <img src={setupData.qrDataUrl} alt="TOTP QR Code" className="w-48 h-48 rounded border" />
+ <div>
+ <img src={setupData.qrDataUrl} alt="TOTP QR Code" />
  </div>
- <div className="bg-muted rounded p-3">
- <p className="text-xs text-muted-foreground mb-1">Manual entry key:</p>
- <p className="font-mono text-sm break-all select-all">{setupData.secret}</p>
+ <div>
+ <p>Manual entry key:</p>
+ <p>{setupData.secret}</p>
  </div>
- <form onSubmit={confirmEnable} className="space-y-3">
- {enable.error && <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertDescription>{enable.error}</AlertDescription></Alert>}
- <div className="space-y-2">
+ <form onSubmit={confirmEnable}>
+ {enable.error && <Alert variant="destructive"><AlertCircle /><AlertDescription>{enable.error}</AlertDescription></Alert>}
+ <div>
  <Label htmlFor="confirm-totp">Enter code from app to confirm</Label>
  <Input
  id="confirm-totp"
@@ -285,10 +285,9 @@ function TwoFactorSection() {
  maxLength={6}
  required
  disabled={enable.loading}
- className="text-center tracking-widest font-mono"
  />
  </div>
- <div className="flex gap-2">
+ <div>
  <Button type="submit" disabled={enable.loading}>
  {enable.loading ? "Enabling…" : "Enable 2FA"}
  </Button>
@@ -302,16 +301,16 @@ function TwoFactorSection() {
 
  {/* Recovery codes just generated */}
  {recoveryCodes && (
- <div className="space-y-3">
- {enable.success && <Alert className="border-success/30 bg-success/10 text-success"><CheckCircle2 className="h-4 w-4" /><AlertDescription>{enable.success}</AlertDescription></Alert>}
- {regen.success && <Alert className="border-success/30 bg-success/10 text-success"><CheckCircle2 className="h-4 w-4" /><AlertDescription>{regen.success}</AlertDescription></Alert>}
- <div className="bg-warning/10 border border-warning/30 rounded p-3">
- <p className="text-sm font-semibold text-warning mb-2">
+ <div>
+ {enable.success && <Alert><CheckCircle2 /><AlertDescription>{enable.success}</AlertDescription></Alert>}
+ {regen.success && <Alert><CheckCircle2 /><AlertDescription>{regen.success}</AlertDescription></Alert>}
+ <div>
+ <p>
  Save these recovery codes now — they won't be shown again
  </p>
- <div className="grid grid-cols-2 gap-1">
+ <div>
  {recoveryCodes.map((code, i) => (
- <code key={i} className="font-mono text-sm bg-muted border border-border rounded px-2 py-1 select-all">
+ <code key={i}>
  {code}
  </code>
  ))}
@@ -325,15 +324,15 @@ function TwoFactorSection() {
 
  {/* Enabled state — offer to disable or regenerate codes */}
  {user?.totpEnabled && !setupData && !recoveryCodes && (
- <div className="space-y-4">
+ <div>
  <Separator />
 
  {/* Regenerate recovery codes */}
  <div>
- <p className="text-sm font-medium mb-2 flex items-center gap-2">
- <RefreshCw className="h-4 w-4" /> Recovery codes
+ <p>
+ <RefreshCw /> Recovery codes
  </p>
- <p className="text-sm text-muted-foreground mb-2">
+ <p>
  If you've used or lost your recovery codes, regenerate a fresh set.
  </p>
  <Dialog open={regenOpen} onOpenChange={setRegenOpen}>
@@ -347,9 +346,9 @@ function TwoFactorSection() {
  Old codes will be invalidated. Enter your current TOTP code to confirm.
  </DialogDescription>
  </DialogHeader>
- <form onSubmit={regenerateCodes} className="space-y-4">
- {regen.error && <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertDescription>{regen.error}</AlertDescription></Alert>}
- <div className="space-y-2">
+ <form onSubmit={regenerateCodes}>
+ {regen.error && <Alert variant="destructive"><AlertCircle /><AlertDescription>{regen.error}</AlertDescription></Alert>}
+ <div>
  <Label htmlFor="regen-token">Authenticator code</Label>
  <Input
  id="regen-token"
@@ -361,7 +360,6 @@ function TwoFactorSection() {
  maxLength={6}
  required
  disabled={regen.loading}
- className="text-center tracking-widest font-mono"
  />
  </div>
  <DialogFooter>
@@ -379,13 +377,13 @@ function TwoFactorSection() {
 
  {/* Disable 2FA */}
  <div>
- <p className="text-sm font-medium mb-2 flex items-center gap-2 text-destructive">
- <ShieldOff className="h-4 w-4" /> Disable 2FA
+ <p>
+ <ShieldOff /> Disable 2FA
  </p>
- <form onSubmit={confirmDisable} className="space-y-3">
- {disable.error && <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertDescription>{disable.error}</AlertDescription></Alert>}
- {disable.success && <Alert className="border-success/30 bg-success/10 text-success"><CheckCircle2 className="h-4 w-4" /><AlertDescription>{disable.success}</AlertDescription></Alert>}
- <div className="space-y-2">
+ <form onSubmit={confirmDisable}>
+ {disable.error && <Alert variant="destructive"><AlertCircle /><AlertDescription>{disable.error}</AlertDescription></Alert>}
+ {disable.success && <Alert><CheckCircle2 /><AlertDescription>{disable.success}</AlertDescription></Alert>}
+ <div>
  <Label htmlFor="disable-token">Enter current TOTP code to disable</Label>
  <Input
  id="disable-token"
@@ -397,7 +395,6 @@ function TwoFactorSection() {
  maxLength={6}
  required
  disabled={disable.loading}
- className="text-center tracking-widest font-mono w-36"
  />
  </div>
  <Button type="submit" variant="destructive" size="sm" disabled={disable.loading}>
@@ -425,9 +422,9 @@ export default function AccountPage() {
  };
 
  return (
- <div className="max-w-2xl mx-auto space-y-8">
+ <div>
  <PageHeader title="Account" subtitle="Manage your profile, security settings, and preferences." variant="admin">
- <Button variant="outline" onClick={handleLogout} className="rounded-md border-border hover:border-primary/35 hover:bg-primary/5">
+ <Button variant="outline" onClick={handleLogout}>
  Sign out
  </Button>
  </PageHeader>

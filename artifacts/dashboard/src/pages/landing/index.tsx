@@ -22,6 +22,13 @@ import {
   TrendingUp,
 } from 'lucide-react';
 
+/**
+ * @deprecated DESIGN — DO NOT USE AS INSPIRATION FOR NEW DESIGN SYSTEM
+ * This file is preserved for route functionality only (public landing page).
+ * All visual patterns within are obsolete and must not inform new design decisions.
+ * Isolated from the app's design source-of-truth.
+ */
+
 /* ─── Animation primitives ─── */
 const fadeInUp = {
   hidden: { opacity: 0, y: 20 },

@@ -148,20 +148,20 @@ export default function FreelancePage() {
  });
 
  return (
- <div className="space-y-8">
+ <div>
  <PageHeader
  title="Freelance Assist"
  subtitle="Manage your freelance pipeline — from proposals to retainer tracking."
  variant="workflow"
  />
 
- <div className="grid gap-4 lg:grid-cols-2">
+ <div>
  <ContentCard>
  <CardHeader>
  <CardTitle>Contractor Profile</CardTitle>
  <CardDescription>Source-of-truth material used by proposal drafting.</CardDescription>
  </CardHeader>
- <CardContent className="space-y-3">
+ <CardContent>
  <Input
  value={profileForm.name}
  onChange={(event) => setProfileForm({ ...profileForm, name: event.target.value })}
@@ -176,7 +176,6 @@ export default function FreelancePage() {
  value={profileForm.contractorResumeText}
  onChange={(event) => setProfileForm({ ...profileForm, contractorResumeText: event.target.value })}
  placeholder="Contractor resume, portfolio summary, proof points"
- className="min-h-32"
  />
  <Button
  disabled={!profileForm.name || createProfile.isPending}
@@ -192,7 +191,7 @@ export default function FreelancePage() {
  <CardTitle>Capture Project</CardTitle>
  <CardDescription>Paste project text manually or from a user-opened page capture.</CardDescription>
  </CardHeader>
- <CardContent className="space-y-3">
+ <CardContent>
  <Input
  value={projectForm.profileId}
  onChange={(event) => setProjectForm({ ...projectForm, profileId: event.target.value })}
@@ -218,7 +217,6 @@ export default function FreelancePage() {
  value={projectForm.descriptionText}
  onChange={(event) => setProjectForm({ ...projectForm, descriptionText: event.target.value })}
  placeholder="Project description"
- className="min-h-32"
  />
  <Button
  disabled={!projectForm.title || !projectForm.descriptionText || createProject.isPending}
@@ -232,27 +230,27 @@ export default function FreelancePage() {
 
  <ContentCard>
  <CardHeader>
- <CardTitle className="flex items-center gap-2">
- <Target className="h-5 w-5" />
+ <CardTitle>
+ <Target />
  Projects
  </CardTitle>
  <CardDescription>Score fit first, then draft a proposal only when it looks worth your time.</CardDescription>
  </CardHeader>
- <CardContent className="space-y-3">
-  {projects.length === 0 ? <p className="text-sm text-muted-foreground">No freelance projects yet.</p> : null}
+ <CardContent>
+  {projects.length === 0 ? <p>No freelance projects yet.</p> : null}
  {projects.map((project) => (
-  <div key={project.id} className="quiet-card p-4 text-sm">
- <div className="flex items-center justify-between gap-3">
- <span className="font-medium">{project.title}</span>
+  <div key={project.id}>
+ <div>
+ <span>{project.title}</span>
  <Badge variant={project.fitScore != null && project.fitScore >= 70 ? "default" : "outline"}>
  {project.fitScore == null ? "unscored" : `${project.fitScore}% fit`}
  </Badge>
  </div>
- <p className="mt-1 text-muted-foreground line-clamp-2">{project.descriptionText}</p>
+ <p>{project.descriptionText}</p>
  {project.riskFlags.length ? (
- <p className="mt-1 text-xs text-warning">Risks: {project.riskFlags.join(", ")}</p>
+ <p>Risks: {project.riskFlags.join(", ")}</p>
  ) : null}
- <div className="mt-3 flex gap-2">
+ <div>
  <Button size="sm" variant="outline" onClick={() => scoreProject.mutate(project.id)}>
  Score
  </Button>
@@ -274,19 +272,19 @@ export default function FreelancePage() {
  <CardTitle>Proposal Queue</CardTitle>
  <CardDescription>Drafts stay pending until you review and manually submit outside the app.</CardDescription>
  </CardHeader>
- <CardContent className="space-y-3">
-  {proposals.length === 0 ? <p className="text-sm text-muted-foreground">No proposal drafts yet.</p> : null}
+ <CardContent>
+  {proposals.length === 0 ? <p>No proposal drafts yet.</p> : null}
  {proposals.map((proposal) => (
-  <div key={proposal.id} className="quiet-card p-4 text-sm">
- <div className="flex items-center justify-between gap-3">
- <span className="font-medium">Project #{proposal.projectId}</span>
+  <div key={proposal.id}>
+ <div>
+ <span>Project #{proposal.projectId}</span>
  <Badge>{proposal.status}</Badge>
  </div>
- <pre className="mt-3 whitespace-pre-wrap rounded-md bg-muted p-3 text-xs">{proposal.proposalText}</pre>
+ <pre>{proposal.proposalText}</pre>
  {proposal.clientMessageText ? (
- <pre className="mt-2 whitespace-pre-wrap rounded-md bg-muted/60 p-3 text-xs">{proposal.clientMessageText}</pre>
+ <pre>{proposal.clientMessageText}</pre>
  ) : null}
- {proposal.riskNotes ? <p className="mt-2 text-xs text-muted-foreground">{proposal.riskNotes}</p> : null}
+ {proposal.riskNotes ? <p>{proposal.riskNotes}</p> : null}
  </div>
  ))}
  </CardContent>

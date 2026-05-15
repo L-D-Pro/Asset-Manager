@@ -287,38 +287,37 @@ export default function AiConfigPage() {
  };
 
  return (
- <div className="space-y-6">
+ <div>
  {healthReport && !healthReport.healthy && (
-   <div data-testid="model-config-health-banner" className="rounded-xl border border-destructive/40 bg-destructive/5 p-4">
-     <div className="flex gap-3">
-       <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
-       <div className="space-y-2 flex-1">
-         <div className="flex items-start justify-between gap-3">
-           <p className="font-semibold text-destructive">AI model config problem detected</p>
+   <div data-testid="model-config-health-banner">
+     <div>
+       <AlertTriangle />
+       <div>
+         <div>
+           <p>AI model config problem detected</p>
            <Button
              data-testid="btn-reseed-configs"
              variant="outline"
              size="sm"
-             className="shrink-0 border-destructive/40 text-destructive hover:bg-destructive/10"
              onClick={() => void handleReseed()}
              disabled={isReseeding}
            >
-             <RefreshCw className={cn("mr-2 h-3.5 w-3.5", isReseeding && "animate-spin")} />
+             <RefreshCw />
              {isReseeding ? "Repairing…" : "Re-seed defaults"}
            </Button>
          </div>
-         <p className="text-sm text-muted-foreground">
+         <p>
            The following scopes are missing an active model or a required fallback. AI generation will fail for these scopes until the configs are fixed.
          </p>
-         <div className="flex flex-wrap gap-2 pt-1">
+         <div>
            {healthReport.scopes.filter((s) => !s.healthy).map((s) => (
-             <div key={s.scope} className="rounded-md border border-destructive/30 bg-background px-3 py-1.5 text-xs">
-               <span className="font-semibold font-mono">{s.scope}</span>
+             <div key={s.scope}>
+               <span>{s.scope}</span>
                {!s.hasActiveConfig && (
-                 <span className="ml-1.5 text-muted-foreground">— no active model</span>
+                 <span>— no active model</span>
                )}
                {s.hasActiveConfig && s.requiresFallback && !s.fallbackWired && (
-                 <span className="ml-1.5 text-muted-foreground">— fallback not wired</span>
+                 <span>— fallback not wired</span>
                )}
              </div>
            ))}
@@ -328,21 +327,21 @@ export default function AiConfigPage() {
    </div>
  )}
  {healthReport?.healthy && (
-   <div data-testid="model-config-health-ok" className="rounded-xl border border-green-500/30 bg-green-500/5 px-4 py-2.5 flex items-center gap-2 text-sm text-green-700">
-     <CheckCircle2 className="h-4 w-4 shrink-0" />
+   <div data-testid="model-config-health-ok">
+     <CheckCircle2 />
      All required model configs are active and properly wired.
    </div>
  )}
- <div className="flex justify-between items-center">
- <div className="space-y-2">
+ <div>
+ <div>
  <PageHeader
  title="AI Config"
  subtitle="Configure AI model defaults per task type, manage cost caps, and set fallback behavior."
  variant="data"
  />
- <p className="text-sm text-muted-foreground">
+ <p>
  Tune model + prompt + role + best practices for one task at once in the{" "}
- <Link to="/pipeline-diagram" className="text-primary underline underline-offset-2">
+ <Link to="/pipeline-diagram">
  AI Pipeline Hub
  </Link>
  .
@@ -351,9 +350,9 @@ export default function AiConfigPage() {
 
  <Dialog open={isDialogOpen} onOpenChange={(open) => { if(!open) handleClose(); else setIsDialogOpen(true); }}>
  <DialogTrigger asChild>
- <Button data-testid="btn-add-config"><Plus className="mr-2 h-4 w-4"/>New Config</Button>
+ <Button data-testid="btn-add-config"><Plus/>New Config</Button>
  </DialogTrigger>
- <DialogContent className="max-w-lg">
+ <DialogContent>
  <DialogHeader>
  <DialogTitle>{editingId ? "Edit Config" : "New Config"}</DialogTitle>
  <DialogDescription>
@@ -361,7 +360,7 @@ export default function AiConfigPage() {
  </DialogDescription>
  </DialogHeader>
  <Form {...form}>
- <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+ <form onSubmit={form.handleSubmit(onSubmit)}>
  <FormField control={form.control} name="taskScope" render={({field}) => (
  <FormItem>
  <FormLabel>Task Scope</FormLabel>
@@ -401,7 +400,7 @@ export default function AiConfigPage() {
  </FormItem>
  )}/>
 
- <div className="grid grid-cols-2 gap-4">
+ <div>
  <FormField control={form.control} name="provider" render={({field}) => (
  <FormItem>
  <FormLabel>Provider</FormLabel>
@@ -413,7 +412,7 @@ export default function AiConfigPage() {
  <FormItem>
  <FormLabel>Priority</FormLabel>
  <FormControl><Input type="number" min={0} {...field} data-testid="input-config-priority"/></FormControl>
- <FormDescription className="text-xs">Lower = tried first</FormDescription>
+ <FormDescription>Lower = tried first</FormDescription>
  </FormItem>
  )}/>
  </div>
@@ -427,7 +426,7 @@ export default function AiConfigPage() {
  )}/>
 
  <Separator />
- <div className="grid grid-cols-2 gap-4">
+ <div>
  <FormField control={form.control} name="costPerInputToken" render={({field}) => (
  <FormItem>
  <FormLabel>Cost / Input Token ($)</FormLabel>
@@ -471,7 +470,7 @@ export default function AiConfigPage() {
  ))}
  </SelectContent>
  </Select>
- <FormDescription className="text-xs">Used first if the primary model fails. Recommended models are created as configs when saved.</FormDescription>
+ <FormDescription>Used first if the primary model fails. Recommended models are created as configs when saved.</FormDescription>
  </FormItem>
  )}/>
 
@@ -502,17 +501,17 @@ export default function AiConfigPage() {
  ))}
  </SelectContent>
  </Select>
- <FormDescription className="text-xs">
+ <FormDescription>
  Optional. If fallback 1 fails, routing follows this third model.
  </FormDescription>
  <FormMessage />
  </FormItem>
  )}/>
 
- <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground space-y-1">
- <p className="font-medium text-foreground">Recommended low-cost long-context fallbacks</p>
+ <div>
+ <p>Recommended low-cost long-context fallbacks</p>
  <p>Best for strict resume JSON because they support response format and structured outputs.</p>
- <div className="grid gap-1">
+ <div>
  {RECOMMENDED_FALLBACK_MODELS.slice(0, 5).map((model) => (
  <span key={model.id}>{model.label}: {model.note}</span>
  ))}
@@ -520,10 +519,10 @@ export default function AiConfigPage() {
  </div>
 
  <FormField control={form.control} name="isActive" render={({field}) => (
- <FormItem className="flex items-center justify-between rounded-lg border p-3">
+ <FormItem>
  <div>
- <FormLabel className="mb-0">Active</FormLabel>
- <FormDescription className="text-xs">Inactive models are skipped; fallback is used instead.</FormDescription>
+ <FormLabel>Active</FormLabel>
+ <FormDescription>Inactive models are skipped; fallback is used instead.</FormDescription>
  </div>
  <FormControl>
  <Switch checked={field.value} onCheckedChange={field.onChange} data-testid="switch-config-active"/>
@@ -531,7 +530,7 @@ export default function AiConfigPage() {
  </FormItem>
  )}/>
 
- <Button type="submit" className="w-full" disabled={createConfig.isPending || updateConfig.isPending} data-testid="btn-submit-config">
+ <Button type="submit" disabled={createConfig.isPending || updateConfig.isPending} data-testid="btn-submit-config">
  {editingId ? "Update Config" : "Create Config"}
  </Button>
  </form>
@@ -540,50 +539,50 @@ export default function AiConfigPage() {
  </Dialog>
  </div>
 
- {isLoading ? <Skeleton className="h-64 w-full" /> : sortedConfigs.length === 0 ? (
-  <div className="quiet-card flex flex-col items-center justify-center p-12 text-center">
-  <Settings className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
-  <h3 className="text-lg font-semibold text-foreground">No AI configs yet</h3>
-  <p className="text-sm text-muted-foreground mt-1">Create your first model config to enable AI pipelines.</p>
+ {isLoading ? <Skeleton /> : sortedConfigs.length === 0 ? (
+  <div>
+  <Settings />
+  <h3>No AI configs yet</h3>
+  <p>Create your first model config to enable AI pipelines.</p>
   </div>
  ) : (
- <div className="grid gap-4 md:grid-cols-2">
+ <div>
  {sortedConfigs.map(c => {
  const fallbackChain = getFallbackChain(c);
  return (
-  <div key={c.id} data-testid={`card-config-${c.id}`} className={cn("quiet-card rounded-2xl overflow-hidden", !c.isActive && "opacity-70")}>
-  <div className="p-5 space-y-3">
- <div className="flex justify-between items-start">
- <div className="space-y-1 flex-1 min-w-0 pr-2">
- <div className="flex items-center gap-2 flex-wrap">
- <Badge className="shrink-0">{c.taskScope}</Badge>
- {!c.isActive && <Badge variant="outline" className="text-xs">Inactive</Badge>}
- <span className="text-xs text-muted-foreground">Priority: {c.priority ?? 0}</span>
+  <div key={c.id} data-testid={`card-config-${c.id}`}>
+  <div>
+ <div>
+ <div>
+ <div>
+ <Badge>{c.taskScope}</Badge>
+ {!c.isActive && <Badge variant="outline">Inactive</Badge>}
+ <span>Priority: {c.priority ?? 0}</span>
  </div>
- <div className="font-semibold truncate" title={c.modelName}>{c.modelName}</div>
- <div className="text-sm text-muted-foreground">{c.provider}</div>
+ <div title={c.modelName}>{c.modelName}</div>
+ <div>{c.provider}</div>
  </div>
- <div className="flex shrink-0">
- <Button variant="ghost" size="icon" onClick={() => handleEdit(c)} data-testid={`btn-edit-config-${c.id}`}><Pencil className="h-4 w-4"/></Button>
- <Button variant="ghost" size="icon" onClick={() => handleDelete(c.id)} data-testid={`btn-delete-config-${c.id}`}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+ <div>
+ <Button variant="ghost" size="icon" onClick={() => handleEdit(c)} data-testid={`btn-edit-config-${c.id}`}><Pencil/></Button>
+ <Button variant="ghost" size="icon" onClick={() => handleDelete(c.id)} data-testid={`btn-delete-config-${c.id}`}><Trash2/></Button>
  </div>
  </div>
 
  {(c.costPerInputToken || c.costPerOutputToken) && (
- <div className="flex gap-3 text-xs text-muted-foreground">
+ <div>
  {c.costPerInputToken && <span>In: ${c.costPerInputToken}/tok</span>}
  {c.costPerOutputToken && <span>Out: ${c.costPerOutputToken}/tok</span>}
  </div>
  )}
 
  {fallbackChain.firstName && (
- <div className="flex items-center gap-1 text-xs text-muted-foreground">
- <ArrowRight className="h-3 w-3" />
- Fallback: <span className="font-medium">{fallbackChain.firstName}</span>
+ <div>
+ <ArrowRight />
+ Fallback: <span>{fallbackChain.firstName}</span>
  {fallbackChain.secondName && (
  <>
- <ArrowRight className="h-3 w-3 ml-1" />
- <span className="font-medium">{fallbackChain.secondName}</span>
+ <ArrowRight />
+ <span>{fallbackChain.secondName}</span>
  </>
  )}
  </div>

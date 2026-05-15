@@ -116,12 +116,12 @@ export default function ApplicationsPage() {
  const statuses = ["all", "draft", "submitted", "interviewing", "offer", "rejected", "withdrawn"];
 
  return (
- <div className="space-y-6">
+ <div>
   <PageHeader title="Applications" subtitle="Track submitted applications and pipeline stage.">
   <Dialog open={isDialogOpen} onOpenChange={(open) => { if(!open) handleClose(); else setIsDialogOpen(true); }}>
  <DialogTrigger asChild>
  <Button data-testid="btn-add-app">
- <Plus className="mr-2 h-4 w-4" />
+ <Plus />
  New Application
  </Button>
  </DialogTrigger>
@@ -130,7 +130,7 @@ export default function ApplicationsPage() {
  <DialogTitle>{editingId ? "Update Application" : "Create Application Tracker"}</DialogTitle>
  </DialogHeader>
  <Form {...form}>
- <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+ <form onSubmit={form.handleSubmit(onSubmit)}>
  <FormField
  control={form.control}
  name="jobId"
@@ -203,7 +203,7 @@ export default function ApplicationsPage() {
  </FormItem>
  )}
  />
- <div className="flex justify-end pt-4">
+ <div>
  <Button type="submit" disabled={createApplication.isPending || updateApplication.isPending} data-testid="btn-submit-app">
  {editingId ? "Update" : "Create"}
  </Button>
@@ -214,69 +214,68 @@ export default function ApplicationsPage() {
   </Dialog>
   </PageHeader>
 
- <div className="flex gap-2 flex-wrap" data-testid="filter-app-status">
+ <div data-testid="filter-app-status">
  {statuses.map((s) => (
  <Button
  key={s}
  variant={statusFilter === s ? "default" : "outline"}
  size="sm"
  onClick={() => setStatusFilter(s)}
- data-testid={`filter-status-${s}`}
- className="capitalize"
- >
+  data-testid={`filter-status-${s}`}
+  >
  {s}
  </Button>
  ))}
  </div>
 
- <div className="space-y-3">
+ <div>
  {isLoading ? (
  <>
- <Skeleton className="h-20 w-full" />
- <Skeleton className="h-20 w-full" />
+ <Skeleton />
+ <Skeleton />
  </>
  ) : applications?.length === 0 ? (
- <div className="quiet-card flex flex-col items-center justify-center p-12 text-center shadow-[0_2px_15px_-3px_rgba(0,0,0,0.06)]">
-  <Activity className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
- <h3 className="text-lg font-semibold text-foreground">No applications</h3>
-  <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+  <div>
+  <Activity />
+ <h3>No applications</h3>
+  <p>
  {statusFilter !== "all" ? `No ${statusFilter} applications.` : "Start tracking your submitted applications here."}
  </p>
  </div>
  ) : (
- <div className="border rounded-2xl divide-y bg-card/50  shadow-sm">
+ <div>
  {applications?.map((app) => (
- <div key={app.id} className="p-4 flex items-center justify-between hover:bg-muted/30 transition-colors" data-testid={`row-app-${app.id}`}>
- <div className="space-y-1">
- <div className="flex items-center gap-3">
- <span className="font-semibold">App #{app.id}</span>
- <Badge variant={STATUS_COLORS[app.status] ?? "secondary"} className="capitalize">
+ <div key={app.id} data-testid={`row-app-${app.id}`}>
+ <div>
+ <div>
+ <span>App #{app.id}</span>
+ <Badge variant={STATUS_COLORS[app.status] ?? "secondary"}>
  {app.status}
  </Badge>
- <span className="text-xs text-muted-foreground capitalize">{app.applyMode}</span>
+ <span>{app.applyMode}</span>
  </div>
- <div className="text-sm text-muted-foreground flex items-center gap-3 flex-wrap">
- <Link to={`/jobs/${app.jobId}`} className="text-primary hover:underline">
+ <div>
+ <Link to={`/jobs/${app.jobId}`} >
  Job #{app.jobId}
  </Link>
  {app.resumeVersionId && (
- <span className="flex items-center gap-1 text-xs">
- <FileText className="h-3 w-3" />
- Resume <Link to="/resume-versions" className="text-primary hover:underline">#{app.resumeVersionId}</Link>
+ <span >
+ <FileText />
+ Resume <Link to="/resume-versions" >#{app.resumeVersionId}</Link>
  </span>
  )}
  {app.coverLetterVersionId && (
- <span className="flex items-center gap-1 text-xs">
- <Mail className="h-3 w-3" />
- Cover Letter <Link to="/cover-letters" className="text-primary hover:underline">#{app.coverLetterVersionId}</Link>
+ <span >
+ <Mail />
+ Cover Letter <Link to="/cover-letters" >#{app.coverLetterVersionId}</Link>
  </span>
  )}
  {app.appliedAt && (
- <span className="text-xs">{new Date(app.appliedAt).toLocaleDateString()}</span>
+ <span>{new Date(app.appliedAt).toLocaleDateString()}</span>
  )}
  </div>
  {app.notes && (
- <p className="text-xs text-muted-foreground line-clamp-1">{app.notes}</p>
+ <p>{app.notes}</p>
  )}
  </div>
  <Button variant="ghost" size="sm" onClick={() => handleEdit(app)} data-testid={`btn-edit-app-${app.id}`}>Edit</Button>

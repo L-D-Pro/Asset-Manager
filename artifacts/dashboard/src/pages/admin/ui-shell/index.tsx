@@ -73,39 +73,39 @@ function SlotEditor({
  return (
  <Card>
  <CardHeader>
- <CardTitle className="flex items-center gap-2 text-base">
- <ArrowUpDown className="h-4 w-4" />
+ <CardTitle>
+ <ArrowUpDown />
  {title}
  </CardTitle>
  <CardDescription>{description}</CardDescription>
  </CardHeader>
- <CardContent className="space-y-3">
+ <CardContent>
  <SortableList ids={ids} onReorder={onReorder}>
- <div className="space-y-3">
+ <div>
  {orderedItems.map((item) => (
  <SortableZoneItem key={item.id} id={item.id}>
- <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
- <div className="text-muted-foreground">
- {item.locked ? <span className="inline-flex h-5 w-5" /> : <GripVertical className="h-5 w-5" />}
+ <div>
+ <div>
+ {item.locked ? <span /> : <GripVertical />}
  </div>
- <div className="min-w-0 flex-1 space-y-2">
- <p className="text-xs text-muted-foreground">{item.componentKey}</p>
+ <div>
+ <p>{item.componentKey}</p>
  <Input
  value={item.label}
  onChange={(event) => onRename(item.id, event.currentTarget.value)}
  disabled={item.locked}
  />
  </div>
- <div className="flex items-center gap-2">
+ <div>
  <Switch
  checked={item.visibility}
  onCheckedChange={(checked) => onVisibility(item.id, checked)}
  disabled={item.locked}
  />
  {item.visibility ? (
- <Eye className="h-4 w-4 text-muted-foreground" />
+ <Eye />
  ) : (
- <EyeOff className="h-4 w-4 text-muted-foreground" />
+ <EyeOff />
  )}
  </div>
  </div>
@@ -233,21 +233,21 @@ function AdminUiShellPageContent() {
  };
 
  return (
- <div className="space-y-6">
- <div className="flex flex-wrap items-end justify-between gap-3">
  <div>
- <h1 className="text-2xl font-semibold tracking-tight">UI Shell Orchestration</h1>
- <p className="text-sm text-muted-foreground">
+ <div>
+ <div>
+ <h1>UI Shell Orchestration</h1>
+ <p>
  Slot-scoped orchestration for navbar cards and dashboard widgets.
  </p>
  </div>
- <div className="flex items-center gap-2">
+ <div>
  <Button variant="outline" onClick={reset} disabled={resetMutation.isPending || saveMutation.isPending}>
- {resetMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+ {resetMutation.isPending ? <Loader2 /> : <RotateCcw />}
  Reset
  </Button>
  <Button onClick={save} disabled={saveMutation.isPending || !draftConfig}>
- {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+ {saveMutation.isPending ? <Loader2 /> : <Save />}
  Save
  </Button>
  </div>
@@ -260,8 +260,8 @@ function AdminUiShellPageContent() {
  Choose the active semantic palette. Component spacing, radii, and shadows remain fixed.
  </CardDescription>
  </CardHeader>
- <CardContent className="space-y-4">
-             <div className="max-w-sm space-y-2">
+ <CardContent>
+             <div>
              <Label htmlFor="theme-id">Theme</Label>
              <select
              id="theme-id"
@@ -271,7 +271,6 @@ function AdminUiShellPageContent() {
              current ? { ...current, themeID: event.currentTarget.value } : current
              )
              }
-             className="flex h-12 w-full rounded-[16px] border-2 border-[hsl(var(--border))] bg-[hsl(var(--background))] px-4 py-3 text-base font-sans text-[hsl(var(--foreground))] focus:outline-none focus:border-[hsl(var(--primary))]"
              >
              {effectiveThemes.map((theme) => (
              <option key={theme.id} value={theme.id}>
@@ -281,11 +280,11 @@ function AdminUiShellPageContent() {
              </select>
              </div>
  {selectedTheme ? (
- <div className="rounded-lg border border-border/70 bg-card/70 p-3">
- <p className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+ <div>
+ <p>
  Theme preview
  </p>
- <div className="flex flex-wrap items-center gap-2">
+ <div>
  {[
  { label: "Primary", color: selectedTheme.palette.brandPrimary },
  { label: "Accent", color: selectedTheme.palette.brandAccent ?? selectedTheme.palette.brandPrimary },
@@ -295,9 +294,8 @@ function AdminUiShellPageContent() {
  ].map((chip) => (
  <span
  key={`${selectedTheme.id}-${chip.label}`}
- className="inline-flex items-center gap-2 rounded-full border border-border/70 px-2 py-1 text-xs text-foreground"
  >
- <span className="h-2.5 w-2.5 rounded-full border border-border/70" style={{ backgroundColor: chip.color }} />
+ <span />
  {chip.label}
  </span>
  ))}
@@ -309,13 +307,13 @@ function AdminUiShellPageContent() {
 
  {isLoading || !draftConfig ? (
  <Card>
- <CardContent className="flex items-center gap-2 py-8 text-muted-foreground">
- <Loader2 className="h-4 w-4 animate-spin" />
+ <CardContent>
+ <Loader2 />
  Loading UI shell configuration...
  </CardContent>
  </Card>
  ) : (
- <div className="grid gap-6 lg:grid-cols-2">
+ <div>
  <SlotEditor
  title="Navbar Slot"
  description="Reorder and rename featured cards shown at top of the left sidebar."

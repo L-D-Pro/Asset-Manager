@@ -32,8 +32,8 @@ type AnnotatedParagraph = {
 };
 
 function SupportBadge({ status }: { status?: AnnotatedParagraph["supportStatus"] }) {
-  if (status === "supported") return <Badge variant="outline" className="border-success/50 text-success">Supported</Badge>;
-  if (status === "partial") return <Badge variant="outline" className="border-warning/50 text-warning">Needs Review</Badge>;
+  if (status === "supported") return <Badge variant="outline">Supported</Badge>;
+  if (status === "partial") return <Badge variant="outline">Needs Review</Badge>;
   if (status === "unsupported") return <Badge variant="destructive">Unsupported</Badge>;
   return null;
 }
@@ -166,31 +166,31 @@ export default function CoverLettersPage() {
   };
 
   return (
-    <div className="space-y-8">
+    <div>
       <PageHeader
         title="Cover Letter Queue"
         subtitle="Review AI-drafted cover letters with claim attribution before approving."
         variant="workflow"
       >
         <Button variant="outline" size="sm" onClick={() => setShowBulkDelete(true)}>
-          <Trash2 className="mr-1 h-4 w-4" /> Clean Up
+          <Trash2 /> Clean Up
         </Button>
       </PageHeader>
 
-      <div className="grid gap-4">
+      <div>
         {isLoading ? (
           <>
-            <Skeleton className="h-56 w-full rounded-lg" />
-            <Skeleton className="h-56 w-full rounded-lg" />
+            <Skeleton />
+            <Skeleton />
           </>
         ) : versions?.length === 0 ? (
           <ContentCard>
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-muted text-muted-foreground mb-4 border border-border">
-                <MessageSquare className="h-8 w-8" />
+            <div>
+              <div>
+                <MessageSquare />
               </div>
-              <h3 className="text-base font-semibold text-foreground mb-1.5">Queue empty</h3>
-              <p className="text-sm text-muted-foreground max-w-sm">
+              <h3>Queue empty</h3>
+              <p>
                 No cover letters pending review right now.
               </p>
             </div>
@@ -201,10 +201,10 @@ export default function CoverLettersPage() {
             const seriousTruthIssues = annotations?.filter((para) => para.supportStatus === "unsupported").length ?? 0;
             return (
               <ContentCard key={version.id} data-testid={`card-cl-${version.id}`}>
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-6 pb-3">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-lg font-semibold text-card-foreground">Cover Letter #{version.id}</h3>
+                <div>
+                  <div>
+                    <div>
+                      <h3>Cover Letter #{version.id}</h3>
                       <Badge variant={
                         version.status === "pending_approval" ? "secondary" :
                         version.status === "approved" ? "default" : "destructive"
@@ -215,15 +215,15 @@ export default function CoverLettersPage() {
                         <Badge variant="destructive">{seriousTruthIssues} truth issue{seriousTruthIssues === 1 ? "" : "s"}</Badge>
                       )}
                     </div>
-                    <p className="text-sm text-muted-foreground">
+                    <p>
                       {version.jobId && (
-                        <>For <Link to={`/jobs/${version.jobId}`} className="text-primary hover:underline">Job #{version.jobId}</Link>{" "}&mdash;{" "}</>
+                        <>For <Link to={`/jobs/${version.jobId}`}>Job #{version.jobId}</Link>{" "}&mdash;{" "}</>
                       )}
                       {annotations ? `${annotations.length} annotated paragraph${annotations.length !== 1 ? "s" : ""}` : "Full draft view"}
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div>
                     {version.status === "pending_approval" && (
                       <>
                         <Button
@@ -232,17 +232,16 @@ export default function CoverLettersPage() {
                           onClick={() => { setRevisionTarget(version); setRevisionNote(""); }}
                           data-testid={`btn-revision-cl-${version.id}`}
                         >
-                          <RotateCcw className="mr-1 h-4 w-4" /> Request Revision
+                          <RotateCcw /> Request Revision
                         </Button>
                         <Button
                           variant="secondary"
-                          className="text-destructive"
                           size="sm"
                           onClick={() => handleReject(version.id)}
                           disabled={reject.isPending}
                           data-testid={`btn-reject-cl-${version.id}`}
                         >
-                          <X className="mr-1 h-4 w-4" /> Reject
+                          <X /> Reject
                         </Button>
                         <Button
                           variant="default"
@@ -251,14 +250,14 @@ export default function CoverLettersPage() {
                           disabled={approve.isPending}
                           data-testid={`btn-approve-cl-${version.id}`}
                         >
-                          <Check className="mr-1 h-4 w-4" /> Approve
+                          <Check /> Approve
                         </Button>
                       </>
                     )}
                     {version.status === "approved" && (
                       <Button variant="secondary" size="sm" asChild>
                         <a href={`/api/cover-letter-versions/${version.id}/export`} target="_blank" rel="noopener noreferrer">
-                          Export DOCX <ExternalLink className="ml-1 h-3 w-3" />
+                          Export DOCX <ExternalLink />
                         </a>
                       </Button>
                     )}
@@ -269,36 +268,34 @@ export default function CoverLettersPage() {
                       disabled={deleteCL.isPending}
                       data-testid={`btn-delete-cl-${version.id}`}
                     >
-                      <Trash2 className="mr-1 h-4 w-4" /> Delete
+                      <Trash2 /> Delete
                     </Button>
                   </div>
                 </div>
 
-                <div className="border-t border-border/50" />
+                <div />
 
-                <div className="p-6 pt-4 space-y-4">
+                <div>
                   {annotations ? (
-                    <div className="space-y-3">
+                    <div>
                       {annotations.map((para, i) => (
                         <div
                           key={i}
-                          className={`p-3 rounded-md border text-sm ${ROLE_COLORS[para.role] || "bg-muted/50"}`}
                           data-testid={`cl-para-${version.id}-${i}`}
                         >
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className={`text-xs font-semibold uppercase rounded px-1.5 py-0.5 ${ROLE_LABEL_COLORS[para.role] || "text-muted-foreground bg-muted"}`}>
+                          <div>
+                            <span>
                               {para.role}
                             </span>
                             <SupportBadge status={para.supportStatus ?? para.truthReview?.supportStatus} />
                             {para.claimIds.length > 0 && (
-                              <div className="flex items-center gap-1 flex-wrap">
-                                <Tag className="h-3 w-3 text-muted-foreground" />
+                              <div>
+                                <Tag />
                                 {para.claimIds.map((cid) => {
                                   const claim = claimMap.get(cid);
                                   return (
                                     <span
                                       key={cid}
-                                      className="text-xs bg-primary/10 text-primary rounded px-1.5 py-0.5"
                                       title={claim?.summary}
                                     >
                                       {claim ? claim.summary.slice(0, 30) + (claim.summary.length > 30 ? "…" : "") : `Claim #${cid}`}
@@ -308,27 +305,27 @@ export default function CoverLettersPage() {
                               </div>
                             )}
                           </div>
-                          <p className="leading-relaxed">{para.text}</p>
+                          <p>{para.text}</p>
                           {para.truthReview && (
-                            <div className="mt-3 rounded border bg-background/70 p-2 text-xs space-y-1">
-                              <div className="flex items-center gap-1 text-muted-foreground">
-                                <ShieldCheck className="h-3 w-3" />
+                            <div>
+                              <div>
+                                <ShieldCheck />
                                 <span>Truth review</span>
                               </div>
                               {(para.truthReview.unsupportedPhrases?.length ?? 0) > 0 && (
-                                <p className="text-destructive flex gap-1">
-                                  <AlertCircle className="h-3 w-3 shrink-0 mt-0.5" />
+                                <p>
+                                  <AlertCircle />
                                   <span>{para.truthReview.unsupportedPhrases?.join("; ")}</span>
                                 </p>
                               )}
                               {(para.truthReview.gapNotes?.length ?? 0) > 0 && (
-                                <p className="text-warning">Gaps: {para.truthReview.gapNotes?.join("; ")}</p>
+                                <p>Gaps: {para.truthReview.gapNotes?.join("; ")}</p>
                               )}
                               {(para.truthReview.jobKeywordsUsed?.length ?? 0) > 0 && (
-                                <p className="text-muted-foreground">JD keywords: {para.truthReview.jobKeywordsUsed?.join(", ")}</p>
+                                <p>JD keywords: {para.truthReview.jobKeywordsUsed?.join(", ")}</p>
                               )}
                               {(para.truthReview.companySourcesUsed?.length ?? 0) > 0 && (
-                                <p className="text-muted-foreground">Company/job sources: {para.truthReview.companySourcesUsed?.join(", ")}</p>
+                                <p>Company/job sources: {para.truthReview.companySourcesUsed?.join(", ")}</p>
                               )}
                             </div>
                           )}
@@ -336,7 +333,7 @@ export default function CoverLettersPage() {
                       ))}
                     </div>
                   ) : (
-                    <div className="quiet-card p-4 text-sm whitespace-pre-wrap max-h-96 overflow-y-auto">
+                    <div>
                       {version.draftContent || "No content generated yet."}
                     </div>
                   )}
@@ -352,18 +349,17 @@ export default function CoverLettersPage() {
           <DialogHeader>
             <DialogTitle>Request Revision — Cover Letter #{revisionTarget?.id}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
+          <div>
+            <p>
               Describe what should be changed. This will reject the draft and log your feedback for the next generation.
             </p>
             <Textarea
               placeholder="e.g. The second paragraph oversells my ML experience. Tone down and focus on the team leadership claim instead."
               value={revisionNote}
               onChange={(e) => setRevisionNote(e.target.value)}
-              className="h-28"
               data-testid="input-revision-note"
             />
-            <div className="flex justify-end gap-2">
+            <div>
               <Button variant="outline" onClick={() => { setRevisionTarget(null); setRevisionNote(""); }}>Cancel</Button>
               <Button
                 variant="destructive"

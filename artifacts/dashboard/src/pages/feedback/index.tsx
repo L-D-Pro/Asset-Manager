@@ -80,7 +80,7 @@ export default function FeedbackPage() {
  };
 
  return (
- <div className="space-y-8">
+ <div>
  <PageHeader
  title="Feedback Signals"
  subtitle="Review and curate feedback used for AI learning."
@@ -88,12 +88,12 @@ export default function FeedbackPage() {
  >
  <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
  <DialogTrigger asChild>
- <Button data-testid="btn-add-signal" className="rounded-md"><Plus className="mr-2 h-4 w-4"/>Log Signal</Button>
+ <Button data-testid="btn-add-signal"><Plus/>Log Signal</Button>
  </DialogTrigger>
  <DialogContent>
  <DialogHeader><DialogTitle>Log Feedback Signal</DialogTitle></DialogHeader>
  <Form {...form}>
- <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+ <form onSubmit={form.handleSubmit(onSubmit)}>
  <FormField control={form.control} name="applicationId" render={({field}) => (
  <FormItem>
  <FormLabel>Application ID</FormLabel>
@@ -108,7 +108,7 @@ export default function FeedbackPage() {
  <FormMessage />
  </FormItem>
  )}/>
- <div className="grid grid-cols-2 gap-4">
+ <div>
  <FormField control={form.control} name="signalType" render={({field}) => (
  <FormItem>
  <FormLabel>Signal Type</FormLabel>
@@ -152,14 +152,13 @@ export default function FeedbackPage() {
  <Textarea
  {...field}
  placeholder="What happened? Any specific feedback from recruiter or hiring manager?"
- className="h-24"
  data-testid="input-signal-notes"
  />
  </FormControl>
  <FormMessage />
  </FormItem>
  )}/>
- <Button type="submit" className="w-full" disabled={createSignal.isPending} data-testid="btn-submit-signal">
+ <Button type="submit" disabled={createSignal.isPending} data-testid="btn-submit-signal">
  {createSignal.isPending ? "Logging…" : "Log Feedback"}
  </Button>
  </form>
@@ -169,32 +168,32 @@ export default function FeedbackPage() {
  </PageHeader>
 
  {isLoading ? (
- <div className="space-y-2">
- <Skeleton className="h-16 w-full" />
- <Skeleton className="h-16 w-full" />
+ <div>
+ <Skeleton />
+ <Skeleton />
  </div>
  ) : signals?.length === 0 ? (
-  <div className="quiet-card flex flex-col items-center justify-center p-12 text-center">
-  <Activity className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
-  <h3 className="text-lg font-semibold text-foreground">No feedback signals yet</h3>
-  <p className="text-sm text-muted-foreground mt-1 max-w-sm">Log your first application outcome to start building signal data.</p>
+  <div>
+  <Activity />
+  <h3>No feedback signals yet</h3>
+  <p>Log your first application outcome to start building signal data.</p>
   </div>
  ) : (
-  <div className="quiet-card divide-y overflow-hidden">
+  <div>
  {signals?.map(s => (
- <div key={s.id} className="p-4 space-y-1" data-testid={`row-signal-${s.id}`}>
- <div className="flex items-center gap-3">
- <span className="font-semibold">App #{s.applicationId}</span>
- <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${SIGNAL_COLORS[s.signalType] ?? "bg-muted text-muted-foreground"}`}>
+ <div key={s.id} data-testid={`row-signal-${s.id}`}>
+ <div>
+ <span>App #{s.applicationId}</span>
+ <span>
  {s.signalType}
  </span>
- <span className="text-sm text-muted-foreground capitalize">{s.outcome}</span>
+ <span>{s.outcome}</span>
  {s.createdAt && (
- <span className="text-xs text-muted-foreground ml-auto">{format(new Date(s.createdAt), "MMM d, yyyy")}</span>
+ <span>{format(new Date(s.createdAt), "MMM d, yyyy")}</span>
  )}
  </div>
  {s.notes && (
- <p className="text-sm text-muted-foreground pl-1">{s.notes}</p>
+ <p>{s.notes}</p>
  )}
  </div>
  ))}

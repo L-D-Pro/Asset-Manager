@@ -138,22 +138,22 @@ export default function AdminResetPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div>
       <PageHeader
         title="Admin Reset"
         subtitle="Clear testing data and restart visible counters while preserving app configuration."
         variant="admin"
       />
 
-      <ContentCard className="rounded-2xl">
+      <ContentCard>
         <CardHeader>
-          <div className="flex items-start justify-between gap-4">
+          <div>
             <div>
-              <CardTitle className="flex items-center gap-2">
-                <RefreshCcw className="h-5 w-5 text-primary" />
+              <CardTitle>
+                <RefreshCcw />
                 Reset App Test Data
               </CardTitle>
-              <p className="mt-2 text-sm text-muted-foreground">
+              <p>
                 This clears operational records like jobs, resumes, cover letters, wizard saves, attempts,
                 applications, feedback, and run history. It also restarts their identity counters.
               </p>
@@ -161,13 +161,13 @@ export default function AdminResetPage() {
             <Badge variant="outline">Admin only</Badge>
           </div>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4">
-            <div className="flex gap-3">
-              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
-              <div className="space-y-2">
-                <p className="font-semibold text-destructive">This is destructive for app data.</p>
-                <p className="text-sm text-muted-foreground">
+        <CardContent>
+          <div>
+            <div>
+              <AlertTriangle />
+              <div>
+                <p>This is destructive for app data.</p>
+                <p>
                   Preserved: admin users, AI model configs, prompt versions, invite codes, usage limit settings,
                   UI shell config, best practices, job source config, site adapters, and waitlist leads.
                 </p>
@@ -176,31 +176,31 @@ export default function AdminResetPage() {
           </div>
 
           {loading ? (
-            <div className="rounded-xl border p-4 text-sm text-muted-foreground">Loading reset summary...</div>
+            <div>Loading reset summary...</div>
           ) : summary ? (
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="rounded-xl border p-4">
-                <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Rows to clear</p>
-                <p className="mt-2 text-3xl font-bold">{summary.totalRowsBefore}</p>
+            <div>
+              <div>
+                <p>Rows to clear</p>
+                <p>{summary.totalRowsBefore}</p>
               </div>
-              <div className="rounded-xl border p-4">
-                <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Tables reset</p>
-                <p className="mt-2 text-3xl font-bold">{summary.resetTables.length}</p>
+              <div>
+                <p>Tables reset</p>
+                <p>{summary.resetTables.length}</p>
               </div>
-              <div className="rounded-xl border p-4">
-                <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Identity counters</p>
-                <p className="mt-2 text-sm font-semibold">{summary.resetsIdentity ? "Restarted to 1" : "Preserved"}</p>
+              <div>
+                <p>Identity counters</p>
+                <p>{summary.resetsIdentity ? "Restarted to 1" : "Preserved"}</p>
               </div>
             </div>
           ) : null}
 
           {resetTablesWithRows.length > 0 && (
-            <div className="rounded-xl border p-4">
-              <p className="mb-3 text-sm font-semibold">Tables currently holding data</p>
-              <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <p>Tables currently holding data</p>
+              <div>
                 {resetTablesWithRows.map((row) => (
-                  <div key={row.table} className="flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2 text-sm">
-                    <span className="font-mono">{row.table}</span>
+                  <div key={row.table}>
+                    <span>{row.table}</span>
                     <Badge variant="secondary">{row.rowsBefore}</Badge>
                   </div>
                 ))}
@@ -209,21 +209,21 @@ export default function AdminResetPage() {
           )}
 
           {summary?.modelConfigHealth && (
-            <div className={`rounded-xl border p-4 ${summary.modelConfigHealth.healthy ? "border-green-500/30 bg-green-500/5" : "border-destructive/30 bg-destructive/5"}`}>
-              <div className="flex items-start gap-3">
+            <div>
+              <div>
                 {summary.modelConfigHealth.healthy ? (
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-700" />
+                  <CheckCircle2 />
                 ) : (
-                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                  <AlertTriangle />
                 )}
-                <div className="space-y-1">
-                  <p className={`text-sm font-semibold ${summary.modelConfigHealth.healthy ? "text-green-700" : "text-destructive"}`}>
+                <div>
+                  <p>
                     {summary.modelConfigHealth.healthy
                       ? "AI model configs are healthy"
                       : `AI model config issues: ${summary.modelConfigHealth.unhealthyScopes.join(", ")}`}
                   </p>
                   {!summary.modelConfigHealth.healthy && (
-                    <p className="text-xs text-muted-foreground">
+                    <p>
                       After reset, model configs are re-seeded automatically. Visit AI Config to verify.
                     </p>
                   )}
@@ -233,19 +233,19 @@ export default function AdminResetPage() {
           )}
 
           {result && (
-            <div className="rounded-xl border border-green-500/30 bg-green-500/5 p-4">
-              <div className="flex items-center gap-2 text-sm font-semibold text-green-700">
-                <CheckCircle2 className="h-4 w-4" />
+            <div>
+              <div>
+                <CheckCircle2 />
                 Reset completed at {new Date(result.resetAt).toLocaleString()}
               </div>
             </div>
           )}
 
-          <div className="space-y-3">
-            <label htmlFor="reset-confirmation" className="text-sm font-semibold">
+          <div>
+            <label htmlFor="reset-confirmation">
               Type RESET to confirm
             </label>
-            <div className="flex flex-col gap-3 sm:flex-row">
+            <div>
               <Input
                 id="reset-confirmation"
                 value={confirmation}

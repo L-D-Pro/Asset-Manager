@@ -241,10 +241,10 @@ export default function BestPracticesAdminPage() {
 
   if (user?.role !== "admin") {
     return (
-      <ContentCard className="quiet-card">
-        <div className="p-6">
-          <h2 className="text-lg font-semibold">Access Denied</h2>
-          <p className="text-muted-foreground text-sm mt-1">Admin access required.</p>
+      <ContentCard>
+        <div>
+          <h2>Access Denied</h2>
+          <p>Admin access required.</p>
         </div>
       </ContentCard>
     );
@@ -264,15 +264,15 @@ export default function BestPracticesAdminPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div>
       <PageHeader
         title="Best Practices"
         subtitle="AI quality rules for resume and cover letter generation"
         variant="admin"
       >
         {hasChanges && (
-          <Button onClick={handleSaveAll} disabled={saving} className="gap-2">
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          <Button onClick={handleSaveAll} disabled={saving}>
+            {saving ? <Loader2 /> : <Save />}
             Save Changes
           </Button>
         )}
@@ -280,32 +280,31 @@ export default function BestPracticesAdminPage() {
           variant="outline"
           onClick={handleRefresh}
           disabled={refreshing}
-          className="gap-2"
         >
-          {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          {refreshing ? <Loader2 /> : <RefreshCw />}
           Refresh from AI
         </Button>
       </PageHeader>
 
-      <p className="text-sm text-muted-foreground">
+      <p>
         Edit best practices alongside the prompt, role, and model for one task in the{" "}
-        <Link to="/pipeline-diagram" className="text-primary underline underline-offset-2">
+        <Link to="/pipeline-diagram">
           AI Pipeline Hub
         </Link>
         .
       </p>
 
       {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <div>
+          <Loader2 />
         </div>
       ) : !config ? (
-        <div className="text-center py-12 text-muted-foreground">
+        <div>
           Failed to load best practices.
         </div>
       ) : (
         <>
-          <div className="space-y-4">
+          <div>
             {config.items.map((item, index) => {
               const isEditing = editingIndex === index;
               const isDisabled = item.enabled === false;
@@ -313,17 +312,17 @@ export default function BestPracticesAdminPage() {
               return (
                 <ContentCard
                   key={index}
-                  className={`quiet-card ${isDisabled ? "opacity-60" : ""}`}
+                  
                   index={index}
                 >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 space-y-3">
-                      <div className="flex items-center gap-2 flex-wrap">
+                  <div>
+                    <div>
+                      <div>
                         <Badge variant={sourceVariant(item.source)}>
                           {item.source}
                         </Badge>
                         {typeof item.frequency === "number" && (
-                          <span className="text-xs text-muted-foreground">
+                          <span>
                             Frequency: {item.frequency}
                           </span>
                         )}
@@ -334,28 +333,21 @@ export default function BestPracticesAdminPage() {
                           value={editDescription}
                           onChange={(e) => setEditDescription(e.target.value)}
                           rows={3}
-                          className="resize-none"
                         />
                       ) : (
-                        <p
-                          className={`text-sm ${
-                            isDisabled
-                              ? "line-through text-muted-foreground"
-                              : "text-foreground"
-                          }`}
-                        >
+                        <p>
                           {item.description}
                         </p>
                       )}
 
                       {item.rationale && (
-                        <p className="text-xs text-muted-foreground italic">
+                        <p>
                           {item.rationale}
                         </p>
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div>
                       <Switch
                         checked={item.enabled !== false}
                         onCheckedChange={() => toggleItem(index)}
@@ -369,7 +361,7 @@ export default function BestPracticesAdminPage() {
                             onClick={handleCancelEdit}
                             disabled={saving}
                           >
-                            <X className="h-4 w-4" />
+                            <X />
                           </Button>
                           <Button
                             variant="ghost"
@@ -378,9 +370,9 @@ export default function BestPracticesAdminPage() {
                             disabled={saving}
                           >
                             {saving ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <Loader2 />
                             ) : (
-                              <Save className="h-4 w-4" />
+                              <Save />
                             )}
                           </Button>
                         </>
@@ -391,7 +383,7 @@ export default function BestPracticesAdminPage() {
                           onClick={() => startEdit(index)}
                           disabled={editingIndex !== null || saving}
                         >
-                          <Pencil className="h-4 w-4" />
+                          <Pencil />
                         </Button>
                       )}
                     </div>
@@ -403,18 +395,17 @@ export default function BestPracticesAdminPage() {
 
           {/* Hardcoded Guards */}
           {config.hardcodedGuards && Object.keys(config.hardcodedGuards).length > 0 && (
-            <ContentCard className="quiet-card opacity-70">
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+            <ContentCard>
+              <div>
+                <h3>
                   Hardcoded Guards
                 </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
                   {Object.entries(config.hardcodedGuards).map(([key, value]) => (
                     <div
                       key={key}
-                      className="flex items-center justify-between rounded-lg border border-border/50 px-3 py-2 bg-background/50"
                     >
-                      <span className="text-sm text-muted-foreground font-mono">
+                      <span>
                         {key}
                       </span>
                       <Badge variant={value ? "default" : "destructive"}>
@@ -427,9 +418,9 @@ export default function BestPracticesAdminPage() {
             </ContentCard>
           )}
 
-          <div className="flex justify-end">
-            <Button onClick={() => setAddDialogOpen(true)} className="gap-2">
-              <Plus className="h-4 w-4" />
+          <div>
+            <Button onClick={() => setAddDialogOpen(true)}>
+              <Plus />
               Add Rule
             </Button>
           </div>
@@ -438,12 +429,12 @@ export default function BestPracticesAdminPage() {
 
       {/* Add Rule Dialog */}
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-        <DialogContent className="rounded-2xl">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Add New Rule</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
+          <div>
+            <div>
               <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
@@ -451,10 +442,9 @@ export default function BestPracticesAdminPage() {
                 onChange={(e) => setNewDescription(e.target.value)}
                 placeholder="Enter rule description..."
                 rows={3}
-                className="resize-none"
               />
             </div>
-            <div className="space-y-2">
+            <div>
               <Label htmlFor="rationale">Rationale (optional)</Label>
               <Textarea
                 id="rationale"
@@ -462,7 +452,6 @@ export default function BestPracticesAdminPage() {
                 onChange={(e) => setNewRationale(e.target.value)}
                 placeholder="Why is this rule important?"
                 rows={2}
-                className="resize-none"
               />
             </div>
           </div>

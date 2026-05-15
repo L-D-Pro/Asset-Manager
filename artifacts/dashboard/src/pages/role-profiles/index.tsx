@@ -182,21 +182,21 @@ export default function RoleProfilesPage() {
  const blk = hf.blockedKeywords as string[] | undefined;
  const minSal = hf.minSalary as number | undefined;
  return (
- <div className="space-y-1.5">
+ <div>
  {req && req.length > 0 && (
- <div className="flex flex-wrap gap-1 items-center">
- <span className="text-xs text-muted-foreground mr-1">Required:</span>
- {req.map(k => <Badge key={k} variant="secondary" className="text-xs">{k}</Badge>)}
+ <div>
+ <span>Required:</span>
+ {req.map(k => <Badge key={k} variant="secondary">{k}</Badge>)}
  </div>
  )}
  {blk && blk.length > 0 && (
- <div className="flex flex-wrap gap-1 items-center">
- <span className="text-xs text-muted-foreground mr-1">Blocked:</span>
- {blk.map(k => <Badge key={k} variant="destructive" className="text-xs">{k}</Badge>)}
+ <div>
+ <span>Blocked:</span>
+ {blk.map(k => <Badge key={k} variant="destructive">{k}</Badge>)}
  </div>
  )}
  {minSal ? (
- <div className="text-xs text-muted-foreground">Min salary: ${minSal.toLocaleString()}</div>
+ <div>Min salary: ${minSal.toLocaleString()}</div>
  ) : null}
  </div>
  );
@@ -207,10 +207,10 @@ export default function RoleProfilesPage() {
  if (!sw || !Object.keys(sw).length) return null;
  const sorted = Object.entries(sw).sort(([, a], [, b]) => b - a);
  return (
- <div className="flex flex-wrap gap-1.5">
+ <div>
  {sorted.map(([keyword, weight]) => (
- <span key={keyword} className="inline-flex items-center gap-1 text-[10px] bg-primary/10 text-primary rounded px-1.5 py-0.5">
- {keyword} <span className="font-semibold">{weight}</span>
+ <span key={keyword}>
+ {keyword} <span>{weight}</span>
  </span>
  ))}
  </div>
@@ -218,7 +218,7 @@ export default function RoleProfilesPage() {
  };
 
  return (
- <div className="space-y-6">
+ <div>
  <PageHeader
  title="Role Profiles"
  subtitle="Define target roles with skills, keywords, and preferences for AI tailoring."
@@ -226,9 +226,9 @@ export default function RoleProfilesPage() {
  >
  <Dialog open={isDialogOpen} onOpenChange={(open) => { if(!open) handleClose(); else setIsDialogOpen(true); }}>
  <DialogTrigger asChild>
- <Button data-testid="btn-add-profile"><Plus className="mr-2 h-4 w-4"/>New Profile</Button>
+ <Button data-testid="btn-add-profile"><Plus/>New Profile</Button>
  </DialogTrigger>
- <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto">
+ <DialogContent>
  <DialogHeader>
  <DialogTitle>{editingId ? "Edit Role Profile" : "New Role Profile"}</DialogTitle>
  <DialogDescription>
@@ -236,7 +236,7 @@ export default function RoleProfilesPage() {
  </DialogDescription>
  </DialogHeader>
  <Form {...form}>
- <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+ <form onSubmit={form.handleSubmit(onSubmit)}>
  <FormField control={form.control} name="name" render={({field}) => (
  <FormItem>
  <FormLabel>Name</FormLabel>
@@ -254,11 +254,11 @@ export default function RoleProfilesPage() {
 
  <Separator />
  <div>
- <div className="flex items-center gap-2 mb-3">
- <Filter className="h-4 w-4 text-muted-foreground" />
- <h3 className="font-semibold text-sm">Hard Filters</h3>
+ <div>
+ <Filter />
+ <h3>Hard Filters</h3>
  </div>
- <div className="space-y-4">
+ <div>
  <FormField control={form.control} name="hardFilters.requiredKeywords" render={({field}) => (
  <FormItem>
  <FormLabel>Required Keywords (comma-separated)</FormLabel>
@@ -285,41 +285,41 @@ export default function RoleProfilesPage() {
 
  <Separator />
  <div>
- <div className="flex items-center justify-between mb-3">
- <div className="flex items-center gap-2">
- <Scale className="h-4 w-4 text-muted-foreground" />
- <h3 className="font-semibold text-sm">Soft Skill Weights</h3>
+ <div>
+ <div>
+ <Scale />
+ <h3>Soft Skill Weights</h3>
  </div>
  <Button type="button" variant="outline" size="sm" onClick={() => swAppend({ keyword: "", weight: 5 })} data-testid="btn-add-weight">
- <Plus className="h-3 w-3 mr-1" /> Add
+ <Plus /> Add
  </Button>
  </div>
- <p className="text-xs text-muted-foreground mb-3">Each keyword matched in the JD increases the soft score. Weight 0–10.</p>
- <div className="space-y-2">
+ <p>Each keyword matched in the JD increases the soft score. Weight 0–10.</p>
+ <div>
  {swFields.map((field, i) => (
- <div key={field.id} className="flex items-center gap-2">
+ <div key={field.id}>
  <FormField control={form.control} name={`softWeights.${i}.keyword`} render={({field: f}) => (
- <FormItem className="flex-1 mb-0">
+ <FormItem>
  <FormControl><Input {...f} placeholder="keyword" data-testid={`input-sw-keyword-${i}`}/></FormControl>
  </FormItem>
  )}/>
  <FormField control={form.control} name={`softWeights.${i}.weight`} render={({field: f}) => (
- <FormItem className="w-20 mb-0">
+ <FormItem>
  <FormControl><Input type="number" min={0} max={10} {...f} data-testid={`input-sw-weight-${i}`}/></FormControl>
  </FormItem>
  )}/>
  <Button type="button" variant="ghost" size="icon" onClick={() => swRemove(i)} data-testid={`btn-remove-sw-${i}`}>
- <Trash2 className="h-4 w-4 text-destructive" />
+ <Trash2 />
  </Button>
  </div>
  ))}
  {swFields.length === 0 && (
- <p className="text-xs text-muted-foreground italic">No weights configured yet.</p>
+ <p>No weights configured yet.</p>
  )}
  </div>
  </div>
 
- <Button type="submit" className="w-full" disabled={createProfile.isPending || updateProfile.isPending} data-testid="btn-submit-profile">
+ <Button type="submit" disabled={createProfile.isPending || updateProfile.isPending} data-testid="btn-submit-profile">
  {editingId ? "Update Profile" : "Create Profile"}
  </Button>
  </form>
@@ -328,52 +328,52 @@ export default function RoleProfilesPage() {
  </Dialog>
  </PageHeader>
 
- {isLoading ? <Skeleton className="h-40 w-full" /> : profiles?.length === 0 ? (
-  <div className="quiet-card flex flex-col items-center justify-center p-12 text-center">
-  <UserCircle className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
-  <h3 className="text-lg font-medium text-foreground">No role profiles yet</h3>
-  <p className="text-sm text-muted-foreground mt-1">Create a profile to define scoring criteria for your target roles.</p>
+ {isLoading ? <Skeleton /> : profiles?.length === 0 ? (
+  <div>
+  <UserCircle />
+  <h3>No role profiles yet</h3>
+  <p>Create a profile to define scoring criteria for your target roles.</p>
   </div>
  ) : (
- <div className="grid gap-4 md:grid-cols-2">
+ <div>
  {profiles?.map(p => {
  const hasHardFilters = !!(p.hardFilters && Object.keys(p.hardFilters).length);
  const hasSoftWeights = !!(p.softWeights && Object.keys(p.softWeights).length);
  return (
-  <div key={p.id} data-testid={`card-profile-${p.id}`} className="quiet-card rounded-2xl overflow-hidden">
-  <div className="p-0">
- <div className="p-5 flex justify-between items-start">
- <div className="flex-1">
- <div className="font-semibold text-lg">{p.name}</div>
- {p.description && <div className="text-sm text-muted-foreground mt-0.5">{p.description}</div>}
- <div className="flex gap-2 mt-2">
- {hasHardFilters && <Badge variant="outline" className="text-xs flex items-center gap-1"><Filter className="h-2.5 w-2.5"/>Hard Filters</Badge>}
- {hasSoftWeights && <Badge variant="outline" className="text-xs flex items-center gap-1"><Scale className="h-2.5 w-2.5"/>Soft Weights</Badge>}
+  <div key={p.id} data-testid={`card-profile-${p.id}`}>
+  <div>
+ <div>
+ <div>
+ <div>{p.name}</div>
+ {p.description && <div>{p.description}</div>}
+ <div>
+ {hasHardFilters && <Badge variant="outline"><Filter/>Hard Filters</Badge>}
+ {hasSoftWeights && <Badge variant="outline"><Scale/>Soft Weights</Badge>}
  </div>
  </div>
- <div className="flex shrink-0">
- <Button variant="ghost" size="icon" onClick={() => handleEdit(p)} data-testid={`btn-edit-profile-${p.id}`}><Pencil className="h-4 w-4"/></Button>
- <Button variant="ghost" size="icon" onClick={() => handleDelete(p.id)} data-testid={`btn-delete-profile-${p.id}`}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+ <div>
+ <Button variant="ghost" size="icon" onClick={() => handleEdit(p)} data-testid={`btn-edit-profile-${p.id}`}><Pencil/></Button>
+ <Button variant="ghost" size="icon" onClick={() => handleDelete(p.id)} data-testid={`btn-delete-profile-${p.id}`}><Trash2/></Button>
  </div>
  </div>
  {(hasHardFilters || hasSoftWeights) && (
  <Accordion type="single" collapsible>
  {hasHardFilters && (
- <AccordionItem value="hf" className="border-t border-b-0 ">
- <AccordionTrigger className="px-5 py-2 text-xs font-semibold hover:no-underline">
+ <AccordionItem value="hf">
+ <AccordionTrigger>
  Hard Filters
  </AccordionTrigger>
- <AccordionContent className="px-5 pb-4">
+ <AccordionContent>
  {renderHardFilters(p)}
  </AccordionContent>
  </AccordionItem>
  )}
  {hasSoftWeights && (
- <AccordionItem value="sw" className="border-t border-b-0 ">
- <AccordionTrigger className="px-5 py-2 text-xs font-semibold hover:no-underline">
+ <AccordionItem value="sw">
+ <AccordionTrigger>
  Soft Weights
  </AccordionTrigger>
- <AccordionContent className="px-5 pb-4">
+ <AccordionContent>
  {renderSoftWeights(p)}
  </AccordionContent>
  </AccordionItem>

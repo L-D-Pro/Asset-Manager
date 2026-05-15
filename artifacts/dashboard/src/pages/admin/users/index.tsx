@@ -276,47 +276,46 @@ export default function AdminUsersPage() {
  });
 
  return (
- <div className="space-y-8">
+ <div>
  <PageHeader
  title="User Management"
  subtitle="Manage user accounts, roles, and access permissions."
  variant="admin"
  >
-  <Button onClick={openAdd} className="gap-2">
-  <Plus className="h-4 w-4" />
+  <Button onClick={openAdd}>
+  <Plus />
   Add User
   </Button>
  </PageHeader>
 
- <motion.div variants={fadeIn} initial="hidden" animate="visible" className="flex items-center gap-2">
- <Search className="h-4 w-4 text-muted-foreground" />
+ <motion.div variants={fadeIn} initial="hidden" animate="visible">
+ <Search />
  <Input
  placeholder="Search by username, name, or email..."
  value={search}
  onChange={(e) => setSearch(e.target.value)}
- className="max-w-sm"
  />
  </motion.div>
 
-  <ContentCard className="quiet-card">
-  <CardHeader className="pb-3">
-  <CardTitle className="text-lg flex items-center gap-2">
-  <Users className="h-5 w-5 text-primary" />
+  <ContentCard>
+  <CardHeader>
+  <CardTitle>
+  <Users />
   All Users ({filteredUsers.length})
  </CardTitle>
  </CardHeader>
  <CardContent>
  {loading ? (
- <div className="flex items-center justify-center py-12">
- <Loader2 className="h-6 w-6 animate-spin text-primary" />
+ <div>
+ <Loader2 />
  </div>
  ) : filteredUsers.length === 0 ? (
- <div className="flex flex-col items-center justify-center py-12 text-center">
- <Users className="h-10 w-10 text-muted-foreground/40 mb-3" />
- <p className="text-sm text-muted-foreground">No users found.</p>
+ <div>
+ <Users />
+ <p>No users found.</p>
  </div>
  ) : (
- <div className="overflow-x-auto">
+ <div>
  <Table>
  <TableHeader>
  <TableRow>
@@ -325,48 +324,46 @@ export default function AdminUsersPage() {
  <TableHead>Email</TableHead>
  <TableHead>Role</TableHead>
  <TableHead>Created</TableHead>
- <TableHead className="text-right">Actions</TableHead>
+ <TableHead>Actions</TableHead>
  </TableRow>
  </TableHeader>
  <TableBody>
  {filteredUsers.map((u) => (
- <TableRow key={u.id} className="group">
- <TableCell className="font-medium">{u.username}</TableCell>
+ <TableRow key={u.id}>
+ <TableCell>{u.username}</TableCell>
  <TableCell>
  {u.firstName || u.lastName
  ? `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim()
  : "—"}
  </TableCell>
- <TableCell className="text-muted-foreground">{u.email}</TableCell>
+ <TableCell>{u.email}</TableCell>
  <TableCell>
  <Badge
  variant={u.role === "admin" ? "default" : "secondary"}
- className="gap-1"
  >
  {u.role === "admin" ? (
- <Shield className="h-3 w-3" />
+ <Shield />
  ) : (
- <User className="h-3 w-3" />
+ <User />
  )}
  {u.role}
  </Badge>
  </TableCell>
- <TableCell className="text-muted-foreground text-sm">
+ <TableCell>
  {new Date(u.createdAt).toLocaleDateString()}
  </TableCell>
- <TableCell className="text-right">
- <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+ <TableCell>
+ <div>
  <Button variant="ghost" size="icon" onClick={() => openEdit(u)}>
- <Pencil className="h-4 w-4" />
+ <Pencil />
  </Button>
  <Button
  variant="ghost"
  size="icon"
- className="text-destructive hover:text-destructive"
  onClick={() => confirmDelete(u)}
  disabled={u.id === currentUser?.id}
  >
- <Trash2 className="h-4 w-4" />
+ <Trash2 />
  </Button>
  </div>
  </TableCell>
@@ -381,7 +378,7 @@ export default function AdminUsersPage() {
 
  {/* Add / Edit Dialog */}
  <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
- <DialogContent className="max-w-md rounded-2xl">
+ <DialogContent>
  <DialogHeader>
  <DialogTitle>{editingUser ? "Edit User" : "Add User"}</DialogTitle>
  <DialogDescription>
@@ -391,8 +388,8 @@ export default function AdminUsersPage() {
  </DialogDescription>
  </DialogHeader>
 
- <div className="space-y-4 py-2">
- <div className="space-y-2">
+ <div>
+ <div>
  <Label htmlFor="username">Username</Label>
  <Input
  id="username"
@@ -403,8 +400,8 @@ export default function AdminUsersPage() {
  />
  </div>
 
- <div className="grid grid-cols-2 gap-3">
- <div className="space-y-2">
+ <div>
+ <div>
  <Label htmlFor="firstName">First Name</Label>
  <Input
  id="firstName"
@@ -413,7 +410,7 @@ export default function AdminUsersPage() {
  placeholder="John"
  />
  </div>
- <div className="space-y-2">
+ <div>
  <Label htmlFor="lastName">Last Name</Label>
  <Input
  id="lastName"
@@ -424,7 +421,7 @@ export default function AdminUsersPage() {
  </div>
  </div>
 
- <div className="space-y-2">
+ <div>
  <Label htmlFor="email">Email</Label>
  <Input
  id="email"
@@ -435,7 +432,7 @@ export default function AdminUsersPage() {
  />
  </div>
 
- <div className="space-y-2">
+ <div>
  <Label htmlFor="role">Role</Label>
  <Select
  value={form.role}
@@ -452,48 +449,44 @@ export default function AdminUsersPage() {
  </div>
 
  {/* Password section */}
- <div className="space-y-2">
+ <div>
  <Label>Password</Label>
  {editingUser ? (
- <div className="flex items-center gap-2">
+ <div>
  <Button
  variant="outline"
  size="sm"
  onClick={handleResetPassword}
  disabled={saving}
- className="gap-1"
  >
- <RefreshCw className="h-3.5 w-3.5" />
+ <RefreshCw />
  Reset Password
  </Button>
  </div>
  ) : (
- <div className="flex items-center gap-2">
- <div className="relative flex-1">
+ <div>
+ <div>
  <Input
  type={showPassword ? "text" : "password"}
  value={generatedPassword}
  readOnly
- className="pr-16 font-mono text-sm"
  />
  <button
  type="button"
  onClick={() => setShowPassword((s) => !s)}
- className="absolute right-8 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
  >
- {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+ {showPassword ? <EyeOff /> : <Eye />}
  </button>
  <button
  type="button"
  onClick={copyPassword}
- className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
  title="Copy password"
  >
- <Copy className="h-4 w-4" />
+ <Copy />
  </button>
  </div>
  <Button variant="outline" size="icon" onClick={regeneratePassword} title="Regenerate">
- <RefreshCw className="h-4 w-4" />
+ <RefreshCw />
  </Button>
  </div>
  )}
@@ -505,34 +498,30 @@ export default function AdminUsersPage() {
  animate={{ height: "auto", opacity: 1 }}
  exit={{ height: 0, opacity: 0 }}
  transition={{ duration: 0.2 }}
- className="overflow-hidden"
  >
- <div className="flex items-center gap-2 mt-2">
- <div className="relative flex-1">
+ <div>
+ <div>
  <Input
  type={showPassword ? "text" : "password"}
  value={generatedPassword}
  readOnly
- className="pr-16 font-mono text-sm"
  />
  <button
  type="button"
  onClick={() => setShowPassword((s) => !s)}
- className="absolute right-8 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
  >
- {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+ {showPassword ? <EyeOff /> : <Eye />}
  </button>
  <button
  type="button"
  onClick={copyPassword}
- className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
  title="Copy password"
  >
- <Copy className="h-4 w-4" />
+ <Copy />
  </button>
  </div>
  </div>
- <p className="text-xs text-warning mt-1">
+ <p>
  Copy this password now — it won't be shown again.
  </p>
  </motion.div>
@@ -545,8 +534,8 @@ export default function AdminUsersPage() {
   <Button variant="ghost" onClick={() => setDialogOpen(false)}>
   Cancel
   </Button>
-  <Button onClick={handleSave} disabled={saving} className="gap-2">
-  {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+  <Button onClick={handleSave} disabled={saving}>
+  {saving && <Loader2 />}
   {editingUser ? "Save Changes" : "Create User"}
   </Button>
  </DialogFooter>
@@ -555,7 +544,7 @@ export default function AdminUsersPage() {
 
  {/* Delete Confirmation */}
  <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
- <DialogContent className="max-w-sm">
+ <DialogContent>
  <DialogHeader>
  <DialogTitle>Delete User</DialogTitle>
  <DialogDescription>
@@ -566,8 +555,8 @@ export default function AdminUsersPage() {
   <Button variant="ghost" onClick={() => setDeleteDialogOpen(false)}>
   Cancel
   </Button>
-  <Button variant="destructive" className="gap-2" onClick={handleDelete} disabled={deleting}>
-  {deleting && <Loader2 className="h-4 w-4 animate-spin" />}
+  <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+  {deleting && <Loader2 />}
   Delete
   </Button>
  </DialogFooter>

@@ -132,7 +132,7 @@ export default function AssistedApplyPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div>
       <PageHeader
         title="Assisted Apply"
         subtitle="Let AI guide you through multi-step job applications."
@@ -145,7 +145,7 @@ export default function AssistedApplyPage() {
             onClick={() => setIsCleanUpDialogOpen(true)}
             data-testid="btn-clean-up-sessions"
           >
-            <Trash2 className="mr-2 h-4 w-4" />
+            <Trash2 />
             Clean Up
           </Button>
           <DialogContent>
@@ -172,28 +172,28 @@ export default function AssistedApplyPage() {
         </Dialog>
       </PageHeader>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <ContentCard className="rounded-2xl">
+      <div>
+        <ContentCard>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <ShieldAlert className="h-4 w-4" />
+            <CardTitle>
+              <ShieldAlert />
               Safety Rules
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2 text-sm text-muted-foreground">
+          <CardContent>
             <p>LinkedIn, Indeed, ZipRecruiter, and Upwork stay assist-only unless official permission exists.</p>
             <p>The user handles login, MFA, CAPTCHA, EEO, legal authorization, and final submit.</p>
             <p>Every browser action should be logged before we add any worker automation.</p>
           </CardContent>
         </ContentCard>
 
-        <ContentCard className="lg:col-span-2 rounded-2xl">
+        <ContentCard>
           <CardHeader>
             <CardTitle>Start Assisted Session</CardTitle>
             <CardDescription>Create an audit record before using guided copy/fill workflows.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid gap-3 md:grid-cols-3">
+          <CardContent>
+            <div>
               <Input
                 value={form.platform}
                 onChange={(event) => setForm({ ...form, platform: event.target.value })}
@@ -228,24 +228,24 @@ export default function AssistedApplyPage() {
         </ContentCard>
       </div>
 
-      <ContentCard className="rounded-2xl">
+      <ContentCard>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ClipboardCheck className="h-5 w-5" />
+          <CardTitle>
+            <ClipboardCheck />
             Session Log
           </CardTitle>
           <CardDescription>These records are the audit trail for future Playwright or extension-assisted workflows.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
-          {isLoading ? <p className="text-sm text-muted-foreground">Loading...</p> : null}
+        <CardContent>
+          {isLoading ? <p>Loading...</p> : null}
           {sessions.length === 0 && !isLoading ? (
-            <p className="text-sm text-muted-foreground">No assisted apply sessions yet.</p>
+            <p>No assisted apply sessions yet.</p>
           ) : null}
           {sessions.map((session) => (
-            <div key={session.id} className="rounded-md border p-3 text-sm">
-              <div className="flex items-center justify-between gap-3">
-                <span className="font-medium">{session.platform}</span>
-                <div className="flex items-center gap-2">
+            <div key={session.id}>
+              <div>
+                <span>{session.platform}</span>
+                <div>
                   <Badge variant="outline">{session.status}</Badge>
                   <Button
                     variant="ghost"
@@ -253,12 +253,12 @@ export default function AssistedApplyPage() {
                     onClick={() => handleDeleteClick(session.id)}
                     data-testid={`btn-delete-session-${session.id}`}
                   >
-                    <Trash2 className="h-4 w-4 text-destructive" />
+                    <Trash2 />
                   </Button>
                 </div>
               </div>
-              <p className="mt-1 text-muted-foreground">{session.targetUrl || "No URL recorded"}</p>
-              <p className="mt-1">Checkpoint: {session.humanCheckpoint || "human review"}</p>
+              <p>{session.targetUrl || "No URL recorded"}</p>
+              <p>Checkpoint: {session.humanCheckpoint || "human review"}</p>
             </div>
           ))}
         </CardContent>

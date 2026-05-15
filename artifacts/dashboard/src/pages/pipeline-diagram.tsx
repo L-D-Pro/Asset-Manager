@@ -50,7 +50,7 @@ export default function PipelineDiagram() {
   const showOverviewMissing = !overview.isLoading && (overview.isError || (overview.data?.length ?? 0) === 0);
 
   return (
-    <div className="space-y-8">
+    <div>
       <PageHeader
         title="AI Pipeline Hub"
         subtitle="One surface for every lever that shapes an AI call: prompts, roles, models, best practices, and examples."
@@ -58,21 +58,20 @@ export default function PipelineDiagram() {
       />
 
       {/* ── Workflow narrative ─────────────────────────────────────────── */}
-      <section className="space-y-3">
-        <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">User Workflow</h2>
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-6">
+      <section>
+        <h2>User Workflow</h2>
+        <div>
           {WORKFLOW_STAGES.map((stage, index) => (
             <div
               key={stage.id}
-              className="quiet-card flex items-start gap-2 rounded-xl p-3 text-xs"
             >
-              <span className="text-base leading-none">{stage.icon}</span>
-              <div className="min-w-0">
-                <div className="flex items-baseline gap-1">
-                  <span className="text-muted-foreground">{index + 1}.</span>
-                  <span className="font-semibold">{stage.label}</span>
+              <span>{stage.icon}</span>
+              <div>
+                <div>
+                  <span>{index + 1}.</span>
+                  <span>{stage.label}</span>
                 </div>
-                <p className="mt-0.5 text-muted-foreground">{stage.blurb}</p>
+                <p>{stage.blurb}</p>
               </div>
             </div>
           ))}
@@ -80,20 +79,20 @@ export default function PipelineDiagram() {
       </section>
 
       {/* ── AI Tasks grid ──────────────────────────────────────────────── */}
-      <section className="space-y-3">
-        <div className="flex items-baseline justify-between gap-3">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">AI Tasks</h2>
-          {overview.isLoading && <span className="text-xs text-muted-foreground">Loading…</span>}
+      <section>
+        <div>
+          <h2>AI Tasks</h2>
+          {overview.isLoading && <span>Loading…</span>}
         </div>
 
         {showOverviewMissing && (
-          <div className="rounded-md border border-dashed border-border/60 bg-muted/20 p-3 text-xs text-muted-foreground">
+          <div>
             Live summary endpoint unavailable. Showing scopes only — counts and active labels will populate once
-            <span className="font-mono"> GET /api/ai-pipeline/overview</span> is deployed.
+            <span> GET /api/ai-pipeline/overview</span> is deployed.
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div>
           {tasks.map((task) => {
             const isSelected = selected === task.taskScope;
             return (
@@ -103,21 +102,19 @@ export default function PipelineDiagram() {
                 onClick={() => setSelected(isSelected ? null : task.taskScope)}
                 aria-pressed={isSelected}
                 aria-label={`${TASK_LABELS[task.taskScope] ?? task.taskScope} task`}
-                className={`quiet-card rounded-xl p-3 text-left transition-all hover:-translate-y-0.5 ${
-                  isSelected ? "ring-2 ring-primary" : ""
-                }`}
+                
               >
-                <div className="space-y-1">
-                  <div className="text-xs font-mono text-muted-foreground">{task.taskScope}</div>
-                  <div className="font-medium">
+                <div>
+                  <div>{task.taskScope}</div>
+                  <div>
                     {task.roleLabel ?? TASK_LABELS[task.taskScope] ?? task.taskScope}
                   </div>
-                  <div className="text-xs text-muted-foreground">
+                  <div>
                     {task.modelName ?? "no model"}
                     {" · "}
                     prompt #{task.activePromptVersionId ?? "—"}
                   </div>
-                  <div className="text-xs text-muted-foreground">
+                  <div>
                     {task.bestPracticesEnabledCount} rules · {task.trainingExampleCount} examples
                   </div>
                 </div>
@@ -131,7 +128,7 @@ export default function PipelineDiagram() {
       {selected && (
         <ContentCard>
           <CardHeader>
-            <CardTitle className="font-mono">{selected}</CardTitle>
+            <CardTitle>{selected}</CardTitle>
           </CardHeader>
           <CardContent>
             <AiTaskDetailPanel taskScope={selected} />

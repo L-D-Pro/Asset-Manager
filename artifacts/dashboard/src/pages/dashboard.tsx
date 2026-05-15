@@ -84,68 +84,59 @@ export default function Dashboard() {
     { key: "offers", label: "Offers", value: stats?.offers ?? 0 },
   ];
 
+  const xpPct =
+    gam && gam.xpToNextLevel
+      ? Math.round(Math.min(100, (gam.totalXp / gam.xpToNextLevel) * 100))
+      : 0;
+
   return (
-    <div className="page fade-up">
+    <div>
       {/* Greeting */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "flex-end",
-          justifyContent: "space-between",
-          marginBottom: 26,
-          gap: 16,
-          flexWrap: "wrap",
-        }}
-      >
+      <div>
         <div>
-          <div className="eyebrow" style={{ marginBottom: 6 }}>
-            {todayLine()}
-          </div>
-          <h1 className="h-display">
-            {greeting()}, {greetName}.{" "}
-            <em>Three things today.</em>
+          <div>{todayLine()}</div>
+          <h1>
+            {greeting()}, {greetName}. <em>Three things today.</em>
           </h1>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <Link to="/jobs" className="btn">
+        <div>
+          <Link to="/jobs">
             <Plus size={14} />
-            Add job
+            {" "}Add job
           </Link>
-          <Link to="/chat" className="btn primary">
+          <Link to="/chat">
             <Sparkles size={14} />
-            Open copilot
+            {" "}Open copilot
           </Link>
         </div>
       </div>
 
       {/* Funnel */}
-      <div className="funnel" style={{ marginBottom: 26 }}>
+      <div>
         {funnel.map((c) => (
-          <div className="funnel-cell" key={c.key}>
-            <span className="fn-label">{c.label}</span>
-            <span className="fn-value">{c.value}</span>
-            <span className="fn-delta">·</span>
+          <div key={c.key}>
+            <span>{c.label}</span>
+            <span>{c.value}</span>
+            <span>·</span>
           </div>
         ))}
       </div>
 
       {/* Body */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 22 }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+      <div>
+        <div>
           {/* Today's focus */}
-          <div className="quiet-card">
-            <div className="quiet-card-header">
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <h2 className="quiet-card-title">Today's focus</h2>
-                <span className="chip accent dot">3 actions</span>
+          <div>
+            <div>
+              <div>
+                <h2>Today&apos;s focus</h2>
+                <span>3 actions</span>
               </div>
             </div>
             <div>
               <FocusItem
                 title="Review pending AI outputs"
-                meta={
-                  "Each pending_approval resume + cover letter waits for your explicit nod"
-                }
+                meta="Each pending_approval resume + cover letter waits for your explicit nod"
                 cta="Review queue"
                 accent
                 onClick={() => navigate("/ai-review")}
@@ -167,48 +158,33 @@ export default function Dashboard() {
           </div>
 
           {/* Recent jobs */}
-          <div className="quiet-card">
-            <div className="quiet-card-header">
-              <h2 className="quiet-card-title">Recent jobs</h2>
-              <Link to="/jobs" className="btn ghost">
-                See all
-                <ChevronRight size={13} />
+          <div>
+            <div>
+              <h2>Recent jobs</h2>
+              <Link to="/jobs">
+                See all <ChevronRight size={13} />
               </Link>
             </div>
             <div>
               {recentJobs.length === 0 && (
-                <div className="dim" style={{ padding: 18, fontSize: 13 }}>
+                <div>
                   No jobs saved yet.{" "}
-                  <Link to="/jobs" style={{ color: "var(--accent)" }}>
-                    Add one
-                  </Link>
-                  .
+                  <Link to="/jobs">Add one</Link>.
                 </div>
               )}
               {recentJobs.map((j, i) => (
                 <div
                   key={j.id}
                   onClick={() => navigate(`/jobs/${j.id}`)}
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "36px 1fr 110px 130px 70px 22px",
-                    alignItems: "center",
-                    gap: 14,
-                    padding: "13px 18px",
-                    borderBottom: i === recentJobs.length - 1 ? "none" : "1px solid var(--line-soft)",
-                    cursor: "pointer",
-                  }}
                 >
                   <CompanyMark name={j.company ?? j.title ?? "?"} />
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 500, color: "var(--ink)", fontSize: 14 }}>{j.title}</div>
-                    <div style={{ color: "var(--ink-3)", fontSize: 12.5, marginTop: 2 }}>
+                  <div>
+                    <div>{j.title}</div>
+                    <div>
                       {[j.company, j.location].filter(Boolean).join(" · ")}
                     </div>
                   </div>
-                  <span className="mono dim" style={{ fontSize: 12 }}>
-                    {salaryRange(j.salaryMin, j.salaryMax)}
-                  </span>
+                  <span>{salaryRange(j.salaryMin, j.salaryMax)}</span>
                   <StatusChip status={j.status ?? "saved"} />
                   <FitBadge value={j.fitScore} />
                   <ChevronRight size={14} />
@@ -218,57 +194,35 @@ export default function Dashboard() {
           </div>
 
           {/* Activity */}
-          <div className="quiet-card">
-            <div className="quiet-card-header">
-              <h2 className="quiet-card-title">Recent activity</h2>
-              <span className="dim mono" style={{ fontSize: 11 }}>
-                last 10 events
-              </span>
+          <div>
+            <div>
+              <h2>Recent activity</h2>
+              <span>last 10 events</span>
             </div>
-            <div className="quiet-card-body" style={{ paddingTop: 6, paddingBottom: 14 }}>
+            <div>
               {(events ?? []).length === 0 && (
-                <div className="dim" style={{ padding: 8, fontSize: 13 }}>
-                  No recent activity.
-                </div>
+                <div>No recent activity.</div>
               )}
               {(events ?? []).map((t, i, arr) => (
-                <div
-                  key={t.id}
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "100px 14px 1fr",
-                    gap: 12,
-                    padding: "8px 0",
-                    borderBottom: i === arr.length - 1 ? "none" : "1px dashed var(--line-soft)",
-                  }}
-                >
-                  <span className="mono dim" style={{ fontSize: 11.5 }}>
+                <div key={t.id}>
+                  <span>
                     {new Date(t.createdAt).toLocaleTimeString(undefined, {
                       hour: "numeric",
                       minute: "2-digit",
                     })}
                   </span>
-                  <span
-                    style={{
-                      width: 6,
-                      height: 6,
-                      borderRadius: 99,
-                      background:
-                        t.eventType === "ai_call"
-                          ? "var(--accent)"
-                          : t.eventType === "ai_call_failed"
-                          ? "var(--danger)"
-                          : "var(--ink-3)",
-                      marginTop: 7,
-                    }}
-                  />
-                  <div style={{ fontSize: 13 }}>
+                  <span>
+                    {t.eventType === "ai_call"
+                      ? "[AI]"
+                      : t.eventType === "ai_call_failed"
+                        ? "[ERR]"
+                        : "[·]"}
+                  </span>
+                  <div>
                     <span>
-                      <span className="mono" style={{ color: "var(--ink-2)" }}>
-                        {t.eventType}
-                      </span>{" "}
-                      · {t.entityType}#{t.entityId}
-                    </span>
+                      {t.eventType}
+                    </span>{" "}
+                    · {t.entityType}#{t.entityId}
                   </div>
                 </div>
               ))}
@@ -277,82 +231,43 @@ export default function Dashboard() {
         </div>
 
         {/* Gamification rail */}
-        <aside style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-          <div className="xp-card">
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: 8,
-              }}
-            >
-              <span className="label">Level {gam?.currentLevel ?? 1}</span>
-              <span className="mono" style={{ fontSize: 12, color: "var(--accent-ink)" }}>
+        <aside>
+          <div>
+            <div>
+              <span>Level {gam?.currentLevel ?? 1}</span>
+              <span>
                 {(gam?.totalXp ?? 0).toLocaleString()} /{" "}
                 {(gam?.xpToNextLevel ?? 100).toLocaleString()} XP
               </span>
             </div>
-            <div className="bar" style={{ background: "rgba(255,255,255,0.6)" }}>
-              <i
-                style={{
-                  width: `${
-                    gam && gam.xpToNextLevel
-                      ? Math.min(100, (gam.totalXp / gam.xpToNextLevel) * 100)
-                      : 0
-                  }%`,
-                }}
-              />
+            <div>
+              XP Progress: {xpPct}%
             </div>
-            <div
-              style={{
-                display: "flex",
-                gap: 16,
-                marginTop: 14,
-                alignItems: "center",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ color: "var(--warn)" }}>
-                  <Flame size={16} />
-                </span>
-                <span className="mono" style={{ fontSize: 13 }}>
-                  {gam?.currentStreak ?? 0} day streak
-                </span>
+            <div>
+              <div>
+                <Flame size={16} />
+                <span>{gam?.currentStreak ?? 0} day streak</span>
               </div>
-              <span className="dim" style={{ fontSize: 12 }}>
-                · longest {gam?.longestStreak ?? 0}
-              </span>
+              <span>· longest {gam?.longestStreak ?? 0}</span>
             </div>
           </div>
 
-          <div className="quiet-card">
-            <div className="quiet-card-header">
-              <h2 className="quiet-card-title" style={{ fontSize: 15 }}>
-                Active quests
-              </h2>
-              <span className="dim mono" style={{ fontSize: 11 }}>
-                {gam?.activeQuests.length ?? 0}
-              </span>
+          <div>
+            <div>
+              <h2>Active quests</h2>
+              <span>{gam?.activeQuests.length ?? 0}</span>
             </div>
-            <div
-              className="quiet-card-body"
-              style={{ padding: 12, display: "flex", flexDirection: "column", gap: 8 }}
-            >
+            <div>
               {(gam?.activeQuests ?? []).slice(0, 4).map((q) => (
-                <div className="quest" key={q.id}>
-                  <div className="quest-title">{q.name}</div>
-                  <div className="quest-desc">{q.description}</div>
-                  <div className="bar" style={{ height: 4 }}>
-                    <i
-                      style={{
-                        width: `${
-                          q.criteriaValue ? (q.progress / q.criteriaValue) * 100 : 0
-                        }%`,
-                      }}
-                    />
+                <div key={q.id}>
+                  <div>{q.name}</div>
+                  <div>{q.description}</div>
+                  <div>
+                    Progress: {q.progress} / {q.criteriaValue} ({q.criteriaValue
+                      ? Math.round(Math.min(100, (q.progress / q.criteriaValue) * 100))
+                      : 0}%)
                   </div>
-                  <div className="quest-foot">
+                  <div>
                     <span>
                       {q.progress} / {q.criteriaValue}
                     </span>
@@ -361,60 +276,32 @@ export default function Dashboard() {
                 </div>
               ))}
               {(gam?.activeQuests ?? []).length === 0 && (
-                <Link to="/quests" className="dim" style={{ fontSize: 12.5, padding: 6 }}>
+                <Link to="/quests">
                   No active quests — pick one from the quests page.
                 </Link>
               )}
             </div>
           </div>
 
-          <div className="quiet-card">
-            <div className="quiet-card-header">
-              <h2 className="quiet-card-title" style={{ fontSize: 15 }}>
-                Achievements
-              </h2>
-              <Link to="/quests" className="btn ghost" style={{ fontSize: 12 }}>
-                All
-              </Link>
+          <div>
+            <div>
+              <h2>Achievements</h2>
+              <Link to="/quests">All</Link>
             </div>
-            <div
-              className="quiet-card-body"
-              style={{ padding: 12, display: "flex", flexDirection: "column", gap: 8 }}
-            >
+            <div>
               {(gam?.recentAchievements ?? []).slice(0, 5).map((a) => (
-                <div
-                  key={a.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    padding: "8px 10px",
-                    borderRadius: 8,
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 28,
-                      height: 28,
-                      borderRadius: 8,
-                      background: "var(--accent-bg)",
-                      color: "var(--accent-ink)",
-                      display: "grid",
-                      placeItems: "center",
-                    }}
-                  >
+                <div key={a.id}>
+                  <div>
                     <Trophy size={13} />
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12.5, fontWeight: 500 }}>{a.name}</div>
-                    <div className="dim" style={{ fontSize: 11 }}>
-                      {a.description}
-                    </div>
+                  <div>
+                    <div>{a.name}</div>
+                    <div>{a.description}</div>
                   </div>
                 </div>
               ))}
               {(gam?.recentAchievements ?? []).length === 0 && (
-                <div className="dim" style={{ fontSize: 12.5, padding: 6 }}>
+                <div>
                   Earn achievements by reviewing AI output, applying to jobs, and verifying claims.
                 </div>
               )}
@@ -442,40 +329,18 @@ function FocusItem({
   last?: boolean;
 }) {
   return (
-    <div
-      onClick={onClick}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 14,
-        padding: "14px 18px",
-        borderBottom: last ? "none" : "1px solid var(--line-soft)",
-        cursor: "pointer",
-      }}
-    >
-      <div
-        style={{
-          width: 6,
-          height: 6,
-          borderRadius: 99,
-          background: accent ? "var(--accent)" : "var(--ink-4)",
-          flexShrink: 0,
-        }}
-      />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 500, fontSize: 14, color: "var(--ink)" }}>{title}</div>
-        <div className="dim" style={{ fontSize: 12.5, marginTop: 2 }}>
-          {meta}
-        </div>
+    <div onClick={onClick}>
+      <div />
+      <div>
+        <div>{title}</div>
+        <div>{meta}</div>
       </div>
       <button
         type="button"
-        className={`btn ${accent ? "accent" : ""}`}
         onClick={(e) => {
           e.stopPropagation();
           onClick();
         }}
-        style={{ fontSize: 12 }}
       >
         {cta} <ChevronRight size={12} />
       </button>
@@ -484,29 +349,8 @@ function FocusItem({
 }
 
 function FitBadge({ value }: { value: number | null | undefined }) {
-  if (value == null) return <span className="dim mono" style={{ fontSize: 12 }}>—</span>;
-  const color =
-    value >= 85
-      ? "var(--success)"
-      : value >= 70
-      ? "var(--accent)"
-      : value >= 55
-      ? "var(--warn)"
-      : "var(--danger)";
-  return (
-    <span
-      className="mono"
-      style={{
-        fontSize: 13,
-        color,
-        fontWeight: 500,
-        textAlign: "right",
-        fontVariantNumeric: "tabular-nums",
-      }}
-    >
-      {value}
-    </span>
-  );
+  if (value == null) return <span>—</span>;
+  return <span>{value}</span>;
 }
 
 function salaryRange(min?: number | null, max?: number | null): string {

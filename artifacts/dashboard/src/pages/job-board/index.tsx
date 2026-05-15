@@ -51,124 +51,79 @@ export default function JobBoardPage() {
   });
 
   return (
-    <div className="page fade-up">
-      <div
-        style={{
-          display: "flex",
-          alignItems: "flex-end",
-          justifyContent: "space-between",
-          marginBottom: 22,
-        }}
-      >
+    <div>
+      <div>
         <div>
-          <h1 className="h-display">
+          <h1>
             Job board <em>· aggregated leads</em>
           </h1>
-          <div className="dim" style={{ marginTop: 6, fontSize: 13 }}>
+          <div>
             Roles surfaced from configured sources. Save anything promising to the pipeline.
           </div>
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 22 }}>
-        <div className="quiet-card">
-          <div className="quiet-card-header">
-            <h2 className="quiet-card-title">Listings</h2>
-            <span className="dim mono" style={{ fontSize: 11 }}>
-              {listings.length}
-            </span>
+      <div>
+        <div>
+          <div>
+            <h2>Listings</h2>
+            <span>{listings.length}</span>
           </div>
           <div>
             {listingsLoading && (
-              <div className="dim" style={{ padding: 24, textAlign: "center" }}>
-                Loading…
-              </div>
+              <div>Loading…</div>
             )}
             {!listingsLoading && listings.length === 0 && (
-              <div className="dim" style={{ padding: 24, textAlign: "center", fontSize: 13 }}>
+              <div>
                 No listings yet. Configure a source to start ingesting.
               </div>
             )}
             {listings.map((l, i) => (
               <div
                 key={l.id}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "36px 1fr 130px 110px 22px",
-                  gap: 14,
-                  alignItems: "center",
-                  padding: "13px 18px",
-                  borderBottom:
-                    i === listings.length - 1 ? "none" : "1px solid var(--line-soft)",
-                  cursor: l.sourceUrl ? "pointer" : "default",
-                }}
                 onClick={() => {
                   if (l.sourceUrl) window.open(l.sourceUrl, "_blank");
                 }}
               >
                 <CompanyMark name={l.company} />
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 500, fontSize: 14 }}>{l.title}</div>
-                  <div className="dim" style={{ fontSize: 12.5, marginTop: 2 }}>
+                <div>
+                  <div>{l.title}</div>
+                  <div>
                     {[l.company, l.location, l.remoteType].filter(Boolean).join(" · ")}
                   </div>
                 </div>
-                <span className="mono dim" style={{ fontSize: 12.5 }}>
-                  {salaryRange(l.salaryMin, l.salaryMax)}
-                </span>
-                <span className="dim mono" style={{ fontSize: 12 }}>
-                  {l.sourcePlatform ?? "—"}
-                </span>
+                <span>{salaryRange(l.salaryMin, l.salaryMax)}</span>
+                <span>{l.sourcePlatform ?? "—"}</span>
                 <ExternalLink size={13} />
               </div>
             ))}
           </div>
         </div>
 
-        <aside style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div className="quiet-card">
-            <div className="quiet-card-header">
-              <h2 className="quiet-card-title" style={{ fontSize: 15 }}>
-                Sources
-              </h2>
+        <aside>
+          <div>
+            <div>
+              <h2>Sources</h2>
             </div>
-            <div className="quiet-card-body" style={{ padding: 12 }}>
+            <div>
               {sources.length === 0 && (
-                <div className="dim" style={{ fontSize: 12.5 }}>
-                  No sources configured yet.
-                </div>
+                <div>No sources configured yet.</div>
               )}
               {sources.map((s) => (
-                <div
-                  key={s.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    padding: "8px 10px",
-                  }}
-                >
-                  <span
-                    style={{
-                      width: 6,
-                      height: 6,
-                      borderRadius: 99,
-                      background: s.enabled ? "var(--success)" : "var(--ink-4)",
-                      flexShrink: 0,
-                    }}
-                  />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12.5, fontWeight: 500 }}>{s.name}</div>
+                <div key={s.id}>
+                  <span>
+                    {s.enabled ? "[active]" : "[inactive]"}
+                  </span>
+                  <div>
+                    <div>{s.name}</div>
                     {s.lastSyncedAt && (
-                      <div className="dim mono" style={{ fontSize: 11 }}>
+                      <div>
                         synced {new Date(s.lastSyncedAt).toLocaleDateString()}
                       </div>
                     )}
                   </div>
                   {s.itemCount != null && (
-                    <span className="mono dim" style={{ fontSize: 11 }}>
-                      {s.itemCount}
-                    </span>
+                    <span>{s.itemCount}</span>
                   )}
                 </div>
               ))}

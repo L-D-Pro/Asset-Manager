@@ -298,7 +298,7 @@ export default function ClaimsPage() {
  };
 
  return (
- <div className="space-y-6">
+ <div>
  <PageHeader
  title="Claims Ledger"
  subtitle="Track skills, accomplishments, and quantifiable claims for your resume."
@@ -307,11 +307,11 @@ export default function ClaimsPage() {
  <Dialog open={isAiDialogOpen} onOpenChange={setIsAiDialogOpen}>
  <DialogTrigger asChild>
  <Button variant="outline" data-testid="btn-ai-draft-claims">
- <Sparkles className="mr-2 h-4 w-4" />
+ <Sparkles />
  AI Draft Claims
  </Button>
  </DialogTrigger>
- <DialogContent className="max-w-4xl max-h-[90dvh] overflow-y-auto">
+ <DialogContent>
  <DialogHeader>
  <DialogTitle>AI Draft Claims</DialogTitle>
  <DialogDescription>
@@ -319,33 +319,31 @@ export default function ClaimsPage() {
  </DialogDescription>
  </DialogHeader>
 
- <div className="space-y-5">
- <div className="grid gap-4 lg:grid-cols-2">
- <div className="space-y-2">
- <label className="text-sm font-medium" htmlFor="draft-source-text">Source notes</label>
+ <div>
+ <div>
+ <div>
+ <label htmlFor="draft-source-text">Source notes</label>
  <Textarea
  id="draft-source-text"
  value={draftSourceText}
  onChange={(event) => setDraftSourceText(event.target.value)}
  placeholder="Paste project summaries, work notes, accomplishments, or raw experience notes..."
- className="min-h-44"
  data-testid="textarea-claim-draft-source"
  />
  </div>
- <div className="space-y-4">
- <div className="space-y-2">
- <label className="text-sm font-medium" htmlFor="draft-prompt">Optional instruction</label>
+ <div>
+ <div>
+ <label htmlFor="draft-prompt">Optional instruction</label>
  <Textarea
  id="draft-prompt"
  value={draftPrompt}
  onChange={(event) => setDraftPrompt(event.target.value)}
  placeholder="Example: focus on leadership, analytics, platform work, or customer impact."
- className="min-h-24"
  data-testid="textarea-claim-draft-prompt"
  />
  </div>
- <div className="space-y-2">
- <label className="text-sm font-medium" htmlFor="draft-file">Upload source document</label>
+ <div>
+ <label htmlFor="draft-file">Upload source document</label>
  <Input
  id="draft-file"
  type="file"
@@ -353,14 +351,14 @@ export default function ClaimsPage() {
  onChange={(event) => setDraftFile(event.target.files?.[0] ?? null)}
  data-testid="input-claim-draft-file"
  />
- <p className="text-xs text-muted-foreground">
+ <p>
  {draftFile ? draftFile.name : "DOCX recommended. PDF works for text-based PDFs only — if it fails, paste the text instead. The file is not stored."}
  </p>
  </div>
  </div>
  </div>
 
- <div className="flex justify-end">
+ <div>
  <AiProgressButton
  type="button"
  onClick={handleDraftClaims}
@@ -371,11 +369,11 @@ export default function ClaimsPage() {
  </div>
 
  {draftReviews.length > 0 && (
- <div className="space-y-4 border-t pt-5">
- <div className="flex items-center justify-between gap-3">
  <div>
- <h3 className="font-semibold">Review Drafts</h3>
- <p className="text-sm text-muted-foreground">Edit, select, and create only the claims you can verify.</p>
+ <div>
+ <div>
+ <h3>Review Drafts</h3>
+ <p>Edit, select, and create only the claims you can verify.</p>
  </div>
  <Button
  type="button"
@@ -387,30 +385,29 @@ export default function ClaimsPage() {
  </Button>
  </div>
 
- <div className="space-y-3">
+ <div>
  {draftReviews.map((draft, index) => (
-  <div key={draft.clientId} className="quiet-card p-4 space-y-3">
- <div className="flex items-center gap-3">
+  <div key={draft.clientId}>
+ <div>
  <Checkbox
  checked={draft.selected}
  onCheckedChange={(checked) => updateDraftReview(draft.clientId, { selected: checked === true })}
  data-testid={`checkbox-draft-claim-${index}`}
  />
- <span className="text-sm font-medium">Draft {index + 1}</span>
+ <span>Draft {index + 1}</span>
  </div>
- <div className="grid gap-3 md:grid-cols-2">
- <div className="md:col-span-2 space-y-2">
- <label className="text-xs font-medium" htmlFor={`draft-summary-${draft.clientId}`}>Summary</label>
+ <div>
+ <div>
+ <label htmlFor={`draft-summary-${draft.clientId}`}>Summary</label>
  <Textarea
  id={`draft-summary-${draft.clientId}`}
  value={draft.summary}
  onChange={(event) => updateDraftReview(draft.clientId, { summary: event.target.value })}
- className="min-h-20"
  data-testid={`textarea-draft-summary-${index}`}
  />
  </div>
- <div className="space-y-2">
- <label className="text-xs font-medium" htmlFor={`draft-domain-${draft.clientId}`}>Domain</label>
+ <div>
+ <label htmlFor={`draft-domain-${draft.clientId}`}>Domain</label>
  <Input
  id={`draft-domain-${draft.clientId}`}
  value={draft.domain ?? ""}
@@ -418,8 +415,8 @@ export default function ClaimsPage() {
  data-testid={`input-draft-domain-${index}`}
  />
  </div>
- <div className="space-y-2">
- <label className="text-xs font-medium" htmlFor={`draft-tags-${draft.clientId}`}>Tags</label>
+ <div>
+ <label htmlFor={`draft-tags-${draft.clientId}`}>Tags</label>
  <Input
  id={`draft-tags-${draft.clientId}`}
  value={draft.applicableTagsText}
@@ -428,8 +425,8 @@ export default function ClaimsPage() {
  data-testid={`input-draft-tags-${index}`}
  />
  </div>
- <div className="md:col-span-2 space-y-2">
- <label className="text-xs font-medium" htmlFor={`draft-disallowed-${draft.clientId}`}>Disallowed Implications</label>
+ <div>
+ <label htmlFor={`draft-disallowed-${draft.clientId}`}>Disallowed Implications</label>
  <Input
  id={`draft-disallowed-${draft.clientId}`}
  value={draft.disallowedImplicationsText}
@@ -438,13 +435,12 @@ export default function ClaimsPage() {
  data-testid={`input-draft-disallowed-${index}`}
  />
  </div>
- <div className="md:col-span-2 space-y-2">
- <label className="text-xs font-medium" htmlFor={`draft-evidence-${draft.clientId}`}>Evidence</label>
+ <div>
+ <label htmlFor={`draft-evidence-${draft.clientId}`}>Evidence</label>
  <Textarea
  id={`draft-evidence-${draft.clientId}`}
  value={draft.evidence ?? ""}
  onChange={(event) => updateDraftReview(draft.clientId, { evidence: event.target.value })}
- className="min-h-16"
  data-testid={`textarea-draft-evidence-${index}`}
  />
  </div>
@@ -461,11 +457,11 @@ export default function ClaimsPage() {
  <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) handleCloseDialog(); else setIsDialogOpen(true); }}>
  <DialogTrigger asChild>
  <Button data-testid="btn-add-claim">
- <Plus className="mr-2 h-4 w-4" />
+ <Plus />
  New Claim
  </Button>
  </DialogTrigger>
- <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+ <DialogContent>
  <DialogHeader>
  <DialogTitle>{editingId ? "Edit Claim" : "Create New Claim"}</DialogTitle>
  <DialogDescription>
@@ -473,7 +469,7 @@ export default function ClaimsPage() {
  </DialogDescription>
  </DialogHeader>
  <Form {...form}>
- <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+ <form onSubmit={form.handleSubmit(onSubmit)}>
  <FormField
  control={form.control}
  name="summary"
@@ -487,7 +483,7 @@ export default function ClaimsPage() {
  </FormItem>
  )}
  />
- <div className="grid grid-cols-2 gap-4">
+ <div>
  <FormField
  control={form.control}
  name="domain"
@@ -505,8 +501,8 @@ export default function ClaimsPage() {
  control={form.control}
  name="isActive"
  render={({ field }) => (
- <FormItem className="flex items-center justify-between rounded-lg border p-3 mt-2">
- <FormLabel className="mb-0">Active</FormLabel>
+ <FormItem>
+ <FormLabel>Active</FormLabel>
  <FormControl>
  <Switch checked={field.value} onCheckedChange={field.onChange} data-testid="switch-claim-active" />
  </FormControl>
@@ -529,93 +525,93 @@ export default function ClaimsPage() {
  />
 
  <div>
- <div className="flex items-center justify-between mb-2">
  <div>
- <p className="text-sm font-medium leading-none">Phrasing Variants</p>
- <p className="text-xs text-muted-foreground mt-1">
+ <div>
+ <p>Phrasing Variants</p>
+ <p>
  Alternative wordings used by the AI when the primary summary doesn't fit.
  </p>
  </div>
  <Button type="button" variant="outline" size="sm" onClick={() => pvAppend({ text: "" })} data-testid="btn-add-variant">
- <Plus className="h-3 w-3 mr-1" /> Add
+ <Plus /> Add
  </Button>
  </div>
- <div className="space-y-2">
+ <div>
  {pvFields.map((f, i) => (
- <div key={f.id} className="flex gap-2">
+ <div key={f.id}>
  <FormField control={form.control} name={`phrasingVariants.${i}.text`} render={({field}) => (
- <FormItem className="flex-1 mb-0">
+ <FormItem>
  <FormControl><Input {...field} placeholder={`Variant ${i + 1}`} data-testid={`input-variant-${i}`}/></FormControl>
  <FormMessage />
  </FormItem>
  )}/>
  <Button type="button" variant="ghost" size="icon" onClick={() => pvRemove(i)} data-testid={`btn-remove-variant-${i}`}>
- <X className="h-4 w-4 text-destructive" />
+ <X />
  </Button>
  </div>
  ))}
- {pvFields.length === 0 && <p className="text-xs text-muted-foreground italic">No variants yet.</p>}
+ {pvFields.length === 0 && <p>No variants yet.</p>}
  </div>
  </div>
 
  <div>
- <div className="flex items-center justify-between mb-2">
  <div>
- <p className="text-sm font-medium leading-none">Disallowed Implications</p>
- <p className="text-xs text-muted-foreground mt-1">
+ <div>
+ <p>Disallowed Implications</p>
+ <p>
  Phrases or claims the AI must never imply from this fact, such as inflated ownership, credentials, or scope.
  </p>
  </div>
  <Button type="button" variant="outline" size="sm" onClick={() => diAppend({ text: "" })} data-testid="btn-add-disallowed-implication">
- <Plus className="h-3 w-3 mr-1" /> Add
+ <Plus /> Add
  </Button>
  </div>
- <div className="space-y-2">
+ <div>
  {diFields.map((f, i) => (
- <div key={f.id} className="flex gap-2">
+ <div key={f.id}>
  <FormField control={form.control} name={`disallowedImplications.${i}.text`} render={({field}) => (
- <FormItem className="flex-1 mb-0">
+ <FormItem>
  <FormControl><Input {...field} placeholder={`e.g. sole founder, certified trainer, managed LMS`} data-testid={`input-disallowed-implication-${i}`}/></FormControl>
  <FormMessage />
  </FormItem>
  )}/>
  <Button type="button" variant="ghost" size="icon" onClick={() => diRemove(i)} data-testid={`btn-remove-disallowed-implication-${i}`}>
- <X className="h-4 w-4 text-destructive" />
+ <X />
  </Button>
  </div>
  ))}
- {diFields.length === 0 && <p className="text-xs text-muted-foreground italic">No disallowed implications yet.</p>}
+ {diFields.length === 0 && <p>No disallowed implications yet.</p>}
  </div>
  </div>
 
  <div>
- <div className="flex items-center justify-between mb-2">
  <div>
- <p className="text-sm font-medium leading-none">Applicable Tags</p>
- <p className="text-xs text-muted-foreground mt-1">
+ <div>
+ <p>Applicable Tags</p>
+ <p>
  Domain tags used for filtering and matching (e.g. "distributed-systems", "leadership").
  </p>
  </div>
  <Button type="button" variant="outline" size="sm" onClick={() => tagAppend({ tag: "" })} data-testid="btn-add-tag">
- <Plus className="h-3 w-3 mr-1" /> Add
+ <Plus /> Add
  </Button>
  </div>
- <div className="flex flex-wrap gap-2">
+ <div>
  {tagFields.map((f, i) => (
- <div key={f.id} className="flex items-center gap-1 bg-secondary rounded-full px-2 py-1">
+ <div key={f.id}>
  <FormField control={form.control} name={`applicableTags.${i}.tag`} render={({field}) => (
- <Input {...field} className="h-5 w-24 border-0 bg-transparent p-0 text-xs focus-visible:ring-0" placeholder="tag" data-testid={`input-tag-${i}`}/>
+ <Input {...field} placeholder="tag" data-testid={`input-tag-${i}`}/>
  )}/>
- <button type="button" onClick={() => tagRemove(i)} className="text-muted-foreground hover:text-destructive" data-testid={`btn-remove-tag-${i}`}>
- <X className="h-3 w-3" />
+ <button type="button" onClick={() => tagRemove(i)} data-testid={`btn-remove-tag-${i}`}>
+ <X />
  </button>
  </div>
  ))}
- {tagFields.length === 0 && <p className="text-xs text-muted-foreground italic">No tags yet.</p>}
+ {tagFields.length === 0 && <p>No tags yet.</p>}
  </div>
  </div>
 
- <div className="flex justify-end pt-2">
+ <div>
  <Button type="submit" disabled={createClaim.isPending || updateClaim.isPending} data-testid="btn-submit-claim">
  {editingId ? "Update Claim" : "Create Claim"}
  </Button>
@@ -628,7 +624,7 @@ export default function ClaimsPage() {
   <Dialog open={isCleanUpDialogOpen} onOpenChange={setIsCleanUpDialogOpen}>
   <DialogTrigger asChild>
   <Button variant="outline" disabled={!claims || claims.length === 0} data-testid="btn-clean-up-claims">
-  <Trash2 className="mr-2 h-4 w-4" />
+  <Trash2 />
   Clean Up
   </Button>
   </DialogTrigger>
@@ -649,7 +645,7 @@ export default function ClaimsPage() {
   </Dialog>
   </PageHeader>
 
- <div className="flex flex-col sm:flex-row gap-3">
+ <div>
  <Tabs value={filter} onValueChange={(v) => setFilter(v as ClaimFilter)} data-testid="tabs-claims-filter">
  <TabsList>
  <TabsTrigger value="active" data-testid="tab-claims-active">Active</TabsTrigger>
@@ -657,90 +653,88 @@ export default function ClaimsPage() {
  <TabsTrigger value="all" data-testid="tab-claims-all">All</TabsTrigger>
  </TabsList>
  </Tabs>
- <div className="relative">
+ <div>
  <Input
  placeholder="Filter by domain…"
  value={domainFilter}
  onChange={(e) => setDomainFilter(e.target.value)}
- className="h-9 w-48"
  data-testid="input-claims-domain-filter"
  />
  {domainFilter && (
- <button className="absolute right-2 top-2 text-muted-foreground hover:text-foreground" onClick={() => setDomainFilter("")}>
- <X className="h-4 w-4" />
+ <button onClick={() => setDomainFilter("")}>
+ <X />
  </button>
  )}
  </div>
  </div>
 
- <div className="grid gap-4">
+ <div>
  {isLoading ? (
  <>
- <Skeleton className="h-24 w-full" />
- <Skeleton className="h-24 w-full" />
- <Skeleton className="h-24 w-full" />
+ <Skeleton />
+ <Skeleton />
+ <Skeleton />
  </>
  ) : claims?.length === 0 ? (
-  <div className="quiet-card flex flex-col items-center justify-center p-12 text-center">
-  <CheckSquare className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
- <h3 className="text-lg font-semibold text-foreground">No claims</h3>
-  <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+  <div>
+  <CheckSquare />
+ <h3>No claims</h3>
+  <p>
  {filter === "inactive" ? "No inactive claims." : filter === "all" ? "Add your first claim to get started." : "No active claims — all may be deactivated."}
  </p>
  </div>
  ) : (
  claims?.map((claim) => (
-  <ContentCard key={claim.id} data-testid={`card-claim-${claim.id}`} className={`rounded-2xl shadow-sm ${!claim.isActive ? "opacity-60" : ""}`}>
- <CardContent className="p-6">
- <div className="flex items-start justify-between">
- <div className="space-y-2 flex-1 pr-4">
- <div className="flex items-center gap-2 flex-wrap">
- <p className="font-medium" data-testid={`text-claim-summary-${claim.id}`}>{claim.summary}</p>
+  <ContentCard key={claim.id} data-testid={`card-claim-${claim.id}`}>
+ <CardContent>
+ <div>
+ <div>
+ <div>
+ <p data-testid={`text-claim-summary-${claim.id}`}>{claim.summary}</p>
  {!claim.isActive && (
- <Badge variant="outline" className="text-xs text-muted-foreground gap-1">
- <EyeOff className="h-3 w-3" /> Inactive
+ <Badge variant="outline">
+ <EyeOff /> Inactive
  </Badge>
  )}
  </div>
- <div className="flex gap-2 flex-wrap">
+ <div>
  {claim.domain && <Badge variant="secondary" data-testid={`badge-claim-domain-${claim.id}`}>{claim.domain}</Badge>}
  {(claim.applicableTags ?? []).map((tag) => (
- <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
+ <Badge key={tag} variant="outline">{tag}</Badge>
  ))}
  {(claim.phrasingVariants ?? []).length > 0 && (
- <Badge variant="outline" className="text-xs text-muted-foreground">
+ <Badge variant="outline">
  {claim.phrasingVariants.length} variant{claim.phrasingVariants.length > 1 ? "s" : ""}
  </Badge>
  )}
  {(claim.disallowedImplications ?? []).length > 0 && (
- <Badge variant="outline" className="text-xs text-destructive border-destructive/40">
+ <Badge variant="outline">
  {claim.disallowedImplications.length} disallowed implication{claim.disallowedImplications.length > 1 ? "s" : ""}
  </Badge>
  )}
  </div>
  {claim.evidence && (
- <p className="text-sm text-muted-foreground line-clamp-2" data-testid={`text-claim-evidence-${claim.id}`}>
+ <p data-testid={`text-claim-evidence-${claim.id}`}>
  {claim.evidence}
  </p>
  )}
  {(claim.disallowedImplications ?? []).length > 0 && (
- <p className="text-xs text-destructive/90" data-testid={`text-claim-disallowed-${claim.id}`}>
+ <p data-testid={`text-claim-disallowed-${claim.id}`}>
  AI must not imply: {claim.disallowedImplications.join(", ")}
  </p>
  )}
  </div>
- <div className="flex items-center gap-1 shrink-0">
+ <div>
  <Switch
  checked={claim.isActive}
  onCheckedChange={() => handleToggleActive(claim)}
  data-testid={`switch-active-${claim.id}`}
- className="mr-1"
  />
  <Button variant="ghost" size="icon" onClick={() => handleEdit(claim)} data-testid={`btn-edit-claim-${claim.id}`}>
- <Pencil className="h-4 w-4 text-muted-foreground" />
+ <Pencil />
  </Button>
  <Button variant="ghost" size="icon" onClick={() => handleDelete(claim.id)} data-testid={`btn-delete-claim-${claim.id}`}>
- <Trash2 className="h-4 w-4 text-destructive" />
+ <Trash2 />
  </Button>
  </div>
  </div>

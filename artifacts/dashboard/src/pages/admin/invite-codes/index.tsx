@@ -108,36 +108,36 @@ export default function AdminInviteCodesPage() {
 
  if (user?.role !== "admin") {
  return (
-  <ContentCard className="quiet-card">
+  <ContentCard>
   <CardHeader><CardTitle>Access Denied</CardTitle></CardHeader>
   </ContentCard>
  );
  }
 
  return (
- <div className="space-y-8">
+ <div>
  <PageHeader
  title="Invite Codes"
  subtitle="Generate and manage invite codes for new user registration."
  variant="admin"
  >
   <Button onClick={() => setShowGenerate(true)} disabled={codes.length >= 10}>
-  <Plus className="h-4 w-4 mr-2" />
+  <Plus />
   Generate Code
   </Button>
  </PageHeader>
 
  {newCode && (
-  <ContentCard className="border-success quiet-card">
-  <CardContent className="pt-6">
- <div className="flex items-center justify-between">
+  <ContentCard>
+  <CardContent>
  <div>
- <p className="text-sm font-medium">New Invite Code</p>
- <p className="text-2xl font-mono font-bold tracking-wider text-primary">{newCode}</p>
+ <div>
+ <p>New Invite Code</p>
+ <p>{newCode}</p>
  </div>
- <div className="flex gap-2">
+ <div>
  <Button variant="outline" size="sm" onClick={() => copyToClipboard(newCode)}>
- <Copy className="h-3.5 w-3.5 mr-1.5" /> Copy
+ <Copy /> Copy
  </Button>
  <Button variant="ghost" size="sm" onClick={() => setNewCode(null)}>Dismiss</Button>
  </div>
@@ -146,12 +146,12 @@ export default function AdminInviteCodesPage() {
  </ContentCard>
  )}
 
-  <ContentCard className="quiet-card">
-  <CardContent className="p-0">
+  <ContentCard>
+  <CardContent>
  {loading ? (
- <div className="p-8 text-center text-muted-foreground">Loading...</div>
+ <div>Loading...</div>
  ) : codes.length === 0 ? (
- <div className="p-8 text-center text-muted-foreground">No invite codes yet. Generate one to get started.</div>
+ <div>No invite codes yet. Generate one to get started.</div>
  ) : (
  <Table>
  <TableHeader>
@@ -160,32 +160,32 @@ export default function AdminInviteCodesPage() {
  <TableHead>Uses</TableHead>
  <TableHead>Expires</TableHead>
  <TableHead>Status</TableHead>
- <TableHead className="text-right">Actions</TableHead>
+ <TableHead>Actions</TableHead>
  </TableRow>
  </TableHeader>
  <TableBody>
  {codes.map((code) => (
  <TableRow key={code.id}>
- <TableCell className="font-mono font-medium">{code.code}</TableCell>
+ <TableCell>{code.code}</TableCell>
  <TableCell>{code.usedCount} / {code.maxUses}</TableCell>
- <TableCell className="text-xs">{new Date(code.expiresAt).toLocaleDateString()}</TableCell>
+ <TableCell>{new Date(code.expiresAt).toLocaleDateString()}</TableCell>
  <TableCell>
  {code.isActive && new Date(code.expiresAt) > new Date() ? (
- <Badge variant="default"><CheckCircle className="h-3 w-3 mr-1" /> Active</Badge>
+ <Badge variant="default"><CheckCircle /> Active</Badge>
  ) : code.isActive ? (
- <Badge variant="destructive"><Clock className="h-3 w-3 mr-1" /> Expired</Badge>
+ <Badge variant="destructive"><Clock /> Expired</Badge>
  ) : (
- <Badge variant="outline"><XCircle className="h-3 w-3 mr-1" /> Revoked</Badge>
+ <Badge variant="outline"><XCircle /> Revoked</Badge>
  )}
  </TableCell>
- <TableCell className="text-right">
- <div className="flex justify-end gap-1">
+ <TableCell>
+ <div>
  <Button variant="ghost" size="sm" onClick={() => copyToClipboard(code.code)}>
- <Copy className="h-3.5 w-3.5" />
+ <Copy />
  </Button>
  {code.isActive && (
  <Button variant="ghost" size="sm" onClick={() => handleRevoke(code.id)}>
- <Trash2 className="h-3.5 w-3.5 text-destructive" />
+ <Trash2 />
  </Button>
  )}
  </div>
@@ -199,12 +199,12 @@ export default function AdminInviteCodesPage() {
  </ContentCard>
 
  <Dialog open={showGenerate} onOpenChange={setShowGenerate}>
- <DialogContent className="rounded-2xl">
+ <DialogContent>
  <DialogHeader>
  <DialogTitle>Generate Invite Code</DialogTitle>
  </DialogHeader>
- <div className="space-y-4">
- <div className="space-y-2">
+ <div>
+ <div>
  <Label htmlFor="maxUses">Max Uses</Label>
  <Input
  id="maxUses"
@@ -214,7 +214,7 @@ export default function AdminInviteCodesPage() {
  min={1}
  />
  </div>
- <div className="space-y-2">
+ <div>
  <Label htmlFor="expiresIn">Expires In (days)</Label>
  <Input
  id="expiresIn"

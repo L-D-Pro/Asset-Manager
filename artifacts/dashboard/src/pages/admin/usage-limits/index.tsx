@@ -92,19 +92,19 @@ export default function AdminUsageLimitsPage() {
  }
 
  return (
- <div className="space-y-8">
+ <div>
  <PageHeader
  title="Usage Limits"
  subtitle="Configure AI usage quotas and rate limits per user role."
  variant="admin"
  />
 
- <ContentCard className="rounded-2xl">
- <CardContent className="p-0">
+ <ContentCard>
+ <CardContent>
  {loading ? (
- <div className="p-8 text-center text-muted-foreground">Loading...</div>
+ <div>Loading...</div>
  ) : users.length === 0 ? (
- <div className="p-8 text-center text-muted-foreground">No users have usage limits yet. Limits are created when a user registers.</div>
+ <div>No users have usage limits yet. Limits are created when a user registers.</div>
  ) : (
  <Table>
  <TableHeader>
@@ -114,7 +114,7 @@ export default function AdminUsageLimitsPage() {
  <TableHead>Remaining</TableHead>
  <TableHead>Total Used</TableHead>
  <TableHead>Period</TableHead>
- <TableHead className="text-right">Actions</TableHead>
+ <TableHead>Actions</TableHead>
  </TableRow>
  </TableHeader>
  <TableBody>
@@ -124,22 +124,22 @@ export default function AdminUsageLimitsPage() {
  return (
  <TableRow key={row.limit.id}>
  <TableCell>
- <p className="font-medium">{row.username}</p>
- <p className="text-xs text-muted-foreground">{row.email}</p>
+ <p>{row.username}</p>
+ <p>{row.email}</p>
  </TableCell>
  <TableCell>{row.limit.weeklyUsed} / {row.limit.weeklyLimit}</TableCell>
  <TableCell>
  {low ? (
- <Badge variant="destructive"><AlertTriangle className="h-3 w-3 mr-1" /> {remaining}</Badge>
+ <Badge variant="destructive"><AlertTriangle /> {remaining}</Badge>
  ) : (
- <span className="text-sm">{remaining}</span>
+ <span>{remaining}</span>
  )}
  </TableCell>
  <TableCell>{row.limit.totalUsed}</TableCell>
- <TableCell className="text-xs">
+ <TableCell>
  {new Date(row.limit.periodStart).toLocaleDateString()}
  </TableCell>
- <TableCell className="text-right">
+ <TableCell>
  <Button
  variant="ghost"
  size="sm"
@@ -148,7 +148,7 @@ export default function AdminUsageLimitsPage() {
  setNewLimit(row.limit.weeklyLimit);
  }}
  >
- <Pencil className="h-3.5 w-3.5" />
+ <Pencil />
  </Button>
  </TableCell>
  </TableRow>
@@ -161,16 +161,16 @@ export default function AdminUsageLimitsPage() {
  </ContentCard>
 
  <Dialog open={!!editUser} onOpenChange={() => setEditUser(null)}>
- <DialogContent className="rounded-2xl">
+ <DialogContent>
  <DialogHeader>
  <DialogTitle>Edit Usage Limit</DialogTitle>
  </DialogHeader>
  {editUser && (
- <div className="space-y-4">
- <p className="text-sm">
+ <div>
+ <p>
  <strong>{editUser.username}</strong> ({editUser.email})
  </p>
- <div className="space-y-2">
+ <div>
  <Label htmlFor="weeklyLimit">Weekly AI Request Limit</Label>
  <Input
  id="weeklyLimit"
@@ -180,7 +180,7 @@ export default function AdminUsageLimitsPage() {
  min={0}
  />
  </div>
- <p className="text-xs text-muted-foreground">
+ <p>
  Current: {editUser.limit.weeklyUsed} used this week, {editUser.limit.totalUsed} total all time.
  </p>
  </div>
