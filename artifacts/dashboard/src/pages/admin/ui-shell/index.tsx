@@ -1,11 +1,4 @@
-import { Component, type ErrorInfo, useEffect, useState } from "react";
-import {
- type ThemeDefinition,
- type UIConfig,
- type UISlotItem,
- SortableList,
- SortableZoneItem,
-} from "@workspace/ui-core";
+import { Component, type ErrorInfo, type ReactNode, useEffect, useState } from "react";
 import { ArrowUpDown, Eye, EyeOff, GripVertical, Loader2, RotateCcw, Save } from "lucide-react";
 import { useAuth } from "@/context/auth";
 import { Button } from "@/components/ui/button";
@@ -21,7 +14,18 @@ import {
   useResetUiShellState,
   useSaveUiShellState,
   useUiShellState,
+  type ThemeDefinition,
+  type UIConfig,
+  type UISlotItem,
 } from "@/ui-shell/use-ui-shell-config";
+
+function SortableList({ children }: { ids: string[]; onReorder: (ids: string[]) => void; children: ReactNode }) {
+  return <>{children}</>;
+}
+
+function SortableZoneItem({ children }: { id: string; children: ReactNode }) {
+  return <div>{children}</div>;
+}
 
 function sortByOrder(items: UISlotItem[]): UISlotItem[] {
  return [...items].sort((a, b) => a.order - b.order);

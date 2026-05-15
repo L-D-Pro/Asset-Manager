@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StaggerContainer } from "@/components/motion/stagger-container";
 import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
+
 
 interface VariantStat {
  id: number;

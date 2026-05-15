@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+
 import { useAuth } from "@/context/auth";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
@@ -32,7 +32,7 @@ import {
  TableRow,
 } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
+
 import {
  Users,
  Plus,
@@ -59,10 +59,7 @@ interface UserRecord {
  updatedAt: string;
 }
 
-const fadeIn = {
- hidden: { opacity: 0, y: 8 },
- visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] } },
-};
+
 
 function generatePassword(length = 16): string {
  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*-_+=";
@@ -288,16 +285,16 @@ export default function AdminUsersPage() {
   </Button>
  </PageHeader>
 
- <motion.div variants={fadeIn} initial="hidden" animate="visible">
+ <div>
  <Search />
  <Input
  placeholder="Search by username, name, or email..."
  value={search}
  onChange={(e) => setSearch(e.target.value)}
  />
- </motion.div>
+  </div>
 
-  <ContentCard>
+   <ContentCard>
   <CardHeader>
   <CardTitle>
   <Users />
@@ -491,14 +488,8 @@ export default function AdminUsersPage() {
  </div>
  )}
 
- <AnimatePresence>
- {editingUser && generatedPassword && (
- <motion.div
- initial={{ height: 0, opacity: 0 }}
- animate={{ height: "auto", opacity: 1 }}
- exit={{ height: 0, opacity: 0 }}
- transition={{ duration: 0.2 }}
- >
+            {editingUser && generatedPassword && (
+            <div>
  <div>
  <div>
  <Input
@@ -524,9 +515,8 @@ export default function AdminUsersPage() {
  <p>
  Copy this password now — it won't be shown again.
  </p>
- </motion.div>
- )}
- </AnimatePresence>
+            </div>
+            )}
  </div>
  </div>
 

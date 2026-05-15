@@ -62,7 +62,6 @@ import { Sparkles, Link2, ClipboardCheck, Wand2, ShieldCheck, MousePointerClick,
 import { useToast } from "@/hooks/use-toast";
 import { getErrorMessage, hasHttpStatus } from "@/lib/api-errors";
 import { Link } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
 
 const ENABLE_WIZARD = import.meta.env.VITE_ENABLE_APPLY_WIZARD === "true";
 
@@ -1564,14 +1563,7 @@ export default function ApplyWizardPage() {
  <StatusCard title="Assisted Session" ok={progress.hasAssisted} />
  </div>
 
- <AnimatePresence mode="wait">
- <motion.div
- key={step}
- initial={{ opacity: 0, y: 12 }}
- animate={{ opacity: 1, y: 0 }}
- exit={{ opacity: 0, y: -8 }}
- transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] }}
- >
+          <div key={step}>
  {step === "intake" ? (
  <ContentCard>
  <CardHeader>
@@ -2976,8 +2968,7 @@ export default function ApplyWizardPage() {
  </CardContent>
  </ContentCard>
  ) : null}
- </motion.div>
- </AnimatePresence>
+          </div>
 
 <ContentCard>
  <CardHeader>

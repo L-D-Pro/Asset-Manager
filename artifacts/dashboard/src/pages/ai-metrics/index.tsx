@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getErrorMessage } from "@/lib/api-errors";
-import { cn } from "@/lib/utils";
+
 import { AlertTriangle, Brain, TrendingUp } from "lucide-react";
 
 const METRICS_VERSION: GetAiMetricsSnapshotMetricsVersion = "v1";

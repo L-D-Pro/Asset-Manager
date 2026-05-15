@@ -1,5 +1,62 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { UIConfigSchema, type ThemeDefinition, type UIConfig } from "@workspace/ui-core";
+import { z } from "zod";
+
+export type UISlotItem = {
+  id: string;
+  order: number;
+  componentKey?: string;
+  label?: string;
+  locked?: boolean;
+  visibility?: boolean;
+};
+
+export type UIConfig = {
+  version: number;
+  appKey: string;
+  themeID: string;
+  slots: {
+    navbar: UISlotItem[];
+    sidebar: UISlotItem[];
+    dashboardGrid: UISlotItem[];
+  };
+  updatedAt: string;
+  updatedBy: string | null;
+};
+
+export type ThemeDefinition = {
+  id: string;
+  name: string;
+  mode: string;
+  palette: {
+    bgPrimary: string;
+    bgGlass: string;
+    textMain: string;
+    brandPrimary: string;
+    brandAccent?: string;
+  };
+};
+
+const UISlotItemSchema = z.object({
+  id: z.string(),
+  order: z.number(),
+  componentKey: z.string().optional(),
+  label: z.string().optional(),
+  locked: z.boolean().optional(),
+  visibility: z.boolean().optional(),
+});
+
+const UIConfigSchema = z.object({
+  version: z.number(),
+  appKey: z.string(),
+  themeID: z.string(),
+  slots: z.object({
+    navbar: z.array(UISlotItemSchema),
+    sidebar: z.array(UISlotItemSchema),
+    dashboardGrid: z.array(UISlotItemSchema),
+  }),
+  updatedAt: z.string(),
+  updatedBy: z.string().nullable(),
+});
 
 export const UI_SHELL_APP_KEY = "dashboard";
 
