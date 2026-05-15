@@ -32,7 +32,16 @@
       "Bash(node --env-file=../../.env -e \"process.stdout.write\\(process.env.DATABASE_URL\\)\")",
       "Bash(DATABASE_URL=$\\(node --env-file=../../.env -e \"process.stdout.write\\(process.env.DATABASE_URL\\)\"\\) pnpm exec drizzle-kit generate --config ./drizzle.config.ts)",
       "Bash(DATABASE_URL=$\\(node --env-file=../../.env -e \"process.stdout.write\\(process.env.DATABASE_URL\\)\"\\) pnpm exec drizzle-kit push --force --config ./drizzle.config.ts)",
-      "Bash(curl -sSL https://raw.githubusercontent.com/composiohq/awesome-claude-skills/main/skills/tailored-resume-generator/SKILL.md -o \"c:/Users/uberc/LD Pro/Asset-Manager/artifacts/api-server/src/lib/chat/skills/tailored-resume-generator.md\")"
+      "Bash(curl -sSL https://raw.githubusercontent.com/composiohq/awesome-claude-skills/main/skills/tailored-resume-generator/SKILL.md -o \"c:/Users/uberc/LD Pro/Asset-Manager/artifacts/api-server/src/lib/chat/skills/tailored-resume-generator.md\")",
+      "WebFetch(domain:api.anthropic.com)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\uberc\\\\LD Pro\\\\Asset-Manager\\\\artifacts\\\\dashboard\" -Filter \"tailwind.*\" -Recurse)",
+      "Bash(Select-Object FullName)",
+      "Bash(curl -s \"https://api.anthropic.com/v1/design/h/TQxO0WG8g2JDyr7g6f88bQ\")",
+      "Bash(gunzip)",
+      "Bash(grep -r \"--sidebar\\\\|sidebar-primary\\\\|sidebar-foreground\" \"C:\\\\Users\\\\uberc\\\\LD Pro\\\\Asset-Manager\\\\artifacts\\\\dashboard\" --include=\"*.ts\" --include=\"*.tsx\" --include=\"*.css\" --include=\"*.json\")",
+      "Bash(tar -xf -)",
+      "Bash(curl -sSL \"https://api.anthropic.com/v1/design/h/TQxO0WG8g2JDyr7g6f88bQ\" -o /tmp/design-bundle.html)",
+      "Read(//tmp/**)"
     ],
     "additionalDirectories": [
       "C:\\Users\\uberc\\LD Pro\\Asset-Manager\\artifacts\\api-server"

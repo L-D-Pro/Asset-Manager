@@ -1,21 +1,15 @@
-import { Link, useLocation, useMatches } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 import { Icon } from "@/components/quiet/icon";
 
 /**
  * Quiet Operations top breadcrumb bar.
  *
- * Sits above each page. Renders `job-ops / <crumb1> / <crumb2>` derived from
- * the current pathname. The first crumb always links to `/dashboard`.
- *
- * Pages that need richer crumbs (e.g. job detail showing the company name)
- * should set a `<title>` via document.title; this bar reads `useMatches` for
- * any `handle.crumb` value to pick that up.
+ * Sits above each page. Renders `job-ops / <crumb1> / <crumb2>` derived
+ * directly from the current pathname segments. We don't use `useMatches`
+ * here because the app uses the legacy `<BrowserRouter>`, not a data
+ * router — that hook would throw at runtime.
  */
-
-interface MatchHandle {
-  crumb?: string;
-}
 
 function humanise(segment: string): string {
   if (!segment) return "";
@@ -35,14 +29,8 @@ function humanise(segment: string): string {
 
 export function BreadcrumbBar() {
   const location = useLocation();
-  const matches = useMatches() as Array<{ handle?: MatchHandle }>;
-
   const segments = location.pathname.split("/").filter(Boolean);
-  const handleCrumbs = matches
-    .map((m) => m.handle?.crumb)
-    .filter((c): c is string => Boolean(c));
-
-  const crumbs = handleCrumbs.length > 0 ? handleCrumbs : segments.map(humanise);
+  const crumbs = segments.map(humanise);
 
   return (
     <header className="topbar">
