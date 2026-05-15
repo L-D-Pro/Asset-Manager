@@ -28,7 +28,6 @@ export const PRESERVED_APP_RESET_TABLES = [
   "invite_codes",
   "job_sources",
   "site_adapters",
-  "ui_shell_configs",
   "user_usage_limits",
   "waitlist",
 ] as const;

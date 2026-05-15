@@ -44,8 +44,6 @@ tags:
     description: Market research and trend analysis
   - name: job-board
     description: Aggregated job board listings
-  - name: ui-shell-configs
-    description: Theme and layout orchestration config
   - name: admin-reset
     description: Admin-only test data reset operations
   - name: admin-health
@@ -1287,59 +1285,6 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /admin/ui-shell-configs/{appKey}:
-    get:
-      operationId: getUiShellConfig
-      tags: [ui-shell-configs]
-      summary: Get UI shell config for an app
-      parameters:
-        - $ref: "#/components/parameters/AppKey"
-      responses:
-        "200":
-          description: UI shell config
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/UiShellConfigResponse"
-        "404":
-          $ref: "#/components/responses/NotFound"
-    put:
-      operationId: upsertUiShellConfig
-      tags: [ui-shell-configs]
-      summary: Create or update UI shell config for an app
-      parameters:
-        - $ref: "#/components/parameters/AppKey"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UpsertUiShellConfigBody"
-      responses:
-        "200":
-          description: Saved UI shell config
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/UiShellConfigResponse"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-
-  /admin/ui-shell-configs/{appKey}/reset:
-    post:
-      operationId: resetUiShellConfig
-      tags: [ui-shell-configs]
-      summary: Reset UI shell config to empty defaults for an app
-      parameters:
-        - $ref: "#/components/parameters/AppKey"
-      responses:
-        "200":
-          description: Reset UI shell config
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/UiShellConfigResponse"
-
   # ── AI Learning ────────────────────────────────────────────────────────────
   /admin/test-reset/summary:
     get:
@@ -2502,13 +2447,6 @@ components:
       required: true
       schema:
         type: integer
-    AppKey:
-      name: appKey
-      in: path
-      required: true
-      schema:
-        type: string
-
   responses:
     BadRequest:
       description: Bad request
@@ -5511,37 +5449,6 @@ components:
         - feedUrl
         - sourceType
 
-    UiShellConfigResponse:
-      type: object
-      properties:
-        id:
-          type: integer
-        appKey:
-          type: string
-        themeID:
-          type: string
-        themeDefinitions:
-          type: array
-          items:
-            $ref: "#/components/schemas/ThemeDefinition"
-        uiConfig:
-          $ref: "#/components/schemas/UIConfig"
-        updatedByAdminId:
-          type: ["integer", "null"]
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-      required:
-        - id
-        - appKey
-        - themeID
-        - themeDefinitions
-        - uiConfig
-        - createdAt
-        - updatedAt
 
     UpsertUiShellConfigBody:
       type: object

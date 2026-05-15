@@ -591,26 +591,6 @@ CREATE TABLE IF NOT EXISTS feedback (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- UI shell orchestration config (theme + layout metadata)
-CREATE TABLE IF NOT EXISTS ui_shell_configs (
-    id SERIAL PRIMARY KEY,
-    app_key TEXT NOT NULL UNIQUE,
-    theme_id TEXT NOT NULL,
-    theme_definitions JSONB NOT NULL DEFAULT '[]'::jsonb,
-    ui_config JSONB NOT NULL DEFAULT '{}'::jsonb,
-    updated_by_admin_id INTEGER REFERENCES admin_users(id) ON DELETE SET NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE UNIQUE INDEX IF NOT EXISTS ui_shell_configs_app_key_unique
-    ON ui_shell_configs(app_key);
-
-ALTER TABLE ui_shell_configs ADD COLUMN IF NOT EXISTS theme_id TEXT;
-ALTER TABLE ui_shell_configs ADD COLUMN IF NOT EXISTS theme_definitions JSONB NOT NULL DEFAULT '[]'::jsonb;
-ALTER TABLE ui_shell_configs ADD COLUMN IF NOT EXISTS ui_config JSONB NOT NULL DEFAULT '{}'::jsonb;
-ALTER TABLE ui_shell_configs ADD COLUMN IF NOT EXISTS updated_by_admin_id INTEGER REFERENCES admin_users(id) ON DELETE SET NULL;
-
 -- Gamification: user_stats
 CREATE TABLE IF NOT EXISTS user_stats (
     id SERIAL PRIMARY KEY,

@@ -1971,18 +1971,6 @@ export interface UIConfig {
   updatedBy: number | null;
 }
 
-export interface UiShellConfigResponse {
-  id: number;
-  appKey: string;
-  themeID: string;
-  themeDefinitions: ThemeDefinition[];
-  uiConfig: UIConfig;
-  /** @nullable */
-  updatedByAdminId?: number | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
 export interface UpsertUiShellConfigBody {
   themeID: string;
   themeDefinitions: ThemeDefinition[];

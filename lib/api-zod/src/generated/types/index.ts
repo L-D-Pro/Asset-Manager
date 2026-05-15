@@ -233,7 +233,6 @@ export * from "./themePalette";
 export * from "./uIConfig";
 export * from "./uIConfigSlots";
 export * from "./uIConfigVersion";
-export * from "./uiShellConfigResponse";
 export * from "./uISlotItem";
 export * from "./uISlotItemProps";
 export * from "./unauthorizedResponse";
