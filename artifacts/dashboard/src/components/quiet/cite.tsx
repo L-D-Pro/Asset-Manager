@@ -15,8 +15,12 @@ import { smartApi } from "@/lib/smart-ai-api";
 
 interface Claim {
   id: number;
-  text: string;
+  /** The claim's primary text. Backend exposes this as `summary`. */
+  summary?: string;
+  /** Legacy alias for `summary` — some surfaces use it. */
+  text?: string;
   category?: string;
+  domain?: string | null;
   verified?: boolean;
   evidenceType?: string;
   tags?: string[];
@@ -67,11 +71,13 @@ export function Cite({ id, claim: provided }: CiteProps) {
                 letterSpacing: "0.08em",
               }}
             >
-              Claim · {claim.category ?? "uncategorized"}
+              Claim · {claim.category ?? claim.domain ?? "uncategorized"}
             </span>
             <span className="cite-id">#{id}</span>
           </div>
-          <div style={{ color: "var(--ink)", fontSize: 12.5, lineHeight: 1.5 }}>{claim.text}</div>
+          <div style={{ color: "var(--ink)", fontSize: 12.5, lineHeight: 1.5 }}>
+            {claim.summary ?? claim.text ?? ""}
+          </div>
           <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
             <span
               className={`chip ${claim.verified ? "success" : "warn"} dot`}

@@ -1,595 +1,554 @@
-import { useGetJob, useParseJobDescription, useTailorJobResume, useDraftCoverLetter, getGetJobQueryKey, useScoreJob, getScoreJobQueryKey, useGetJobClaimMatches, getGetJobClaimMatchesQueryKey } from "@workspace/api-client-react";
-import { useParams, Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  useGetJob,
+  useParseJobDescription,
+  useTailorJobResume,
+  useDraftCoverLetter,
+  useGetJobClaimMatches,
+  getGetJobQueryKey,
+  getGetJobClaimMatchesQueryKey,
+  type Job,
+  type ClaimMatch,
+} from "@workspace/api-client-react";
+
+import { Icon } from "@/components/quiet/icon";
+import { CompanyMark } from "@/components/quiet/company-mark";
+import { ScoreRing } from "@/components/quiet/score-ring";
+import { StatusChip } from "@/components/quiet/status-chip";
 import { useToast } from "@/hooks/use-toast";
-import { useQueryClient, useMutation } from "@tanstack/react-query";
-import { getErrorMessage } from "@/lib/api-errors";
-import { AiProgressButton } from "@/components/ai/ai-progress-button";
-import { ArrowLeft, AlertCircle, Check, X, ExternalLink, Tag } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { PageHeader } from "@/components/ui/page-header";
-import { motion, useReducedMotion } from "framer-motion";
 
-const statusStyles: Record<string, string> = {
-  new: "bg-muted/40 text-foreground/80 border-border",
-  parsing: "bg-warning/15 text-warning border-warning/30",
-  tailoring: "bg-warning/15 text-warning border-warning/30",
-  drafting: "bg-warning/15 text-warning border-warning/30",
-  scored: "bg-secondary/15 text-secondary border-secondary/30",
-  applied: "bg-primary/15 text-primary border-primary/30",
-  parse_failed: "bg-destructive/15 text-destructive border-destructive/30",
-  ready: "bg-primary/15 text-primary border-primary/30",
-  parsed: "bg-primary/15 text-primary border-primary/30",
-  rejected: "bg-destructive/15 text-destructive border-destructive/30",
-  archived: "bg-destructive/15 text-destructive border-destructive/30",
-};
-
-const statusLabels: Record<string, string> = {
- new: "New",
- parsing: "Processing",
- tailoring: "Processing",
- drafting: "Processing",
- scored: "Scored",
- applied: "Applied",
- parse_failed: "Failed",
- ready: "Ready",
- parsed: "Parsed",
- rejected: "Rejected",
- archived: "Archived",
-};
-
-function StatusPill({ status }: { status: string }) {
- const classes = statusStyles[status] ?? "bg-muted/40 text-foreground/80 border-border";
- const label = statusLabels[status] ?? status;
- return (
- <span
- className={cn(
- "inline-flex items-center text-xs font-semibold uppercase tracking-wider rounded-full px-3 py-1 border",
- classes
- )}
- >
- {label}
- </span>
- );
-}
+type TabId = "overview" | "claims" | "research" | "audit";
 
 export default function JobDetail() {
- const { id } = useParams<{ id: string }>();
- const jobId = parseInt(id || "0", 10);
- const { data: job, isLoading } = useGetJob(jobId, {
- query: { enabled: !!jobId, queryKey: getGetJobQueryKey(jobId) },
- });
- const roleProfileId = job?.roleProfileId ?? undefined;
- const { data: score, isLoading: scoreLoading } = useScoreJob(jobId, roleProfileId ? { roleProfileId } : undefined, {
- query: {
- enabled: !!jobId && !!roleProfileId,
- queryKey: roleProfileId
- ? [...getScoreJobQueryKey(jobId), roleProfileId]
- : getScoreJobQueryKey(jobId),
- },
- });
- const { data: claimMatches, isLoading: matchesLoading } = useGetJobClaimMatches(jobId, {
- query: { enabled: !!jobId, queryKey: getGetJobClaimMatchesQueryKey(jobId) },
- });
+  const params = useParams<{ id: string }>();
+  const jobId = Number(params.id ?? 0);
+  const { data: job, isLoading } = useGetJob(jobId, {
+    query: { enabled: !!jobId, queryKey: getGetJobQueryKey(jobId) },
+  });
+  const { data: matches } = useGetJobClaimMatches(jobId, {
+    query: { enabled: !!jobId, queryKey: getGetJobClaimMatchesQueryKey(jobId) },
+  });
+  const { toast } = useToast();
+  const qc = useQueryClient();
 
- const parseJob = useParseJobDescription();
- const tailorResume = useTailorJobResume();
- const draftCoverLetter = useDraftCoverLetter();
- const { toast } = useToast();
- const queryClient = useQueryClient();
- 
- const shouldReduceMotion = useReducedMotion();
+  const parse = useParseJobDescription();
+  const tailor = useTailorJobResume();
+  const cover = useDraftCoverLetter();
+  const research = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/jobs/${jobId}/research`, { method: "POST" });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Research failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Research complete" });
+      qc.invalidateQueries({ queryKey: getGetJobQueryKey(jobId) });
+    },
+    onError: (err) => toast({ title: "Research failed", description: (err as Error).message, variant: "destructive" }),
+  });
 
- const researchJob = useMutation({
- mutationFn: async () => {
- const res = await fetch(`/api/jobs/${jobId}/research`, { method: "POST" });
- if (!res.ok) {
- const err = await res.json().catch(() => ({}));
- throw new Error(err.error || "Failed to research job");
- }
- return res.json();
- },
- onSuccess: () => {
- toast({ title: "Job research complete" });
- queryClient.invalidateQueries({ queryKey: getGetJobQueryKey(jobId) });
- },
- onError: (error) =>
- toast({
- title: "Failed to research job",
- description: error.message,
- variant: "destructive",
- }),
- });
+  const [tab, setTab] = useState<TabId>("overview");
 
- const gapAnalysis = useMutation({
- mutationFn: async () => {
- const res = await fetch(`/api/jobs/${jobId}/gap-analysis`, { method: "POST" });
- if (!res.ok) {
- const err = await res.json().catch(() => ({}));
- throw new Error(err.error || "Failed to run gap analysis");
- }
- return res.json();
- },
- onSuccess: (data) => {
- toast({ title: "Gap analysis complete" });
-  // Gap analysis data available in scope if needed for debugging
- },
- onError: (error) =>
- toast({
- title: "Failed to run gap analysis",
- description: error.message,
- variant: "destructive",
- }),
- });
+  if (isLoading) {
+    return (
+      <div className="page fade-up">
+        <div className="dim" style={{ padding: 24, textAlign: "center" }}>Loading…</div>
+      </div>
+    );
+  }
 
- if (isLoading) {
- return (
- <div className="space-y-6">
- <Skeleton className="h-8 w-48" />
- <Skeleton className="h-10 w-full max-w-lg" />
- <Skeleton className="h-5 w-72" />
- <Skeleton className="h-64 w-full rounded-[20px]" />
- <Skeleton className="h-48 w-full rounded-[20px]" />
- <Skeleton className="h-72 w-full rounded-[20px]" />
- </div>
- );
- }
+  if (!job) {
+    return (
+      <div className="page fade-up">
+        <h1 className="h-display">Job not found</h1>
+        <Link to="/jobs" className="btn" style={{ marginTop: 16 }}>
+          <Icon name="chev-l" size={13} /> Back to pipeline
+        </Link>
+      </div>
+    );
+  }
 
- if (!job) {
- return (
- <div className="flex flex-col items-center justify-center py-20 text-center">
- <span className="text-4xl mb-4">🔍</span>
- <h2 className="text-xl font-bold  text-foreground mb-2">Job not found</h2>
- <Link
- to="/jobs"
- className="text-primary hover:underline font-medium"
- >
- Back to Jobs Pipeline
- </Link>
- </div>
- );
- }
+  const fitScore = computeFitScore(matches ?? []);
 
- const handleParse = () => {
- parseJob.mutate(
- { id: jobId, data: {} },
- {
- onSuccess: () => {
- toast({ title: "Parsing started" });
- queryClient.invalidateQueries({ queryKey: getGetJobQueryKey(jobId) });
- },
- onError: (error) =>
- toast({
- title: "Failed to parse job description",
- description: getErrorMessage(error, "Please try again."),
- variant: "destructive",
- }),
- }
- );
- };
+  return (
+    <div className="page fade-up" style={{ maxWidth: 1180 }}>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 16, marginBottom: 22 }}>
+        <CompanyMark name={job.company ?? job.title} size={44} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="eyebrow" style={{ marginBottom: 4 }}>
+            {[job.company, job.location].filter(Boolean).join(" · ")}
+          </div>
+          <h1 className="h-display" style={{ fontSize: 28 }}>{job.title}</h1>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              marginTop: 10,
+              flexWrap: "wrap",
+            }}
+          >
+            <StatusChip status={job.status} />
+            <span className="mono dim" style={{ fontSize: 12.5 }}>
+              {salaryRange(job.salaryMin, job.salaryMax)}
+            </span>
+            <span className="dim" style={{ fontSize: 12.5 }}>
+              · Added {new Date(job.createdAt).toLocaleDateString()}
+            </span>
+            {job.sourceUrl && (
+              <a
+                href={job.sourceUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="dim mono"
+                style={{ fontSize: 12, display: "inline-flex", alignItems: "center", gap: 4 }}
+              >
+                <Icon name="ext" size={11} /> source
+              </a>
+            )}
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          {fitScore != null && (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+              <ScoreRing value={fitScore} size={64} stroke={5} />
+              <span className="label">Fit</span>
+            </div>
+          )}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => parse.mutate({ id: jobId, data: {} })}
+              disabled={parse.isPending}
+            >
+              <Icon name="spark" size={13} />
+              {parse.isPending ? "Parsing…" : "Re-parse JD"}
+            </button>
+            <button
+              type="button"
+              className="btn accent"
+              onClick={() => tailor.mutate({ id: jobId, data: {} })}
+              disabled={tailor.isPending}
+            >
+              <Icon name="resume" size={13} />
+              {tailor.isPending ? "Drafting…" : "Tailor resume"}
+            </button>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => cover.mutate({ id: jobId, data: {} })}
+              disabled={cover.isPending}
+            >
+              <Icon name="doc" size={13} />
+              {cover.isPending ? "Drafting…" : "Draft cover letter"}
+            </button>
+          </div>
+        </div>
+      </div>
 
- const handleTailor = () => {
- tailorResume.mutate(
- { id: jobId, data: {} },
- {
- onSuccess: () => toast({ title: "Resume tailoring started" }),
- onError: (error) =>
- toast({
- title: "Failed to tailor resume",
- description: getErrorMessage(error, "Please try again."),
- variant: "destructive",
- }),
- }
- );
- };
+      {/* Tabs */}
+      <div className="tabs" style={{ marginBottom: 22 }}>
+        {[
+          { id: "overview" as const, label: "Overview" },
+          { id: "claims" as const, label: "Claim matches", count: matches?.length ?? 0 },
+          { id: "research" as const, label: "Research" },
+          { id: "audit" as const, label: "Audit" },
+        ].map((t) => (
+          <div
+            key={t.id}
+            className={`tab ${tab === t.id ? "active" : ""}`}
+            onClick={() => setTab(t.id)}
+          >
+            {t.label}
+            {"count" in t && t.count != null && (
+              <span className="mono dim" style={{ marginLeft: 6, fontSize: 11 }}>
+                {t.count}
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
 
- const handleCoverLetter = () => {
- draftCoverLetter.mutate(
- { id: jobId, data: {} },
- {
- onSuccess: () => toast({ title: "Cover letter drafting started" }),
- onError: (error) =>
- toast({
- title: "Failed to draft cover letter",
- description: getErrorMessage(error, "Please try again."),
- variant: "destructive",
- }),
- }
- );
- };
+      {tab === "overview" && <OverviewTab job={job as Job} />}
+      {tab === "claims" && <ClaimsTab matches={(matches ?? []) as ClaimMatch[]} />}
+      {tab === "research" && (
+        <ResearchTab
+          job={job as Job}
+          onRefresh={() => research.mutate()}
+          pending={research.isPending}
+        />
+      )}
+      {tab === "audit" && <AuditTab jobId={jobId} />}
+    </div>
+  );
+}
 
- const scorePercent = score ? Math.round(score.score) : null;
+function OverviewTab({ job }: { job: Job }) {
+  const keywords = job.parsedKeywords ?? [];
+  const requirements = job.parsedRequiredSkills ?? [];
+  const responsibilities = job.parsedResponsibilities ?? [];
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 22 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+        <div className="quiet-card">
+          <div className="quiet-card-header">
+            <h2 className="quiet-card-title">Job description, parsed</h2>
+            <span className="dim mono" style={{ fontSize: 11 }}>jd_parsing</span>
+          </div>
+          <div
+            className="quiet-card-body"
+            style={{ display: "flex", flexDirection: "column", gap: 22 }}
+          >
+            <Facet label="Keywords">
+              {keywords.length === 0 ? (
+                <span className="dim">No keywords yet — run "Re-parse JD".</span>
+              ) : (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {keywords.map((k, i) => (
+                    <span key={i} className="chip">
+                      {k}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </Facet>
+            <Facet label="Requirements">
+              <BulletList items={requirements} dotColor="var(--ink-4)" />
+            </Facet>
+            <Facet label="Responsibilities">
+              <BulletList items={responsibilities} dotColor="var(--accent)" />
+            </Facet>
+          </div>
+        </div>
 
- return (
-  <div className="space-y-6 p-6">
-  {/* Header */}
-  <Link
-  to="/jobs"
-  className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors font-medium"
-  >
-  <ArrowLeft className="h-4 w-4" /> Back to Jobs
-  </Link>
-  <PageHeader
-  title={job.title}
-  subtitle={[job.company, job.location].filter(Boolean).join(" · ")}
-  variant="hero"
-  >
-  <StatusPill status={job.status} />
-  {job.sourceUrl && (
-  <Button variant="outline" size="sm" asChild data-testid="job-source-btn">
-  <a href={job.sourceUrl} target="_blank" rel="noopener noreferrer">
-  View Source <ExternalLink className="ml-2 h-3.5 w-3.5" />
-  </a>
-  </Button>
-  )}
-  </PageHeader>
+        {job.rawJdText && (
+          <div className="quiet-card">
+            <div className="quiet-card-header">
+              <h2 className="quiet-card-title">Full text</h2>
+            </div>
+            <div
+              className="quiet-card-body"
+              style={{
+                fontFamily: "var(--font-display)",
+                fontSize: 15,
+                lineHeight: 1.6,
+                color: "var(--ink-2)",
+                background: "var(--paper-2)",
+                borderRadius: 8,
+                padding: 22,
+                maxHeight: 320,
+                overflow: "auto",
+                margin: 8,
+                whiteSpace: "pre-wrap",
+              }}
+            >
+              {job.rawJdText}
+            </div>
+          </div>
+        )}
+      </div>
 
- {/* Score & Match card */}
- <motion.div
- initial={shouldReduceMotion ? {} : { opacity: 0, y: 12 }}
- animate={{ opacity: 1, y: 0 }}
- transition={{ duration: 0.4, delay: 0.05, ease: [0.22, 1, 0.36, 1] }}
- className="card-glass"
- >
- <h2 className="text-lg font-bold  text-foreground mb-5">Score &amp; Match</h2>
+      <aside style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+        <div className="quiet-card flat">
+          <div
+            className="quiet-card-body"
+            style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}
+          >
+            <span className="label">Pipeline</span>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {["Saved", "Parsed", "Tailored", "Approved", "Applied"].map((step, i) => {
+                const here = pipelinePositionForStatus(job.status) === i;
+                const done = pipelinePositionForStatus(job.status) > i;
+                return (
+                  <div key={step} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span
+                      style={{
+                        width: 18,
+                        height: 18,
+                        borderRadius: 99,
+                        background: done ? "var(--success)" : "var(--paper-3)",
+                        color: done ? "white" : "var(--ink-3)",
+                        display: "grid",
+                        placeItems: "center",
+                        fontSize: 10,
+                        border: `1px solid ${done ? "var(--success)" : "var(--line)"}`,
+                      }}
+                    >
+                      {done ? "✓" : i + 1}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 13,
+                        color: here ? "var(--ink)" : "var(--ink-3)",
+                        fontWeight: here ? 500 : 400,
+                      }}
+                    >
+                      {step}
+                      {here && (
+                        <span className="dim mono" style={{ fontSize: 11, marginLeft: 6 }}>
+                          ← you are here
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
 
- {scoreLoading ? (
- <div className="flex flex-col items-center gap-3 py-4">
- <Skeleton className="h-28 w-28 rounded-full" />
- <Skeleton className="h-5 w-32" />
- <Skeleton className="h-4 w-48" />
- </div>
- ) : score ? (
- <div className="space-y-5">
- <div className="flex flex-col items-center">
- <div className="relative flex items-center justify-center" style={{ width: 120, height: 120 }}>
- <svg
- width={120}
- height={120}
- className="-rotate-90"
- viewBox="0 0 120 120"
- >
- <circle
- cx={60}
- cy={60}
- r={52}
- fill="none"
- stroke="hsl(var(--border))"
- strokeWidth={10}
- />
- <circle
- cx={60}
- cy={60}
- r={52}
- fill="none"
- stroke="currentColor"
- strokeWidth={10}
- strokeDasharray={2 * Math.PI * 52}
- strokeDashoffset={2 * Math.PI * 52 * (1 - scorePercent! / 100)}
- strokeLinecap="round"
- className={cn(
- scorePercent! >= 70
- ? "text-primary"
- : scorePercent! >= 40
- ? "text-warning"
- : "text-destructive"
- )}
- style={{ transition: "stroke-dashoffset 0.7s ease-out" }}
- />
- </svg>
- <div className="absolute inset-0 flex items-center justify-center">
- <span
- className="text-3xl font-extrabold  text-foreground"
- data-testid="job-score"
- >
- {scorePercent}%
- </span>
- </div>
- </div>
- <p className="text-sm text-muted-foreground mt-2">Role profile match</p>
+        <div
+          className="quiet-card"
+          style={{ background: "var(--accent-bg)", borderColor: "var(--accent-line)" }}
+        >
+          <div className="quiet-card-body" style={{ padding: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <span style={{ color: "var(--accent)" }}>
+                <Icon name="spark" size={14} />
+              </span>
+              <span className="label" style={{ color: "var(--accent-ink)" }}>
+                Next step
+              </span>
+            </div>
+            <div style={{ fontSize: 13.5, color: "var(--accent-ink)", lineHeight: 1.5 }}>
+              Tailor a resume against this JD. The copilot will cite your verified claims and
+              flag missing keywords.
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  );
+}
 
- <div className="flex items-center gap-2 mt-2">
- {score.passesHardFilters ? (
- <>
- <Check className="h-4 w-4 text-primary" />
- <span className="text-sm text-primary font-medium">Passes hard filters</span>
- </>
- ) : (
- <>
- <AlertCircle className="h-4 w-4 text-destructive" />
- <span className="text-sm text-destructive font-medium">Fails hard filters</span>
- </>
- )}
- </div>
- </div>
+function ClaimsTab({ matches }: { matches: ClaimMatch[] }) {
+  if (matches.length === 0) {
+    return (
+      <div className="quiet-card">
+        <div className="quiet-card-body" style={{ padding: 32, textAlign: "center" }}>
+          <span className="dim">No claim matches yet. Parse the JD first.</span>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="quiet-card">
+      <div className="quiet-card-header">
+        <h2 className="quiet-card-title">Claims ranked by relevance</h2>
+        <span className="dim" style={{ fontSize: 12 }}>From your truth-lock ledger</span>
+      </div>
+      <div>
+        {matches.map((m, i, arr) => (
+          <div
+            key={m.claim.id}
+            style={{
+              display: "grid",
+              gridTemplateColumns: "60px 1fr 200px 90px",
+              alignItems: "center",
+              gap: 14,
+              padding: "13px 18px",
+              borderBottom: i === arr.length - 1 ? "none" : "1px solid var(--line-soft)",
+            }}
+          >
+            <span
+              className="mono"
+              style={{ fontSize: 13, color: "var(--accent)", fontWeight: 500 }}
+            >
+              #{m.claim.id}
+            </span>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 13.5, color: "var(--ink)", lineHeight: 1.5 }}>
+                {m.claim.summary}
+              </div>
+              {m.matchedKeywords.length > 0 && (
+                <div
+                  className="dim"
+                  style={{
+                    fontSize: 12,
+                    marginTop: 4,
+                    display: "flex",
+                    gap: 4,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  matched: {m.matchedKeywords.map((k, j) => (
+                    <span key={j} className="chip ghost" style={{ fontSize: 10.5, padding: "1px 6px" }}>
+                      {k}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <span className="chip ghost">{m.matchType}</span>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                justifyContent: "flex-end",
+              }}
+            >
+              <div style={{ width: 60 }}>
+                <div className="bar">
+                  <i style={{ width: `${Math.round(m.score * 100)}%` }} />
+                </div>
+              </div>
+              <span className="mono" style={{ fontSize: 12, width: 28, textAlign: "right" }}>
+                {Math.round(m.score * 100)}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
- {score.matchedSkills.length > 0 && (
- <div>
- <h4 className="text-sm font-semibold text-foreground mb-2">Matching Skills</h4>
- <div className="flex flex-wrap gap-1.5">
- {score.matchedSkills.map((skill, i) => (
- <span
- key={i}
- className="inline-flex items-center gap-1 text-xs font-medium rounded-full px-3 py-1 bg-primary/10 text-primary border border-primary/20"
- >
- <Check className="h-3 w-3" />
- {skill}
- </span>
- ))}
- </div>
- </div>
- )}
+function ResearchTab({
+  job,
+  onRefresh,
+  pending,
+}: {
+  job: Job;
+  onRefresh: () => void;
+  pending: boolean;
+}) {
+  const research = (job.researchData ?? {}) as Record<string, unknown>;
+  const entries: Array<[string, unknown]> = Object.entries(research).slice(0, 8);
+  return (
+    <div className="quiet-card">
+      <div className="quiet-card-header">
+        <h2 className="quiet-card-title">Company research</h2>
+        <button type="button" className="btn ghost" onClick={onRefresh} disabled={pending}>
+          <Icon name="spark" size={13} /> {pending ? "Refreshing…" : "Refresh"}
+        </button>
+      </div>
+      <div
+        className="quiet-card-body"
+        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}
+      >
+        {entries.length === 0 && (
+          <div className="dim" style={{ gridColumn: "1 / -1", padding: 16 }}>
+            No research yet — click Refresh.
+          </div>
+        )}
+        {entries.map(([k, v]) => (
+          <div
+            key={k}
+            style={{
+              padding: "12px 14px",
+              border: "1px solid var(--line-soft)",
+              borderRadius: 10,
+              background: "var(--paper-2)",
+            }}
+          >
+            <div className="label" style={{ marginBottom: 4 }}>
+              {k}
+            </div>
+            <div style={{ fontFamily: "var(--font-display)", fontSize: 17 }}>
+              {String(v ?? "")}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
- {score.unmatchedRequiredSkills.length > 0 && (
- <div>
- <h4 className="text-sm font-semibold text-foreground mb-2">Missing Required</h4>
- <div className="flex flex-wrap gap-1.5">
- {score.unmatchedRequiredSkills.map((skill, i) => (
- <span
- key={i}
- className="inline-flex items-center gap-1 text-xs font-medium rounded-full px-3 py-1 bg-destructive/10 text-destructive border border-destructive/20"
- >
- <X className="h-3 w-3" />
- {skill}
- </span>
- ))}
- </div>
- </div>
- )}
+function AuditTab({ jobId }: { jobId: number }) {
+  return (
+    <div className="quiet-card">
+      <div className="quiet-card-header">
+        <h2 className="quiet-card-title">Audit trail</h2>
+        <Link to={`/event-logs?jobId=${jobId}`} className="btn ghost" style={{ fontSize: 12 }}>
+          <Icon name="ext" size={12} /> Open in logs
+        </Link>
+      </div>
+      <div className="quiet-card-body">
+        <span className="dim" style={{ fontSize: 13 }}>
+          Audit trail lives in <span className="mono">event_logs</span> — filterable by job id.
+        </span>
+      </div>
+    </div>
+  );
+}
 
- {score.matchedNiceToHaveSkills.length > 0 && (
- <div>
- <h4 className="text-sm font-semibold text-foreground mb-2">Nice to Have</h4>
- <div className="flex flex-wrap gap-1.5">
- {score.matchedNiceToHaveSkills.map((skill, i) => (
- <span
- key={i}
- className="inline-flex items-center gap-1 text-xs font-medium rounded-full px-3 py-1 bg-secondary/10 text-secondary border border-secondary/20"
- >
- <Check className="h-3 w-3" />
- {skill}
- </span>
- ))}
- </div>
- </div>
- )}
- </div>
- ) : roleProfileId ? (
- <div className="text-center py-6">
- <p className="text-sm text-muted-foreground">Score pending — parse JD first</p>
- </div>
- ) : (
- <div className="text-center py-6">
- <p className="text-sm text-muted-foreground">Assign a role profile to see match scoring</p>
- </div>
- )}
- </motion.div>
+function Facet({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div className="label" style={{ marginBottom: 10 }}>
+        {label}
+      </div>
+      {children}
+    </div>
+  );
+}
 
- {/* AI Actions card */}
- <motion.div
- initial={shouldReduceMotion ? {} : { opacity: 0, y: 12 }}
- animate={{ opacity: 1, y: 0 }}
- transition={{ duration: 0.4, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
- className="card-glass"
- >
- <h2 className="text-lg font-bold  text-foreground mb-4">AI Actions</h2>
- <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
- <AiProgressButton
- variant="secondary"
- onClick={handleParse}
- isPending={parseJob.isPending}
- idleLabel="Parse JD"
- data-testid="btn-parse-jd"
- />
- <AiProgressButton
- variant="secondary"
- onClick={() => researchJob.mutate()}
- isPending={researchJob.isPending}
- idleLabel="Research"
- />
- <AiProgressButton
- variant="secondary"
- onClick={() => gapAnalysis.mutate()}
- isPending={gapAnalysis.isPending}
- disabled={!job.parsedRequiredSkills || job.parsedRequiredSkills.length === 0}
- idleLabel="Gap Analysis"
- />
- <AiProgressButton
- variant="default"
- onClick={handleTailor}
- isPending={tailorResume.isPending}
- disabled={!job.parsedRequiredSkills}
- idleLabel="Tailor Resume"
- data-testid="btn-tailor-resume"
- />
- <AiProgressButton
- variant="default"
- onClick={handleCoverLetter}
- isPending={draftCoverLetter.isPending}
- disabled={!job.parsedRequiredSkills}
- idleLabel="Draft Cover Letter"
- data-testid="btn-draft-cl"
- wrapperClassName="md:col-span-2"
- />
- </div>
- </motion.div>
+function BulletList({ items, dotColor }: { items: string[]; dotColor: string }) {
+  if (items.length === 0) return <span className="dim">—</span>;
+  return (
+    <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 8 }}>
+      {items.map((r, i) => (
+        <li
+          key={i}
+          style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 13.5 }}
+        >
+          <span
+            style={{
+              width: 5,
+              height: 5,
+              borderRadius: 99,
+              background: dotColor,
+              marginTop: 8,
+              flexShrink: 0,
+            }}
+          />
+          <span>{r}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
- {/* Job Details tabs */}
- <motion.div
- initial={shouldReduceMotion ? {} : { opacity: 0, y: 12 }}
- animate={{ opacity: 1, y: 0 }}
- transition={{ duration: 0.4, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
- >
- <div className="card-glass">
- <Tabs defaultValue="jd" className="w-full">
- <TabsList className="w-full justify-start gap-1 bg-transparent border-b border-border pb-0 mb-0 rounded-none h-auto">
- <TabsTrigger
- value="jd"
- className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
- >
- Job Description
- </TabsTrigger>
- <TabsTrigger
- value="parsed"
- className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
- >
- Parsed Data
- </TabsTrigger>
- <TabsTrigger
- value="research"
- className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
- >
- Research
- </TabsTrigger>
- <TabsTrigger
- value="claims"
- className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
- >
- Claim Matches
- </TabsTrigger>
- </TabsList>
+function salaryRange(min?: number | null, max?: number | null): string {
+  if (!min && !max) return "—";
+  const fmt = (n?: number | null) => (n ? `${Math.round(n / 1000)}k` : "?");
+  if (min && max) return `$${fmt(min)}–${fmt(max)}`;
+  return `$${fmt(min ?? max)}`;
+}
 
- <TabsContent value="jd" className="pt-4">
- <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/80" data-testid="job-raw-jd">
- {job.rawJdText || "No job description provided."}
- </div>
- </TabsContent>
+function computeFitScore(matches: Array<{ score: number }>): number | null {
+  if (matches.length === 0) return null;
+  const avg = matches.reduce((s, m) => s + m.score, 0) / matches.length;
+  return Math.round(avg * 100);
+}
 
- <TabsContent value="parsed" className="pt-4">
- <div className="space-y-6">
- {job.parsedRequiredSkills ? (
- <>
- <div>
- <h4 className="font-semibold text-sm mb-2 text-foreground">Required Skills</h4>
- <div className="flex flex-wrap gap-2">
- {job.parsedRequiredSkills.map((skill, i) => (
- <span
- key={i}
- className="inline-flex items-center text-xs font-medium rounded-full px-3 py-1 bg-primary/10 text-primary border border-primary/20"
- >
- {skill}
- </span>
- ))}
- </div>
- </div>
- {job.parsedNiceToHaveSkills && job.parsedNiceToHaveSkills.length > 0 && (
- <div>
- <h4 className="font-semibold text-sm mb-2 text-foreground">Nice to Have</h4>
- <div className="flex flex-wrap gap-2">
- {job.parsedNiceToHaveSkills.map((skill, i) => (
- <span
- key={i}
- className="inline-flex items-center text-xs font-medium rounded-full px-3 py-1 bg-secondary/10 text-secondary border border-secondary/20"
- >
- {skill}
- </span>
- ))}
- </div>
- </div>
- )}
- {job.parsedResponsibilities && (
- <div>
- <h4 className="font-semibold text-sm mb-2 text-foreground">Responsibilities</h4>
- <ul className="list-disc pl-5 space-y-1 text-sm text-foreground/80">
- {job.parsedResponsibilities.map((resp, i) => (
- <li key={i}>{resp}</li>
- ))}
- </ul>
- </div>
- )}
- </>
- ) : (
- <div className="text-sm text-muted-foreground py-4">
- Run the parser to extract skills and requirements.
- </div>
- )}
- </div>
- </TabsContent>
-
- <TabsContent value="research" className="pt-4">
- <div className="space-y-6">
- {(() => {
- const rd = job.researchData as Record<string, unknown> | null;
- return rd ? (
- <div className="space-y-6 text-sm">
- {typeof rd.companyOverview === "string" && (
- <div>
- <h4 className="font-semibold text-lg mb-1 text-primary">Company Overview</h4>
- <p className="text-muted-foreground leading-relaxed">{rd.companyOverview}</p>
- </div>
- )}
- {typeof rd.recentNewsOrProjects === "string" && (
- <div>
- <h4 className="font-semibold text-lg mb-1 text-primary">Recent News</h4>
- <p className="text-muted-foreground leading-relaxed">{rd.recentNewsOrProjects}</p>
- </div>
- )}
- {typeof rd.interviewStrategy === "string" && (
- <div>
- <h4 className="font-semibold text-lg mb-1 text-primary">Interview Strategy</h4>
- <p className="text-muted-foreground leading-relaxed">{rd.interviewStrategy}</p>
- </div>
- )}
- </div>
- ) : (
- <div className="text-sm text-muted-foreground py-4">
- Click &lsquo;Research&rsquo; to gather real-world intelligence on this role.
- </div>
- );
- })()}
- </div>
- </TabsContent>
-
- <TabsContent value="claims" className="pt-4">
- <div>
- {matchesLoading ? (
- <div className="space-y-3">
- <Skeleton className="h-20 w-full" />
- <Skeleton className="h-20 w-full" />
- <Skeleton className="h-20 w-full" />
- </div>
- ) : claimMatches && claimMatches.length > 0 ? (
- <div className="space-y-3">
- {claimMatches.map((match, i) => (
-  <div key={i} className="card-glass p-4 space-y-2">
- <div className="flex items-start justify-between gap-2">
- <p className="text-sm font-medium leading-snug flex-1 text-foreground">
- {match.claim.summary}
- </p>
- <span className="text-xs font-bold rounded-full px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 shrink-0">
- {match.score} pts
- </span>
- </div>
- <div className="flex items-center gap-2 flex-wrap">
- <span className="text-xs text-muted-foreground capitalize">{match.matchType}</span>
- {match.matchedKeywords.slice(0, 5).map((kw, ki) => (
- <span
- key={ki}
- className="inline-flex items-center gap-1 text-[10px] bg-primary/10 text-primary rounded-full px-2 py-0.5"
- >
- <Tag className="h-2.5 w-2.5" />
- {kw}
- </span>
- ))}
- </div>
- <Progress value={Math.min(match.score * 10, 100)} className="h-1" />
- </div>
- ))}
- </div>
- ) : (
- <div className="text-sm text-muted-foreground py-4">
- No claim matches. Parse the JD first, then run scoring.
- </div>
- )}
- </div>
- </TabsContent>
- </Tabs>
- </div>
- </motion.div>
- </div>
- );
+function pipelinePositionForStatus(status: string): number {
+  switch (status) {
+    case "new":
+    case "saved":
+      return 0;
+    case "parsing":
+    case "parsed":
+    case "scored":
+      return 1;
+    case "tailoring":
+    case "drafting":
+    case "ready":
+      return 2;
+    case "applied":
+      return 4;
+    case "interviewing":
+    case "interview":
+      return 4;
+    default:
+      return 0;
+  }
 }
