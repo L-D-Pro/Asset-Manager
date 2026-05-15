@@ -48,6 +48,8 @@ import ResourcesPage from "@/pages/resources";
 import StatsPage from "@/pages/stats";
 import PipelineDiagramPage from "@/pages/pipeline-diagram";
 import ChatPage from "@/pages/chat";
+import QuestsPage from "@/pages/quests";
+import JobBoardPage from "@/pages/job-board";
 import NotFound from "@/pages/not-found";
 import { WelcomeModal } from "@/components/onboarding/welcome-modal";
 
@@ -150,6 +152,8 @@ function ProtectedRoutes() {
  <Route path="/stats" element={<StatsPage />} />
  <Route path="/pipeline-diagram" element={<PipelineDiagramPage />} />
  <Route path="/chat" element={<ChatPage />} />
+ <Route path="/quests" element={<QuestsPage />} />
+ <Route path="/job-board" element={<JobBoardPage />} />
  <Route path="*" element={<NotFound />} />
  </Routes>
  </PageTransition>

@@ -23,7 +23,7 @@ const buttonVariants = cva(
           "bg-[hsl(var(--destructive))] text-white hover:bg-[hsl(var(--destructive))] hover:brightness-110 active:scale-[0.98]",
         link: "text-[hsl(var(--primary))] underline-offset-4 hover:underline h-auto p-0 font-normal rounded-none active:scale-100 font-sans",
         gradient:
-          "gradient-hero text-white shadow-[0_4px_16px_-4px_hsl(var(--primary)/0.5)] hover:brightness-110 hover:shadow-[0_8px_30px_-4px_hsl(var(--primary)/0.6)] active:scale-[0.98]",
+          "bg-[color:var(--accent)] text-white border border-[color:var(--accent)] hover:brightness-110 active:scale-[0.98]",
         quest:
           "bg-[hsl(var(--secondary)/0.15)] text-[hsl(var(--secondary))] border border-[hsl(var(--secondary)/0.3)] hover:bg-[hsl(var(--secondary)/0.22)] active:scale-[0.98]",
       },
