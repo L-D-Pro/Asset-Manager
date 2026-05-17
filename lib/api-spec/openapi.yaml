@@ -2439,6 +2439,119 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /chat/lever-config:
+    get:
+      operationId: getChatLeverConfig
+      tags: [chat]
+      summary: Get the Chat Control Plane lever config
+      responses:
+        "200":
+          description: The singleton lever config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatLeverConfig"
+    patch:
+      operationId: updateChatLeverConfig
+      tags: [chat]
+      summary: Update the Chat Control Plane lever config
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateChatLeverConfigBody"
+      responses:
+        "200":
+          description: Updated lever config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatLeverConfig"
+
+  /chat/preview-prompt:
+    post:
+      operationId: previewChatPrompt
+      tags: [chat]
+      summary: Assemble the chat system prompt as labeled sections (inspector)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PreviewPromptBody"
+      responses:
+        "200":
+          description: Section-labeled assembled prompt
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PromptSection"
+
+  /chat/lever-presets:
+    get:
+      operationId: listChatLeverPresets
+      tags: [chat]
+      summary: List saved lever presets
+      responses:
+        "200":
+          description: Lever presets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChatLeverPreset"
+    post:
+      operationId: createChatLeverPreset
+      tags: [chat]
+      summary: Snapshot the current lever state as a named preset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateChatLeverPresetBody"
+      responses:
+        "201":
+          description: Created preset
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatLeverPreset"
+
+  /chat/lever-presets/{id}:
+    delete:
+      operationId: deleteChatLeverPreset
+      tags: [chat]
+      summary: Delete a lever preset
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /chat/lever-presets/{id}/apply:
+    post:
+      operationId: applyChatLeverPreset
+      tags: [chat]
+      summary: Apply a preset — write its snapshot to the live config
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: The lever config after applying the preset
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatLeverConfig"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   parameters:
     Id:
@@ -5768,6 +5881,12 @@ components:
           maxItems: 20
           items:
             $ref: "#/components/schemas/ChatAttachment"
+        modelConfigId:
+          type: integer
+          minimum: 1
+        jdParseEnabled:
+          type: boolean
+          default: false
       required:
         - content
 
@@ -5782,3 +5901,137 @@ components:
           maxLength: 2000
       required:
         - outcome
+
+    ChatLeverConfig:
+      type: object
+      properties:
+        id:
+          type: integer
+        identityText:
+          type: string
+        skillsEnabled:
+          type: boolean
+        bestPracticesEnabled:
+          type: boolean
+        skillRoutingMode:
+          type: string
+          enum: [all, classified]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - identityText
+        - skillsEnabled
+        - bestPracticesEnabled
+        - skillRoutingMode
+        - createdAt
+        - updatedAt
+
+    UpdateChatLeverConfigBody:
+      type: object
+      properties:
+        identityText:
+          type: string
+          minLength: 1
+        skillsEnabled:
+          type: boolean
+        bestPracticesEnabled:
+          type: boolean
+        skillRoutingMode:
+          type: string
+          enum: [all, classified]
+
+    PromptSection:
+      type: object
+      properties:
+        lever:
+          type: string
+          enum: [identity, skill, best_practices, attachments]
+        label:
+          type: string
+        content:
+          type: string
+      required:
+        - lever
+        - label
+        - content
+
+    PreviewPromptBody:
+      type: object
+      properties:
+        sampleMessage:
+          type: string
+          minLength: 1
+        attachments:
+          type: array
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/ChatAttachment"
+        overrides:
+          type: object
+          properties:
+            identityText:
+              type: string
+            skillsEnabled:
+              type: boolean
+            bestPracticesEnabled:
+              type: boolean
+            skillRoutingMode:
+              type: string
+              enum: [all, classified]
+      required:
+        - sampleMessage
+
+    ChatLeverSnapshot:
+      type: object
+      properties:
+        identityText:
+          type: string
+        skillsEnabled:
+          type: boolean
+        bestPracticesEnabled:
+          type: boolean
+        skillRoutingMode:
+          type: string
+        activePromptVersionIds:
+          type: array
+          items:
+            type: integer
+      required:
+        - identityText
+        - skillsEnabled
+        - bestPracticesEnabled
+        - skillRoutingMode
+        - activePromptVersionIds
+
+    ChatLeverPreset:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        snapshot:
+          $ref: "#/components/schemas/ChatLeverSnapshot"
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - snapshot
+        - createdAt
+
+    CreateChatLeverPresetBody:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+      required:
+        - name

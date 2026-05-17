@@ -6,16 +6,12 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ChatAttachment } from "./chatAttachment";
+import type { PreviewPromptBodyOverrides } from "./previewPromptBodyOverrides";
 
-export interface PostChatMessageBody {
-  /**
-   * @minLength 1
-   * @maxLength 20000
-   */
-  content: string;
+export interface PreviewPromptBody {
+  /** @minLength 1 */
+  sampleMessage: string;
   /** @maxItems 20 */
   attachments?: ChatAttachment[];
-  /** @minimum 1 */
-  modelConfigId?: number;
-  jdParseEnabled?: boolean;
+  overrides?: PreviewPromptBodyOverrides;
 }

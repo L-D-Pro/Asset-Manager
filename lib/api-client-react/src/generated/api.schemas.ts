@@ -2131,6 +2131,9 @@ export interface PostChatMessageBody {
   content: string;
   /** @maxItems 20 */
   attachments?: ChatAttachment[];
+  /** @minimum 1 */
+  modelConfigId?: number;
+  jdParseEnabled?: boolean;
 }
 
 export type ChatFeedbackBodyOutcome =
@@ -2145,6 +2148,102 @@ export interface ChatFeedbackBody {
   outcome: ChatFeedbackBodyOutcome;
   /** @maxLength 2000 */
   notes?: string;
+}
+
+export type ChatLeverConfigSkillRoutingMode =
+  (typeof ChatLeverConfigSkillRoutingMode)[keyof typeof ChatLeverConfigSkillRoutingMode];
+
+export const ChatLeverConfigSkillRoutingMode = {
+  all: "all",
+  classified: "classified",
+} as const;
+
+export interface ChatLeverConfig {
+  id: number;
+  identityText: string;
+  skillsEnabled: boolean;
+  bestPracticesEnabled: boolean;
+  skillRoutingMode: ChatLeverConfigSkillRoutingMode;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type UpdateChatLeverConfigBodySkillRoutingMode =
+  (typeof UpdateChatLeverConfigBodySkillRoutingMode)[keyof typeof UpdateChatLeverConfigBodySkillRoutingMode];
+
+export const UpdateChatLeverConfigBodySkillRoutingMode = {
+  all: "all",
+  classified: "classified",
+} as const;
+
+export interface UpdateChatLeverConfigBody {
+  /** @minLength 1 */
+  identityText?: string;
+  skillsEnabled?: boolean;
+  bestPracticesEnabled?: boolean;
+  skillRoutingMode?: UpdateChatLeverConfigBodySkillRoutingMode;
+}
+
+export type PromptSectionLever =
+  (typeof PromptSectionLever)[keyof typeof PromptSectionLever];
+
+export const PromptSectionLever = {
+  identity: "identity",
+  skill: "skill",
+  best_practices: "best_practices",
+  attachments: "attachments",
+} as const;
+
+export interface PromptSection {
+  lever: PromptSectionLever;
+  label: string;
+  content: string;
+}
+
+export type PreviewPromptBodyOverridesSkillRoutingMode =
+  (typeof PreviewPromptBodyOverridesSkillRoutingMode)[keyof typeof PreviewPromptBodyOverridesSkillRoutingMode];
+
+export const PreviewPromptBodyOverridesSkillRoutingMode = {
+  all: "all",
+  classified: "classified",
+} as const;
+
+export type PreviewPromptBodyOverrides = {
+  identityText?: string;
+  skillsEnabled?: boolean;
+  bestPracticesEnabled?: boolean;
+  skillRoutingMode?: PreviewPromptBodyOverridesSkillRoutingMode;
+};
+
+export interface PreviewPromptBody {
+  /** @minLength 1 */
+  sampleMessage: string;
+  /** @maxItems 20 */
+  attachments?: ChatAttachment[];
+  overrides?: PreviewPromptBodyOverrides;
+}
+
+export interface ChatLeverSnapshot {
+  identityText: string;
+  skillsEnabled: boolean;
+  bestPracticesEnabled: boolean;
+  skillRoutingMode: string;
+  activePromptVersionIds: number[];
+}
+
+export interface ChatLeverPreset {
+  id: number;
+  name: string;
+  snapshot: ChatLeverSnapshot;
+  createdAt: string;
+}
+
+export interface CreateChatLeverPresetBody {
+  /**
+   * @minLength 1
+   * @maxLength 120
+   */
+  name: string;
 }
 
 /**

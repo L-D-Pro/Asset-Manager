@@ -40,6 +40,8 @@ import type {
   BadRequestResponse,
   BaseResumeVersion,
   ChatFeedbackBody,
+  ChatLeverConfig,
+  ChatLeverPreset,
   ChatMessage,
   ChatThread,
   Claim,
@@ -55,6 +57,7 @@ import type {
   CreateApplicationFormFieldBody,
   CreateApplicationSessionBody,
   CreateBaseResumeBody,
+  CreateChatLeverPresetBody,
   CreateChatThreadBody,
   CreateClaimBody,
   CreateClientMessageTemplateBody,
@@ -106,7 +109,9 @@ import type {
   NukeJobAttempts200,
   ParseJobBody,
   PostChatMessageBody,
+  PreviewPromptBody,
   ProjectSource,
+  PromptSection,
   ProposalOutcome,
   ProposalVersion,
   RecomputeAiLearningParams,
@@ -123,6 +128,7 @@ import type {
   UpdateAiModelConfigBody,
   UpdateAiPromptVersionBody,
   UpdateApplicationBody,
+  UpdateChatLeverConfigBody,
   UpdateChatThreadBody,
   UpdateClaimBody,
   UpdateCoverLetterVersionBody,
@@ -10626,4 +10632,582 @@ export const usePostChatMessageFeedback = <
   TContext
 > => {
   return useMutation(getPostChatMessageFeedbackMutationOptions(options));
+};
+
+/**
+ * @summary Get the Chat Control Plane lever config
+ */
+export const getGetChatLeverConfigUrl = () => {
+  return `/api/chat/lever-config`;
+};
+
+export const getChatLeverConfig = async (
+  options?: RequestInit,
+): Promise<ChatLeverConfig> => {
+  return customFetch<ChatLeverConfig>(getGetChatLeverConfigUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetChatLeverConfigQueryKey = () => {
+  return [`/api/chat/lever-config`] as const;
+};
+
+export const getGetChatLeverConfigQueryOptions = <
+  TData = Awaited<ReturnType<typeof getChatLeverConfig>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getChatLeverConfig>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetChatLeverConfigQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getChatLeverConfig>>
+  > = ({ signal }) => getChatLeverConfig({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getChatLeverConfig>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetChatLeverConfigQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getChatLeverConfig>>
+>;
+export type GetChatLeverConfigQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get the Chat Control Plane lever config
+ */
+
+export function useGetChatLeverConfig<
+  TData = Awaited<ReturnType<typeof getChatLeverConfig>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getChatLeverConfig>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetChatLeverConfigQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update the Chat Control Plane lever config
+ */
+export const getUpdateChatLeverConfigUrl = () => {
+  return `/api/chat/lever-config`;
+};
+
+export const updateChatLeverConfig = async (
+  updateChatLeverConfigBody: UpdateChatLeverConfigBody,
+  options?: RequestInit,
+): Promise<ChatLeverConfig> => {
+  return customFetch<ChatLeverConfig>(getUpdateChatLeverConfigUrl(), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateChatLeverConfigBody),
+  });
+};
+
+export const getUpdateChatLeverConfigMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateChatLeverConfig>>,
+    TError,
+    { data: BodyType<UpdateChatLeverConfigBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateChatLeverConfig>>,
+  TError,
+  { data: BodyType<UpdateChatLeverConfigBody> },
+  TContext
+> => {
+  const mutationKey = ["updateChatLeverConfig"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateChatLeverConfig>>,
+    { data: BodyType<UpdateChatLeverConfigBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return updateChatLeverConfig(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateChatLeverConfigMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateChatLeverConfig>>
+>;
+export type UpdateChatLeverConfigMutationBody =
+  BodyType<UpdateChatLeverConfigBody>;
+export type UpdateChatLeverConfigMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update the Chat Control Plane lever config
+ */
+export const useUpdateChatLeverConfig = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateChatLeverConfig>>,
+    TError,
+    { data: BodyType<UpdateChatLeverConfigBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateChatLeverConfig>>,
+  TError,
+  { data: BodyType<UpdateChatLeverConfigBody> },
+  TContext
+> => {
+  return useMutation(getUpdateChatLeverConfigMutationOptions(options));
+};
+
+/**
+ * @summary Assemble the chat system prompt as labeled sections (inspector)
+ */
+export const getPreviewChatPromptUrl = () => {
+  return `/api/chat/preview-prompt`;
+};
+
+export const previewChatPrompt = async (
+  previewPromptBody: PreviewPromptBody,
+  options?: RequestInit,
+): Promise<PromptSection[]> => {
+  return customFetch<PromptSection[]>(getPreviewChatPromptUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(previewPromptBody),
+  });
+};
+
+export const getPreviewChatPromptMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof previewChatPrompt>>,
+    TError,
+    { data: BodyType<PreviewPromptBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof previewChatPrompt>>,
+  TError,
+  { data: BodyType<PreviewPromptBody> },
+  TContext
+> => {
+  const mutationKey = ["previewChatPrompt"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof previewChatPrompt>>,
+    { data: BodyType<PreviewPromptBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return previewChatPrompt(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PreviewChatPromptMutationResult = NonNullable<
+  Awaited<ReturnType<typeof previewChatPrompt>>
+>;
+export type PreviewChatPromptMutationBody = BodyType<PreviewPromptBody>;
+export type PreviewChatPromptMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Assemble the chat system prompt as labeled sections (inspector)
+ */
+export const usePreviewChatPrompt = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof previewChatPrompt>>,
+    TError,
+    { data: BodyType<PreviewPromptBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof previewChatPrompt>>,
+  TError,
+  { data: BodyType<PreviewPromptBody> },
+  TContext
+> => {
+  return useMutation(getPreviewChatPromptMutationOptions(options));
+};
+
+/**
+ * @summary List saved lever presets
+ */
+export const getListChatLeverPresetsUrl = () => {
+  return `/api/chat/lever-presets`;
+};
+
+export const listChatLeverPresets = async (
+  options?: RequestInit,
+): Promise<ChatLeverPreset[]> => {
+  return customFetch<ChatLeverPreset[]>(getListChatLeverPresetsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListChatLeverPresetsQueryKey = () => {
+  return [`/api/chat/lever-presets`] as const;
+};
+
+export const getListChatLeverPresetsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listChatLeverPresets>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listChatLeverPresets>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListChatLeverPresetsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listChatLeverPresets>>
+  > = ({ signal }) => listChatLeverPresets({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listChatLeverPresets>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListChatLeverPresetsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listChatLeverPresets>>
+>;
+export type ListChatLeverPresetsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List saved lever presets
+ */
+
+export function useListChatLeverPresets<
+  TData = Awaited<ReturnType<typeof listChatLeverPresets>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listChatLeverPresets>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListChatLeverPresetsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Snapshot the current lever state as a named preset
+ */
+export const getCreateChatLeverPresetUrl = () => {
+  return `/api/chat/lever-presets`;
+};
+
+export const createChatLeverPreset = async (
+  createChatLeverPresetBody: CreateChatLeverPresetBody,
+  options?: RequestInit,
+): Promise<ChatLeverPreset> => {
+  return customFetch<ChatLeverPreset>(getCreateChatLeverPresetUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createChatLeverPresetBody),
+  });
+};
+
+export const getCreateChatLeverPresetMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createChatLeverPreset>>,
+    TError,
+    { data: BodyType<CreateChatLeverPresetBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createChatLeverPreset>>,
+  TError,
+  { data: BodyType<CreateChatLeverPresetBody> },
+  TContext
+> => {
+  const mutationKey = ["createChatLeverPreset"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createChatLeverPreset>>,
+    { data: BodyType<CreateChatLeverPresetBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createChatLeverPreset(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateChatLeverPresetMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createChatLeverPreset>>
+>;
+export type CreateChatLeverPresetMutationBody =
+  BodyType<CreateChatLeverPresetBody>;
+export type CreateChatLeverPresetMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Snapshot the current lever state as a named preset
+ */
+export const useCreateChatLeverPreset = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createChatLeverPreset>>,
+    TError,
+    { data: BodyType<CreateChatLeverPresetBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createChatLeverPreset>>,
+  TError,
+  { data: BodyType<CreateChatLeverPresetBody> },
+  TContext
+> => {
+  return useMutation(getCreateChatLeverPresetMutationOptions(options));
+};
+
+/**
+ * @summary Delete a lever preset
+ */
+export const getDeleteChatLeverPresetUrl = (id: number) => {
+  return `/api/chat/lever-presets/${id}`;
+};
+
+export const deleteChatLeverPreset = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteChatLeverPresetUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteChatLeverPresetMutationOptions = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteChatLeverPreset>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteChatLeverPreset>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteChatLeverPreset"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteChatLeverPreset>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteChatLeverPreset(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteChatLeverPresetMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteChatLeverPreset>>
+>;
+
+export type DeleteChatLeverPresetMutationError = ErrorType<NotFoundResponse>;
+
+/**
+ * @summary Delete a lever preset
+ */
+export const useDeleteChatLeverPreset = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteChatLeverPreset>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteChatLeverPreset>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteChatLeverPresetMutationOptions(options));
+};
+
+/**
+ * @summary Apply a preset — write its snapshot to the live config
+ */
+export const getApplyChatLeverPresetUrl = (id: number) => {
+  return `/api/chat/lever-presets/${id}/apply`;
+};
+
+export const applyChatLeverPreset = async (
+  id: number,
+  options?: RequestInit,
+): Promise<ChatLeverConfig> => {
+  return customFetch<ChatLeverConfig>(getApplyChatLeverPresetUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getApplyChatLeverPresetMutationOptions = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof applyChatLeverPreset>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof applyChatLeverPreset>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["applyChatLeverPreset"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof applyChatLeverPreset>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return applyChatLeverPreset(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ApplyChatLeverPresetMutationResult = NonNullable<
+  Awaited<ReturnType<typeof applyChatLeverPreset>>
+>;
+
+export type ApplyChatLeverPresetMutationError = ErrorType<NotFoundResponse>;
+
+/**
+ * @summary Apply a preset — write its snapshot to the live config
+ */
+export const useApplyChatLeverPreset = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof applyChatLeverPreset>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof applyChatLeverPreset>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getApplyChatLeverPresetMutationOptions(options));
 };

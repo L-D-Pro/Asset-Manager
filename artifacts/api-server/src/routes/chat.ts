@@ -14,6 +14,9 @@ import {
 import type { JobOpsRequest } from "../lib/http-types";
 import { logger } from "../lib/logger";
 import { streamChatCompletion, loadConversationMessages } from "../lib/chat/stream-openrouter";
+import { extractTextFromDocumentFile, getUploadedDocument, parseSingleDocumentUpload, UploadValidationError, MAX_AI_SOURCE_CHARS } from "../lib/document-text";
+import { parseJdText } from "../lib/chat/jd-parse-preprocess";
+import type { ParsedJd } from "../lib/chat/context-builder";
 
 const router: IRouter = Router();
 
@@ -66,11 +69,20 @@ const attachmentSchema = z.discriminatedUnion("kind", [
       ).min(1),
     }),
   }),
+  z.object({
+    kind: z.literal("document"),
+    snapshot: z.object({
+      filename: z.string().min(1).max(260),
+      contentText: z.string().min(1).max(MAX_AI_SOURCE_CHARS),
+    }),
+  }),
 ]);
 
 const postMessageSchema = z.object({
   content: z.string().min(1).max(20000),
   attachments: z.array(attachmentSchema).max(20).optional().default([]),
+  modelConfigId: z.number().int().positive().optional(),
+  jdParseEnabled: z.boolean().optional().default(false),
 });
 
 const feedbackSchema = z.object({
@@ -194,6 +206,11 @@ router.post("/chat/threads/:id/messages", async (req, res): Promise<void> => {
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
   if (!body.success) { res.status(400).json({ error: body.error.message }); return; }
 
+  let parsedJd: ParsedJd | null = null;
+  if (body.data.jdParseEnabled) {
+    parsedJd = await parseJdText(body.data.content);
+  }
+
   try {
     await streamChatCompletion({
       conversationId: params.data.id,
@@ -202,6 +219,8 @@ router.post("/chat/threads/:id/messages", async (req, res): Promise<void> => {
         content: body.data.content,
         attachments: (body.data.attachments ?? []) as MessageAttachment[],
       },
+      modelConfigId: body.data.modelConfigId,
+      parsedJd,
       res,
     });
   } catch (err) {
@@ -211,6 +230,33 @@ router.post("/chat/threads/:id/messages", async (req, res): Promise<void> => {
     } else {
       res.end();
     }
+  }
+});
+
+// ── Document parse ────────────────────────────────────────────────────────
+
+router.post("/chat/parse-document", async (req, res): Promise<void> => {
+  const r = req as JobOpsRequest;
+  if (!r.session.adminId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  try {
+    await parseSingleDocumentUpload(req, res);
+  } catch (err) {
+    if (err instanceof UploadValidationError) { res.status(400).json({ error: err.message }); return; }
+    logger.error({ err }, "chat/parse-document: unexpected error during multer");
+    res.status(500).json({ error: "Upload failed" }); return;
+  }
+
+  const file = getUploadedDocument(req);
+  if (!file) { res.status(400).json({ error: "No file provided" }); return; }
+
+  try {
+    const contentText = await extractTextFromDocumentFile(file);
+    res.json({ filename: file.originalname, contentText });
+  } catch (err) {
+    if (err instanceof UploadValidationError) { res.status(400).json({ error: err.message }); return; }
+    logger.error({ err }, "chat/parse-document: text extraction failed");
+    res.status(422).json({ error: "Could not extract text from file" });
   }
 });
 

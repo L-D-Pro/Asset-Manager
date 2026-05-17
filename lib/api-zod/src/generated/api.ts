@@ -3050,6 +3050,8 @@ export const postChatMessageBodyContentMax = 20000;
 
 export const postChatMessageBodyAttachmentsMax = 20;
 
+export const postChatMessageBodyJdParseEnabledDefault = false;
+
 export const PostChatMessageBody = zod.object({
   content: zod.string().min(1).max(postChatMessageBodyContentMax),
   attachments: zod
@@ -3104,6 +3106,10 @@ export const PostChatMessageBody = zod.object({
     )
     .max(postChatMessageBodyAttachmentsMax)
     .optional(),
+  modelConfigId: zod.number().min(1).optional(),
+  jdParseEnabled: zod
+    .boolean()
+    .default(postChatMessageBodyJdParseEnabledDefault),
 });
 
 /**
@@ -3126,4 +3132,169 @@ export const postChatMessageFeedbackBodyNotesMax = 2000;
 export const PostChatMessageFeedbackBody = zod.object({
   outcome: zod.enum(["approved", "rejected"]),
   notes: zod.string().max(postChatMessageFeedbackBodyNotesMax).optional(),
+});
+
+/**
+ * @summary Get the Chat Control Plane lever config
+ */
+export const GetChatLeverConfigResponse = zod.object({
+  id: zod.number(),
+  identityText: zod.string(),
+  skillsEnabled: zod.boolean(),
+  bestPracticesEnabled: zod.boolean(),
+  skillRoutingMode: zod.enum(["all", "classified"]),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Update the Chat Control Plane lever config
+ */
+
+export const UpdateChatLeverConfigBody = zod.object({
+  identityText: zod.string().min(1).optional(),
+  skillsEnabled: zod.boolean().optional(),
+  bestPracticesEnabled: zod.boolean().optional(),
+  skillRoutingMode: zod.enum(["all", "classified"]).optional(),
+});
+
+export const UpdateChatLeverConfigResponse = zod.object({
+  id: zod.number(),
+  identityText: zod.string(),
+  skillsEnabled: zod.boolean(),
+  bestPracticesEnabled: zod.boolean(),
+  skillRoutingMode: zod.enum(["all", "classified"]),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Assemble the chat system prompt as labeled sections (inspector)
+ */
+
+export const previewChatPromptBodyAttachmentsMax = 20;
+
+export const PreviewChatPromptBody = zod.object({
+  sampleMessage: zod.string().min(1),
+  attachments: zod
+    .array(
+      zod
+        .union([
+          zod
+            .object({
+              kind: zod.enum(["base_resume"]),
+              refId: zod.number().optional(),
+              snapshot: zod.object({
+                version: zod.number().optional(),
+                capturedAt: zod.string().optional(),
+                contentText: zod.string(),
+              }),
+            })
+            .describe(
+              "Snapshot of the user's base resume, captured at message send time.",
+            ),
+          zod
+            .object({
+              kind: zod.enum(["job"]),
+              refId: zod.number().optional(),
+              snapshot: zod.object({
+                title: zod.string(),
+                company: zod.string().optional(),
+                location: zod.string().optional(),
+                jdText: zod.string(),
+              }),
+            })
+            .describe("Snapshot of a job listing's metadata + JD text."),
+          zod
+            .object({
+              kind: zod.enum(["claims"]),
+              refId: zod.number().optional(),
+              snapshot: zod.object({
+                claims: zod
+                  .array(
+                    zod.object({
+                      text: zod.string(),
+                      verified: zod.boolean(),
+                    }),
+                  )
+                  .min(1),
+              }),
+            })
+            .describe(
+              "A selection of claims from the ledger; unverified claims are flagged.",
+            ),
+        ])
+        .describe("Discriminated union of attachment kinds."),
+    )
+    .max(previewChatPromptBodyAttachmentsMax)
+    .optional(),
+  overrides: zod
+    .object({
+      identityText: zod.string().optional(),
+      skillsEnabled: zod.boolean().optional(),
+      bestPracticesEnabled: zod.boolean().optional(),
+      skillRoutingMode: zod.enum(["all", "classified"]).optional(),
+    })
+    .optional(),
+});
+
+export const PreviewChatPromptResponseItem = zod.object({
+  lever: zod.enum(["identity", "skill", "best_practices", "attachments"]),
+  label: zod.string(),
+  content: zod.string(),
+});
+export const PreviewChatPromptResponse = zod.array(
+  PreviewChatPromptResponseItem,
+);
+
+/**
+ * @summary List saved lever presets
+ */
+export const ListChatLeverPresetsResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  snapshot: zod.object({
+    identityText: zod.string(),
+    skillsEnabled: zod.boolean(),
+    bestPracticesEnabled: zod.boolean(),
+    skillRoutingMode: zod.string(),
+    activePromptVersionIds: zod.array(zod.number()),
+  }),
+  createdAt: zod.coerce.date(),
+});
+export const ListChatLeverPresetsResponse = zod.array(
+  ListChatLeverPresetsResponseItem,
+);
+
+/**
+ * @summary Snapshot the current lever state as a named preset
+ */
+export const createChatLeverPresetBodyNameMax = 120;
+
+export const CreateChatLeverPresetBody = zod.object({
+  name: zod.string().min(1).max(createChatLeverPresetBodyNameMax),
+});
+
+/**
+ * @summary Delete a lever preset
+ */
+export const DeleteChatLeverPresetParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary Apply a preset — write its snapshot to the live config
+ */
+export const ApplyChatLeverPresetParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ApplyChatLeverPresetResponse = zod.object({
+  id: zod.number(),
+  identityText: zod.string(),
+  skillsEnabled: zod.boolean(),
+  bestPracticesEnabled: zod.boolean(),
+  skillRoutingMode: zod.enum(["all", "classified"]),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
 });
