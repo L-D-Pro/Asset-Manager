@@ -1,417 +1,493 @@
-import { useMemo } from "react";
-import { useGetAiMetricsSnapshot } from "@workspace/api-client-react";
-import type { GetAiMetricsSnapshotMetricsVersion } from "@workspace/api-client-react";
-import { PageHeader } from "@/components/ui/page-header";
-import { ContentCard } from "@/components/ui/content-card";
-import { SectionHeader } from "@/components/ui/section-header";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getErrorMessage } from "@/lib/api-errors";
+import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useListAiModelConfigs,
+  useGetModelConfigHealth,
+  useGetAiPipelineOverview,
+  useCreateAiModelConfig,
+  useUpdateAiModelConfig,
+  type AiModelConfig,
+  type AiPipelineTaskSummary,
+} from "@workspace/api-client-react";
+import { Plus, Shield, X, Pencil } from "lucide-react";
 
-import { AlertTriangle, Brain, TrendingUp } from "lucide-react";
+const COMMON_SCOPES = ["chat", "default", "jd_parsing", "resume_tailoring", "cover_letter", "claim_generation"] as const;
 
-const METRICS_VERSION: GetAiMetricsSnapshotMetricsVersion = "v1";
-const TASK_SCOPES = ["resume_review", "cover_letter_review"] as const;
+export default function ModelsPage() {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingModel, setEditingModel] = useState<AiModelConfig | null>(null);
+  const { data: models = [], isLoading } = useListAiModelConfigs();
+  const { data: health } = useGetModelConfigHealth();
+  const { data: pipeline = [] } = useGetAiPipelineOverview();
 
-type TaskScope = (typeof TASK_SCOPES)[number];
+  const healthyCount = health?.scopes.filter((s) => s.healthy).length ?? 0;
+  const totalCount = health?.scopes.length ?? 0;
 
-type PromptAggRow = {
- promptVersionId: string;
- evaluationCount: number;
- approvalRate: number | null;
- avgEditDistance: number | null;
- avgRubricScores: Record<string, number | null>;
-};
+  return (
+    <div className="page fade-up" style={{ maxWidth: 1240 }}>
+      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 22 }}>
+        <div>
+          <div className="eyebrow">ai-model-configs · per-task model assignments + fallbacks</div>
+          <h1 className="h-display" style={{ marginTop: 4 }}>Models <em>· which AI runs where</em></h1>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="btn" type="button">
+            <Shield size={13} strokeWidth={1.8} /> Health
+          </button>
+          <button className="btn primary" type="button" onClick={() => setDialogOpen(true)}>
+            <Plus size={13} strokeWidth={1.8} /> Add config
+          </button>
+        </div>
+      </div>
 
-type BucketRow = {
- bucketStartInclusive: string;
- evaluationCount: number;
- approvalRate: number | null;
- avgEditDistance: number | null;
-};
+      {/* Health summary */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 22 }}>
+        <HealthCard
+          label="Healthy scopes"
+          value={totalCount > 0 ? `${healthyCount} / ${totalCount}` : "—"}
+          tone={healthyCount === totalCount ? "success" : "warn"}
+        />
+        <HealthCard label="Fallback rate (24h)" value="—" tone="ok" />
+        <HealthCard label="Error rate (24h)" value="—" tone="ok" />
+        <HealthCard label="Median latency" value="—" tone="ok" />
+      </div>
 
-export default function AiMetricsPage() {
- const now = new Date();
- const windowEnd = now.toISOString();
- const windowStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      <div className="card">
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 140px 200px 200px 90px 90px 70px 32px",
+          alignItems: "center",
+          gap: 14,
+          padding: "10px 18px",
+          borderBottom: "1px solid var(--line)",
+          background: "var(--paper-2)",
+          fontSize: 11,
+          color: "var(--ink-4)",
+          textTransform: "uppercase",
+          letterSpacing: "0.08em",
+          fontWeight: 500,
+        }}>
+          <span>Scope</span>
+          <span>Provider</span>
+          <span>Primary</span>
+          <span>Fallback</span>
+          <span>Error %</span>
+          <span>P50</span>
+          <span />
+          <span />
+        </div>
+        <div className="row-list">
+          {isLoading && (
+            <div className="dim" style={{ padding: "32px 18px", textAlign: "center", fontSize: 13 }}>Loading…</div>
+          )}
+          {!isLoading && models.length === 0 && (
+            <div className="dim" style={{ padding: "32px 18px", textAlign: "center", fontSize: 13 }}>No model configs yet.</div>
+          )}
+          {models.map((m) => (
+            <ModelRow key={m.id} model={m} allModels={models} onEdit={setEditingModel} />
+          ))}
+        </div>
+      </div>
 
- return (
- <div>
- <PageHeader
- title="AI Metrics"
- subtitle="Track prompt version performance, success rates, and cost efficiency over time."
- variant="data"
- />
+      {/* Pipeline visualization */}
+      <div className="card" style={{ marginTop: 22 }}>
+        <div className="card-h">
+          <h2 className="card-title">Pipeline · resume_tailoring</h2>
+          <span className="dim mono" style={{ fontSize: 11 }}>ai-pipeline endpoint</span>
+        </div>
+        <div className="card-body">
+          <PipelineViz pipeline={pipeline} />
+        </div>
+      </div>
 
- <Tabs defaultValue={TASK_SCOPES[0]}>
- <TabsList>
- {TASK_SCOPES.map((scope) => (
- <TabsTrigger key={scope} value={scope}>
- {scope}
- </TabsTrigger>
- ))}
- </TabsList>
- {TASK_SCOPES.map((scope) => (
- <TabsContent key={scope} value={scope}>
- <TaskScopePanel scope={scope} windowStart={windowStart} windowEnd={windowEnd} />
- </TabsContent>
- ))}
- </Tabs>
- </div>
- );
+      {dialogOpen && (
+        <CreateConfigDialog
+          allModels={models}
+          onClose={() => setDialogOpen(false)}
+        />
+      )}
+      {editingModel && (
+        <EditConfigDialog
+          model={editingModel}
+          allModels={models}
+          onClose={() => setEditingModel(null)}
+        />
+      )}
+    </div>
+  );
 }
 
-function TaskScopePanel({ scope, windowStart, windowEnd }: { scope: TaskScope; windowStart: string; windowEnd: string }) {
- const query = useGetAiMetricsSnapshot({
- metricsVersion: METRICS_VERSION,
- windowStart,
- windowEnd,
- taskScope: scope,
- });
-
- const snapshot = query.data as any;
-
- const approvalRate = useMemo(() => computeApprovalRate(snapshot?.aggregates?.approvalOutcomeCounts), [snapshot]);
-
- const avgEditDistance = useMemo(() => getAvgEditDistance(snapshot), [snapshot]);
-
- const avgRubric = useMemo(() => getAvgRubricAverages(snapshot), [snapshot]);
-
- const promptRows = useMemo(() => toPromptRows(snapshot), [snapshot]);
-
- const seriesRows = useMemo(() => toBucketRows(snapshot), [snapshot]);
-
- const lift = useMemo(() => computeLift(promptRows), [promptRows]);
-
- return (
- <div>
- {query.isLoading ? <p>Loading…</p> : null}
- {query.isError ? (
- <Alert variant="destructive">
- <AlertTitle>Failed to load snapshot</AlertTitle>
- <AlertDescription>{getErrorMessage(query.error, "Please refresh and try again.")}</AlertDescription>
- </Alert>
- ) : null}
-
- {snapshot ? <DegradedBanner snapshot={snapshot} /> : null}
-
- {snapshot?.lastKnownGoodSnapshot === null ? (
- <p>
- No last-known-good snapshot recorded yet. (Persistence is a follow-up; this page currently surfaces the field
- only.)
- </p>
- ) : null}
-
- <div>
- <MetricCard title="Evaluations" value={snapshot?.aggregates?.evaluationCount ?? 0} />
- <MetricCard title="Approval Rate" value={formatPercent(approvalRate)} />
- <MetricCard title="Avg Edit Distance" value={formatNumber(avgEditDistance)} />
- <MetricCard
- title="Avg Rubric"
- value={formatNumber(avgRubric?.overall)}
- description={avgRubric ? `truth ${formatNumber(avgRubric.truthfulness)} · rel ${formatNumber(avgRubric.relevance)}` : undefined}
- />
- </div>
-
-  <ContentCard>
-  <CardHeader>
-  <CardTitle>
- <TrendingUp />
- Trend (bucketed)
- </CardTitle>
- <CardDescription>
- Buckets aligned to granularityMs={snapshot?.window?.granularityMs ?? "?"}. Times are snapshot bucket start.
- </CardDescription>
- </CardHeader>
- <CardContent>
- <div>
- <table>
- <thead>
- <tr>
- <th>Bucket</th>
- <th>n</th>
- <th>Approval</th>
- <th>Avg edit dist</th>
- </tr>
- </thead>
- <tbody>
- {seriesRows.length === 0 ? (
- <tr>
- <td colSpan={4}>
- No data in this window.
- </td>
- </tr>
- ) : (
- seriesRows.map((row) => (
- <tr key={row.bucketStartInclusive}>
- <td>{formatIsoDateTime(row.bucketStartInclusive)}</td>
- <td>{row.evaluationCount}</td>
- <td>{formatPercent(row.approvalRate)}</td>
- <td>{formatNumber(row.avgEditDistance)}</td>
- </tr>
- ))
- )}
- </tbody>
- </table>
- </div>
- </CardContent>
- </ContentCard>
-
-  <ContentCard>
-  <CardHeader>
-  <CardTitle>Prompt-version comparison</CardTitle>
- <CardDescription>Grouped by promptVersionId ("unknown" means built-in / not captured).</CardDescription>
- </CardHeader>
- <CardContent>
- {lift ? (
- <Alert>
- <AlertTitle>
- <TrendingUp />
- Lift summary
- </AlertTitle>
- <AlertDescription>
- Best prompt ({lift.best.promptVersionId}) vs baseline ({lift.baseline.promptVersionId}): approval Δ{" "}
- <span> 
- {formatPercent(lift.deltaApprovalRate)}
- </span>
- , edit distance Δ {formatNumber(lift.deltaAvgEditDistance)}.
- </AlertDescription>
- </Alert>
- ) : null}
-
- <div>
- <table>
- <thead>
- <tr>
- <th>Prompt</th>
- <th>n</th>
- <th>Approval</th>
- <th>Avg edit dist</th>
- <th>Avg rubric</th>
- </tr>
- </thead>
- <tbody>
- {promptRows.length === 0 ? (
- <tr>
- <td colSpan={5}>
- No prompt-version aggregates in this window.
- </td>
- </tr>
- ) : (
- promptRows.map((row) => (
- <tr key={row.promptVersionId}>
- <td>
- <span>{row.promptVersionId}</span>
- {row.promptVersionId === "unknown" ? <Badge variant="outline">built-in</Badge> : null}
- </td>
- <td>{row.evaluationCount}</td>
- <td>{formatPercent(row.approvalRate)}</td>
- <td>{formatNumber(row.avgEditDistance)}</td>
- <td>{formatNumber(overallFromRubric(row.avgRubricScores))}</td>
- </tr>
- ))
- )}
- </tbody>
- </table>
- </div>
- </CardContent>
- </ContentCard>
- </div>
- );
+function ModelRow({ model, allModels, onEdit }: { model: AiModelConfig; allModels: AiModelConfig[]; onEdit: (m: AiModelConfig) => void }) {
+  const fallback = allModels.find((m) => m.id === model.fallbackModelId);
+  return (
+    <div className="row" style={{ gridTemplateColumns: "1fr 140px 200px 200px 90px 90px 70px 32px", cursor: "default" }}>
+      <div>
+        <div style={{ fontSize: 13.5, fontWeight: 500 }}>{model.taskScope.replaceAll("_", " ")}</div>
+        <div className="dim mono" style={{ fontSize: 11, marginTop: 2 }}>priority {model.priority}</div>
+      </div>
+      <span className="chip" style={{ fontSize: 11 }}>{model.provider}</span>
+      <span className="mono" style={{ fontSize: 12.5, color: "var(--ink)" }}>{model.modelName}</span>
+      <span className="mono dim" style={{ fontSize: 12.5 }}>
+        {fallback
+          ? <span title={fallback.modelName}>{fallback.modelName.split("/").pop()}</span>
+          : model.fallbackModelId
+            ? `#${model.fallbackModelId}`
+            : <em style={{ fontFamily: "var(--font-display)" }}>none</em>}
+      </span>
+      <span className="mono" style={{ fontSize: 12, color: "var(--success)" }}>—</span>
+      <span className="mono dim" style={{ fontSize: 12 }}>—</span>
+      <span className={`chip ${model.isActive ? "success" : "ghost"} dot`} style={{ fontSize: 10.5 }}>
+        {model.isActive ? "active" : "off"}
+      </span>
+      <button
+        type="button"
+        className="btn ghost"
+        style={{ padding: "3px 6px" }}
+        title="Edit config"
+        onClick={() => onEdit(model)}
+      >
+        <Pencil size={12} strokeWidth={1.8} />
+      </button>
+    </div>
+  );
 }
 
-function DegradedBanner({ snapshot }: { snapshot: any }) {
- if (snapshot.status !== "degraded") return null;
+// ── Create Config Dialog ──────────────────────────────────────────────────
 
- return (
- <Alert>
- <AlertTriangle />
- <AlertTitle>Metrics snapshot degraded</AlertTitle>
- <AlertDescription>
- <p>
- Some evaluations were excluded because reproducibility or lineage checks failed. Use the normalized window to
- reproduce the exact snapshot.
- </p>
- <div>
- <div>
- Window: <span>{snapshot.window.startInclusive}</span> →{" "}
- <span>{snapshot.window.endExclusive}</span>
- </div>
- <div>
- Reasons: {snapshot.degradedReasons.length ? snapshot.degradedReasons.join(", ") : "(none)"}
- </div>
- </div>
- </AlertDescription>
- </Alert>
- );
+interface CreateConfigForm {
+  taskScope: string;
+  modelName: string;
+  priority: string;
+  fallbackModelId: string;
+  isActive: boolean;
 }
 
-function MetricCard({ title, value, description }: { title: string; value: string | number; description?: string }) {
- return (
-  <ContentCard>
-  <CardContent>
- <div>
- <span>{title}</span>
- </div>
- <div>{value}</div>
- {description ? <div>{description}</div> : null}
- </CardContent>
- </ContentCard>
- );
+function CreateConfigDialog({ allModels, onClose }: { allModels: AiModelConfig[]; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const { mutateAsync: createConfig, isPending } = useCreateAiModelConfig();
+
+  const [form, setForm] = useState<CreateConfigForm>({
+    taskScope: "",
+    modelName: "",
+    priority: "1",
+    fallbackModelId: "",
+    isActive: true,
+  });
+  const [error, setError] = useState<string | null>(null);
+
+  function set(field: keyof CreateConfigForm, value: string | boolean) {
+    setForm((prev) => ({ ...prev, [field]: value }));
+    setError(null);
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.taskScope.trim()) { setError("Task scope is required."); return; }
+    if (!form.modelName.trim()) { setError("Model name is required."); return; }
+    const priority = Number(form.priority);
+    if (!Number.isFinite(priority) || priority < 1) { setError("Priority must be a positive number."); return; }
+
+    try {
+      await createConfig({
+        data: {
+          taskScope: form.taskScope.trim(),
+          modelName: form.modelName.trim(),
+          provider: "openrouter",
+          priority,
+          isActive: form.isActive,
+          fallbackModelId: form.fallbackModelId ? Number(form.fallbackModelId) : undefined,
+        },
+      });
+      await queryClient.invalidateQueries({ queryKey: ["/api/ai-model-configs"] });
+      onClose();
+    } catch (err) {
+      setError((err as Error).message ?? "Failed to create config.");
+    }
+  }
+
+  return (
+    <div
+      style={{ position: "fixed", inset: 0, zIndex: 400, background: "rgba(0,0,0,0.55)", display: "grid", placeItems: "center" }}
+      onClick={onClose}
+    >
+      <div
+        style={{ width: 460, background: "var(--card)", border: "1px solid var(--line)", borderRadius: "var(--r-xl)", boxShadow: "var(--shadow-pop)", overflow: "hidden" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="card-h">
+          <h2 className="card-title">Add model config</h2>
+          <button type="button" className="settings-x" onClick={onClose} aria-label="Close"><X size={14} strokeWidth={2} /></button>
+        </div>
+
+        <form onSubmit={handleSubmit} style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
+          {/* Task scope */}
+          <div>
+            <label className="label" style={{ display: "block", marginBottom: 5 }}>Task scope</label>
+            <input
+              className="input"
+              value={form.taskScope}
+              onChange={(e) => set("taskScope", e.target.value)}
+              list="scope-suggestions"
+              placeholder="e.g. chat"
+              autoFocus
+            />
+            <datalist id="scope-suggestions">
+              {COMMON_SCOPES.map((s) => <option key={s} value={s} />)}
+            </datalist>
+            <div className="dim" style={{ fontSize: 11, marginTop: 4 }}>
+              e.g. <code>chat</code>, <code>jd_parsing</code>, <code>resume_tailoring</code>
+            </div>
+          </div>
+
+          {/* Model name */}
+          <div>
+            <label className="label" style={{ display: "block", marginBottom: 5 }}>Model name</label>
+            <input
+              className="input"
+              value={form.modelName}
+              onChange={(e) => set("modelName", e.target.value)}
+              placeholder="e.g. anthropic/claude-3.5-haiku"
+            />
+            <div className="dim" style={{ fontSize: 11, marginTop: 4 }}>OpenRouter model ID — find them at openrouter.ai/models</div>
+          </div>
+
+          {/* Priority + isActive row */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div>
+              <label className="label" style={{ display: "block", marginBottom: 5 }}>Priority</label>
+              <input
+                className="input"
+                type="number"
+                min={1}
+                value={form.priority}
+                onChange={(e) => set("priority", e.target.value)}
+              />
+              <div className="dim" style={{ fontSize: 11, marginTop: 4 }}>Lower = tried first. Default: 1</div>
+            </div>
+            <div>
+              <label className="label" style={{ display: "block", marginBottom: 5 }}>Active</label>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={form.isActive}
+                  onClick={() => set("isActive", !form.isActive)}
+                  style={{
+                    width: 36, height: 20, borderRadius: 99,
+                    background: form.isActive ? "var(--accent)" : "var(--line)",
+                    border: "none", cursor: "pointer", position: "relative", transition: "background 0.15s",
+                  }}
+                >
+                  <span style={{
+                    position: "absolute", top: 3, left: form.isActive ? 19 : 3,
+                    width: 14, height: 14, borderRadius: "50%", background: "#fff",
+                    transition: "left 0.15s",
+                  }} />
+                </button>
+                <span className="dim" style={{ fontSize: 12 }}>{form.isActive ? "Enabled" : "Disabled"}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Fallback model */}
+          <div>
+            <label className="label" style={{ display: "block", marginBottom: 5 }}>Fallback model <span className="dim" style={{ fontWeight: 400 }}>(optional)</span></label>
+            <select
+              className="input"
+              value={form.fallbackModelId}
+              onChange={(e) => set("fallbackModelId", e.target.value)}
+              style={{ fontFamily: "var(--font-mono)", fontSize: 12 }}
+            >
+              <option value="">— none —</option>
+              {allModels.map((m) => (
+                <option key={m.id} value={m.id}>
+                  #{m.id} · {m.taskScope} · {m.modelName}
+                </option>
+              ))}
+            </select>
+            <div className="dim" style={{ fontSize: 11, marginTop: 4 }}>If the primary model fails at runtime, the fallback is tried and a notice appears in chat.</div>
+          </div>
+
+          {error && (
+            <div className="chip danger" style={{ fontSize: 12 }}>{error}</div>
+          )}
+
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", paddingTop: 4 }}>
+            <button type="button" className="btn ghost sm" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn primary sm" disabled={isPending}>
+              {isPending ? "Saving…" : "Create config"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
 }
 
-function computeApprovalRate(counts?: Record<string, number> | null): number | null {
- if (!counts) return null;
- const approved = counts["approved"] ?? 0;
- const total = Object.values(counts).reduce((a, b) => a + b, 0);
- if (total === 0) return null;
- return approved / total;
+function EditConfigDialog({ model, allModels, onClose }: { model: AiModelConfig; allModels: AiModelConfig[]; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const { mutateAsync: updateConfig, isPending } = useUpdateAiModelConfig();
+
+  const [form, setForm] = useState<CreateConfigForm>({
+    taskScope: model.taskScope,
+    modelName: model.modelName,
+    priority: String(model.priority),
+    fallbackModelId: model.fallbackModelId != null ? String(model.fallbackModelId) : "",
+    isActive: model.isActive ?? true,
+  });
+  const [error, setError] = useState<string | null>(null);
+
+  function set(field: keyof CreateConfigForm, value: string | boolean) {
+    setForm((prev) => ({ ...prev, [field]: value }));
+    setError(null);
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.taskScope.trim()) { setError("Task scope is required."); return; }
+    if (!form.modelName.trim()) { setError("Model name is required."); return; }
+    const priority = Number(form.priority);
+    if (!Number.isFinite(priority) || priority < 1) { setError("Priority must be a positive number."); return; }
+
+    try {
+      await updateConfig({
+        id: model.id,
+        data: {
+          taskScope: form.taskScope.trim(),
+          modelName: form.modelName.trim(),
+          priority,
+          isActive: form.isActive,
+          fallbackModelId: form.fallbackModelId ? Number(form.fallbackModelId) : null,
+        },
+      });
+      await queryClient.invalidateQueries({ queryKey: ["/api/ai-model-configs"] });
+      onClose();
+    } catch (err) {
+      setError((err as Error).message ?? "Failed to update config.");
+    }
+  }
+
+  return (
+    <div
+      style={{ position: "fixed", inset: 0, zIndex: 400, background: "rgba(0,0,0,0.55)", display: "grid", placeItems: "center" }}
+      onClick={onClose}
+    >
+      <div
+        style={{ width: 460, background: "var(--card)", border: "1px solid var(--line)", borderRadius: "var(--r-xl)", boxShadow: "var(--shadow-pop)", overflow: "hidden" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="card-h">
+          <h2 className="card-title">Edit model config <span className="dim mono" style={{ fontSize: 12 }}>#{model.id}</span></h2>
+          <button type="button" className="settings-x" onClick={onClose} aria-label="Close"><X size={14} strokeWidth={2} /></button>
+        </div>
+
+        <form onSubmit={handleSubmit} style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
+          <div>
+            <label className="label" style={{ display: "block", marginBottom: 5 }}>Task scope</label>
+            <input className="input" value={form.taskScope} onChange={(e) => set("taskScope", e.target.value)} list="scope-suggestions-edit" />
+            <datalist id="scope-suggestions-edit">
+              {COMMON_SCOPES.map((s) => <option key={s} value={s} />)}
+            </datalist>
+          </div>
+
+          <div>
+            <label className="label" style={{ display: "block", marginBottom: 5 }}>Model name</label>
+            <input className="input" value={form.modelName} onChange={(e) => set("modelName", e.target.value)} placeholder="e.g. anthropic/claude-3.5-haiku" />
+            <div className="dim" style={{ fontSize: 11, marginTop: 4 }}>OpenRouter model ID — find them at openrouter.ai/models</div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div>
+              <label className="label" style={{ display: "block", marginBottom: 5 }}>Priority</label>
+              <input className="input" type="number" min={1} value={form.priority} onChange={(e) => set("priority", e.target.value)} />
+              <div className="dim" style={{ fontSize: 11, marginTop: 4 }}>Lower = tried first.</div>
+            </div>
+            <div>
+              <label className="label" style={{ display: "block", marginBottom: 5 }}>Active</label>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
+                <button
+                  type="button" role="switch" aria-checked={form.isActive}
+                  onClick={() => set("isActive", !form.isActive)}
+                  style={{ width: 36, height: 20, borderRadius: 99, background: form.isActive ? "var(--accent)" : "var(--line)", border: "none", cursor: "pointer", position: "relative", transition: "background 0.15s" }}
+                >
+                  <span style={{ position: "absolute", top: 3, left: form.isActive ? 19 : 3, width: 14, height: 14, borderRadius: "50%", background: "#fff", transition: "left 0.15s" }} />
+                </button>
+                <span className="dim" style={{ fontSize: 12 }}>{form.isActive ? "Enabled" : "Disabled"}</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="label" style={{ display: "block", marginBottom: 5 }}>Fallback model <span className="dim" style={{ fontWeight: 400 }}>(optional)</span></label>
+            <select className="input" value={form.fallbackModelId} onChange={(e) => set("fallbackModelId", e.target.value)} style={{ fontFamily: "var(--font-mono)", fontSize: 12 }}>
+              <option value="">— none —</option>
+              {allModels.filter((m) => m.id !== model.id).map((m) => (
+                <option key={m.id} value={m.id}>#{m.id} · {m.taskScope} · {m.modelName}</option>
+              ))}
+            </select>
+          </div>
+
+          {error && <div className="chip danger" style={{ fontSize: 12 }}>{error}</div>}
+
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", paddingTop: 4 }}>
+            <button type="button" className="btn ghost sm" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn primary sm" disabled={isPending}>{isPending ? "Saving…" : "Save changes"}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
 }
 
-function formatPercent(value: number | null | undefined): string {
- if (value === null || value === undefined) return "—";
- return `${(value * 100).toFixed(1)}%`;
+const PIPELINE_STEPS = [
+  { name: "jd_parsing", model: "haiku-4.5", color: "info" },
+  { name: "claim_match", model: "haiku-4.5", color: "info" },
+  { name: "resume_tailoring", model: "sonnet-4.5", color: "accent" },
+  { name: "ats_score", model: "haiku-4.5", color: "info" },
+  { name: "approval_gate", model: "human", color: "warn" },
+] as const;
+
+function PipelineViz({ pipeline }: { pipeline: AiPipelineTaskSummary[] }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6, overflowX: "auto", padding: "4px 0" }}>
+      {PIPELINE_STEPS.map((s, i) => {
+        const live = pipeline.find((p) => p.taskScope === s.name);
+        const modelLabel = live?.modelName ?? s.model;
+        return (
+          <>
+            <div key={s.name} style={{
+              padding: "10px 14px",
+              borderRadius: 8,
+              border: "1px solid var(--line)",
+              background: "var(--paper-2)",
+              minWidth: 160,
+              flexShrink: 0,
+            }}>
+              <div className="mono" style={{ fontSize: 11, color: "var(--ink-4)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                step {i + 1}
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 500, marginTop: 4 }}>{s.name.replaceAll("_", " ")}</div>
+              <span className={`chip ${s.color} dot`} style={{ fontSize: 10.5, marginTop: 6 }}>{modelLabel}</span>
+            </div>
+            {i < PIPELINE_STEPS.length - 1 && (
+              <span key={`arrow-${i}`} style={{ color: "var(--ink-4)", flexShrink: 0, fontSize: 16 }}>›</span>
+            )}
+          </>
+        );
+      })}
+    </div>
+  );
 }
 
-function formatNumber(value: number | null | undefined): string {
- if (value === null || value === undefined || !Number.isFinite(value)) return "—";
- return value.toFixed(2);
-}
-
-function formatIsoDateTime(iso: string): string {
- const date = new Date(iso);
- if (Number.isNaN(date.getTime())) return iso;
- return date.toLocaleString();
-}
-
-function getAvgEditDistance(snapshot?: any): number | null {
- const aggregates = snapshot?.aggregates as unknown as { byPromptVersion?: Record<string, { avgEditDistance?: number | null }> };
- const byPrompt = aggregates?.byPromptVersion;
- if (!byPrompt) return null;
-
- const values = Object.values(byPrompt)
- .map((row) => row.avgEditDistance)
- .filter((v): v is number => typeof v === "number" && Number.isFinite(v));
-
- if (!values.length) return null;
- return values.reduce((a, b) => a + b, 0) / values.length;
-}
-
-function getAvgRubricAverages(snapshot?: any):
- | { overall: number | null; truthfulness: number | null; relevance: number | null }
- | null {
- const aggregates = snapshot?.aggregates as unknown as {
- byPromptVersion?: Record<string, { avgRubricScores?: Record<string, number | null> }>;
- };
- const byPrompt = aggregates?.byPromptVersion;
- if (!byPrompt) return null;
-
- const allScores = Object.values(byPrompt)
- .map((row) => row.avgRubricScores)
- .filter((row): row is Record<string, number | null> => !!row);
-
- if (!allScores.length) return null;
-
- const truthfulness = average(allScores.map((r) => r.truthfulnessScore ?? null));
- const relevance = average(allScores.map((r) => r.relevanceScore ?? null));
- const formatting = average(allScores.map((r) => r.formattingScore ?? null));
- const attribution = average(allScores.map((r) => r.attributionScore ?? null));
-
- const overall = average([truthfulness, relevance, formatting, attribution]);
-
- return { overall, truthfulness, relevance };
-}
-
-function average(values: Array<number | null | undefined>): number | null {
- const filtered = values.filter((v): v is number => typeof v === "number" && Number.isFinite(v));
- if (!filtered.length) return null;
- return filtered.reduce((a, b) => a + b, 0) / filtered.length;
-}
-
-function overallFromRubric(scores?: Record<string, number | null> | null): number | null {
- if (!scores) return null;
- return average([scores.truthfulnessScore, scores.relevanceScore, scores.formattingScore, scores.attributionScore]);
-}
-
-function toPromptRows(snapshot?: any): PromptAggRow[] {
- const aggregates = snapshot?.aggregates as unknown as {
- byPromptVersion?: Record<
- string,
- {
- evaluationCount: number;
- approvalOutcomeCounts: Record<string, number>;
- avgEditDistance: number | null;
- avgRubricScores: Record<string, number | null>;
- }
- >;
- };
-
- const byPrompt = aggregates?.byPromptVersion;
- if (!byPrompt) return [];
-
- return Object.entries(byPrompt)
- .map(([promptVersionId, row]) => ({
- promptVersionId,
- evaluationCount: row.evaluationCount,
- approvalRate: computeApprovalRate(row.approvalOutcomeCounts),
- avgEditDistance: row.avgEditDistance,
- avgRubricScores: row.avgRubricScores,
- }))
- .sort((a, b) => b.evaluationCount - a.evaluationCount);
-}
-
-function toBucketRows(snapshot?: any): BucketRow[] {
- if (!snapshot || typeof snapshot !== "object") {
- return [];
- }
-
- const series = (snapshot as { series?: Array<any> }).series as
- | Array<{
- bucketStartInclusive: string;
- evaluationCount: number;
- approvalOutcomeCounts: Record<string, number>;
- avgEditDistance: number | null;
- }>
- | undefined;
-
- if (!series) return [];
-
- return series.map((row) => ({
- bucketStartInclusive: row.bucketStartInclusive,
- evaluationCount: row.evaluationCount,
- approvalRate: computeApprovalRate(row.approvalOutcomeCounts),
- avgEditDistance: row.avgEditDistance,
- }));
-}
-
-function computeLift(rows: PromptAggRow[]):
- | {
- baseline: PromptAggRow;
- best: PromptAggRow;
- deltaApprovalRate: number | null;
- deltaAvgEditDistance: number | null;
- }
- | null {
- if (rows.length < 2) return null;
-
- const baseline = rows.find((r) => r.promptVersionId === "unknown") ?? rows[0];
- const best = [...rows]
- .filter((r) => r.approvalRate !== null)
- .sort((a, b) => (b.approvalRate ?? -1) - (a.approvalRate ?? -1))[0];
-
- if (!baseline || !best) return null;
-
- const deltaApprovalRate =
- baseline.approvalRate !== null && best.approvalRate !== null
- ? best.approvalRate - baseline.approvalRate
- : null;
-
- const deltaAvgEditDistance =
- baseline.avgEditDistance !== null && best.avgEditDistance !== null
- ? best.avgEditDistance - baseline.avgEditDistance
- : null;
-
- return { baseline, best, deltaApprovalRate, deltaAvgEditDistance };
+function HealthCard({ label, value, tone }: { label: string; value: string; tone: "success" | "warn" | "ok" }) {
+  const dotColor = tone === "success" ? "var(--success)" : tone === "warn" ? "var(--warn)" : "var(--accent)";
+  return (
+    <div className="card flat" style={{ padding: 14, display: "flex", flexDirection: "column", gap: 6 }}>
+      <div className="label">{label}</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ width: 8, height: 8, borderRadius: 99, background: dotColor }} />
+        <span className="h-display" style={{ fontSize: 22 }}>{value}</span>
+      </div>
+    </div>
+  );
 }
