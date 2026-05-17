@@ -235,7 +235,7 @@ export default function ChatPage() {
                 {messages.map((m) => (
                   <MessageBubble key={m.id} message={m} onFeedback={handleFeedback} onEdit={handleEditMessage} />
                 ))}
-                {stream.state.active && <StreamingBubble text={stream.state.text} fallbackModel={stream.state.fallbackModel} />}
+                {stream.state.active && <StreamingBubble text={stream.state.text} fallbackModel={stream.state.fallbackModel} preHint={jdParseEnabled && !stream.state.text ? "Analyzing job description…" : undefined} />}
                 {stream.state.error && (
                   <div className="chip danger" style={{ alignSelf: "center" }}>{stream.state.error}</div>
                 )}
@@ -386,7 +386,7 @@ function MessageBubble({ message, onFeedback, onEdit }: {
   );
 }
 
-function StreamingBubble({ text, fallbackModel }: { text: string; fallbackModel: string | null }) {
+function StreamingBubble({ text, fallbackModel, preHint }: { text: string; fallbackModel: string | null; preHint?: string }) {
   return (
     <div className="msg-ai">
       <div className="msg-ai-avatar"><Sparkles size={14} strokeWidth={1.8} /></div>
@@ -397,7 +397,7 @@ function StreamingBubble({ text, fallbackModel }: { text: string; fallbackModel:
           </div>
         )}
         <div className="msg-ai-bubble">
-          {text || <span className="dim" style={{ fontStyle: "italic" }}>thinking…</span>}
+          {text || preHint || <span className="dim" style={{ fontStyle: "italic" }}>thinking…</span>}
           {text && <span className="stream-cursor" />}
         </div>
       </div>
@@ -582,6 +582,9 @@ function Composer({ input, setInput, onSend, onStop, streaming, stagedCount, att
             <Paperclip size={11} strokeWidth={1.8} /> {uploadingFile ? "Reading…" : "File"}
           </button>
           <input ref={fileInputRef} type="file" accept=".pdf,.docx,.txt,.md" style={{ display: "none" }} onChange={handleFileChange} />
+          <button type="button" className={`attach-btn${jdParseEnabled ? " active" : ""}`} title="Pre-parse job description with a fast model before sending" onClick={() => setJdParseEnabled(!jdParseEnabled)}>
+            <Sparkles size={11} strokeWidth={1.8} /> JD Parse
+          </button>
         </div>
         <textarea
           ref={textareaRef}
@@ -594,15 +597,6 @@ function Composer({ input, setInput, onSend, onStop, streaming, stagedCount, att
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSend(); } }}
         />
         <div className="composer-footer">
-          <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", userSelect: "none" }}>
-            <input
-              type="checkbox"
-              checked={jdParseEnabled}
-              onChange={(e) => setJdParseEnabled(e.target.checked)}
-              style={{ accentColor: "var(--accent)" }}
-            />
-            <span style={{ fontSize: 11, fontWeight: 600, color: "var(--ink-3)" }}>JD Parse</span>
-          </label>
           <span className="composer-model-info">chat scope · {stagedCount} attached</span>
           {streaming ? (
             <button type="button" className="btn ghost sm" onClick={onStop}>
