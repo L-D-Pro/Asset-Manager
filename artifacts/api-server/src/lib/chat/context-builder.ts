@@ -28,6 +28,11 @@ export interface ClaimsListSnapshot {
   claims: ClaimSnapshot[];
 }
 
+export interface DocumentSnapshot {
+  filename: string;
+  contentText: string;
+}
+
 /**
  * Build the "Attached context" markdown block that gets appended to the system
  * prompt. Returns an empty string if there are no attachments — the system
@@ -81,6 +86,13 @@ export function buildAttachmentsBlock(attachments: MessageAttachment[]): string 
         sections.push(`### Attached claims (${claims.length} selected)\n\n${lines.join("\n")}`);
         break;
       }
+      case "document": {
+        const snap = att.snapshot as Partial<DocumentSnapshot>;
+        if (!snap.contentText) break;
+        const heading = snap.filename ? `### Attached document — "${snap.filename}"` : "### Attached document";
+        sections.push(`${heading}\n\n${snap.contentText.trim()}`);
+        break;
+      }
     }
   }
 
@@ -91,4 +103,40 @@ export function buildAttachmentsBlock(attachments: MessageAttachment[]): string 
     : "";
 
   return `## Attached context (read-only snapshots)${truthLockNote}\n\n${sections.join("\n\n")}`;
+}
+
+export interface ParsedJd {
+  requiredSkills: string[];
+  niceToHaveSkills: string[];
+  keywords: string[];
+  senioritySignal: string | null;
+  location: string | null;
+  remoteType: string | null;
+}
+
+export function buildParsedJdBlock(jd: ParsedJd): string {
+  const lines: string[] = ["## Job Description (pre-parsed — do not re-extract)"];
+
+  if (jd.requiredSkills.length > 0) {
+    lines.push(`**Required:** ${jd.requiredSkills.join(", ")}`);
+  }
+  if (jd.niceToHaveSkills.length > 0) {
+    lines.push(`**Nice-to-have:** ${jd.niceToHaveSkills.join(", ")}`);
+  }
+  if (jd.keywords.length > 0) {
+    lines.push(`**Keywords:** ${jd.keywords.join(", ")}`);
+  }
+  if (jd.senioritySignal) {
+    lines.push(`**Seniority:** ${jd.senioritySignal}`);
+  }
+  if (jd.location) {
+    lines.push(`**Location:** ${jd.location}${jd.remoteType ? ` (${jd.remoteType})` : ""}`);
+  } else if (jd.remoteType) {
+    lines.push(`**Remote type:** ${jd.remoteType}`);
+  }
+
+  lines.push("");
+  lines.push("> Use this parsed data as the authoritative source. Do not re-extract or re-summarize the raw job posting text.");
+
+  return lines.join("\n");
 }
