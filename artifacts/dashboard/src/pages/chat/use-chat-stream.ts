@@ -11,9 +11,11 @@ export interface StreamingTurn {
   active: boolean;
   /** Error message if the stream failed; otherwise null. */
   error: string | null;
+  /** Set when the server fell back to a secondary model mid-request. */
+  fallbackModel: string | null;
 }
 
-const INITIAL: StreamingTurn = { text: "", messageId: null, active: false, error: null };
+const INITIAL: StreamingTurn = { text: "", messageId: null, active: false, error: null, fallbackModel: null };
 
 /**
  * SSE chat stream hook.
@@ -24,7 +26,7 @@ const INITIAL: StreamingTurn = { text: "", messageId: null, active: false, error
  */
 export function useChatStream(opts: { onDone?: () => void } = {}): {
   state: StreamingTurn;
-  send: (threadId: number, content: string, attachments: ChatAttachment[]) => Promise<void>;
+  send: (threadId: number, content: string, attachments: ChatAttachment[], modelConfigId?: number, jdParseEnabled?: boolean) => Promise<void>;
   stop: () => void;
   reset: () => void;
 } {
@@ -40,10 +42,10 @@ export function useChatStream(opts: { onDone?: () => void } = {}): {
   }, []);
 
   const send = useCallback(
-    async (threadId: number, content: string, attachments: ChatAttachment[]) => {
+    async (threadId: number, content: string, attachments: ChatAttachment[], modelConfigId?: number, jdParseEnabled?: boolean) => {
       const controller = new AbortController();
       abortRef.current = controller;
-      setState({ text: "", messageId: null, active: true, error: null });
+      setState({ text: "", messageId: null, active: true, error: null, fallbackModel: null });
 
       let response: Response;
       try {
@@ -51,7 +53,7 @@ export function useChatStream(opts: { onDone?: () => void } = {}): {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content, attachments }),
+          body: JSON.stringify({ content, attachments, modelConfigId, jdParseEnabled }),
           signal: controller.signal,
         });
       } catch (err) {
@@ -106,7 +108,7 @@ export function useChatStream(opts: { onDone?: () => void } = {}): {
         }
         const dataRaw = dataLines.join("\n");
         if (!dataRaw) return;
-        let data: { token?: string; messageId?: number; message?: string };
+        let data: { token?: string; messageId?: number; message?: string; fallbackModel?: string; originalModel?: string };
         try {
           data = JSON.parse(dataRaw);
         } catch {
@@ -124,6 +126,10 @@ export function useChatStream(opts: { onDone?: () => void } = {}): {
             messageId: typeof data.messageId === "number" ? data.messageId : s.messageId,
           }));
           opts.onDone?.();
+          return;
+        }
+        if (event === "fallback") {
+          setState((s) => ({ ...s, fallbackModel: data.fallbackModel ?? null }));
           return;
         }
         if (event === "user-message") {
