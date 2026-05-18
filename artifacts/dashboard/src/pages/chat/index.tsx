@@ -93,6 +93,7 @@ export default function ChatPage() {
     setAttachedJobs([]);
     setAttachedClaims([]);
     setAttachedDocs([]);
+    setJdParseEnabled(false);
   }
 
   function handleEditMessage(msg: ChatMessage) {
@@ -397,8 +398,10 @@ function StreamingBubble({ text, fallbackModel, preHint }: { text: string; fallb
           </div>
         )}
         <div className="msg-ai-bubble">
-          {text || preHint || <span className="dim" style={{ fontStyle: "italic" }}>thinking…</span>}
-          {text && <span className="stream-cursor" />}
+          {text
+            ? <>{text}<span className="stream-cursor" /></>
+            : <span className="dim" style={{ fontStyle: "italic" }}>{preHint ?? "thinking…"}</span>
+          }
         </div>
       </div>
     </div>
