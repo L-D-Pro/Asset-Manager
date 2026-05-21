@@ -110,7 +110,12 @@ router.post("/ai-prompt-versions", async (req, res): Promise<void> => {
       await tx
         .update(aiPromptVersionsTable)
         .set({ isActive: false })
-        .where(eq(aiPromptVersionsTable.taskScope, parsed.data.taskScope));
+        .where(
+          and(
+            eq(aiPromptVersionsTable.taskScope, parsed.data.taskScope),
+            eq(aiPromptVersionsTable.label, parsed.data.label),
+          ),
+        );
     }
     return tx.insert(aiPromptVersionsTable).values(parsed.data).returning();
   });
@@ -140,7 +145,12 @@ router.patch("/ai-prompt-versions/:id", async (req, res): Promise<void> => {
       await tx
         .update(aiPromptVersionsTable)
         .set({ isActive: false })
-        .where(eq(aiPromptVersionsTable.taskScope, taskScope));
+        .where(
+          and(
+            eq(aiPromptVersionsTable.taskScope, taskScope),
+            eq(aiPromptVersionsTable.label, existing.label),
+          ),
+        );
     }
     return tx
       .update(aiPromptVersionsTable)
@@ -149,6 +159,23 @@ router.patch("/ai-prompt-versions/:id", async (req, res): Promise<void> => {
       .returning();
   });
   res.json(row);
+});
+
+router.delete("/ai-prompt-versions/:id", async (req, res): Promise<void> => {
+  const params = IdParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const [row] = await db
+    .delete(aiPromptVersionsTable)
+    .where(eq(aiPromptVersionsTable.id, params.data.id))
+    .returning();
+  if (!row) {
+    res.status(404).json({ error: "AI prompt version not found" });
+    return;
+  }
+  res.sendStatus(204);
 });
 
 import { validateLineage, isCanonicalRunId } from "../lib/lineage";
@@ -311,6 +338,48 @@ router.get("/ai-learning/stats", async (req, res): Promise<void> => {
   }));
 
   res.json(enriched);
+});
+
+router.get("/ai-learning/leaderboard", async (req, res): Promise<void> => {
+  const rows = await db.select().from(aiVariantStatsTable);
+
+  const promptIds = rows.filter((r) => r.variantType === "prompt").map((r) => r.variantId);
+  const modelIds = rows.filter((r) => r.variantType === "model").map((r) => r.variantId);
+
+  const promptLabelMap = new Map<number, string>();
+  const modelLabelMap = new Map<number, string>();
+
+  if (promptIds.length > 0) {
+    const prompts = await db
+      .select({ id: aiPromptVersionsTable.id, label: aiPromptVersionsTable.label })
+      .from(aiPromptVersionsTable)
+      .where(inArray(aiPromptVersionsTable.id, promptIds));
+    for (const p of prompts) promptLabelMap.set(p.id, p.label);
+  }
+  if (modelIds.length > 0) {
+    const models = await db
+      .select({ id: aiModelConfigsTable.id, modelName: aiModelConfigsTable.modelName })
+      .from(aiModelConfigsTable)
+      .where(inArray(aiModelConfigsTable.id, modelIds));
+    for (const m of models) modelLabelMap.set(m.id, m.modelName);
+  }
+
+  const ranked = rows
+    .map((r) => {
+      const total = r.successes + r.failures;
+      const successRate = total > 0 ? r.successes / total : 0;
+      return {
+        ...r,
+        successRate,
+        label: r.variantType === "prompt"
+          ? (promptLabelMap.get(r.variantId) ?? null)
+          : (modelLabelMap.get(r.variantId) ?? null),
+      };
+    })
+    .sort((a, b) => b.successRate - a.successRate)
+    .map((r, i) => ({ ...r, rank: i + 1 }));
+
+  res.json(ranked);
 });
 
 router.get("/ai-learning/comparisons", async (req, res): Promise<void> => {
