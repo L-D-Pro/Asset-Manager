@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useRef, useState } from "react";
+import { Portal } from "@/components/ui/portal";
 
 import { smartApi } from "@/lib/smart-ai-api";
 import { toast } from "@/hooks/use-toast";
 import { Plus, X, Sparkles, Check, FileText, Briefcase, Shield, Send, MessageCircle, Pencil, Paperclip, ChevronDown, Eye } from "lucide-react";
-import { useListAiModelConfigs, usePreviewChatPrompt, type AiModelConfig, type PromptSection } from "@workspace/api-client-react";
+import { useListAiModelConfigs, useListAiPromptVersions, usePreviewChatPrompt, type AiModelConfig, type AiPromptVersion, type PromptSection } from "@workspace/api-client-react";
 
 import { chatApi, type ChatAttachment, type ChatMessage, type ChatThread } from "./api";
 import { useChatStream } from "./use-chat-stream";
@@ -11,8 +12,6 @@ import { useChatStream } from "./use-chat-stream";
 interface BaseResume { id: number; contentText: string; label: string; }
 interface Job { id: number; title: string; company?: string | null; location?: string | null; description?: string | null; }
 interface Claim { id: number; text: string; verified: boolean; }
-
-const VENDORED_SKILLS = ["resume-ats-optimizer", "tailored-resume-generator", "cover-letter-generator"] as const;
 
 export default function ChatPage() {
   const [threads, setThreads] = useState<ChatThread[]>([]);
@@ -34,6 +33,7 @@ export default function ChatPage() {
   const composerRef = useRef<HTMLTextAreaElement>(null);
 
   const { data: chatConfigs = [] } = useListAiModelConfigs({ taskScope: "chat", isActive: true });
+  const { data: activeSkills = [] } = useListAiPromptVersions({ taskScope: "chat", isActive: true });
 
   const refreshThreads = useCallback(async () => {
     const list = await chatApi.listThreads();
@@ -131,16 +131,17 @@ export default function ChatPage() {
   async function handleSend() {
     if (!activeThread || !input.trim() || stream.state.active) return;
     const text = input.trim();
+    const jdParse = jdParseEnabled;
     const attachments = await buildAttachmentsPayload();
     setInput("");
-    clearStagedAttachments();
+    setJdParseEnabled(false); // JD parse is per-message; attachments persist until manually removed
     setMessages((prev) => [...prev, {
       id: -Date.now(), conversationId: activeThread.id, role: "user", content: text,
       attachments, runId: null, promptVersionId: null, modelName: null,
       promptTokens: null, completionTokens: null, createdAt: new Date().toISOString(),
     }]);
     const modelConfigId = selectedConfigId[activeThread.id];
-    await stream.send(activeThread.id, text, attachments, modelConfigId, jdParseEnabled);
+    await stream.send(activeThread.id, text, attachments, modelConfigId, jdParse);
   }
 
   async function handleFeedback(message: ChatMessage, outcome: "approved" | "rejected") {
@@ -275,6 +276,7 @@ export default function ChatPage() {
           attachBaseResume={attachBaseResume}
           attachedJobs={attachedJobs}
           attachedClaims={attachedClaims}
+          activeSkills={activeSkills}
         />
       </div>
 
@@ -620,24 +622,25 @@ function Composer({ input, setInput, onSend, onStop, streaming, stagedCount, att
 function AttachChip({ icon, label, onRemove }: { icon: "briefcase" | "resume" | "shield" | "file"; label: string; onRemove?: () => void; }) {
   const Icon = icon === "briefcase" ? Briefcase : icon === "resume" ? FileText : icon === "file" ? Paperclip : Shield;
   return (
-    <span style={{
-      display: "inline-flex", alignItems: "center", gap: 6,
-      padding: "3px 9px", background: "var(--accent-bg)", color: "var(--accent-ink)",
-      border: "1px solid var(--accent-line)", borderRadius: 99,
-      fontSize: 11.5, fontWeight: 500,
-    }}>
+    <span
+      role={onRemove ? "button" : undefined}
+      onClick={onRemove}
+      style={{
+        display: "inline-flex", alignItems: "center", gap: 6,
+        padding: "3px 9px", background: "var(--accent-bg)", color: "var(--accent-ink)",
+        border: "1px solid var(--accent-line)", borderRadius: 99,
+        fontSize: 11.5, fontWeight: 500,
+        cursor: onRemove ? "pointer" : "default",
+      }}
+    >
       <Icon size={11} strokeWidth={1.8} />
       <span>{label}</span>
-      {onRemove && (
-        <button type="button" onClick={onRemove} aria-label="Remove" style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", color: "inherit", marginLeft: 2 }}>
-          <X size={10} strokeWidth={2} />
-        </button>
-      )}
+      {onRemove && <X size={10} strokeWidth={2} style={{ marginLeft: 2, opacity: 0.7 }} />}
     </span>
   );
 }
 
-function ContextRail({ attachBaseResume, attachedJobs, attachedClaims }: { attachBaseResume: boolean; attachedJobs: Job[]; attachedClaims: Claim[]; }) {
+function ContextRail({ attachBaseResume, attachedJobs, attachedClaims, activeSkills }: { attachBaseResume: boolean; attachedJobs: Job[]; attachedClaims: Claim[]; activeSkills: AiPromptVersion[]; }) {
   const anyAttached = attachBaseResume || attachedJobs.length > 0 || attachedClaims.length > 0;
   return (
     <aside style={{ display: "flex", flexDirection: "column", gap: 14, overflowY: "auto" }}>
@@ -661,12 +664,20 @@ function ContextRail({ attachBaseResume, attachedJobs, attachedClaims }: { attac
 
       <div className="card flat">
         <div className="card-body" style={{ padding: 14, fontSize: 12.5, lineHeight: 1.55 }}>
-          <div className="label" style={{ marginBottom: 8 }}>Vendored skills</div>
+          <div className="label" style={{ marginBottom: 8 }}>Active skills</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {VENDORED_SKILLS.map((s) => (
-              <div key={s} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {activeSkills.length === 0 && (
+              <div className="dim" style={{ fontSize: 11.5 }}>No active skills. Configure in the AI Control Plane.</div>
+            )}
+            {activeSkills.map((s) => (
+              <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ color: "var(--accent)" }}><Sparkles size={12} strokeWidth={1.8} /></span>
-                <span className="mono" style={{ fontSize: 11.5 }}>{s}</span>
+                <div>
+                  <span className="mono" style={{ fontSize: 11.5 }}>{s.label}</span>
+                  {s.roleLabel && s.roleLabel !== s.label && (
+                    <span className="dim" style={{ fontSize: 10.5, marginLeft: 5 }}>{s.roleLabel}</span>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -793,7 +804,8 @@ function ClaimsPickerDialog({ attached, setAttached, onClose }: { attached: Clai
 
 function PickerSheet({ title, onClose, loading, empty, children }: { title: string; onClose: () => void; loading: boolean; empty: boolean; children: React.ReactNode; }) {
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 400, background: "rgba(0,0,0,0.6)", display: "grid", placeItems: "center" }} onClick={onClose}>
+    <Portal>
+    <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.6)", display: "grid", placeItems: "center", padding: 24 }} onClick={onClose}>
       <div style={{ width: 420, maxHeight: "70vh", background: "var(--card)", border: "1px solid var(--line)", borderRadius: "var(--r-xl)", boxShadow: "var(--shadow-pop)", overflow: "hidden", display: "flex", flexDirection: "column" }} onClick={(e) => e.stopPropagation()}>
         <div className="card-h">
           <h2 className="card-title">{title}</h2>
@@ -809,5 +821,6 @@ function PickerSheet({ title, onClose, loading, empty, children }: { title: stri
         </div>
       </div>
     </div>
+    </Portal>
   );
 }

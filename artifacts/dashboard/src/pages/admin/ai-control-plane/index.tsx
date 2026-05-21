@@ -108,6 +108,7 @@ export default function AiControlPlanePage() {
             onApplied={() => { setPreviewPreset(null); invalidateAll(); toast({ title: "Preset applied" }); }}
             onSaved={() => { invalidateAll(); toast({ title: "Preset saved" }); }}
             onDeleted={() => { setPreviewPreset(null); invalidateAll(); toast({ title: "Preset deleted" }); }}
+            onUpdated={() => { invalidateAll(); }}
           />
           <IdentityCard
             identityText={displayed.identityText}
@@ -198,15 +199,16 @@ function LeverCard({ title, subtitle, right, children }: {
 
 // ── Preset bar ────────────────────────────────────────────────────────────
 
-function PresetBar({ presets, previewPreset, onPreviewChange, onApplied, onSaved, onDeleted }: {
+function PresetBar({ presets, previewPreset, onPreviewChange, onApplied, onSaved, onDeleted, onUpdated }: {
   presets: ChatLeverPreset[];
   previewPreset: ChatLeverPreset | null;
   onPreviewChange: (p: ChatLeverPreset | null) => void;
-  onApplied: () => void; onSaved: () => void; onDeleted: () => void;
+  onApplied: () => void; onSaved: () => void; onDeleted: () => void; onUpdated: () => void;
 }) {
   const [selectedId, setSelectedId] = useState<number | "">("");
   const [saveOpen, setSaveOpen] = useState(false);
   const [newName, setNewName] = useState("");
+  const [updating, setUpdating] = useState(false);
   const apply = useApplyChatLeverPreset();
   const create = useCreateChatLeverPreset();
   const del = useDeleteChatLeverPreset();
@@ -221,6 +223,20 @@ function PresetBar({ presets, previewPreset, onPreviewChange, onApplied, onSaved
     if (selectedId === "") return;
     try { await apply.mutateAsync({ id: Number(selectedId) }); onApplied(); }
     catch (err) { toast({ title: "Apply failed", description: (err as Error).message, variant: "destructive" }); }
+  }
+  async function handleUpdate() {
+    if (selectedId === "") return;
+    setUpdating(true);
+    try {
+      const res = await fetch(`/api/chat/lever-presets/${selectedId}`, { method: "PATCH", credentials: "include" });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Update failed");
+      onUpdated();
+      toast({ title: "Preset updated" });
+    } catch (err) {
+      toast({ title: "Update failed", description: (err as Error).message, variant: "destructive" });
+    } finally {
+      setUpdating(false);
+    }
   }
   async function handleSave() {
     if (!newName.trim()) { toast({ title: "Name required", variant: "destructive" }); return; }
@@ -250,6 +266,9 @@ function PresetBar({ presets, previewPreset, onPreviewChange, onApplied, onSaved
         </select>
         <button type="button" className="btn sm" disabled={selectedId === "" || apply.isPending} onClick={handleApply}>
           Apply
+        </button>
+        <button type="button" className="btn ghost sm" disabled={selectedId === "" || updating} onClick={handleUpdate}>
+          <Save size={12} strokeWidth={1.8} /> {updating ? "Saving…" : "Update"}
         </button>
         <button type="button" className="btn ghost sm" disabled={selectedId === ""} onClick={handleDelete}>
           <Trash2 size={12} strokeWidth={1.8} /> Delete
