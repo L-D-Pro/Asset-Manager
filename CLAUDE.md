@@ -163,3 +163,18 @@ Node.js **24.x** (Current, not LTS) + pnpm **10.x** via Corepack is required.
 - All AI calls go through `callAI()` in `lib/ai-client.ts` — never call OpenRouter directly from routes.
 - Immutable resume history: every save creates a new `base_resume_versions` row; "restore" clones.
 - Truth-lock: AI outputs referencing claim IDs that don't exist in the user's ledger must be dropped at the pipeline level, not just via prompt instruction.
+
+## Verification in this environment
+
+`pnpm run typecheck` and `pnpm --filter ... run test` trip the repo's `preinstall` guard under this machine's corepack (pnpm 11) — it looks like a build failure but isn't. Bypass by calling the tools directly via `node` from the repo root:
+
+- Build libs: `node ./node_modules/typescript/bin/tsc --build`
+- Typecheck a package: `cd <pkg> && node ../../node_modules/typescript/bin/tsc -p tsconfig.json --noEmit`
+- Tests: `cd artifacts/api-server && node --env-file-if-exists=../../.env ./node_modules/.bin/vitest run` — the `--env-file-if-exists` flag is **required** or env-coupled tests fail at import.
+- Dashboard build: `cd artifacts/dashboard && node ./node_modules/vite/bin/vite.js build`
+
+Always build libs (`tsc --build`) before typechecking a downstream package, or you hit phantom "no exported member" errors.
+
+## Database workflow
+
+Never run `drizzle generate` or `drizzle push` — `push` stalls on this DB's pre-existing drift prompt. Land schema changes via a curated, idempotent SQL file (`ADD COLUMN IF NOT EXISTS`, `CREATE TABLE IF NOT EXISTS`) applied with a `pg` runner over Neon (SSL). See `lib/db/migrations/*.sql` and `lib/db/apply-*.mjs`.
