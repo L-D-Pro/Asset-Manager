@@ -113,7 +113,7 @@ Never hand-edit files in those `generated/` directories. After changing `openapi
 | `artifacts/api-server/src/routes/` | ~35 Express route modules |
 | `artifacts/api-server/src/lib/pipelines/` | AI task pipelines (resume-tailor, cover-letter-draft, jd-parse, etc.) |
 | `artifacts/api-server/src/lib/` | AI client, model router, prompt router, learning processor |
-| `artifacts/dashboard/src/pages/` | ~40 React page modules |
+| `artifacts/dashboard/src/pages/` | ~34 React page modules |
 | `lib/db/src/schema/` | All Drizzle table definitions |
 | `lib/api-spec/openapi.yaml` | REST API specification (source of truth) |
 

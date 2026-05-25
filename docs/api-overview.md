@@ -331,17 +331,6 @@ Visible only to `role: 'admin'` users.
 
 ---
 
-## 18. UI shell config (theme / layout)
-
-Used by [ui-shell config service](../artifacts/dashboard/src/ui-shell/use-ui-shell-config.tsx) to render featured sidebar cards.
-
-| Method | Path | Purpose |
-|---|---|---|
-| GET | `/ui-shell-configs/{appKey}` | Resolved theme + nav slot layout |
-| PATCH | `/ui-shell-configs/{appKey}` | Update layout (admin) |
-
----
-
 ## State machine semantics (re-stated for designers)
 
 - `resume_versions`, `cover_letter_versions`, `proposal_versions` all use the same gated machine:

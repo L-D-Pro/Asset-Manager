@@ -114,6 +114,7 @@ If `semble` is not on `$PATH`, use `uvx --from "semble[mcp]" semble` in its plac
 
 ```powershell
 corepack pnpm run typecheck
+corepack pnpm --filter @workspace/api-server run test
 corepack pnpm --filter @workspace/api-server run build
 corepack pnpm --filter @workspace/dashboard run build
 ```
@@ -152,7 +153,7 @@ Trigger recompute via `learning-processor.runRecompute()` — never from a reque
 - Drizzle ORM only — no raw SQL, always `.returning()` after mutations
 - `@workspace/*` imports across packages, never relative paths
 - No silent fallbacks — log and surface errors
-- No automated test suite exists; rely on typecheck + smoke tests + dashboard manual testing
+- Tests: Vitest on api-server (`cd artifacts/api-server && pnpm test`, ~29 files) + Playwright E2E on the dashboard (`cd artifacts/dashboard && pnpm test:e2e`). Plus typecheck + smoke tests. Run the relevant suite before claiming done.
 
 ## Environment
 

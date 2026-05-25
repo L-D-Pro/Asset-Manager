@@ -121,14 +121,15 @@ The API server loads the root `.env` through Node's `--env-file-if-exists` flag 
 
 ## Testing Philosophy
 
-No automated test suite exists at this time. The approach to verification is:
+Verification rests on several layers:
 
 1. **TypeScript** (`pnpm run typecheck`) catches structural errors at the boundary between all packages.
-2. **End-to-end via the dashboard** — the admin UI exercises all routes with real data.
-3. **EventLog as audit trail** — every AI call and state change is logged, enabling post-hoc debugging.
-4. **Structured error responses** — all API errors are logged and returned in a consistent format so callers can surface them clearly.
+2. **Unit / route tests (Vitest)** — `cd artifacts/api-server && pnpm test` runs the api-server suite (~29 files, 200+ tests covering validation, pipelines, run lineage enforcement, chat prompt assembly, and route handlers). The script loads `.env` via `--env-file-if-exists`, so AI/DB-dependent tests need those vars set.
+3. **End-to-end (Playwright)** — `cd artifacts/dashboard && pnpm test:e2e` drives the dashboard against a running instance.
+4. **EventLog as audit trail** — every AI call and state change is logged, enabling post-hoc debugging.
+5. **Structured error responses** — all API errors are logged and returned in a consistent format so callers can surface them clearly.
 
-Future: add integration tests for route handlers, unit tests for `scoring.ts`/`validation.ts`, and E2E tests for auth, base resume import, AI draft claims, AI Review, Assisted Apply, and Freelance Copilot.
+Future: broaden route-handler coverage and add E2E flows for auth, base resume import, AI draft claims, AI Review, Assisted Apply, and Freelance Copilot.
 
 ## pnpm Workspace Security Policy
 
