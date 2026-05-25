@@ -2,21 +2,18 @@ import { Outlet } from "react-router-dom";
 import { FloatingSidebar } from "@/components/navigation";
 import { BreadcrumbBar } from "./breadcrumb-bar";
 import { CommandPalette } from "@/components/navigation";
-import { PageTransition } from "@/components/motion/page-transition";
 import { WelcomeModal } from "@/components/onboarding/welcome-modal";
 
 function MainLayout() {
   return (
-    <div>
+    <div className="app">
       <WelcomeModal />
       <FloatingSidebar />
-      <div>
+      <div className="main">
         <BreadcrumbBar />
-        <PageTransition>
-          <main>
-            <Outlet />
-          </main>
-        </PageTransition>
+        <div className="scroll">
+          <Outlet />
+        </div>
       </div>
       <CommandPalette />
     </div>

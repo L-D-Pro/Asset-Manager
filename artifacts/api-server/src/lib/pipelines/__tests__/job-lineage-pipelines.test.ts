@@ -231,7 +231,7 @@ describe("job lineage pipelines", () => {
     expect(inserted.tailoredDocumentText).toContain("EXPERIENCE");
     expect(inserted.tailoredDocumentText).toContain("Led project delivery");
     expect(inserted.templateId).toBe("software_developer");
-    expect(inserted.diffData.modelContract).toBe("resume_tailoring_plain_text_v1");
+    expect(inserted.diffData.modelContract).toBe("resume_tailoring_v2_simple");
     expect(inserted.runId).toBe("run_resume_plan_1234567890");
     expect(inserted.eventLogId).toBe(321);
   });
@@ -263,12 +263,12 @@ describe("job lineage pipelines", () => {
     );
 
     const inserted = resumeInsertValuesMock.mock.calls.at(-1)?.[0];
-    expect(inserted.label).toContain("ATS resume from verified base sources");
+    expect(inserted.label).toContain("AI tailored resume");
     expect(inserted.runId).toBe("run_resume_failure_1234567890");
     expect(inserted.eventLogId).toBe(654);
   });
 
-  it("saves a deterministic base-resume fallback when all model attempts fail the plain-text contract", async () => {
+  it("propagates AI call failures without saving a fallback", async () => {
     dbSelectWhereMock.mockResolvedValueOnce([{
       id: 5,
       contentText: [
@@ -310,18 +310,13 @@ describe("job lineage pipelines", () => {
 
     const { runResumeTailorPipeline } = await import("../resume-tailor");
 
-    await runResumeTailorPipeline(
-      { id: 11, title: "Engineer", company: "Acme" } as never,
-      [{ id: 1, summary: "Built feature", evidence: null } as never],
-      [1],
-    );
-
-    const inserted = resumeInsertValuesMock.mock.calls.at(-1)?.[0];
-    expect(inserted.label).toContain("ATS resume from verified base sources");
-    expect(inserted.tailoredDocumentText).toContain("Senior Instructional Designer | Acme Health");
-    expect(inserted.diffData.aiAttemptSummary).toContain("test/model: content_contract");
-    expect(inserted.runId).toBe("run_terminal_contract_failure_1234567890");
-    expect(inserted.eventLogId).toBe(777);
+    await expect(
+      runResumeTailorPipeline(
+        { id: 11, title: "Engineer", company: "Acme" } as never,
+        [{ id: 1, summary: "Built feature", evidence: null } as never],
+        [1],
+      ),
+    ).rejects.toThrow("AI call failed after fallback chain");
   });
 
   it("persists the callAI runId and eventLogId on successful cover-letter generations", async () => {

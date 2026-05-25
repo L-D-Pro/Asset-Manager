@@ -11,5 +11,7 @@ export interface ChatLeverSnapshot {
   skillsEnabled: boolean;
   bestPracticesEnabled: boolean;
   skillRoutingMode: string;
+  skillTokenBudget: number;
+  maxSelectedSkills: number;
   activePromptVersionIds: number[];
 }

@@ -5,6 +5,7 @@ import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@ta
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { MainLayout } from "@/components/layout/main-layout";
+import { ThemeProvider } from "@/context/theme";
 import { toast } from "@/hooks/use-toast";
 import { getErrorMessage, hasHttpStatus } from "@/lib/api-errors";
 import { AuthProvider, useAuth } from "@/context/auth";
@@ -37,8 +38,8 @@ import AdminUsersPage from "@/pages/admin/users";
 import AdminInviteCodesPage from "@/pages/admin/invite-codes";
 import AdminUsageLimitsPage from "@/pages/admin/usage-limits";
 import AdminDocsPage from "@/pages/admin/docs";
-import AdminUiShellPage from "@/pages/admin/ui-shell";
 import AdminBestPracticesPage from "@/pages/admin/best-practices";
+import AdminAiControlPlanePage from "@/pages/admin/ai-control-plane";
 import AdminResetPage from "@/pages/admin/reset";
 import AiLearningPage from "@/pages/ai-learning";
 import TrendsPage from "@/pages/trends";
@@ -96,8 +97,8 @@ function ProtectedRoutes() {
 
   if (user === undefined) {
     return (
-      <div>
-        <div />
+      <div className="page fade-up">
+        <div className="dim" style={{ padding: "60px 0", textAlign: "center", fontSize: 13 }}>Loading…</div>
       </div>
     );
   }
@@ -130,8 +131,8 @@ function AppRoutes() {
 
   if (user === undefined) {
     return (
-      <div>
-        <div />
+      <div className="page fade-up">
+        <div className="dim" style={{ padding: "60px 0", textAlign: "center", fontSize: 13 }}>Loading…</div>
       </div>
     );
   }
@@ -177,8 +178,8 @@ function AppRoutes() {
           <Route path="/admin/invite-codes" element={<AdminInviteCodesPage />} />
           <Route path="/admin/usage-limits" element={<AdminUsageLimitsPage />} />
           <Route path="/admin/docs" element={<AdminDocsPage />} />
-          <Route path="/admin/ui-shell" element={<AdminUiShellPage />} />
           <Route path="/admin/best-practices" element={<AdminBestPracticesPage />} />
+          <Route path="/admin/ai-control-plane" element={<AdminAiControlPlanePage />} />
           <Route path="/admin/reset" element={<AdminResetPage />} />
           <Route path="/ai-learning" element={<AiLearningPage />} />
           <Route path="/trends" element={<TrendsPage />} />
@@ -199,14 +200,16 @@ function App() {
   const base = import.meta.env.BASE_URL.replace(/\/$/, "");
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <BrowserRouter basename={base}>
-          <AuthProvider>
-            <AppRoutes />
-          </AuthProvider>
-        </BrowserRouter>
-        <Toaster />
-      </TooltipProvider>
+      <ThemeProvider>
+        <TooltipProvider>
+          <BrowserRouter basename={base}>
+            <AuthProvider>
+              <AppRoutes />
+            </AuthProvider>
+          </BrowserRouter>
+          <Toaster />
+        </TooltipProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useOnboardingState, useMarkWelcomeSeen } from "@/hooks/use-onboarding";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Target, FileText, Rocket } from "lucide-react";
 
@@ -46,6 +46,9 @@ export function WelcomeModal() {
             <Sparkles />
             Welcome to Job Ops
           </DialogTitle>
+          <DialogDescription>
+            Let&apos;s get you set up for job search success.
+          </DialogDescription>
         </DialogHeader>
         <div>
           <p>

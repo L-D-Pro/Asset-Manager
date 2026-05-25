@@ -1758,6 +1758,13 @@ export const UpdateAiPromptVersionResponse = zod.object({
 });
 
 /**
+ * @summary Delete an AI prompt version
+ */
+export const DeleteAiPromptVersionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
  * @summary List AI run evaluations
  */
 export const ListAiRunEvaluationsQueryParams = zod.object({
@@ -3008,6 +3015,15 @@ export const ListChatMessagesResponseItem = zod
             .describe(
               "A selection of claims from the ledger; unverified claims are flagged.",
             ),
+          zod
+            .object({
+              kind: zod.enum(["document"]),
+              snapshot: zod.object({
+                filename: zod.string(),
+                contentText: zod.string(),
+              }),
+            })
+            .describe("Snapshot of an uploaded document file."),
         ])
         .describe("Discriminated union of attachment kinds."),
     ),
@@ -3051,6 +3067,7 @@ export const postChatMessageBodyContentMax = 20000;
 export const postChatMessageBodyAttachmentsMax = 20;
 
 export const postChatMessageBodyJdParseEnabledDefault = false;
+export const postChatMessageBodyExplicitSkillSlugsMax = 2;
 
 export const PostChatMessageBody = zod.object({
   content: zod.string().min(1).max(postChatMessageBodyContentMax),
@@ -3101,6 +3118,15 @@ export const PostChatMessageBody = zod.object({
             .describe(
               "A selection of claims from the ledger; unverified claims are flagged.",
             ),
+          zod
+            .object({
+              kind: zod.enum(["document"]),
+              snapshot: zod.object({
+                filename: zod.string(),
+                contentText: zod.string(),
+              }),
+            })
+            .describe("Snapshot of an uploaded document file."),
         ])
         .describe("Discriminated union of attachment kinds."),
     )
@@ -3110,6 +3136,13 @@ export const PostChatMessageBody = zod.object({
   jdParseEnabled: zod
     .boolean()
     .default(postChatMessageBodyJdParseEnabledDefault),
+  explicitSkillSlugs: zod
+    .array(zod.string())
+    .max(postChatMessageBodyExplicitSkillSlugsMax)
+    .optional()
+    .describe(
+      "Explicitly selected skill slugs for this turn. Only used when skillRoutingMode is 'explicit'.",
+    ),
 });
 
 /**
@@ -3142,7 +3175,9 @@ export const GetChatLeverConfigResponse = zod.object({
   identityText: zod.string(),
   skillsEnabled: zod.boolean(),
   bestPracticesEnabled: zod.boolean(),
-  skillRoutingMode: zod.enum(["all", "classified"]),
+  skillRoutingMode: zod.enum(["none", "auto", "explicit", "debug_all"]),
+  skillTokenBudget: zod.number(),
+  maxSelectedSkills: zod.number(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -3151,11 +3186,26 @@ export const GetChatLeverConfigResponse = zod.object({
  * @summary Update the Chat Control Plane lever config
  */
 
+export const updateChatLeverConfigBodySkillTokenBudgetMin = 0;
+
+export const updateChatLeverConfigBodyMaxSelectedSkillsMax = 2;
+
 export const UpdateChatLeverConfigBody = zod.object({
   identityText: zod.string().min(1).optional(),
   skillsEnabled: zod.boolean().optional(),
   bestPracticesEnabled: zod.boolean().optional(),
-  skillRoutingMode: zod.enum(["all", "classified"]).optional(),
+  skillRoutingMode: zod
+    .enum(["none", "auto", "explicit", "debug_all"])
+    .optional(),
+  skillTokenBudget: zod
+    .number()
+    .min(updateChatLeverConfigBodySkillTokenBudgetMin)
+    .optional(),
+  maxSelectedSkills: zod
+    .number()
+    .min(1)
+    .max(updateChatLeverConfigBodyMaxSelectedSkillsMax)
+    .optional(),
 });
 
 export const UpdateChatLeverConfigResponse = zod.object({
@@ -3163,7 +3213,9 @@ export const UpdateChatLeverConfigResponse = zod.object({
   identityText: zod.string(),
   skillsEnabled: zod.boolean(),
   bestPracticesEnabled: zod.boolean(),
-  skillRoutingMode: zod.enum(["all", "classified"]),
+  skillRoutingMode: zod.enum(["none", "auto", "explicit", "debug_all"]),
+  skillTokenBudget: zod.number(),
+  maxSelectedSkills: zod.number(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -3173,6 +3225,8 @@ export const UpdateChatLeverConfigResponse = zod.object({
  */
 
 export const previewChatPromptBodyAttachmentsMax = 20;
+
+export const previewChatPromptBodyExplicitSkillSlugsMax = 2;
 
 export const PreviewChatPromptBody = zod.object({
   sampleMessage: zod.string().min(1),
@@ -3223,29 +3277,171 @@ export const PreviewChatPromptBody = zod.object({
             .describe(
               "A selection of claims from the ledger; unverified claims are flagged.",
             ),
+          zod
+            .object({
+              kind: zod.enum(["document"]),
+              snapshot: zod.object({
+                filename: zod.string(),
+                contentText: zod.string(),
+              }),
+            })
+            .describe("Snapshot of an uploaded document file."),
         ])
         .describe("Discriminated union of attachment kinds."),
     )
     .max(previewChatPromptBodyAttachmentsMax)
+    .optional(),
+  explicitSkillSlugs: zod
+    .array(zod.string())
+    .max(previewChatPromptBodyExplicitSkillSlugsMax)
     .optional(),
   overrides: zod
     .object({
       identityText: zod.string().optional(),
       skillsEnabled: zod.boolean().optional(),
       bestPracticesEnabled: zod.boolean().optional(),
-      skillRoutingMode: zod.enum(["all", "classified"]).optional(),
+      skillRoutingMode: zod
+        .enum(["none", "auto", "explicit", "debug_all"])
+        .optional(),
+      skillTokenBudget: zod.number().optional(),
+      maxSelectedSkills: zod.number().optional(),
     })
     .optional(),
 });
 
 export const PreviewChatPromptResponseItem = zod.object({
-  lever: zod.enum(["identity", "skill", "best_practices", "attachments"]),
+  lever: zod.enum([
+    "identity",
+    "skill_catalog",
+    "skill",
+    "best_practices",
+    "attachments",
+  ]),
   label: zod.string(),
   content: zod.string(),
 });
 export const PreviewChatPromptResponse = zod.array(
   PreviewChatPromptResponseItem,
 );
+
+/**
+ * @summary Simulate skill routing for a sample message (router simulator)
+ */
+
+export const previewChatRouteBodyAttachmentsMax = 20;
+
+export const previewChatRouteBodyExplicitSkillSlugsMax = 2;
+
+export const PreviewChatRouteBody = zod.object({
+  sampleMessage: zod.string().min(1),
+  attachments: zod
+    .array(
+      zod
+        .union([
+          zod
+            .object({
+              kind: zod.enum(["base_resume"]),
+              refId: zod.number().optional(),
+              snapshot: zod.object({
+                version: zod.number().optional(),
+                capturedAt: zod.string().optional(),
+                contentText: zod.string(),
+              }),
+            })
+            .describe(
+              "Snapshot of the user's base resume, captured at message send time.",
+            ),
+          zod
+            .object({
+              kind: zod.enum(["job"]),
+              refId: zod.number().optional(),
+              snapshot: zod.object({
+                title: zod.string(),
+                company: zod.string().optional(),
+                location: zod.string().optional(),
+                jdText: zod.string(),
+              }),
+            })
+            .describe("Snapshot of a job listing's metadata + JD text."),
+          zod
+            .object({
+              kind: zod.enum(["claims"]),
+              refId: zod.number().optional(),
+              snapshot: zod.object({
+                claims: zod
+                  .array(
+                    zod.object({
+                      text: zod.string(),
+                      verified: zod.boolean(),
+                    }),
+                  )
+                  .min(1),
+              }),
+            })
+            .describe(
+              "A selection of claims from the ledger; unverified claims are flagged.",
+            ),
+          zod
+            .object({
+              kind: zod.enum(["document"]),
+              snapshot: zod.object({
+                filename: zod.string(),
+                contentText: zod.string(),
+              }),
+            })
+            .describe("Snapshot of an uploaded document file."),
+        ])
+        .describe("Discriminated union of attachment kinds."),
+    )
+    .max(previewChatRouteBodyAttachmentsMax)
+    .optional(),
+  explicitSkillSlugs: zod
+    .array(zod.string())
+    .max(previewChatRouteBodyExplicitSkillSlugsMax)
+    .optional(),
+  overrides: zod
+    .object({
+      identityText: zod.string().optional(),
+      skillsEnabled: zod.boolean().optional(),
+      bestPracticesEnabled: zod.boolean().optional(),
+      skillRoutingMode: zod
+        .enum(["none", "auto", "explicit", "debug_all"])
+        .optional(),
+      skillTokenBudget: zod.number().optional(),
+      maxSelectedSkills: zod.number().optional(),
+    })
+    .optional(),
+});
+
+export const PreviewChatRouteResponse = zod.object({
+  decision: zod.object({
+    selectedSlugs: zod.array(zod.string()),
+    confidence: zod.number(),
+    reason: zod.string(),
+    candidates: zod.array(
+      zod.object({
+        slug: zod.string(),
+        score: zod.number(),
+      }),
+    ),
+    llmUsed: zod.boolean(),
+    budgetTrimmed: zod.boolean(),
+    skillPromptTokens: zod.number(),
+  }),
+  sections: zod.array(
+    zod.object({
+      lever: zod.enum([
+        "identity",
+        "skill_catalog",
+        "skill",
+        "best_practices",
+        "attachments",
+      ]),
+      label: zod.string(),
+      content: zod.string(),
+    }),
+  ),
+});
 
 /**
  * @summary List saved lever presets
@@ -3258,6 +3454,8 @@ export const ListChatLeverPresetsResponseItem = zod.object({
     skillsEnabled: zod.boolean(),
     bestPracticesEnabled: zod.boolean(),
     skillRoutingMode: zod.string(),
+    skillTokenBudget: zod.number(),
+    maxSelectedSkills: zod.number(),
     activePromptVersionIds: zod.array(zod.number()),
   }),
   createdAt: zod.coerce.date(),
@@ -3294,7 +3492,9 @@ export const ApplyChatLeverPresetResponse = zod.object({
   identityText: zod.string(),
   skillsEnabled: zod.boolean(),
   bestPracticesEnabled: zod.boolean(),
-  skillRoutingMode: zod.enum(["all", "classified"]),
+  skillRoutingMode: zod.enum(["none", "auto", "explicit", "debug_all"]),
+  skillTokenBudget: zod.number(),
+  maxSelectedSkills: zod.number(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });

@@ -13,4 +13,11 @@ export interface UpdateChatLeverConfigBody {
   skillsEnabled?: boolean;
   bestPracticesEnabled?: boolean;
   skillRoutingMode?: UpdateChatLeverConfigBodySkillRoutingMode;
+  /** @minimum 0 */
+  skillTokenBudget?: number;
+  /**
+   * @minimum 1
+   * @maximum 2
+   */
+  maxSelectedSkills?: number;
 }

@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { and, desc, eq, inArray } from "drizzle-orm";
+import { z } from "zod";
 import {
   db,
   aiChatLeverConfigTable,
@@ -17,6 +18,7 @@ import type { JobOpsRequest } from "../lib/http-types";
 import {
   getChatLeverConfig,
   resolveChatSystemPromptSections,
+  resolveChatPrompt,
 } from "../lib/chat/resolve-system-prompt";
 
 const router: IRouter = Router();
@@ -77,6 +79,28 @@ router.post("/chat/preview-prompt", async (req, res): Promise<void> => {
   res.json(sections);
 });
 
+// ── Router simulator ─────────────────────────────────────────────────────────
+
+router.post("/chat/route-preview", async (req, res): Promise<void> => {
+  if (!(req as JobOpsRequest).session.adminId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const parsed = PreviewChatPromptBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const { decision, sections } = await resolveChatPrompt({
+    userMessage: parsed.data.sampleMessage,
+    attachments: (parsed.data.attachments ?? []) as never,
+    explicitSlugs: parsed.data.explicitSkillSlugs,
+    overrides: parsed.data.overrides,
+  });
+  res.json({ decision, sections });
+});
+
 // ── Presets ────────────────────────────────────────────────────────────────
 
 router.get("/chat/lever-presets", async (req, res): Promise<void> => {
@@ -89,6 +113,36 @@ router.get("/chat/lever-presets", async (req, res): Promise<void> => {
     .from(aiChatLeverPresetsTable)
     .orderBy(desc(aiChatLeverPresetsTable.createdAt));
   res.json(rows);
+});
+
+const CreatePresetFromTemplateBody = z.object({
+  name: z.string().min(1).max(200),
+  snapshot: z.object({
+    identityText: z.string(),
+    skillsEnabled: z.boolean(),
+    bestPracticesEnabled: z.boolean(),
+    skillRoutingMode: z.string(),
+    skillTokenBudget: z.number().int().nonnegative(),
+    maxSelectedSkills: z.number().int().min(1).max(2),
+    activePromptVersionIds: z.array(z.number().int().positive()),
+  }),
+});
+
+router.post("/chat/lever-presets/template", async (req, res): Promise<void> => {
+  if (!(req as JobOpsRequest).session.adminId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const parsed = CreatePresetFromTemplateBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const [created] = await db
+    .insert(aiChatLeverPresetsTable)
+    .values({ name: parsed.data.name, snapshot: parsed.data.snapshot as ChatLeverSnapshot })
+    .returning();
+  res.status(201).json(created);
 });
 
 router.post("/chat/lever-presets", async (req, res): Promise<void> => {
@@ -119,6 +173,8 @@ router.post("/chat/lever-presets", async (req, res): Promise<void> => {
     skillsEnabled: config.skillsEnabled,
     bestPracticesEnabled: config.bestPracticesEnabled,
     skillRoutingMode: config.skillRoutingMode,
+    skillTokenBudget: config.skillTokenBudget,
+    maxSelectedSkills: config.maxSelectedSkills,
     activePromptVersionIds: activeRows.map((r) => r.id),
   };
 
@@ -162,6 +218,8 @@ router.patch("/chat/lever-presets/:id", async (req, res): Promise<void> => {
     skillsEnabled: config.skillsEnabled,
     bestPracticesEnabled: config.bestPracticesEnabled,
     skillRoutingMode: config.skillRoutingMode,
+    skillTokenBudget: config.skillTokenBudget,
+    maxSelectedSkills: config.maxSelectedSkills,
     activePromptVersionIds: activeRows.map((r) => r.id),
   };
 
@@ -228,6 +286,8 @@ router.post(
         skillsEnabled: snapshot.skillsEnabled,
         bestPracticesEnabled: snapshot.bestPracticesEnabled,
         skillRoutingMode: snapshot.skillRoutingMode,
+        skillTokenBudget: snapshot.skillTokenBudget,
+        maxSelectedSkills: snapshot.maxSelectedSkills,
       })
       .where(eq(aiChatLeverConfigTable.id, config.id))
       .returning();

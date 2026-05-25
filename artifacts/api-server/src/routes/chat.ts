@@ -15,8 +15,6 @@ import type { JobOpsRequest } from "../lib/http-types";
 import { logger } from "../lib/logger";
 import { streamChatCompletion, loadConversationMessages } from "../lib/chat/stream-openrouter";
 import { extractTextFromDocumentFile, getUploadedDocument, parseSingleDocumentUpload, UploadValidationError, MAX_AI_SOURCE_CHARS } from "../lib/document-text";
-import { parseJdText } from "../lib/chat/jd-parse-preprocess";
-import type { ParsedJd } from "../lib/chat/context-builder";
 
 const router: IRouter = Router();
 
@@ -83,6 +81,7 @@ const postMessageSchema = z.object({
   attachments: z.array(attachmentSchema).max(20).optional().default([]),
   modelConfigId: z.number().int().positive().optional(),
   jdParseEnabled: z.boolean().optional().default(false),
+  explicitSkillSlugs: z.array(z.string().min(1).max(120)).max(2).optional(),
 });
 
 const feedbackSchema = z.object({
@@ -206,11 +205,6 @@ router.post("/chat/threads/:id/messages", async (req, res): Promise<void> => {
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
   if (!body.success) { res.status(400).json({ error: body.error.message }); return; }
 
-  let parsedJd: ParsedJd | null = null;
-  if (body.data.jdParseEnabled) {
-    parsedJd = await parseJdText(body.data.content);
-  }
-
   try {
     await streamChatCompletion({
       conversationId: params.data.id,
@@ -220,7 +214,8 @@ router.post("/chat/threads/:id/messages", async (req, res): Promise<void> => {
         attachments: (body.data.attachments ?? []) as MessageAttachment[],
       },
       modelConfigId: body.data.modelConfigId,
-      parsedJd,
+      jdParseEnabled: body.data.jdParseEnabled,
+      explicitSkillSlugs: body.data.explicitSkillSlugs,
       res,
     });
   } catch (err) {

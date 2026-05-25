@@ -7,6 +7,7 @@
  */
 import type { ChatAttachmentBaseResume } from "./chatAttachmentBaseResume";
 import type { ChatAttachmentClaims } from "./chatAttachmentClaims";
+import type { ChatAttachmentDocument } from "./chatAttachmentDocument";
 import type { ChatAttachmentJob } from "./chatAttachmentJob";
 
 /**
@@ -15,4 +16,5 @@ import type { ChatAttachmentJob } from "./chatAttachmentJob";
 export type ChatAttachment =
   | ChatAttachmentBaseResume
   | ChatAttachmentJob
-  | ChatAttachmentClaims;
+  | ChatAttachmentClaims
+  | ChatAttachmentDocument;

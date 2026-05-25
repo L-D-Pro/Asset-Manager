@@ -139,7 +139,7 @@ function makeClaim(id: number, summary: string): Claim {
     isActive: true,
     createdAt: new Date(),
     updatedAt: new Date(),
-  } as Claim;
+  } as unknown as Claim;
 }
 
 function makeBaseResumeVersion() {
@@ -505,7 +505,7 @@ describe("runCoverLetterPipeline", () => {
       isActive: true,
       createdAt: new Date(),
       updatedAt: new Date(),
-    } as RoleProfile;
+    } as unknown as RoleProfile;
 
     callAIMock.mockResolvedValue({
       content: makeValidAiResponse(10),

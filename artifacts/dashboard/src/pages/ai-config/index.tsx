@@ -1,598 +1,403 @@
-import { useListAiModelConfigs, useCreateAiModelConfig, useUpdateAiModelConfig, useDeleteAiModelConfig, getListAiModelConfigsQueryKey, type AiModelConfig } from "@workspace/api-client-react";
-import { Link } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { PageHeader } from "@/components/ui/page-header";
-import { ContentCard } from "@/components/ui/content-card";
-import { SectionHeader } from "@/components/ui/section-header";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-
-import { Settings, Plus, Pencil, Trash2, ArrowRight, AlertTriangle, CheckCircle2, RefreshCw } from "lucide-react";
-import { useEffect, useState } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { useToast } from "@/hooks/use-toast";
+﻿import { useState } from "react";
+import { Portal } from "@/components/ui/portal";
 import { useQueryClient } from "@tanstack/react-query";
-import { getErrorMessage } from "@/lib/api-errors";
+import {
+  useListAiPromptVersions,
+  useGetAiLearningLeaderboard,
+  useCreateAiPromptVersion,
+  useUpdateAiPromptVersion,
+  useDeleteAiPromptVersion,
+  getListAiPromptVersionsQueryKey,
+  type AiPromptVersion,
+  type AiLearningLeaderboardEntry,
+} from "@workspace/api-client-react";
+import { Plus, Pencil, Trash2, X } from "lucide-react";
+import { format } from "date-fns";
+import { toast } from "@/hooks/use-toast";
 
-interface ScopeHealthStatus {
- scope: string;
- hasActiveConfig: boolean;
- activeModelName: string | null;
- requiresFallback: boolean;
- fallbackWired: boolean;
- fallbackModelName: string | null;
- healthy: boolean;
+const TASK_SCOPES = ["chat", "default", "jd_parsing", "resume_tailoring", "cover_letter", "claim_generation"] as const;
+
+export default function PromptsPage() {
+  const queryClient = useQueryClient();
+  const { data: prompts = [], isLoading } = useListAiPromptVersions();
+  const { data: leaderboard = [] } = useGetAiLearningLeaderboard();
+  const [scope, setScope] = useState("all");
+  const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<AiPromptVersion | null>(null);
+
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: getListAiPromptVersionsQueryKey() });
+
+  const scopes = ["all", ...Array.from(new Set(prompts.map((p) => p.taskScope)))];
+  const filtered = scope === "all" ? prompts : prompts.filter((p) => p.taskScope === scope);
+
+  const winProbById = new Map<number, number>(
+    (leaderboard as AiLearningLeaderboardEntry[])
+      .filter((e) => e.variantType === "prompt")
+      .map((e) => [e.variantId, e.successRate])
+  );
+
+  const leaderboardEntries = (leaderboard as AiLearningLeaderboardEntry[])
+    .filter((e) => e.variantType === "prompt")
+    .sort((a, b) => b.successRate - a.successRate)
+    .slice(0, 2);
+
+  return (
+    <div className="page fade-up" style={{ maxWidth: 1240 }}>
+      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 22 }}>
+        <div>
+          <div className="eyebrow">ai-learning · prompt versions · Bayesian win prob</div>
+          <h1 className="h-display" style={{ marginTop: 4 }}>Prompt versions <em>· what the AI is reading</em></h1>
+          <div className="dim" style={{ fontSize: 13, marginTop: 6, maxWidth: 640 }}>
+            One prompt is active per task scope. Variants accrue samples; win-probability is computed from your evaluations and feedback signals.
+          </div>
+        </div>
+        <button className="btn primary" type="button" onClick={() => setAdding(true)}>
+          <Plus size={13} strokeWidth={1.8} /> New version
+        </button>
+      </div>
+
+      <div className="tabs" style={{ marginBottom: 14 }}>
+        {scopes.map((s) => (
+          <div key={s} className={`tab${scope === s ? " active" : ""}`} onClick={() => setScope(s)}>
+            {s.replaceAll("_", " ")}
+            <span className="mono dim" style={{ marginLeft: 6, fontSize: 11 }}>
+              {s === "all" ? prompts.length : prompts.filter((p) => p.taskScope === s).length}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <div className="card">
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "60px 1fr 130px 90px 130px 100px 90px 64px",
+          alignItems: "center",
+          gap: 14,
+          padding: "10px 18px",
+          borderBottom: "1px solid var(--line)",
+          background: "var(--paper-2)",
+          fontSize: 11,
+          color: "var(--ink-4)",
+          textTransform: "uppercase",
+          letterSpacing: "0.08em",
+          fontWeight: 500,
+        }}>
+          <span>ID</span>
+          <span>Goals</span>
+          <span>Scope</span>
+          <span>Version</span>
+          <span>Win prob</span>
+          <span>Samples</span>
+          <span>State</span>
+          <span />
+        </div>
+        <div className="row-list">
+          {isLoading && (
+            <div className="dim" style={{ padding: "32px 18px", textAlign: "center", fontSize: 13 }}>Loading…</div>
+          )}
+          {!isLoading && filtered.length === 0 && (
+            <div className="dim" style={{ padding: "32px 18px", textAlign: "center", fontSize: 13 }}>No prompt versions yet.</div>
+          )}
+          {filtered.map((p) => {
+            const winProb = winProbById.get(p.id);
+            const lbEntry = (leaderboard as AiLearningLeaderboardEntry[]).find((e) => e.variantType === "prompt" && e.variantId === p.id);
+            const samples = lbEntry ? lbEntry.successes + lbEntry.failures + lbEntry.pending : 0;
+            return (
+              <PromptRow
+                key={p.id}
+                prompt={p}
+                winProb={winProb}
+                samples={samples}
+                onEdit={() => setEditing(p)}
+                onDeleted={invalidate}
+              />
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Leaderboard card */}
+      <div className="card" style={{ marginTop: 22 }}>
+        <div className="card-h">
+          <h2 className="card-title">Variant leaderboard</h2>
+          <span className="dim mono" style={{ fontSize: 11 }}>auto-recompute · based on evaluations</span>
+        </div>
+        <div className="card-body">
+          {leaderboardEntries.length < 2 ? (
+            <div className="dim" style={{ fontSize: 12.5 }}>
+              Not enough data for comparison. Run more evaluations to build the leaderboard.
+            </div>
+          ) : (
+            <>
+              <div style={{ display: "flex", gap: 16, alignItems: "stretch" }}>
+                <PromptVariantCard
+                  label="Top performer"
+                  version={`v${leaderboardEntries[0]!.variantId}`}
+                  name={leaderboardEntries[0]!.label ?? "—"}
+                  winProb={leaderboardEntries[0]!.successRate}
+                  samples={leaderboardEntries[0]!.successes + leaderboardEntries[0]!.failures}
+                  accent
+                />
+                <div style={{ display: "flex", alignItems: "center", padding: "0 4px", color: "var(--ink-4)" }}>
+                  <span className="mono" style={{ fontSize: 14 }}>vs</span>
+                </div>
+                <PromptVariantCard
+                  label="Runner-up"
+                  version={`v${leaderboardEntries[1]!.variantId}`}
+                  name={leaderboardEntries[1]!.label ?? "—"}
+                  winProb={leaderboardEntries[1]!.successRate}
+                  samples={leaderboardEntries[1]!.successes + leaderboardEntries[1]!.failures}
+                />
+              </div>
+              <div className="dim" style={{ fontSize: 12.5, marginTop: 16, lineHeight: 1.55 }}>
+                Win probability computed from approval outcomes and feedback signals. Will promote automatically once confidence threshold is met.
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {adding && (
+        <PromptVersionModal
+          mode="add"
+          onClose={() => setAdding(false)}
+          onSaved={() => { setAdding(false); invalidate(); toast({ title: "Prompt version created" }); }}
+        />
+      )}
+      {editing && (
+        <PromptVersionModal
+          mode="edit"
+          existing={editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => { setEditing(null); invalidate(); toast({ title: "New version saved — previous archived" }); }}
+        />
+      )}
+    </div>
+  );
 }
 
-interface ModelConfigHealthReport {
- healthy: boolean;
- checkedAt: string;
- scopes: ScopeHealthStatus[];
- unhealthyScopes: string[];
+// ── Row ───────────────────────────────────────────────────────────────────────
+
+function PromptRow({ prompt, winProb, samples, onEdit, onDeleted }: {
+  prompt: AiPromptVersion;
+  winProb: number | undefined;
+  samples: number;
+  onEdit: () => void;
+  onDeleted: () => void;
+}) {
+  const deleteVersion = useDeleteAiPromptVersion();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  async function handleDelete(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!confirmDelete) { setConfirmDelete(true); return; }
+    try {
+      await deleteVersion.mutateAsync({ id: prompt.id });
+      onDeleted();
+      toast({ title: "Prompt version deleted" });
+    } catch (err) {
+      toast({ title: "Delete failed", description: (err as Error).message, variant: "destructive" });
+    }
+  }
+
+  return (
+    <div className="row" style={{ gridTemplateColumns: "60px 1fr 130px 90px 130px 100px 90px 64px", cursor: "default" }}>
+      <span className="mono" style={{ fontSize: 12.5, color: "var(--accent)", fontWeight: 500 }}>#{prompt.id}</span>
+      <div>
+        <div style={{ fontSize: 13.5, color: "var(--ink)" }}>{prompt.goals ?? prompt.label}</div>
+        <div className="dim" style={{ fontSize: 11.5, marginTop: 2, fontFamily: "var(--font-mono)" }}>
+          role: {(prompt.roleLabel ?? "unknown").toLowerCase()} · updated {format(new Date(prompt.updatedAt), "MMM d")}
+        </div>
+      </div>
+      <span className="chip ghost" style={{ fontSize: 11 }}>{prompt.taskScope.replaceAll("_", " ")}</span>
+      <span className="mono" style={{ fontSize: 13 }}>v{prompt.version}</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {winProb != null ? (
+          <>
+            <div style={{ width: 70 }}>
+              <div className="bar">
+                <i style={{ width: `${winProb * 100}%`, background: winProb >= 0.6 ? "var(--accent)" : "var(--warn)" }} />
+              </div>
+            </div>
+            <span className="mono" style={{ fontSize: 12 }}>{Math.round(winProb * 100)}%</span>
+          </>
+        ) : (
+          <span className="mono dim" style={{ fontSize: 12 }}>—</span>
+        )}
+      </div>
+      <span className="mono dim" style={{ fontSize: 12 }}>{samples > 0 ? samples : "—"}</span>
+      {prompt.isActive ? (
+        <span className="chip success dot" style={{ fontSize: 10.5 }}>active</span>
+      ) : (
+        <span className="chip ghost" style={{ fontSize: 10.5 }}>archived</span>
+      )}
+      <span style={{ display: "flex", gap: 3, alignItems: "center" }}>
+        <button
+          type="button" className="btn ghost" style={{ padding: "3px 5px" }}
+          title="Edit (creates new version)" onClick={(e) => { e.stopPropagation(); onEdit(); }}
+        >
+          <Pencil size={11} strokeWidth={1.8} />
+        </button>
+        <button
+          type="button"
+          className={confirmDelete ? "btn danger" : "btn ghost"}
+          style={{ padding: "3px 5px", color: confirmDelete ? undefined : "var(--danger, #d73a49)" }}
+          title={confirmDelete ? "Confirm delete" : "Delete version"}
+          disabled={deleteVersion.isPending}
+          onClick={handleDelete}
+          onBlur={() => setConfirmDelete(false)}
+        >
+          {confirmDelete ? (deleteVersion.isPending ? "…" : "✓") : <Trash2 size={11} strokeWidth={1.8} />}
+        </button>
+      </span>
+    </div>
+  );
 }
 
-const TASK_SCOPES = [
- "default",
- "jd_parsing",
- "resume_tailoring",
- "cover_letter",
- "claim_generation",
- "job_fit_scoring",
- "proposal_drafting",
- "project_fit_scoring",
- "validation",
-];
+// ── Modal ─────────────────────────────────────────────────────────────────────
 
-const RECOMMENDED_FALLBACK_MODELS = [
- { id: "deepseek/deepseek-v4-pro", label: "DeepSeek V4 Pro", note: "1M ctx, structured, $0.44/M in, $0.87/M out" },
- { id: "x-ai/grok-4.1-fast", label: "Grok 4.1 Fast", note: "2M ctx, structured, $0.20/M in, $0.50/M out" },
- { id: "deepseek/deepseek-v4-flash", label: "DeepSeek V4 Flash", note: "1M ctx, structured, $0.14/M in, $0.28/M out" },
- { id: "google/gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite", note: "1M ctx, verified fallback candidate, $0.10/M in, $0.40/M out" },
- { id: "qwen/qwen3.6-flash", label: "Qwen3.6 Flash", note: "1M ctx, structured, $0.25/M in" },
- { id: "qwen/qwen3.5-plus-20260420", label: "Qwen3.5 Plus", note: "1M ctx, structured, $0.40/M in" },
- { id: "openai/gpt-4.1-mini", label: "GPT-4.1 Mini", note: "1M ctx, structured, $0.40/M in" },
- { id: "meta-llama/llama-4-maverick", label: "Llama 4 Maverick", note: "1M ctx, structured, $0.15/M in, $0.60/M out" },
- { id: "qwen/qwen-plus-2025-07-28:thinking", label: "Qwen Plus Thinking", note: "1M ctx, structured, $0.26/M in, $0.78/M out" },
-];
+function PromptVersionModal({ mode, existing, onClose, onSaved }: {
+  mode: "add" | "edit";
+  existing?: AiPromptVersion;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [taskScope, setTaskScope] = useState(existing?.taskScope ?? "");
+  const [label, setLabel] = useState(existing?.label ?? "");
+  const [roleLabel, setRoleLabel] = useState(existing?.roleLabel ?? "");
+  const [body, setBody] = useState(existing?.systemPrompt ?? "");
+  const create = useCreateAiPromptVersion();
+  const update = useUpdateAiPromptVersion();
 
-const configSchema = z.object({
- taskScope: z.string().min(1, "Task scope is required"),
- provider: z.string().min(1, "Provider is required"),
- modelName: z.string().min(1, "Model name is required"),
- isActive: z.boolean().default(true),
- priority: z.coerce.number().int().min(0).default(0),
- costPerInputToken: z.string().optional(),
- costPerOutputToken: z.string().optional(),
- fallbackModelId: z.coerce.number().optional().nullable(),
- fallbackChoice: z.string().optional(),
- secondFallbackChoice: z.string().optional(),
-});
+  async function handleSave() {
+    if (!taskScope) { toast({ title: "Task scope required", variant: "destructive" }); return; }
+    if (!label.trim()) { toast({ title: "Slug required", variant: "destructive" }); return; }
+    if (!body.trim()) { toast({ title: "Body required", variant: "destructive" }); return; }
+    try {
+      if (mode === "edit" && existing) {
+        await create.mutateAsync({
+          data: {
+            taskScope: existing.taskScope,
+            label: existing.label,
+            version: existing.version + 1,
+            systemPrompt: body,
+            isActive: true,
+            roleLabel: roleLabel || existing.label,
+          },
+        });
+        await update.mutateAsync({ id: existing.id, data: { isActive: false } });
+      } else {
+        await create.mutateAsync({
+          data: {
+            taskScope,
+            label: label.trim(),
+            version: 1,
+            systemPrompt: body,
+            isActive: true,
+            roleLabel: roleLabel || label.trim(),
+          },
+        });
+      }
+      onSaved();
+    } catch (err) {
+      toast({ title: "Save failed", description: (err as Error).message, variant: "destructive" });
+    }
+  }
 
-type FormValues = z.infer<typeof configSchema>;
+  const busy = create.isPending || update.isPending;
 
-export default function AiConfigPage() {
- const { data: configs, isLoading } = useListAiModelConfigs();
- const createConfig = useCreateAiModelConfig();
- const updateConfig = useUpdateAiModelConfig();
- const deleteConfig = useDeleteAiModelConfig();
- 
- const [isDialogOpen, setIsDialogOpen] = useState(false);
- const [editingId, setEditingId] = useState<number | null>(null);
- const [isCustomScope, setIsCustomScope] = useState(false);
- const { toast } = useToast();
- const queryClient = useQueryClient();
+  return (
+    <Portal>
+    <div
+      style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.55)", display: "grid", placeItems: "center", padding: 24 }}
+      onClick={onClose}
+    >
+      <div
+        style={{ width: 640, maxHeight: "calc(100vh - 48px)", background: "var(--card)", border: "1px solid var(--line)", borderRadius: "var(--r-xl)", boxShadow: "var(--shadow-pop)", overflow: "hidden", display: "flex", flexDirection: "column" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="card-h">
+          <h2 className="card-title">
+            {mode === "edit" ? `Edit · ${existing?.label} — will create v${(existing?.version ?? 0) + 1}` : "New prompt version"}
+          </h2>
+          <button type="button" className="settings-x" onClick={onClose}><X size={14} strokeWidth={2} /></button>
+        </div>
+        <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12, overflowY: "auto" }}>
+          {mode === "add" && (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div>
+                <label className="label" style={{ display: "block", marginBottom: 5 }}>Task scope</label>
+                <select className="input" value={taskScope} onChange={(e) => setTaskScope(e.target.value)}>
+                  <option value="">— select —</option>
+                  {TASK_SCOPES.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="label" style={{ display: "block", marginBottom: 5 }}>Slug</label>
+                <input className="input" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. resume-opener" />
+              </div>
+            </div>
+          )}
+          {mode === "edit" && (
+            <div className="dim" style={{ fontSize: 12, padding: "6px 10px", background: "var(--paper-2)", borderRadius: 6 }}>
+              Scope: <span className="mono">{existing?.taskScope}</span> · Slug: <span className="mono">{existing?.label}</span>
+            </div>
+          )}
+          <div>
+            <label className="label" style={{ display: "block", marginBottom: 5 }}>Display name</label>
+            <input className="input" value={roleLabel} onChange={(e) => setRoleLabel(e.target.value)} placeholder="e.g. Resume Opener" />
+          </div>
+          <div>
+            <label className="label" style={{ display: "block", marginBottom: 5 }}>Prompt body</label>
+            <textarea
+              className="input" value={body} onChange={(e) => setBody(e.target.value)} rows={16}
+              style={{ resize: "vertical", fontFamily: "var(--font-mono)", fontSize: 12, lineHeight: 1.5 }}
+            />
+            {mode === "edit" && (
+              <div className="dim" style={{ fontSize: 11, marginTop: 4 }}>
+                Saving creates v{(existing?.version ?? 1) + 1} and archives v{existing?.version}.
+              </div>
+            )}
+          </div>
+        </div>
+        <div style={{ padding: "12px 20px", borderTop: "1px solid var(--line-soft)", display: "flex", justifyContent: "flex-end", gap: 8 }}>
+          <button type="button" className="btn ghost sm" onClick={onClose}>Cancel</button>
+          <button type="button" className="btn primary sm" disabled={busy} onClick={handleSave}>
+            {busy ? "Saving…" : mode === "edit" ? "Save new version" : "Create"}
+          </button>
+        </div>
+      </div>
+    </div>
+    </Portal>
+  );
+}
 
- const [healthReport, setHealthReport] = useState<ModelConfigHealthReport | null>(null);
- const [isReseeding, setIsReseeding] = useState(false);
+// ── Leaderboard card ──────────────────────────────────────────────────────────
 
- const fetchHealth = async () => {
-   try {
-     const res = await fetch("/api/admin/health/model-configs", { credentials: "include" });
-     if (res.ok || res.status === 207) {
-       setHealthReport((await res.json()) as ModelConfigHealthReport);
-     }
-   } catch {
-     // Non-critical — silently ignore
-   }
- };
-
- useEffect(() => {
-   void fetchHealth();
- }, [configs]);
-
- const handleReseed = async () => {
-   setIsReseeding(true);
-   try {
-     const res = await fetch("/api/admin/health/model-configs/reseed", {
-       method: "POST",
-       credentials: "include",
-     });
-     if (res.ok || res.status === 207) {
-       const report = (await res.json()) as ModelConfigHealthReport;
-       setHealthReport(report);
-       queryClient.invalidateQueries({ queryKey: getListAiModelConfigsQueryKey() });
-       if (report.healthy) {
-         toast({ title: "Configs repaired", description: "All required model configs are now active." });
-       } else {
-         toast({
-           title: "Partially repaired",
-           description: `Still unhealthy: ${report.unhealthyScopes.join(", ")}`,
-           variant: "destructive",
-         });
-       }
-     } else {
-       toast({ title: "Re-seed failed", description: "Server returned an error.", variant: "destructive" });
-     }
-   } catch {
-     toast({ title: "Re-seed failed", description: "Could not reach the server.", variant: "destructive" });
-   } finally {
-     setIsReseeding(false);
-   }
- };
-
- const form = useForm<FormValues>({
- resolver: zodResolver(configSchema),
- defaultValues: {
- taskScope: "default",
- provider: "openrouter",
- modelName: "",
- isActive: true,
- priority: 0,
- costPerInputToken: "",
- costPerOutputToken: "",
- fallbackModelId: null,
- fallbackChoice: "__none",
- secondFallbackChoice: "__none",
- },
- });
-
- const buildPayload = (data: FormValues) => ({
- taskScope: data.taskScope,
- provider: data.provider,
- modelName: data.modelName,
- isActive: data.isActive,
- priority: data.priority,
- costPerInputToken: data.costPerInputToken || undefined,
- costPerOutputToken: data.costPerOutputToken || undefined,
- fallbackModelId: data.fallbackModelId || undefined,
- });
-
- const resolveFallbackChoice = async (choice: string | undefined, data: FormValues, priorityOffset: number): Promise<number | undefined> => {
- if (!choice || choice === "__none") return undefined;
- if (choice.startsWith("config:")) return Number(choice.slice("config:".length));
- const modelName = choice.startsWith("model:") ? choice.slice("model:".length).trim() : choice.trim();
- if (!modelName) return undefined;
- if (modelName === data.modelName.trim()) {
-  throw new Error("Fallback model must be different from the primary model.");
- }
- const existing = configs?.find((config) => config.modelName === modelName && config.taskScope === data.taskScope);
- if (existing && existing.id !== editingId) return existing.id;
- const fallback = await createConfig.mutateAsync({
- data: {
- taskScope: data.taskScope,
- provider: data.provider,
- modelName,
- isActive: true,
- priority: data.priority + priorityOffset,
- },
- });
- return fallback.id;
- };
-
- const onSubmit = async (data: FormValues) => {
- try {
- const secondFallbackModelId = await resolveFallbackChoice(data.secondFallbackChoice, data, 2);
- const fallbackModelId = await resolveFallbackChoice(data.fallbackChoice, data, 1);
- if (fallbackModelId && secondFallbackModelId && fallbackModelId === secondFallbackModelId) {
- throw new Error("Fallback 1 and fallback 2 must be different configs.");
- }
- if (fallbackModelId && fallbackModelId !== editingId) {
- await updateConfig.mutateAsync({
- id: fallbackModelId,
- data: { fallbackModelId: secondFallbackModelId ?? null },
- });
- }
- const payload = {
- ...buildPayload(data),
- fallbackModelId,
- };
- if (editingId) {
- await updateConfig.mutateAsync({ id: editingId, data: payload });
- toast({ title: "Config updated" });
- } else {
- await createConfig.mutateAsync({ data: payload });
- toast({ title: "Config created" });
- }
- handleClose();
- queryClient.invalidateQueries({ queryKey: getListAiModelConfigsQueryKey() });
- } catch (error) {
- toast({
- title: editingId ? "Failed to update AI config" : "Failed to create AI config",
- description: getErrorMessage(error, "Please try again."),
- variant: "destructive",
- });
- }
- };
-
- const handleEdit = (c: AiModelConfig) => {
- setEditingId(c.id);
- const isCustom = !TASK_SCOPES.includes(c.taskScope);
- setIsCustomScope(isCustom);
- form.reset({
- taskScope: c.taskScope,
- provider: c.provider,
- modelName: c.modelName,
- isActive: c.isActive,
- priority: c.priority ?? 0,
- costPerInputToken: c.costPerInputToken ?? "",
- costPerOutputToken: c.costPerOutputToken ?? "",
- fallbackModelId: c.fallbackModelId ?? null,
- fallbackChoice: c.fallbackModelId ? `config:${c.fallbackModelId}` : "__none",
- secondFallbackChoice: configs?.find((config) => config.id === c.fallbackModelId)?.fallbackModelId
- ? `config:${configs.find((config) => config.id === c.fallbackModelId)?.fallbackModelId}`
- : "__none",
- });
- setIsDialogOpen(true);
- };
-
- const handleDelete = (id: number) => {
- if(confirm("Delete this config?")) {
- deleteConfig.mutate({ id }, {
- onSuccess: () => {
- toast({ title: "Config deleted" });
- queryClient.invalidateQueries({ queryKey: getListAiModelConfigsQueryKey() });
- },
- onError: (error) =>
- toast({
- title: "Failed to delete AI config",
- description: getErrorMessage(error, "Please try again."),
- variant: "destructive",
- }),
- });
- }
- };
-
- const handleClose = () => {
- setIsDialogOpen(false);
- setEditingId(null);
- setIsCustomScope(false);
- form.reset();
- };
-
- const getFallbackName = (id: number | undefined | null) => {
- if (!id) return null;
- const c = configs?.find(x => x.id === id);
- return c ? `${c.modelName} (${c.taskScope})` : `#${id}`;
- };
-
- const sortedConfigs = (configs ?? []).slice().sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0));
- const fallbackCandidates = (configs ?? []).filter((config) => config.id !== editingId);
- const firstFallbackChoice = form.watch("fallbackChoice");
- const getFallbackChain = (config: AiModelConfig) => {
- const first = configs?.find((item) => item.id === config.fallbackModelId);
- const second = first ? configs?.find((item) => item.id === first.fallbackModelId) : null;
- return {
- firstName: first ? `${first.modelName} (${first.taskScope})` : getFallbackName(config.fallbackModelId),
- secondName: second ? `${second.modelName} (${second.taskScope})` : null,
- };
- };
-
- return (
- <div>
- {healthReport && !healthReport.healthy && (
-   <div data-testid="model-config-health-banner">
-     <div>
-       <AlertTriangle />
-       <div>
-         <div>
-           <p>AI model config problem detected</p>
-           <Button
-             data-testid="btn-reseed-configs"
-             variant="outline"
-             size="sm"
-             onClick={() => void handleReseed()}
-             disabled={isReseeding}
-           >
-             <RefreshCw />
-             {isReseeding ? "Repairing…" : "Re-seed defaults"}
-           </Button>
-         </div>
-         <p>
-           The following scopes are missing an active model or a required fallback. AI generation will fail for these scopes until the configs are fixed.
-         </p>
-         <div>
-           {healthReport.scopes.filter((s) => !s.healthy).map((s) => (
-             <div key={s.scope}>
-               <span>{s.scope}</span>
-               {!s.hasActiveConfig && (
-                 <span>— no active model</span>
-               )}
-               {s.hasActiveConfig && s.requiresFallback && !s.fallbackWired && (
-                 <span>— fallback not wired</span>
-               )}
-             </div>
-           ))}
-         </div>
-       </div>
-     </div>
-   </div>
- )}
- {healthReport?.healthy && (
-   <div data-testid="model-config-health-ok">
-     <CheckCircle2 />
-     All required model configs are active and properly wired.
-   </div>
- )}
- <div>
- <div>
- <PageHeader
- title="AI Config"
- subtitle="Configure AI model defaults per task type, manage cost caps, and set fallback behavior."
- variant="data"
- />
- <p>
- Tune model + prompt + role + best practices for one task at once in the{" "}
- <Link to="/pipeline-diagram">
- AI Pipeline Hub
- </Link>
- .
- </p>
- </div>
-
- <Dialog open={isDialogOpen} onOpenChange={(open) => { if(!open) handleClose(); else setIsDialogOpen(true); }}>
- <DialogTrigger asChild>
- <Button data-testid="btn-add-config"><Plus/>New Config</Button>
- </DialogTrigger>
- <DialogContent>
- <DialogHeader>
- <DialogTitle>{editingId ? "Edit Config" : "New Config"}</DialogTitle>
- <DialogDescription>
- Add or update the model routing settings used by the AI pipelines.
- </DialogDescription>
- </DialogHeader>
- <Form {...form}>
- <form onSubmit={form.handleSubmit(onSubmit)}>
- <FormField control={form.control} name="taskScope" render={({field}) => (
- <FormItem>
- <FormLabel>Task Scope</FormLabel>
- <Select
- onValueChange={(v) => {
- if (v === "__custom") {
- setIsCustomScope(true);
- field.onChange("");
- } else {
- setIsCustomScope(false);
- field.onChange(v);
- }
- }}
- value={isCustomScope ? "__custom" : field.value}
- >
- <FormControl>
- <SelectTrigger data-testid="select-config-scope">
- <SelectValue placeholder="Select scope" />
- </SelectTrigger>
- </FormControl>
- <SelectContent>
- {TASK_SCOPES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
- <SelectItem value="__custom">Custom…</SelectItem>
- </SelectContent>
- </Select>
- {isCustomScope && (
- <FormControl>
- <Input
- value={field.value}
- placeholder="my_custom_scope"
- data-testid="input-config-scope"
- onChange={(e) => field.onChange(e.target.value)}
- />
- </FormControl>
- )}
- <FormMessage />
- </FormItem>
- )}/>
-
- <div>
- <FormField control={form.control} name="provider" render={({field}) => (
- <FormItem>
- <FormLabel>Provider</FormLabel>
- <FormControl><Input {...field} placeholder="openrouter" data-testid="input-config-provider"/></FormControl>
- <FormMessage />
- </FormItem>
- )}/>
- <FormField control={form.control} name="priority" render={({field}) => (
- <FormItem>
- <FormLabel>Priority</FormLabel>
- <FormControl><Input type="number" min={0} {...field} data-testid="input-config-priority"/></FormControl>
- <FormDescription>Lower = tried first</FormDescription>
- </FormItem>
- )}/>
- </div>
-
- <FormField control={form.control} name="modelName" render={({field}) => (
- <FormItem>
- <FormLabel>Model Name</FormLabel>
- <FormControl><Input {...field} placeholder="anthropic/claude-3-5-sonnet" data-testid="input-config-model"/></FormControl>
- <FormMessage />
- </FormItem>
- )}/>
-
- <Separator />
- <div>
- <FormField control={form.control} name="costPerInputToken" render={({field}) => (
- <FormItem>
- <FormLabel>Cost / Input Token ($)</FormLabel>
- <FormControl><Input {...field} placeholder="0.000003" data-testid="input-cost-in"/></FormControl>
- </FormItem>
- )}/>
- <FormField control={form.control} name="costPerOutputToken" render={({field}) => (
- <FormItem>
- <FormLabel>Cost / Output Token ($)</FormLabel>
- <FormControl><Input {...field} placeholder="0.000015" data-testid="input-cost-out"/></FormControl>
- </FormItem>
- )}/>
- </div>
-
- <FormField control={form.control} name="fallbackChoice" render={({field}) => (
- <FormItem>
- <FormLabel>Fallback Model 1</FormLabel>
- <Select
- onValueChange={field.onChange}
- value={field.value || "__none"}
- >
- <FormControl>
- <SelectTrigger data-testid="select-fallback-model">
- <SelectValue placeholder="No fallback" />
- </SelectTrigger>
- </FormControl>
- <SelectContent>
- <SelectItem value="__none">No fallback</SelectItem>
- {fallbackCandidates.length === 0 && (
- <SelectItem value="__empty" disabled>No saved fallback configs yet</SelectItem>
- )}
- {fallbackCandidates.map(c => (
- <SelectItem key={c.id} value={`config:${c.id}`}>
- {c.modelName} ({c.taskScope})
- </SelectItem>
- ))}
- {RECOMMENDED_FALLBACK_MODELS.map((model) => (
- <SelectItem key={model.id} value={`model:${model.id}`}>
- {model.label} - {model.id}
- </SelectItem>
- ))}
- </SelectContent>
- </Select>
- <FormDescription>Used first if the primary model fails. Recommended models are created as configs when saved.</FormDescription>
- </FormItem>
- )}/>
-
- <FormField control={form.control} name="secondFallbackChoice" render={({field}) => (
- <FormItem>
- <FormLabel>Fallback Model 2</FormLabel>
- <Select
- onValueChange={field.onChange}
- value={field.value || "__none"}
- disabled={!firstFallbackChoice || firstFallbackChoice === "__none"}
- >
- <FormControl>
- <SelectTrigger data-testid="select-second-fallback-model">
- <SelectValue placeholder="No second fallback" />
- </SelectTrigger>
- </FormControl>
- <SelectContent>
- <SelectItem value="__none">No second fallback</SelectItem>
- {fallbackCandidates.map(c => (
- <SelectItem key={c.id} value={`config:${c.id}`}>
- {c.modelName} ({c.taskScope})
- </SelectItem>
- ))}
- {RECOMMENDED_FALLBACK_MODELS.map((model) => (
- <SelectItem key={model.id} value={`model:${model.id}`}>
- {model.label} - {model.id}
- </SelectItem>
- ))}
- </SelectContent>
- </Select>
- <FormDescription>
- Optional. If fallback 1 fails, routing follows this third model.
- </FormDescription>
- <FormMessage />
- </FormItem>
- )}/>
-
- <div>
- <p>Recommended low-cost long-context fallbacks</p>
- <p>Best for strict resume JSON because they support response format and structured outputs.</p>
- <div>
- {RECOMMENDED_FALLBACK_MODELS.slice(0, 5).map((model) => (
- <span key={model.id}>{model.label}: {model.note}</span>
- ))}
- </div>
- </div>
-
- <FormField control={form.control} name="isActive" render={({field}) => (
- <FormItem>
- <div>
- <FormLabel>Active</FormLabel>
- <FormDescription>Inactive models are skipped; fallback is used instead.</FormDescription>
- </div>
- <FormControl>
- <Switch checked={field.value} onCheckedChange={field.onChange} data-testid="switch-config-active"/>
- </FormControl>
- </FormItem>
- )}/>
-
- <Button type="submit" disabled={createConfig.isPending || updateConfig.isPending} data-testid="btn-submit-config">
- {editingId ? "Update Config" : "Create Config"}
- </Button>
- </form>
- </Form>
- </DialogContent>
- </Dialog>
- </div>
-
- {isLoading ? <Skeleton /> : sortedConfigs.length === 0 ? (
-  <div>
-  <Settings />
-  <h3>No AI configs yet</h3>
-  <p>Create your first model config to enable AI pipelines.</p>
-  </div>
- ) : (
- <div>
- {sortedConfigs.map(c => {
- const fallbackChain = getFallbackChain(c);
- return (
-  <div key={c.id} data-testid={`card-config-${c.id}`}>
-  <div>
- <div>
- <div>
- <div>
- <Badge>{c.taskScope}</Badge>
- {!c.isActive && <Badge variant="outline">Inactive</Badge>}
- <span>Priority: {c.priority ?? 0}</span>
- </div>
- <div title={c.modelName}>{c.modelName}</div>
- <div>{c.provider}</div>
- </div>
- <div>
- <Button variant="ghost" size="icon" onClick={() => handleEdit(c)} data-testid={`btn-edit-config-${c.id}`}><Pencil/></Button>
- <Button variant="ghost" size="icon" onClick={() => handleDelete(c.id)} data-testid={`btn-delete-config-${c.id}`}><Trash2/></Button>
- </div>
- </div>
-
- {(c.costPerInputToken || c.costPerOutputToken) && (
- <div>
- {c.costPerInputToken && <span>In: ${c.costPerInputToken}/tok</span>}
- {c.costPerOutputToken && <span>Out: ${c.costPerOutputToken}/tok</span>}
- </div>
- )}
-
- {fallbackChain.firstName && (
- <div>
- <ArrowRight />
- Fallback: <span>{fallbackChain.firstName}</span>
- {fallbackChain.secondName && (
- <>
- <ArrowRight />
- <span>{fallbackChain.secondName}</span>
- </>
- )}
- </div>
- )}
-  </div>
-  </div>
- );
- })}
- </div>
- )}
- </div>
- );
+function PromptVariantCard({
+  label, version, name, winProb, samples, accent,
+}: {
+  label: string; version: string; name: string; winProb: number; samples: number; accent?: boolean;
+}) {
+  return (
+    <div className="card flat" style={{
+      flex: 1, padding: 18,
+      background: accent ? "var(--accent-bg)" : "var(--paper-2)",
+      borderColor: accent ? "var(--accent-line)" : "var(--line-soft)",
+    }}>
+      <div className="label" style={{ marginBottom: 8, color: accent ? "var(--accent-ink)" : "var(--ink-4)" }}>{label}</div>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 4 }}>
+        <span className="h-display" style={{ fontSize: 28, color: accent ? "var(--accent-ink)" : "var(--ink)" }}>{version}</span>
+        <span className="mono" style={{ fontSize: 12, color: accent ? "var(--accent-ink)" : "var(--ink-3)" }}>{samples} samples</span>
+      </div>
+      <div className="dim" style={{ fontSize: 12, marginBottom: 10, color: accent ? "var(--accent-ink)" : "var(--ink-3)" }}>{name}</div>
+      <div style={{ marginBottom: 6, fontSize: 11, color: accent ? "var(--accent-ink)" : "var(--ink-4)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Win prob</div>
+      <div className="bar" style={{ background: "rgba(255,255,255,0.5)" }}>
+        <i style={{ width: `${winProb * 100}%` }} />
+      </div>
+      <div className="mono" style={{ fontSize: 16, marginTop: 6, color: accent ? "var(--accent-ink)" : "var(--ink)" }}>
+        {Math.round(winProb * 100)}%
+      </div>
+    </div>
+  );
 }

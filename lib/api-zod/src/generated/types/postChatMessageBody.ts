@@ -18,4 +18,9 @@ export interface PostChatMessageBody {
   /** @minimum 1 */
   modelConfigId?: number;
   jdParseEnabled?: boolean;
+  /**
+   * Explicitly selected skill slugs for this turn. Only used when skillRoutingMode is 'explicit'.
+   * @maxItems 2
+   */
+  explicitSkillSlugs?: string[];
 }

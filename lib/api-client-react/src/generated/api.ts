@@ -109,6 +109,7 @@ import type {
   NukeJobAttempts200,
   ParseJobBody,
   PostChatMessageBody,
+  PreviewChatRoute200,
   PreviewPromptBody,
   ProjectSource,
   PromptSection,
@@ -6221,6 +6222,90 @@ export const useUpdateAiPromptVersion = <
 };
 
 /**
+ * @summary Delete an AI prompt version
+ */
+export const getDeleteAiPromptVersionUrl = (id: number) => {
+  return `/api/ai-prompt-versions/${id}`;
+};
+
+export const deleteAiPromptVersion = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteAiPromptVersionUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteAiPromptVersionMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAiPromptVersion>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteAiPromptVersion>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteAiPromptVersion"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteAiPromptVersion>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteAiPromptVersion(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteAiPromptVersionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteAiPromptVersion>>
+>;
+
+export type DeleteAiPromptVersionMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete an AI prompt version
+ */
+export const useDeleteAiPromptVersion = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAiPromptVersion>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteAiPromptVersion>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteAiPromptVersionMutationOptions(options));
+};
+
+/**
  * @summary List AI run evaluations
  */
 export const getListAiRunEvaluationsUrl = (
@@ -10880,6 +10965,92 @@ export const usePreviewChatPrompt = <
   TContext
 > => {
   return useMutation(getPreviewChatPromptMutationOptions(options));
+};
+
+/**
+ * @summary Simulate skill routing for a sample message (router simulator)
+ */
+export const getPreviewChatRouteUrl = () => {
+  return `/api/chat/route-preview`;
+};
+
+export const previewChatRoute = async (
+  previewPromptBody: PreviewPromptBody,
+  options?: RequestInit,
+): Promise<PreviewChatRoute200> => {
+  return customFetch<PreviewChatRoute200>(getPreviewChatRouteUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(previewPromptBody),
+  });
+};
+
+export const getPreviewChatRouteMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof previewChatRoute>>,
+    TError,
+    { data: BodyType<PreviewPromptBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof previewChatRoute>>,
+  TError,
+  { data: BodyType<PreviewPromptBody> },
+  TContext
+> => {
+  const mutationKey = ["previewChatRoute"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof previewChatRoute>>,
+    { data: BodyType<PreviewPromptBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return previewChatRoute(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PreviewChatRouteMutationResult = NonNullable<
+  Awaited<ReturnType<typeof previewChatRoute>>
+>;
+export type PreviewChatRouteMutationBody = BodyType<PreviewPromptBody>;
+export type PreviewChatRouteMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Simulate skill routing for a sample message (router simulator)
+ */
+export const usePreviewChatRoute = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof previewChatRoute>>,
+    TError,
+    { data: BodyType<PreviewPromptBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof previewChatRoute>>,
+  TError,
+  { data: BodyType<PreviewPromptBody> },
+  TContext
+> => {
+  return useMutation(getPreviewChatRouteMutationOptions(options));
 };
 
 /**

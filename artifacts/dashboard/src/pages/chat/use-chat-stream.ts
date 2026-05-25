@@ -13,9 +13,15 @@ export interface StreamingTurn {
   error: string | null;
   /** Set when the server fell back to a secondary model mid-request. */
   fallbackModel: string | null;
+  /** True while the JD pre-parse (haiku) is running. */
+  jdParsing: boolean;
+  /** True once the JD pre-parse completed successfully. */
+  jdParsed: boolean;
+  /** Populated when the server emits a skill-routing decision. */
+  skillRouting: { selectedSlugs: string[]; reason?: string } | null;
 }
 
-const INITIAL: StreamingTurn = { text: "", messageId: null, active: false, error: null, fallbackModel: null };
+const INITIAL: StreamingTurn = { text: "", messageId: null, active: false, error: null, fallbackModel: null, jdParsing: false, jdParsed: false, skillRouting: null };
 
 /**
  * SSE chat stream hook.
@@ -26,7 +32,7 @@ const INITIAL: StreamingTurn = { text: "", messageId: null, active: false, error
  */
 export function useChatStream(opts: { onDone?: () => void } = {}): {
   state: StreamingTurn;
-  send: (threadId: number, content: string, attachments: ChatAttachment[], modelConfigId?: number, jdParseEnabled?: boolean) => Promise<void>;
+  send: (threadId: number, content: string, attachments: ChatAttachment[], modelConfigId?: number, jdParseEnabled?: boolean, explicitSkillSlugs?: string[]) => Promise<void>;
   stop: () => void;
   reset: () => void;
 } {
@@ -42,10 +48,10 @@ export function useChatStream(opts: { onDone?: () => void } = {}): {
   }, []);
 
   const send = useCallback(
-    async (threadId: number, content: string, attachments: ChatAttachment[], modelConfigId?: number, jdParseEnabled?: boolean) => {
+    async (threadId: number, content: string, attachments: ChatAttachment[], modelConfigId?: number, jdParseEnabled?: boolean, explicitSkillSlugs?: string[]) => {
       const controller = new AbortController();
       abortRef.current = controller;
-      setState({ text: "", messageId: null, active: true, error: null, fallbackModel: null });
+      setState({ text: "", messageId: null, active: true, error: null, fallbackModel: null, jdParsing: false, jdParsed: false, skillRouting: null });
 
       let response: Response;
       try {
@@ -53,7 +59,7 @@ export function useChatStream(opts: { onDone?: () => void } = {}): {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content, attachments, modelConfigId, jdParseEnabled }),
+          body: JSON.stringify({ content, attachments, modelConfigId, jdParseEnabled, explicitSkillSlugs }),
           signal: controller.signal,
         });
       } catch (err) {
@@ -108,7 +114,7 @@ export function useChatStream(opts: { onDone?: () => void } = {}): {
         }
         const dataRaw = dataLines.join("\n");
         if (!dataRaw) return;
-        let data: { token?: string; messageId?: number; message?: string; fallbackModel?: string; originalModel?: string };
+        let data: { token?: string; messageId?: number; message?: string; fallbackModel?: string; originalModel?: string; selectedSlugs?: string[]; reason?: string };
         try {
           data = JSON.parse(dataRaw);
         } catch {
@@ -130,6 +136,22 @@ export function useChatStream(opts: { onDone?: () => void } = {}): {
         }
         if (event === "fallback") {
           setState((s) => ({ ...s, fallbackModel: data.fallbackModel ?? null }));
+          return;
+        }
+        if (event === "jd-parsing") {
+          setState((s) => ({ ...s, jdParsing: true }));
+          return;
+        }
+        if (event === "jd-parsed") {
+          setState((s) => ({ ...s, jdParsing: false, jdParsed: true }));
+          return;
+        }
+        if (event === "jd-parse-failed") {
+          setState((s) => ({ ...s, jdParsing: false }));
+          return;
+        }
+        if (event === "skill-routing") {
+          setState((s) => ({ ...s, skillRouting: { selectedSlugs: data.selectedSlugs ?? [], reason: data.reason } }));
           return;
         }
         if (event === "user-message") {

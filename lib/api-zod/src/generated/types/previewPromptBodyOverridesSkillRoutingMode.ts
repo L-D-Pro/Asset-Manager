@@ -10,6 +10,8 @@ export type PreviewPromptBodyOverridesSkillRoutingMode =
   (typeof PreviewPromptBodyOverridesSkillRoutingMode)[keyof typeof PreviewPromptBodyOverridesSkillRoutingMode];
 
 export const PreviewPromptBodyOverridesSkillRoutingMode = {
-  all: "all",
-  classified: "classified",
+  none: "none",
+  auto: "auto",
+  explicit: "explicit",
+  debug_all: "debug_all",
 } as const;

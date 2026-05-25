@@ -11,6 +11,7 @@ export type PromptSectionLever =
 
 export const PromptSectionLever = {
   identity: "identity",
+  skill_catalog: "skill_catalog",
   skill: "skill",
   best_practices: "best_practices",
   attachments: "attachments",

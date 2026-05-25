@@ -1,6 +1,6 @@
 # Data Model
 
-Last updated: April 17, 2026 (M002 S01 lineage contract added)
+Last updated: May 16, 2026
 
 Job Ops uses PostgreSQL with Drizzle ORM. Most primary keys are serial integers. The schema is grouped by operational domain.
 
@@ -549,7 +549,7 @@ Key fields:
 - `is_active`
 - `metadata`
 
-## Auth and Legacy Tables
+## Auth and User Management
 
 ### `admin_users`
 
@@ -559,6 +559,78 @@ Single-user admin auth, password hash, email, TOTP, recovery codes.
 
 `connect-pg-simple` session store table.
 
-### `conversations` and `messages`
+### `invite_codes`
 
-Legacy/future chat scaffolding. Not used by current routes or dashboard pages.
+Admin-generated invite codes for gating registration. Includes usage tracking, expiry, and code validation. Admin-only CRUD; public validate endpoint.
+
+### `user_usage_limits`
+
+Per-user soft limits on AI operations (e.g. resumes tailored per day). Admin-managed.
+
+### `waitlist`
+
+Email capture for pre-launch signups. Not tied to auth flow.
+
+## Chat
+
+### `conversations`
+
+Thread-per-conversation model. Fields: `title`, `userId`, `metadata`, timestamps.
+
+### `messages`
+
+Individual messages within a conversation. Fields: `conversationId`, `role` (user/assistant/system), `content`, `attachments` (JSONB), `metadata`, timestamps. Supports per-message feedback.
+
+## Gamification
+
+### `user_stats`
+
+Per-user aggregate: `totalXp`, `currentLevel`, `currentStreak`, `longestStreak`, `questsCompleted`, `achievementsUnlocked`.
+
+### `xp_log`
+
+Append-only XP event log. Fields: `userId`, `actionType`, `xpAmount`, `metadata`.
+
+### `achievements`
+
+Achievement definitions. Fields: `slug`, `name`, `description`, `iconName`, `xpReward`, `criteriaType`, `criteriaValue`, `isHidden`.
+
+### `user_achievements`
+
+Join table recording which achievements each user has unlocked and when.
+
+### `quests`
+
+Quest definitions with step sequences and XP rewards.
+
+### `user_quests`
+
+Per-user quest progress: acceptance, step completion, completion timestamps.
+
+## Job Board
+
+### `job_sources`
+
+RSS/Atom feed configurations for job aggregation. Fields: `key`, `name`, `feedUrl`, `sourceType`, `category`, `keywords`, `isActive`, `lastFetchedAt`.
+
+### `job_listings`
+
+Aggregated job listings from configured sources. Fields: `sourceId`, `externalId`, `title`, `company`, `location`, `description`, `url`, `postedAt`, `isActive`, `metadata`.
+
+## Platform / UX
+
+### `wizard_sessions`
+
+Multi-step guided flow state. Fields: `userId`, `jobId`, `currentStep`, `state` (JSONB). Used by the Apply Wizard.
+
+### `user_onboarding`
+
+Per-user onboarding progress. Tracks which steps are complete, hints dismissed, and welcome-seen state.
+
+### `best_practices`
+
+Admin-curated tips and best-practice entries surfaced in the dashboard guide.
+
+### `feedback`
+
+User-submitted in-app feedback (rating, comment, category). Not to be confused with `feedback_signals` (AI learning) or per-message chat feedback.

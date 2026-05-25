@@ -7,15 +7,9 @@ import {
   getListAiModelConfigsQueryKey,
   type AiModelConfig,
 } from "@workspace/api-client-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { getErrorMessage } from "@/lib/api-errors";
 import { AI_PIPELINE_OVERVIEW_QUERY_KEY } from "../useAiPipelineOverview";
-
-interface ModelTabProps {
-  taskScope: string;
-}
 
 interface ModelFormState {
   modelName: string;
@@ -28,13 +22,12 @@ interface ModelFormState {
 
 function pickPrimary(configs: AiModelConfig[]): AiModelConfig | undefined {
   if (configs.length === 0) return undefined;
-  const active = configs.find((entry) => entry.isActive);
-  return active ?? configs[0];
+  return configs.find((c) => c.isActive) ?? configs[0];
 }
 
 function findFallback(configs: AiModelConfig[], id: number | null | undefined): AiModelConfig | undefined {
   if (id == null) return undefined;
-  return configs.find((entry) => entry.id === id);
+  return configs.find((c) => c.id === id);
 }
 
 function readTemperature(config: AiModelConfig | undefined): string {
@@ -45,7 +38,7 @@ function readTemperature(config: AiModelConfig | undefined): string {
   return "";
 }
 
-export function ModelTab({ taskScope }: ModelTabProps) {
+export function ModelTab({ taskScope }: { taskScope: string }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data, isLoading } = useListAiModelConfigs({ taskScope });
@@ -55,12 +48,8 @@ export function ModelTab({ taskScope }: ModelTabProps) {
   const secondFallback = findFallback(configs, fallback?.fallbackModelId);
 
   const [form, setForm] = useState<ModelFormState>({
-    modelName: "",
-    fallbackModelId: "",
-    secondFallbackModelId: "",
-    temperature: "",
-    maxTokens: "",
-    isActive: false,
+    modelName: "", fallbackModelId: "", secondFallbackModelId: "",
+    temperature: "", maxTokens: "", isActive: false,
   });
 
   useEffect(() => {
@@ -84,40 +73,29 @@ export function ModelTab({ taskScope }: ModelTabProps) {
         queryClient.invalidateQueries({ queryKey: getListAiModelConfigsQueryKey({ taskScope }) });
         queryClient.invalidateQueries({ queryKey: AI_PIPELINE_OVERVIEW_QUERY_KEY });
       },
-      onError: (error) =>
-        toast({
-          title: "Failed to update model config",
-          description: getErrorMessage(error, "Please try again."),
-          variant: "destructive",
-        }),
+      onError: (error) => toast({
+        title: "Failed to update model config",
+        description: getErrorMessage(error, "Please try again."),
+        variant: "destructive",
+      }),
     },
   });
 
-  if (isLoading) {
-    return <p>Loading model config...</p>;
-  }
+  if (isLoading) return <div className="dim" style={{ fontSize: 13 }}>Loading model config…</div>;
 
   if (!primary) {
     return (
-      <div>
-        <p>
-          No model config for {taskScope}.
-        </p>
-        <Link to="/ai-config">
-          Create one in AI Config
-        </Link>
+      <div className="dim" style={{ fontSize: 13 }}>
+        No model config for <span className="mono">{taskScope}</span>.{" "}
+        <Link to="/ai-config" style={{ color: "var(--accent)" }}>Create one in AI Config</Link>.
       </div>
     );
   }
 
-  const handleSave = () => {
+  function handleSave() {
     const trimmedModel = form.modelName.trim();
     if (!trimmedModel) {
-      toast({
-        title: "Model name required",
-        description: "Enter a model name (e.g., anthropic/claude-3.5-haiku).",
-        variant: "destructive",
-      });
+      toast({ title: "Model name required", description: "Enter a model name (e.g., anthropic/claude-3.5-haiku).", variant: "destructive" });
       return;
     }
 
@@ -158,7 +136,7 @@ export function ModelTab({ taskScope }: ModelTabProps) {
       fallbackId = parsed;
     }
 
-    const extraConfig: Record<string, unknown> = { ...primary.extraConfig };
+    const extraConfig: Record<string, unknown> = { ...primary!.extraConfig };
     if (temperatureNumber !== undefined) {
       extraConfig.temperature = temperatureNumber;
     } else {
@@ -166,7 +144,7 @@ export function ModelTab({ taskScope }: ModelTabProps) {
     }
 
     updateConfig.mutate({
-      id: primary.id,
+      id: primary!.id,
       data: {
         modelName: trimmedModel,
         isActive: form.isActive,
@@ -175,78 +153,84 @@ export function ModelTab({ taskScope }: ModelTabProps) {
         extraConfig,
       },
     });
-  };
+  }
 
   return (
-    <div>
-      <div>
-        <div>
-          <label htmlFor="model-name">Primary Model</label>
-          <Input
-            id="model-name"
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div className="field">
+          <label>Primary model</label>
+          <input
+            className="input"
             value={form.modelName}
-            onChange={(event) => setForm({ ...form, modelName: event.target.value })}
+            onChange={(e) => setForm({ ...form, modelName: e.target.value })}
             placeholder="anthropic/claude-3.5-haiku"
           />
-          <p>Provider: {primary.provider}</p>
+          <div className="dim" style={{ fontSize: 11.5, marginTop: 3 }}>
+            Provider: <span className="mono">{primary.provider}</span>
+          </div>
         </div>
 
-        <div>
-          <label htmlFor="model-temperature">Temperature</label>
-          <Input
-            id="model-temperature"
+        <div className="field">
+          <label>Fallback config ID</label>
+          <input
+            className="input"
+            value={form.fallbackModelId}
+            onChange={(e) => setForm({ ...form, fallbackModelId: e.target.value })}
+            placeholder={fallback ? String(fallback.id) : "—"}
+            inputMode="numeric"
+          />
+          <div className="dim" style={{ fontSize: 11.5, marginTop: 3 }}>
+            {fallback ? `→ ${fallback.modelName}` : "No fallback wired."}
+            {secondFallback ? ` → ${secondFallback.modelName}` : ""}
+          </div>
+        </div>
+
+        <div className="field">
+          <label>Temperature</label>
+          <input
+            className="input"
             value={form.temperature}
-            onChange={(event) => setForm({ ...form, temperature: event.target.value })}
+            onChange={(e) => setForm({ ...form, temperature: e.target.value })}
             placeholder="0.2"
             inputMode="decimal"
           />
         </div>
 
-        <div>
-          <label htmlFor="model-max-tokens">Max Tokens</label>
-          <Input
-            id="model-max-tokens"
+        <div className="field">
+          <label>Max tokens</label>
+          <input
+            className="input"
             value={form.maxTokens}
-            onChange={(event) => setForm({ ...form, maxTokens: event.target.value })}
+            onChange={(e) => setForm({ ...form, maxTokens: e.target.value })}
             placeholder="4000"
             inputMode="numeric"
           />
         </div>
+      </div>
 
-        <div>
-          <label htmlFor="model-fallback">Fallback Config ID</label>
-          <Input
-            id="model-fallback"
-            value={form.fallbackModelId}
-            onChange={(event) => setForm({ ...form, fallbackModelId: event.target.value })}
-            placeholder={fallback ? String(fallback.id) : "-"}
-            inputMode="numeric"
-          />
-          <p>
-            {fallback ? `Currently: ${fallback.modelName}` : "No fallback wired."}
-            {secondFallback ? ` -> ${secondFallback.modelName}` : ""}
-          </p>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              checked={form.isActive}
+              onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
+            />
+            <span>Active</span>
+          </label>
+          <Link to="/ai-config" style={{ fontSize: 12.5, color: "var(--accent)" }}>
+            Open full editor in AI Config →
+          </Link>
         </div>
-      </div>
-
-      <div>
-        <label>
-          <input
-            type="checkbox"
-            checked={form.isActive}
-            onChange={(event) => setForm({ ...form, isActive: event.target.checked })}
-          />
-          Active
-        </label>
-        <Button onClick={handleSave} disabled={updateConfig.isPending}>
-          {updateConfig.isPending ? "Saving..." : "Save changes"}
-        </Button>
-      </div>
-
-      <div>
-        <Link to="/ai-config">
-          Open full editor in AI Config
-        </Link>
+        <button
+          type="button"
+          className="btn primary sm"
+          onClick={handleSave}
+          disabled={updateConfig.isPending}
+        >
+          {updateConfig.isPending ? "Saving…" : "Save changes"}
+        </button>
       </div>
     </div>
   );

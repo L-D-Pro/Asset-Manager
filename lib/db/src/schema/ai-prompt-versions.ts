@@ -59,3 +59,25 @@ export const insertAiPromptVersionSchema = createInsertSchema(
 
 export type InsertAiPromptVersion = z.infer<typeof insertAiPromptVersionSchema>;
 export type AiPromptVersion = typeof aiPromptVersionsTable.$inferSelect;
+
+/**
+ * Skill routing metadata stored in the `metadata` JSONB column.
+ *
+ * Describes how a prompt version participates in the skill router so we can
+ * classify user messages deterministically or via LLM without re-reading the
+ * full skill body text.
+ */
+export interface ChatSkillMetadata {
+  /** Short, human-readable description used by deterministic rules / LLM classifier */
+  routerDescription: string;
+  /** Positive trigger examples the classifier looks for */
+  triggerExamples: string[];
+  /** Patterns that explicitly exclude this skill (negative prompts) */
+  negativeTriggers: string[];
+  /** OpenRouter `task_types` values this skill handles (e.g. `"chat"`, `"summarize"` ) */
+  taskTypes: string[];
+  /** Priority among competing skills — higher wins the route */
+  priority: number;
+  /** Lifecycle state controlling whether the skill participates in routing */
+  status: "active" | "draft" | "deprecated";
+}

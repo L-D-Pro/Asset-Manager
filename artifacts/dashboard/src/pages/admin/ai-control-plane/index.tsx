@@ -13,13 +13,14 @@ import {
   useCreateChatLeverPreset,
   useDeleteChatLeverPreset,
   useApplyChatLeverPreset,
-  usePreviewChatPrompt,
+  usePreviewChatRoute,
   getGetChatLeverConfigQueryKey,
   getListAiPromptVersionsQueryKey,
   getListChatLeverPresetsQueryKey,
   type AiPromptVersion,
   type ChatLeverPreset,
   type PromptSection,
+  type RoutingDecision,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/context/auth";
 import { toast } from "@/hooks/use-toast";
@@ -67,6 +68,8 @@ export default function AiControlPlanePage() {
       skillsEnabled: previewPreset.snapshot.skillsEnabled,
       bestPracticesEnabled: previewPreset.snapshot.bestPracticesEnabled,
       skillRoutingMode: previewPreset.snapshot.skillRoutingMode,
+      skillTokenBudget: previewPreset.snapshot.skillTokenBudget ?? config.skillTokenBudget,
+      maxSelectedSkills: previewPreset.snapshot.maxSelectedSkills ?? config.maxSelectedSkills,
     };
   }, [config, previewPreset]);
 
@@ -103,17 +106,18 @@ export default function AiControlPlanePage() {
         <>
           <PresetBar
             presets={presets}
+            promptVersions={promptVersions}
             previewPreset={previewPreset}
             onPreviewChange={setPreviewPreset}
             onApplied={() => { setPreviewPreset(null); invalidateAll(); toast({ title: "Preset applied" }); }}
-            onSaved={() => { invalidateAll(); toast({ title: "Preset saved" }); }}
+            onSaved={() => { invalidateAll(); }}
             onDeleted={() => { setPreviewPreset(null); invalidateAll(); toast({ title: "Preset deleted" }); }}
             onUpdated={() => { invalidateAll(); }}
           />
           <IdentityCard
             identityText={displayed.identityText}
             isPreview={!!previewPreset}
-            onSaved={() => { invalidateAll(); toast({ title: "Identity updated" }); }}
+            onSaved={() => { invalidateAll(); toast({ title: "Identity saved" }); }}
           />
           <SkillsCard
             skillsEnabled={displayed.skillsEnabled}
@@ -125,14 +129,16 @@ export default function AiControlPlanePage() {
           <BestPracticesCard
             bestPracticesEnabled={displayed.bestPracticesEnabled}
             isPreview={!!previewPreset}
-            onChanged={() => { invalidateAll(); toast({ title: "Best practices lever updated" }); }}
+            onChanged={() => { invalidateAll(); toast({ title: "Best practices updated" }); }}
           />
           <RoutingCard
             skillRoutingMode={displayed.skillRoutingMode}
+            skillTokenBudget={displayed.skillTokenBudget}
+            maxSelectedSkills={displayed.maxSelectedSkills}
             isPreview={!!previewPreset}
             onChanged={() => { invalidateAll(); }}
           />
-          <InspectorCard />
+          <InspectorCard promptVersions={promptVersions} />
         </>
       ) : (
         <div className="dim" style={{ padding: "32px 0", textAlign: "center", fontSize: 13 }}>Loading…</div>
@@ -199,14 +205,16 @@ function LeverCard({ title, subtitle, right, children }: {
 
 // ── Preset bar ────────────────────────────────────────────────────────────
 
-function PresetBar({ presets, previewPreset, onPreviewChange, onApplied, onSaved, onDeleted, onUpdated }: {
+function PresetBar({ presets, promptVersions, previewPreset, onPreviewChange, onApplied, onSaved, onDeleted, onUpdated }: {
   presets: ChatLeverPreset[];
+  promptVersions: AiPromptVersion[];
   previewPreset: ChatLeverPreset | null;
   onPreviewChange: (p: ChatLeverPreset | null) => void;
   onApplied: () => void; onSaved: () => void; onDeleted: () => void; onUpdated: () => void;
 }) {
   const [selectedId, setSelectedId] = useState<number | "">("");
   const [saveOpen, setSaveOpen] = useState(false);
+  const [newPresetOpen, setNewPresetOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [updating, setUpdating] = useState(false);
   const apply = useApplyChatLeverPreset();
@@ -231,7 +239,7 @@ function PresetBar({ presets, previewPreset, onPreviewChange, onApplied, onSaved
       const res = await fetch(`/api/chat/lever-presets/${selectedId}`, { method: "PATCH", credentials: "include" });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Update failed");
       onUpdated();
-      toast({ title: "Preset updated" });
+      toast({ title: "Preset overwritten" });
     } catch (err) {
       toast({ title: "Update failed", description: (err as Error).message, variant: "destructive" });
     } finally {
@@ -242,13 +250,23 @@ function PresetBar({ presets, previewPreset, onPreviewChange, onApplied, onSaved
     if (!newName.trim()) { toast({ title: "Name required", variant: "destructive" }); return; }
     try {
       await create.mutateAsync({ data: { name: newName.trim() } });
-      setNewName(""); setSaveOpen(false); onSaved();
+      setNewName(""); setSaveOpen(false);
+      onSaved();
+      toast({ title: "Preset saved" });
     } catch (err) { toast({ title: "Save failed", description: (err as Error).message, variant: "destructive" }); }
   }
   async function handleDelete() {
     if (selectedId === "") return;
     try { await del.mutateAsync({ id: Number(selectedId) }); handleSelect(""); onDeleted(); }
     catch (err) { toast({ title: "Delete failed", description: (err as Error).message, variant: "destructive" }); }
+  }
+
+  function handleCreated(created: ChatLeverPreset) {
+    setNewPresetOpen(false);
+    setSelectedId(created.id);
+    onPreviewChange(created);
+    onSaved();
+    toast({ title: "Preset created" });
   }
 
   return (
@@ -267,8 +285,14 @@ function PresetBar({ presets, previewPreset, onPreviewChange, onApplied, onSaved
         <button type="button" className="btn sm" disabled={selectedId === "" || apply.isPending} onClick={handleApply}>
           Apply
         </button>
-        <button type="button" className="btn ghost sm" disabled={selectedId === "" || updating} onClick={handleUpdate}>
-          <Save size={12} strokeWidth={1.8} /> {updating ? "Saving…" : "Update"}
+        <button
+          type="button"
+          className="btn ghost sm"
+          disabled={selectedId === "" || updating}
+          onClick={handleUpdate}
+          title="Re-snapshot the current live state into this preset"
+        >
+          <Save size={12} strokeWidth={1.8} /> {updating ? "Saving…" : "Overwrite"}
         </button>
         <button type="button" className="btn ghost sm" disabled={selectedId === ""} onClick={handleDelete}>
           <Trash2 size={12} strokeWidth={1.8} /> Delete
@@ -285,9 +309,14 @@ function PresetBar({ presets, previewPreset, onPreviewChange, onApplied, onSaved
             <button type="button" className="btn ghost sm" onClick={() => setSaveOpen(false)}><X size={12} strokeWidth={2} /></button>
           </span>
         ) : (
-          <button type="button" className="btn accent sm" onClick={() => setSaveOpen(true)}>
-            <Camera size={12} strokeWidth={1.8} /> Save current as preset
-          </button>
+          <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <button type="button" className="btn ghost sm" onClick={() => setNewPresetOpen(true)}>
+              <Plus size={12} strokeWidth={1.8} /> New preset
+            </button>
+            <button type="button" className="btn accent sm" onClick={() => setSaveOpen(true)}>
+              <Camera size={12} strokeWidth={1.8} /> Save current as preset
+            </button>
+          </span>
         )}
       </div>
       {previewPreset && (
@@ -297,11 +326,23 @@ function PresetBar({ presets, previewPreset, onPreviewChange, onApplied, onSaved
           borderRadius: 6, fontSize: 12, color: "var(--accent-ink, var(--ink-2))",
         }}>
           <Eye size={12} strokeWidth={1.8} />
-          <span>Previewing <strong>{previewPreset.name}</strong> — values shown below. Click <strong>Apply</strong> to make this the live config.</span>
+          <span style={{ lineHeight: 1.5 }}>
+            Previewing <strong>{previewPreset.name}</strong>.{" "}
+            Cards below show this preset's values — editing them updates the{" "}
+            <em>live config</em>, not the preset. To save live edits back into this preset, click{" "}
+            <strong>Overwrite</strong>.
+          </span>
           <button type="button" className="btn ghost sm" style={{ marginLeft: "auto", padding: "2px 6px", fontSize: 11 }} onClick={() => handleSelect("")}>
             <X size={10} strokeWidth={2} /> Clear
           </button>
         </div>
+      )}
+      {newPresetOpen && (
+        <NewPresetModal
+          promptVersions={promptVersions}
+          onClose={() => setNewPresetOpen(false)}
+          onCreated={handleCreated}
+        />
       )}
     </div>
   );
@@ -355,6 +396,35 @@ function latestPerLabel(rows: AiPromptVersion[]): AiPromptVersion[] {
     if (!cur || r.version > cur.version) byLabel.set(r.label, r);
   }
   return [...byLabel.values()].sort((a, b) => a.label.localeCompare(b.label));
+}
+
+/** Small priority + status badges derived from a skill's router metadata. */
+function SkillMetaBadges({ metadata }: { metadata: unknown }) {
+  const m = (metadata ?? {}) as { priority?: number; status?: string };
+  const status = m.status ?? "active";
+  const chip = (text: string, color: string) => (
+    <span style={{ fontSize: 9.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color, border: `1px solid ${color}`, borderRadius: 4, padding: "0 4px" }}>{text}</span>
+  );
+  return (
+    <>
+      {typeof m.priority === "number" && chip(`P${m.priority}`, "var(--ink-4)")}
+      {status === "draft" && chip("draft", "var(--warn)")}
+      {status === "deprecated" && chip("deprecated", "var(--danger, #d73a49)")}
+    </>
+  );
+}
+
+function TriggerSummary({ metadata }: { metadata: unknown }) {
+  const m = (metadata ?? {}) as { triggerExamples?: string[]; negativeTriggers?: string[] };
+  const triggers = m.triggerExamples ?? [];
+  const negatives = m.negativeTriggers ?? [];
+  if (triggers.length === 0 && negatives.length === 0) return null;
+  return (
+    <div className="dim" style={{ fontSize: 10.5, marginTop: 3, lineHeight: 1.4 }}>
+      {triggers.length > 0 && <span>triggers: {triggers.slice(0, 2).join(", ")}{triggers.length > 2 ? ` +${triggers.length - 2} more` : ""}</span>}
+      {negatives.length > 0 && <span style={{ marginLeft: 8 }}>negatives: {negatives.slice(0, 2).join(", ")}{negatives.length > 2 ? ` +${negatives.length - 2} more` : ""}</span>}
+    </div>
+  );
 }
 
 function SkillsCard({ skillsEnabled, promptVersions, previewActiveIds, isPreview, onChanged }: {
@@ -422,6 +492,11 @@ function SkillsCard({ skillsEnabled, promptVersions, previewActiveIds, isPreview
       }
     >
       <div style={{ opacity: skillsEnabled ? 1 : 0.45, display: "flex", flexDirection: "column", gap: 8 }}>
+        {isPreview && skills.length > 0 && (
+          <div className="dim" style={{ fontSize: 11.5, padding: "4px 2px" }}>
+            Skills are system-wide. This preset controls which ones are active — toggles are disabled in preview mode.
+          </div>
+        )}
         {skills.length === 0 && (
           <div className="dim" style={{ fontSize: 12.5, textAlign: "center", padding: "8px 0" }}>
             No chat skills yet. Add one or run the chat seed.
@@ -435,8 +510,12 @@ function SkillsCard({ skillsEnabled, promptVersions, previewActiveIds, isPreview
               padding: "8px 10px", border: "1px solid var(--line-soft)", borderRadius: 8,
             }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 600 }}>{v.roleLabel ?? v.label}</div>
+                <div style={{ fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
+                  {v.roleLabel ?? v.label}
+                  <SkillMetaBadges metadata={v.metadata} />
+                </div>
                 <div className="dim mono" style={{ fontSize: 11, marginTop: 2 }}>{v.label} · v{v.version}</div>
+                <TriggerSummary metadata={v.metadata} />
               </div>
               {!isPreview && (
                 confirmRemove?.id === v.id ? (
@@ -572,15 +651,38 @@ function SkillEditorModal({ mode, existing, prefill, onClose, onSaved }: {
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const existingMeta = (existing?.metadata ?? {}) as {
+    routerDescription?: string; triggerExamples?: string[]; negativeTriggers?: string[];
+    taskTypes?: string[]; priority?: number; status?: string;
+  };
   const [label, setLabel] = useState(prefill?.label ?? existing?.label ?? "");
   const [roleLabel, setRoleLabel] = useState(prefill?.roleLabel ?? existing?.roleLabel ?? "");
   const [body, setBody] = useState(prefill?.body ?? existing?.systemPrompt ?? "");
+  const [routerDescription, setRouterDescription] = useState(existingMeta.routerDescription ?? "");
+  const [triggers, setTriggers] = useState((existingMeta.triggerExamples ?? []).join("\n"));
+  const [negatives, setNegatives] = useState((existingMeta.negativeTriggers ?? []).join("\n"));
+  const [taskTypesStr, setTaskTypesStr] = useState((existingMeta.taskTypes ?? ["chat"]).join(", "));
+  const [priority, setPriority] = useState(existingMeta.priority ?? 50);
+  const [status, setStatus] = useState(existingMeta.status ?? "active");
   const create = useCreateAiPromptVersion();
   const update = useUpdateAiPromptVersion();
+
+  function buildMeta() {
+    const lines = (s: string) => s.split("\n").map((x) => x.trim()).filter(Boolean);
+    return {
+      routerDescription: routerDescription.trim(),
+      triggerExamples: lines(triggers),
+      negativeTriggers: lines(negatives),
+      taskTypes: taskTypesStr.split(",").map((x) => x.trim()).filter(Boolean),
+      priority: Number(priority) || 50,
+      status,
+    };
+  }
 
   async function handleSave() {
     if (!label.trim()) { toast({ title: "Slug required", variant: "destructive" }); return; }
     if (!body.trim()) { toast({ title: "Body required", variant: "destructive" }); return; }
+    const metadata = buildMeta();
     try {
       if (mode === "edit" && existing) {
         // Immutable versioning: insert v+1 active, deactivate the prior version.
@@ -592,6 +694,7 @@ function SkillEditorModal({ mode, existing, prefill, onClose, onSaved }: {
             systemPrompt: body,
             isActive: true,
             roleLabel: roleLabel || existing.label,
+            metadata,
           },
         });
         await update.mutateAsync({ id: existing.id, data: { isActive: false } });
@@ -604,6 +707,7 @@ function SkillEditorModal({ mode, existing, prefill, onClose, onSaved }: {
             systemPrompt: body,
             isActive: true,
             roleLabel: roleLabel || label.trim(),
+            metadata,
           },
         });
       }
@@ -643,7 +747,7 @@ function SkillEditorModal({ mode, existing, prefill, onClose, onSaved }: {
           <div>
             <label className="label" style={{ display: "block", marginBottom: 5 }}>Skill body</label>
             <textarea
-              className="input" value={body} onChange={(e) => setBody(e.target.value)} rows={14}
+              className="input" value={body} onChange={(e) => setBody(e.target.value)} rows={12}
               style={{ resize: "vertical", fontFamily: "var(--font-mono)", fontSize: 12, lineHeight: 1.5 }}
             />
             {mode === "edit" && (
@@ -651,6 +755,63 @@ function SkillEditorModal({ mode, existing, prefill, onClose, onSaved }: {
                 Saving creates v{(existing?.version ?? 1) + 1} and deactivates v{existing?.version}.
               </div>
             )}
+          </div>
+
+          <div style={{ borderTop: "1px solid var(--line-soft)", paddingTop: 12 }}>
+            <div className="label" style={{ marginBottom: 8 }}>Router metadata</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div>
+                <label className="label" style={{ display: "block", marginBottom: 4, fontSize: 11 }}>Router description</label>
+                <input
+                  className="input" value={routerDescription} onChange={(e) => setRouterDescription(e.target.value)}
+                  placeholder="One line the router + catalog use to decide when this skill applies."
+                  style={{ fontSize: 12.5 }}
+                />
+              </div>
+              <div style={{ display: "flex", gap: 10 }}>
+                <div style={{ flex: 1 }}>
+                  <label className="label" style={{ display: "block", marginBottom: 4, fontSize: 11 }}>Trigger examples (one per line)</label>
+                  <textarea
+                    className="input" value={triggers} onChange={(e) => setTriggers(e.target.value)} rows={4}
+                    placeholder={"tailor my resume\nresume for this job"}
+                    style={{ resize: "vertical", fontSize: 12 }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label className="label" style={{ display: "block", marginBottom: 4, fontSize: 11 }}>Negative triggers (one per line)</label>
+                  <textarea
+                    className="input" value={negatives} onChange={(e) => setNegatives(e.target.value)} rows={4}
+                    placeholder={"cover letter"}
+                    style={{ resize: "vertical", fontSize: 12 }}
+                  />
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
+                <div style={{ flex: 1 }}>
+                  <label className="label" style={{ display: "block", marginBottom: 4, fontSize: 11 }}>Task types (comma-separated)</label>
+                  <input className="input" value={taskTypesStr} onChange={(e) => setTaskTypesStr(e.target.value)} style={{ fontSize: 12.5 }} />
+                </div>
+                <div>
+                  <label className="label" style={{ display: "block", marginBottom: 4, fontSize: 11 }}>Priority</label>
+                  <input
+                    type="number" className="input" value={priority}
+                    onChange={(e) => setPriority(Number(e.target.value))}
+                    style={{ width: 80, fontSize: 12.5 }}
+                  />
+                </div>
+                <div>
+                  <label className="label" style={{ display: "block", marginBottom: 4, fontSize: 11 }}>Status</label>
+                  <select className="input" value={status} onChange={(e) => setStatus(e.target.value)} style={{ width: 120, fontSize: 12.5 }}>
+                    <option value="active">active</option>
+                    <option value="draft">draft</option>
+                    <option value="deprecated">deprecated</option>
+                  </select>
+                </div>
+              </div>
+              <div className="dim" style={{ fontSize: 11 }}>
+                Lower priority wins ties. Deprecated skills are excluded from routing and the catalog.
+              </div>
+            </div>
           </div>
         </div>
         <div style={{ padding: "12px 20px", borderTop: "1px solid var(--line-soft)", display: "flex", justifyContent: "flex-end", gap: 8 }}>
@@ -661,6 +822,164 @@ function SkillEditorModal({ mode, existing, prefill, onClose, onSaved }: {
         </div>
       </div>
     </div>
+    </Portal>
+  );
+}
+
+// ── New-preset modal ──────────────────────────────────────────────────────
+
+function NewPresetModal({ promptVersions, onClose, onCreated }: {
+  promptVersions: AiPromptVersion[];
+  onClose: () => void;
+  onCreated: (preset: ChatLeverPreset) => void;
+}) {
+  const [name, setName] = useState("");
+  const [identityText, setIdentityText] = useState("");
+  const [skillsEnabled, setSkillsEnabled] = useState(false);
+  const [bestPracticesEnabled, setBestPracticesEnabled] = useState(false);
+  const [skillRoutingMode, setSkillRoutingMode] = useState<string>("auto");
+  const [skillTokenBudget, setSkillTokenBudget] = useState(1500);
+  const [maxSelectedSkills, setMaxSelectedSkills] = useState(1);
+  const skills = useMemo(() => latestPerLabel(promptVersions), [promptVersions]);
+  const [activeSkillIds, setActiveSkillIds] = useState<Set<number>>(new Set());
+  const [saving, setSaving] = useState(false);
+
+  function toggleSkill(id: number) {
+    setActiveSkillIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  async function handleCreate() {
+    if (!name.trim()) { toast({ title: "Name required", variant: "destructive" }); return; }
+    setSaving(true);
+    try {
+      const res = await fetch("/api/chat/lever-presets/template", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          snapshot: {
+            identityText,
+            skillsEnabled,
+            bestPracticesEnabled,
+            skillRoutingMode,
+            skillTokenBudget,
+            maxSelectedSkills,
+            activePromptVersionIds: [...activeSkillIds],
+          },
+        }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Create failed");
+      const created: ChatLeverPreset = await res.json();
+      onCreated(created);
+    } catch (err) {
+      toast({ title: "Create failed", description: (err as Error).message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Portal>
+      <div
+        style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.55)", display: "grid", placeItems: "center", padding: 24 }}
+        onClick={onClose}
+      >
+        <div
+          style={{ width: 560, maxHeight: "85vh", background: "var(--card)", border: "1px solid var(--line)", borderRadius: "var(--r-xl)", boxShadow: "var(--shadow-pop)", overflow: "hidden", display: "flex", flexDirection: "column" }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="card-h">
+            <h2 className="card-title">New preset from template</h2>
+            <button type="button" className="settings-x" onClick={onClose}><X size={14} strokeWidth={2} /></button>
+          </div>
+          <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14, overflowY: "auto" }}>
+            <div>
+              <label className="label" style={{ display: "block", marginBottom: 5 }}>Name</label>
+              <input
+                className="input" autoFocus value={name} onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Skills on · no best-practices"
+              />
+            </div>
+            <div>
+              <label className="label" style={{ display: "block", marginBottom: 5 }}>Identity text</label>
+              <textarea
+                className="input" value={identityText} onChange={(e) => setIdentityText(e.target.value)} rows={3}
+                placeholder="Leave blank to start with an empty identity block."
+                style={{ resize: "vertical", fontFamily: "var(--font-ui)", fontSize: 13, lineHeight: 1.5 }}
+              />
+            </div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span className="label">Skills enabled</span>
+              <Toggle checked={skillsEnabled} onChange={() => setSkillsEnabled((v) => !v)} />
+            </div>
+            {skills.length > 0 && (
+              <div style={{ opacity: skillsEnabled ? 1 : 0.4, display: "flex", flexDirection: "column", gap: 6 }}>
+                <span className="label" style={{ fontSize: 11 }}>Active skills in this preset</span>
+                {skills.map((v) => (
+                  <label key={v.id} style={{ display: "flex", alignItems: "center", gap: 8, cursor: skillsEnabled ? "pointer" : "default", fontSize: 13 }}>
+                    <input
+                      type="checkbox"
+                      checked={activeSkillIds.has(v.id)}
+                      onChange={() => toggleSkill(v.id)}
+                      disabled={!skillsEnabled}
+                    />
+                    {v.roleLabel ?? v.label}
+                    <span className="dim mono" style={{ fontSize: 11 }}>v{v.version}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span className="label">Best practices</span>
+              <Toggle checked={bestPracticesEnabled} onChange={() => setBestPracticesEnabled((v) => !v)} />
+            </div>
+            <div>
+              <span className="label" style={{ display: "block", marginBottom: 6 }}>Skill routing</span>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {ROUTING_MODES.map(([mode, label]) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    className={`btn sm${skillRoutingMode === mode ? " accent" : " ghost"}`}
+                    onClick={() => setSkillRoutingMode(mode)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 14 }}>
+              <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <span className="label" style={{ fontSize: 11 }}>Token budget</span>
+                <input
+                  type="number" className="input" min={0} step={100} value={skillTokenBudget}
+                  onChange={(e) => setSkillTokenBudget(Number(e.target.value))}
+                  style={{ width: 120, fontSize: 12.5 }}
+                />
+              </label>
+              <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <span className="label" style={{ fontSize: 11 }}>Max skills (1–2)</span>
+                <input
+                  type="number" className="input" min={1} max={2} value={maxSelectedSkills}
+                  onChange={(e) => setMaxSelectedSkills(Math.max(1, Math.min(2, Number(e.target.value))))}
+                  style={{ width: 90, fontSize: 12.5 }}
+                />
+              </label>
+            </div>
+          </div>
+          <div style={{ padding: "12px 20px", borderTop: "1px solid var(--line-soft)", display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <button type="button" className="btn ghost sm" onClick={onClose}>Cancel</button>
+            <button type="button" className="btn primary sm" disabled={saving} onClick={handleCreate}>
+              {saving ? "Creating…" : "Create preset"}
+            </button>
+          </div>
+        </div>
+      </div>
     </Portal>
   );
 }
@@ -693,43 +1012,94 @@ function BestPracticesCard({ bestPracticesEnabled, isPreview, onChanged }: {
 
 // ── Routing card ──────────────────────────────────────────────────────────
 
-function RoutingCard({ skillRoutingMode, isPreview, onChanged }: { skillRoutingMode: string; isPreview?: boolean; onChanged: () => void }) {
-  const update = useUpdateChatLeverConfig();
-  const [savedMode, setSavedMode] = useState<string | null>(null);
+const ROUTING_MODES = [
+  ["none", "None", "Never inject a skill body — catalog only."],
+  ["auto", "Auto", "Deterministic rules first; LLM resolves ambiguous cases. No fallback-to-all."],
+  ["explicit", "Explicit", "Inject only the skill(s) the user picks in the chat composer."],
+  ["debug_all", "Debug · all", "Inject every active skill body (bypasses cap + budget)."],
+] as const;
 
-  async function setMode(mode: "all" | "classified") {
+function RoutingCard({ skillRoutingMode, skillTokenBudget, maxSelectedSkills, isPreview, onChanged }: {
+  skillRoutingMode: string;
+  skillTokenBudget: number;
+  maxSelectedSkills: number;
+  isPreview?: boolean;
+  onChanged: () => void;
+}) {
+  const update = useUpdateChatLeverConfig();
+  const [budget, setBudget] = useState(skillTokenBudget);
+  const [maxSkills, setMaxSkills] = useState(maxSelectedSkills);
+
+  useEffect(() => { setBudget(skillTokenBudget); }, [skillTokenBudget]);
+  useEffect(() => { setMaxSkills(maxSelectedSkills); }, [maxSelectedSkills]);
+
+  const activeDesc = ROUTING_MODES.find(([m]) => m === skillRoutingMode)?.[2];
+
+  async function setMode(mode: string) {
     if (mode === skillRoutingMode || isPreview) return;
     try {
-      await update.mutateAsync({ data: { skillRoutingMode: mode } });
+      await update.mutateAsync({ data: { skillRoutingMode: mode as never } });
       onChanged();
-      setSavedMode(mode);
-      setTimeout(() => setSavedMode(null), 2000);
-    }
-    catch (err) { toast({ title: "Update failed", description: (err as Error).message, variant: "destructive" }); }
+    } catch (err) { toast({ title: "Update failed", description: (err as Error).message, variant: "destructive" }); }
   }
+
+  async function saveNumbers() {
+    if (isPreview) return;
+    try {
+      await update.mutateAsync({ data: { skillTokenBudget: budget, maxSelectedSkills: maxSkills } });
+      onChanged();
+      toast({ title: "Routing limits saved" });
+    } catch (err) { toast({ title: "Update failed", description: (err as Error).message, variant: "destructive" }); }
+  }
+
+  const numbersDirty = budget !== skillTokenBudget || maxSkills !== maxSelectedSkills;
 
   return (
     <LeverCard
       title="Skill routing"
-      subtitle="How many skills load per turn — exposes the intent classifier as a lever."
+      subtitle="How skills are selected per turn — progressive disclosure with a token budget."
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        {([["all", "Load all active skills"], ["classified", "Route by intent classifier"]] as const).map(([mode, label]) => (
-          <button
-            key={mode}
-            type="button"
-            className={`btn sm${skillRoutingMode === mode ? " accent" : " ghost"}`}
-            disabled={update.isPending || isPreview}
-            onClick={() => setMode(mode)}
-          >
-            {label}
-          </button>
-        ))}
-        {savedMode && !isPreview && (
-          <span style={{ fontSize: 11.5, color: "var(--success, #2da44e)", display: "flex", alignItems: "center", gap: 4 }}>
-            ✓ {savedMode === "all" ? "Loading all skills" : "Intent routing active"}
-          </span>
-        )}
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          {ROUTING_MODES.map(([mode, label]) => (
+            <button
+              key={mode}
+              type="button"
+              className={`btn sm${skillRoutingMode === mode ? " accent" : " ghost"}`}
+              disabled={update.isPending || isPreview}
+              onClick={() => setMode(mode)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {activeDesc && <div className="dim" style={{ fontSize: 12 }}>{activeDesc}</div>}
+
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 14, flexWrap: "wrap" }}>
+          <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <span className="label" style={{ fontSize: 11 }}>Token budget (skill bodies)</span>
+            <input
+              type="number" className="input" min={0} step={100} value={budget}
+              disabled={isPreview}
+              onChange={(e) => setBudget(Number(e.target.value))}
+              style={{ width: 130, fontSize: 12.5 }}
+            />
+          </label>
+          <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <span className="label" style={{ fontSize: 11 }}>Max skills (1–2)</span>
+            <input
+              type="number" className="input" min={1} max={2} value={maxSkills}
+              disabled={isPreview}
+              onChange={(e) => setMaxSkills(Math.max(1, Math.min(2, Number(e.target.value))))}
+              style={{ width: 90, fontSize: 12.5 }}
+            />
+          </label>
+          {!isPreview && (
+            <button type="button" className="btn primary sm" disabled={!numbersDirty || update.isPending} onClick={saveNumbers}>
+              <Save size={12} strokeWidth={1.8} /> Save limits
+            </button>
+          )}
+        </div>
       </div>
     </LeverCard>
   );
@@ -739,21 +1109,32 @@ function RoutingCard({ skillRoutingMode, isPreview, onChanged }: { skillRoutingM
 
 const LEVER_COLOR: Record<string, string> = {
   identity: "var(--accent)",
+  skill_catalog: "var(--ink-3)",
   skill: "var(--info, var(--accent))",
   best_practices: "var(--warn)",
   attachments: "var(--success)",
 };
 
-function InspectorCard() {
+function InspectorCard({ promptVersions }: { promptVersions: AiPromptVersion[] }) {
   const [sample, setSample] = useState("Help me tailor my resume for this job.");
   const [sections, setSections] = useState<PromptSection[] | null>(null);
-  const preview = usePreviewChatPrompt();
+  const [decision, setDecision] = useState<RoutingDecision | null>(null);
+  const [explicit, setExplicit] = useState<string[]>([]);
+  const route = usePreviewChatRoute();
+  const skills = useMemo(() => latestPerLabel(promptVersions), [promptVersions]);
+
+  function toggleExplicit(slug: string) {
+    setExplicit((prev) => (prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug].slice(0, 2)));
+  }
 
   async function run() {
     if (!sample.trim()) return;
     try {
-      const result = await preview.mutateAsync({ data: { sampleMessage: sample.trim() } });
-      setSections(result as PromptSection[]);
+      const result = await route.mutateAsync({
+        data: { sampleMessage: sample.trim(), explicitSkillSlugs: explicit.length > 0 ? explicit : undefined },
+      });
+      setDecision(result.decision);
+      setSections(result.sections as PromptSection[]);
     } catch (err) {
       toast({ title: "Preview failed", description: (err as Error).message, variant: "destructive" });
     }
@@ -761,20 +1142,61 @@ function InspectorCard() {
 
   return (
     <LeverCard
-      title="Prompt inspector"
-      subtitle="See exactly what the model reads, given the current lever state."
+      title="Router simulator"
+      subtitle="See which skills the router selects and exactly what the model reads, for a sample message."
     >
-      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+      <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
         <input
           className="input"
           value={sample}
           onChange={(e) => setSample(e.target.value)}
           placeholder="A sample user message…"
         />
-        <button type="button" className="btn primary sm" disabled={preview.isPending} onClick={run}>
-          <Eye size={12} strokeWidth={1.8} /> {preview.isPending ? "…" : "Preview"}
+        <button type="button" className="btn primary sm" disabled={route.isPending} onClick={run}>
+          <Eye size={12} strokeWidth={1.8} /> {route.isPending ? "…" : "Route"}
         </button>
       </div>
+      {skills.length > 0 && (
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+          <span className="dim" style={{ fontSize: 11 }}>Explicit picks (≤2):</span>
+          {skills.map((v) => (
+            <button
+              key={v.id}
+              type="button"
+              className={`btn sm${explicit.includes(v.label) ? " accent" : " ghost"}`}
+              style={{ padding: "2px 8px", fontSize: 11 }}
+              onClick={() => toggleExplicit(v.label)}
+            >
+              {v.roleLabel ?? v.label}
+            </button>
+          ))}
+        </div>
+      )}
+      {decision && (
+        <div style={{
+          marginBottom: 12, padding: "10px 12px", borderRadius: 8,
+          background: "var(--paper-2)", border: "1px solid var(--line-soft)", fontSize: 12.5,
+        }}>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+            <span><strong>Selected:</strong> {decision.selectedSlugs.length > 0 ? decision.selectedSlugs.join(", ") : "none"}</span>
+            <span className="dim">confidence {decision.confidence.toFixed(2)}</span>
+            <span className="dim">{decision.skillPromptTokens} tok</span>
+            {decision.llmUsed && <span style={{ color: "var(--info, var(--accent))" }}>LLM used</span>}
+            {decision.budgetTrimmed && <span style={{ color: "var(--warn)" }}>budget-trimmed</span>}
+          </div>
+          <div className="dim" style={{ marginTop: 4 }}>{decision.reason}</div>
+        </div>
+      )}
+      {decision && decision.candidates.length > 0 && (
+        <div style={{ marginBottom: 12, fontSize: 11.5, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+          <span className="dim">Candidates:</span>
+          {decision.candidates.map((c) => (
+            <span key={c.slug} style={{ padding: "1px 6px", borderRadius: 4, background: "var(--paper-2)", border: "1px solid var(--line-soft)" }}>
+              {c.slug} <span className="dim">{c.score.toFixed(2)}</span>
+            </span>
+          ))}
+        </div>
+      )}
       {sections && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {sections.length === 0 && (

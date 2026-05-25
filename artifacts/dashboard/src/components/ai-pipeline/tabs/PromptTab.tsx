@@ -6,16 +6,9 @@ import {
   getListAiPromptVersionsQueryKey,
   getGetAiReviewOverviewQueryKey,
 } from "@workspace/api-client-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { getErrorMessage } from "@/lib/api-errors";
 import { AI_PIPELINE_OVERVIEW_QUERY_KEY } from "../useAiPipelineOverview";
-
-interface PromptTabProps {
-  taskScope: string;
-}
 
 interface PromptFormState {
   label: string;
@@ -24,17 +17,14 @@ interface PromptFormState {
   isActive: boolean;
 }
 
-export function PromptTab({ taskScope }: PromptTabProps) {
+export function PromptTab({ taskScope }: { taskScope: string }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data, isLoading } = useListAiPromptVersions({ taskScope, isActive: true });
   const activePrompt = data?.[0];
 
   const [form, setForm] = useState<PromptFormState>({
-    label: "",
-    systemPrompt: "",
-    userPromptTemplate: "",
-    isActive: false,
+    label: "", systemPrompt: "", userPromptTemplate: "", isActive: false,
   });
 
   useEffect(() => {
@@ -52,36 +42,33 @@ export function PromptTab({ taskScope }: PromptTabProps) {
     mutation: {
       onSuccess: () => {
         toast({ title: "Prompt updated" });
-        queryClient.invalidateQueries({
-          queryKey: getListAiPromptVersionsQueryKey({ taskScope, isActive: true }),
-        });
+        queryClient.invalidateQueries({ queryKey: getListAiPromptVersionsQueryKey({ taskScope, isActive: true }) });
         queryClient.invalidateQueries({ queryKey: getGetAiReviewOverviewQueryKey() });
         queryClient.invalidateQueries({ queryKey: AI_PIPELINE_OVERVIEW_QUERY_KEY });
       },
-      onError: (error) =>
-        toast({
-          title: "Failed to update prompt",
-          description: getErrorMessage(error, "Please try again."),
-          variant: "destructive",
-        }),
+      onError: (error) => toast({
+        title: "Failed to update prompt",
+        description: getErrorMessage(error, "Please try again."),
+        variant: "destructive",
+      }),
     },
   });
 
   if (isLoading) {
-    return <p>Loading prompt...</p>;
+    return <div className="dim" style={{ fontSize: 13 }}>Loading prompt…</div>;
   }
 
   if (!activePrompt) {
     return (
-      <div>
-        No active prompt version for {taskScope}. Create one in AI Review to start editing here.
+      <div className="dim" style={{ fontSize: 13 }}>
+        No active prompt version for <span className="mono">{taskScope}</span>. Create one in AI Review to start editing here.
       </div>
     );
   }
 
-  const handleSave = () => {
+  function handleSave() {
     updatePrompt.mutate({
-      id: activePrompt.id,
+      id: activePrompt!.id,
       data: {
         label: form.label,
         systemPrompt: form.systemPrompt,
@@ -89,53 +76,62 @@ export function PromptTab({ taskScope }: PromptTabProps) {
         isActive: form.isActive,
       },
     });
-  };
+  }
 
   return (
-    <div>
-      <div>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div className="field">
         <label>Label</label>
-        <Input
+        <input
+          className="input"
           value={form.label}
-          onChange={(event) => setForm({ ...form, label: event.target.value })}
+          onChange={(e) => setForm({ ...form, label: e.target.value })}
           placeholder="e.g., baseline-v1"
         />
       </div>
 
-      <div>
-        <label>System Prompt</label>
-        <Textarea
+      <div className="field">
+        <label>System prompt</label>
+        <textarea
+          className="input"
           value={form.systemPrompt}
-          onChange={(event) => setForm({ ...form, systemPrompt: event.target.value })}
+          onChange={(e) => setForm({ ...form, systemPrompt: e.target.value })}
+          rows={8}
+          style={{ resize: "vertical", fontFamily: "var(--font-mono)", fontSize: 12.5 }}
         />
       </div>
 
-      <div>
-        <label>User Prompt Template</label>
-        <Textarea
+      <div className="field">
+        <label>User prompt template</label>
+        <textarea
+          className="input"
           value={form.userPromptTemplate}
-          onChange={(event) => setForm({ ...form, userPromptTemplate: event.target.value })}
+          onChange={(e) => setForm({ ...form, userPromptTemplate: e.target.value })}
+          rows={4}
+          style={{ resize: "vertical", fontFamily: "var(--font-mono)", fontSize: 12.5 }}
         />
-        <p>
-          Use {"{{userPrompt}}"} where runtime content should be inserted.
-        </p>
+        <div className="dim" style={{ fontSize: 11.5, marginTop: 4 }}>
+          Use <span className="mono">{"{{userPrompt}}"}</span> where runtime content should be inserted.
+        </div>
       </div>
 
-      <div>
-        <label>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer" }}>
           <input
             type="checkbox"
             checked={form.isActive}
-            onChange={(event) => setForm({ ...form, isActive: event.target.checked })}
+            onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
           />
-          Active (used for production calls)
+          <span>Active <span className="dim">(used for production calls)</span></span>
         </label>
-        <Button
+        <button
+          type="button"
+          className="btn primary sm"
           onClick={handleSave}
           disabled={updatePrompt.isPending || !form.label || !form.systemPrompt}
         >
-          {updatePrompt.isPending ? "Saving..." : "Save changes"}
-        </Button>
+          {updatePrompt.isPending ? "Saving…" : "Save changes"}
+        </button>
       </div>
     </div>
   );

@@ -10,6 +10,8 @@ export type ChatLeverConfigSkillRoutingMode =
   (typeof ChatLeverConfigSkillRoutingMode)[keyof typeof ChatLeverConfigSkillRoutingMode];
 
 export const ChatLeverConfigSkillRoutingMode = {
-  all: "all",
-  classified: "classified",
+  none: "none",
+  auto: "auto",
+  explicit: "explicit",
+  debug_all: "debug_all",
 } as const;

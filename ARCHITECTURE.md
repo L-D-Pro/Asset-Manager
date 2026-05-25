@@ -1,6 +1,6 @@
 # Architecture
 
-Last updated: May 10, 2026
+Last updated: May 16, 2026
 
 ## Workspace Layout
 
@@ -66,8 +66,11 @@ Primary operational domains:
 - Audit/learning: `event_logs`, `feedback_signals`, `ai_model_configs`, `ai_prompt_versions`, `ai_run_evaluations`, `ai_training_examples`, `ai_variant_stats`, `ai_variant_comparisons`, `ai_learning_config`
 - Assisted apply: `site_adapters`, `application_sessions`, `application_form_fields`, `application_actions`
 - Freelance copilot: `freelance_profiles`, `project_sources`, `freelance_projects`, `proposal_versions`, `proposal_outcomes`, `client_message_templates`
-- Auth/session: `admin_users`, `session`
-- Legacy/unused chat scaffolding: `conversations`, `messages`
+- Auth/user management: `admin_users`, `session`, `invite_codes`, `user_usage_limits`, `waitlist`
+- Chat: `conversations`, `messages`
+- Gamification: `user_stats`, `xp_log`, `achievements`, `user_achievements`, `quests`, `user_quests`
+- Job board: `job_sources`, `job_listings`
+- Platform/UX: `wizard_sessions`, `user_onboarding`, `best_practices`, `feedback`
 
 ## AI Runtime
 
@@ -132,6 +135,8 @@ Pipeline prompts externalized into `ai_prompt_versions` as DB-seeded agent roles
 | Market Researcher | `market_research` | market-research.ts |
 | Gap Analyst | `gap_analysis` | gap-analysis.ts |
 | Job Researcher | `job_research` | job-research.ts |
+| Fact Reviewer | `fact_review` | fact-review.ts |
+| Resume Profile Builder | `resume_to_profile` | resume-to-profile.ts |
 
 Each role has personality, goals, and skill tags configured in the database. The prompt-router resolves the active version at call time, falling back to the in-code `SYSTEM_PROMPT` constant when no DB version exists.
 
@@ -142,6 +147,11 @@ Current AI-producing flows:
 - resume tailoring
 - cover letter drafting
 - freelance proposal drafting
+- market research
+- gap analysis
+- job research
+- resume-to-profile extraction
+- fact review
 
 ## Truth-Lock Design
 

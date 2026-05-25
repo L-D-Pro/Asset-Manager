@@ -20,7 +20,7 @@ import { aiPromptVersionsTable } from "./ai-prompt-versions";
  * Snapshots are captured into a user message at send time so re-running an old
  * thread sees the same context the assistant originally saw.
  */
-export const messageAttachmentKinds = ["base_resume", "job", "claims"] as const;
+export const messageAttachmentKinds = ["base_resume", "job", "claims", "document"] as const;
 export type MessageAttachmentKind = (typeof messageAttachmentKinds)[number];
 
 /**

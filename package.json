@@ -2,7 +2,7 @@
   "name": "workspace",
   "version": "0.0.0",
   "license": "MIT",
-  "packageManager": "pnpm@10.26.1",
+  "packageManager": "pnpm@11.1.2+sha512.415a1cc25974731e75455c1468371be74c5aa5fb7621b50d4056d222451609f11412f23fd602e6169f1e060466641f798597e1be961a10688836a67b16569499",
   "engines": {
     "node": ">=24.0.0"
   },
@@ -10,7 +10,7 @@
     "preinstall": "node -e \"const fs=require('fs'); for (const f of ['package-lock.json','yarn.lock']) if (fs.existsSync(f)) fs.rmSync(f); if (!(process.env.npm_config_user_agent || '').startsWith('pnpm/')) { console.error('Use pnpm instead'); process.exit(1); }\"",
     "start": "node --enable-source-maps artifacts/api-server/dist/index.mjs",
     "dev": "corepack pnpm -r --parallel --filter @workspace/api-server --filter @workspace/dashboard run dev",
-    "build": "corepack pnpm run typecheck && corepack pnpm --filter @workspace/api-server run build && corepack pnpm --filter @workspace/dashboard run build && corepack pnpm --filter @workspace/mockup-sandbox run build",
+    "build": "corepack pnpm run typecheck && corepack pnpm --filter @workspace/api-server run build && corepack pnpm --filter @workspace/dashboard run build",
     "typecheck:libs": "tsc --build",
     "typecheck": "corepack pnpm run typecheck:libs && corepack pnpm --filter @workspace/api-server run typecheck && corepack pnpm --filter @workspace/dashboard run typecheck && corepack pnpm --filter @workspace/mockup-sandbox run typecheck && corepack pnpm --filter @workspace/scripts run typecheck",
     "smoke:test": "corepack pnpm --filter @workspace/scripts run smoke:test"

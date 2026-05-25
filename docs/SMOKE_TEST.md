@@ -47,7 +47,7 @@ If `JOB_OPS_RUN_AI=true` and `JOB_OPS_JOB_ID` is set, it also triggers:
 Run these in the dashboard after the script passes:
 
 1. Log in from a fresh browser session.
-2. Open the dashboard, jobs, claims, base resume, resume queue, cover letters, applications, AI Review, Assisted Apply, and Freelance pages.
+2. Open the dashboard, jobs, claims, base resume, resume queue, cover letters, applications, AI Review, Assisted Apply, Freelance, Chat, Quests/Gamification, and Job Board pages.
 3. Save a base resume manually.
 4. Import a DOCX or text-based PDF resume.
 5. Restore a historical base resume version.

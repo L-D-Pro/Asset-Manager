@@ -13,5 +13,7 @@ export interface PreviewPromptBody {
   sampleMessage: string;
   /** @maxItems 20 */
   attachments?: ChatAttachment[];
+  /** @maxItems 2 */
+  explicitSkillSlugs?: string[];
   overrides?: PreviewPromptBodyOverrides;
 }

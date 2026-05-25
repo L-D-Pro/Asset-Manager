@@ -15,15 +15,23 @@ Return ONLY valid JSON with this exact structure:
 Be precise and conservative — only include skills explicitly mentioned.`;
 
 export async function parseJdText(text: string): Promise<ParsedJd | null> {
-  try {
-    const result = await callAI({
-      taskType: "jd_parsing",
-      systemPrompt: JD_SYSTEM_PROMPT,
-      userPrompt: `Parse this job description:\n\n${text}`,
-    });
-    return parseJsonResponse<ParsedJd>(result.content);
-  } catch (err) {
-    logger.warn({ err }, "jd-parse-preprocess: callAI failed, skipping JD parse");
-    return null;
+  for (const taskType of ["jd_parsing", "chat"]) {
+    try {
+      const result = await callAI({
+        taskType,
+        systemPrompt: JD_SYSTEM_PROMPT,
+        userPrompt: `Parse this job description:\n\n${text}`,
+      });
+      return parseJsonResponse<ParsedJd>(result.content);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (/no active ai model configured/i.test(msg) && taskType === "jd_parsing") {
+        logger.info("jd-parse-preprocess: no jd_parsing model configured, retrying with chat scope");
+        continue;
+      }
+      logger.warn({ err, taskType }, "jd-parse-preprocess: callAI failed, skipping JD parse");
+      return null;
+    }
   }
+  return null;
 }

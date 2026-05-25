@@ -12,4 +12,6 @@ export type PreviewPromptBodyOverrides = {
   skillsEnabled?: boolean;
   bestPracticesEnabled?: boolean;
   skillRoutingMode?: PreviewPromptBodyOverridesSkillRoutingMode;
+  skillTokenBudget?: number;
+  maxSelectedSkills?: number;
 };

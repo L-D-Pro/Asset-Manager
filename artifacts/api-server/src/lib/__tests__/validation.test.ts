@@ -28,7 +28,7 @@ function makeClaim(overrides: Partial<Claim> = {}): Claim {
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
-  } as Claim;
+  } as unknown as Claim;
 }
 
 // ─── reviewGeneratedTruth ─────────────────────────────────────────────────────

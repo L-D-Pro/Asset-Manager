@@ -5,6 +5,7 @@ import { adminUsersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { ensureModelConfigConstraints, seedModelConfigs } from "./lib/seed-model-configs";
+import { seedChatRuntime } from "./lib/chat/seed";
 import { checkModelConfigHealth } from "./lib/model-config-health";
 
 const HEALTH_CHECK_INTERVAL_MS = 5 * 60 * 1000;
@@ -110,6 +111,7 @@ async function main() {
   await bootstrapAdminUser();
   await ensureModelConfigConstraints();
   await seedModelConfigs();
+  await seedChatRuntime();
 
   await runConfigHealthCheck("startup");
 

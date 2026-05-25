@@ -14,9 +14,6 @@
     },
     {
       "path": "./lib/integrations-openrouter-ai"
-    },
-    {
-      "path": "./packages/ui-core"
     }
   ]
 }

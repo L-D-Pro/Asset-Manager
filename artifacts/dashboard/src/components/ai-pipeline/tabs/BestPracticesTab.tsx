@@ -1,18 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Pencil, Save, X } from "lucide-react";
+import { Pencil, Save, X } from "lucide-react";
 import { bestPracticesDomainForTask } from "../types";
 import { AI_PIPELINE_OVERVIEW_QUERY_KEY } from "../useAiPipelineOverview";
-
-interface BestPracticesTabProps {
-  taskScope: string;
-}
 
 interface BestPracticeItem {
   description: string;
@@ -31,13 +23,16 @@ interface BestPracticesConfig {
 }
 
 function withEnabledFlag(config: BestPracticesConfig): BestPracticesConfig {
-  return {
-    ...config,
-    items: config.items.map((item) => ({ ...item, enabled: true })),
-  };
+  return { ...config, items: config.items.map((item) => ({ ...item, enabled: true })) };
 }
 
-export function BestPracticesTab({ taskScope }: BestPracticesTabProps) {
+const SOURCE_CHIP: Record<string, string> = {
+  ai: "chip accent dot",
+  hardcoded: "chip ghost dot",
+  hybrid: "chip warn dot",
+};
+
+export function BestPracticesTab({ taskScope }: { taskScope: string }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const domain = bestPracticesDomainForTask(taskScope);
@@ -51,177 +46,163 @@ export function BestPracticesTab({ taskScope }: BestPracticesTabProps) {
   const fetchConfig = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/best-practices?domain=${encodeURIComponent(domain)}`, {
-        credentials: "include",
-      });
-      if (!response.ok) {
-        throw new Error(`Failed to load best practices (HTTP ${response.status})`);
-      }
-      const data = (await response.json()) as BestPracticesConfig;
-      setConfig(withEnabledFlag(data));
+      const res = await fetch(`/api/best-practices?domain=${encodeURIComponent(domain)}`, { credentials: "include" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setConfig(withEnabledFlag((await res.json()) as BestPracticesConfig));
     } catch (err) {
-      toast({
-        title: "Error",
-        description: err instanceof Error ? err.message : "Could not load best practices",
-        variant: "destructive",
-      });
+      toast({ title: err instanceof Error ? err.message : "Could not load best practices", variant: "destructive" });
     } finally {
       setLoading(false);
     }
   }, [domain, toast]);
 
-  useEffect(() => {
-    void fetchConfig();
-  }, [fetchConfig]);
+  useEffect(() => { void fetchConfig(); }, [fetchConfig]);
 
-  const persist = async (next: BestPracticesConfig) => {
+  async function persist(next: BestPracticesConfig) {
     setSaving(true);
     try {
       const payloadItems = next.items
         .filter((item) => item.enabled !== false)
-        .map(({ enabled: _enabled, ...rest }) => rest);
-
-      const response = await fetch("/api/best-practices", {
-        method: "PUT",
-        credentials: "include",
+        .map(({ enabled: _e, ...rest }) => rest);
+      const res = await fetch("/api/best-practices", {
+        method: "PUT", credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ domain: next.domain, items: payloadItems }),
       });
-      if (!response.ok) {
-        let detail = `HTTP ${response.status}`;
-        try {
-          const err = (await response.json()) as { error?: string; detail?: string; message?: string };
-          detail = err.error ?? err.detail ?? err.message ?? detail;
-        } catch {
-          // ignore parse failure
-        }
+      if (!res.ok) {
+        let detail = `HTTP ${res.status}`;
+        try { const e = (await res.json()) as { error?: string }; detail = e.error ?? detail; } catch { /* ignore */ }
         throw new Error(detail);
       }
-      const data = (await response.json()) as BestPracticesConfig;
-      setConfig(withEnabledFlag(data));
+      setConfig(withEnabledFlag((await res.json()) as BestPracticesConfig));
       setEditingIndex(null);
       toast({ title: "Best practices saved" });
       queryClient.invalidateQueries({ queryKey: AI_PIPELINE_OVERVIEW_QUERY_KEY });
     } catch (err) {
-      toast({
-        title: "Save failed",
-        description: err instanceof Error ? err.message : "Please try again.",
-        variant: "destructive",
-      });
+      toast({ title: err instanceof Error ? err.message : "Save failed", variant: "destructive" });
     } finally {
       setSaving(false);
     }
-  };
-
-  if (loading) {
-    return (
-      <div>
-        <Loader2 /> Loading best practices...
-      </div>
-    );
   }
 
-  if (!config) {
-    return <p>Failed to load best practices.</p>;
-  }
+  if (loading) return <div className="dim" style={{ fontSize: 13 }}>Loading best practices…</div>;
+  if (!config) return <div className="dim" style={{ fontSize: 13 }}>Failed to load best practices.</div>;
 
-  const toggleItem = (index: number) => {
-    const items = config.items.map((item, i) =>
-      i === index ? { ...item, enabled: !(item.enabled !== false) } : item,
-    );
-    const next = { ...config, items };
+  function toggleItem(index: number) {
+    const next = { ...config!, items: config!.items.map((item, i) => i === index ? { ...item, enabled: !(item.enabled !== false) } : item) };
     setConfig(next);
     void persist(next);
-  };
+  }
 
-  const startEdit = (index: number) => {
+  function startEdit(index: number) {
     setEditingIndex(index);
-    setEditDescription(config.items[index]?.description ?? "");
-  };
+    setEditDescription(config!.items[index]?.description ?? "");
+  }
 
-  const cancelEdit = () => {
-    setEditingIndex(null);
-    setEditDescription("");
-  };
+  function cancelEdit() { setEditingIndex(null); setEditDescription(""); }
 
-  const saveEdit = () => {
+  function saveEdit() {
     if (editingIndex === null) return;
-    const items = config.items.map((item, i) =>
-      i === editingIndex ? { ...item, description: editDescription } : item,
-    );
-    void persist({ ...config, items });
-  };
+    void persist({ ...config!, items: config!.items.map((item, i) => i === editingIndex ? { ...item, description: editDescription } : item) });
+  }
 
   return (
-    <div>
-      <p>
-        Editing domain {config.domain}
-        {" - "}{config.items.length} rules
-      </p>
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div className="dim" style={{ fontSize: 12, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span>Domain: <span className="mono">{config.domain}</span> · {config.items.length} rules</span>
+        <Link to="/admin/best-practices" style={{ fontSize: 12, color: "var(--accent)" }}>
+          Open in Admin →
+        </Link>
+      </div>
 
-      {config.items.map((item, index) => {
-        const isEditing = editingIndex === index;
-        const isDisabled = item.enabled === false;
-
-        return (
-          <div key={index}>
-            <div>
-              <div>
-                <div>
-                  <Badge variant={item.source === "ai" ? "default" : "outline"}>{item.source}</Badge>
-                  {typeof item.frequency === "number" && (
-                    <span>Frequency: {item.frequency}</span>
+      <div className="card flat" style={{ overflow: "hidden" }}>
+        <div className="row-list">
+          {config.items.length === 0 && (
+            <div className="dim" style={{ padding: "20px 16px", fontSize: 12.5, textAlign: "center" }}>
+              No rules yet. Add rules in Admin → Best Practices.
+            </div>
+          )}
+          {config.items.map((item, index) => {
+            const isEditing = editingIndex === index;
+            return (
+              <div
+                key={index}
+                className="row"
+                style={{
+                  gridTemplateColumns: "1fr auto auto",
+                  alignItems: "flex-start",
+                  opacity: item.enabled === false ? 0.5 : 1,
+                  cursor: "default",
+                }}
+              >
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 4 }}>
+                    <span className={SOURCE_CHIP[item.source] ?? "chip ghost"} style={{ fontSize: 10 }}>
+                      {item.source}
+                    </span>
+                    {item.frequency != null && (
+                      <span className="mono dim" style={{ fontSize: 10.5 }}>×{item.frequency}</span>
+                    )}
+                  </div>
+                  {isEditing ? (
+                    <textarea
+                      className="input"
+                      value={editDescription}
+                      onChange={(e) => setEditDescription(e.target.value)}
+                      rows={3}
+                      style={{ width: "100%", marginBottom: 6, resize: "vertical", fontFamily: "var(--font-ui)" }}
+                    />
+                  ) : (
+                    <div style={{ fontSize: 13, lineHeight: 1.5 }}>{item.description}</div>
+                  )}
+                  {item.rationale && !isEditing && (
+                    <div className="dim" style={{ fontSize: 11.5, marginTop: 3 }}>{item.rationale}</div>
+                  )}
+                  {isEditing && (
+                    <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+                      <button className="btn ghost sm" type="button" onClick={cancelEdit} disabled={saving}>
+                        <X size={11} strokeWidth={2} /> Cancel
+                      </button>
+                      <button className="btn primary sm" type="button" onClick={saveEdit} disabled={saving}>
+                        <Save size={11} strokeWidth={2} /> {saving ? "Saving…" : "Save"}
+                      </button>
+                    </div>
                   )}
                 </div>
-                {isEditing ? (
-                  <Textarea
-                    value={editDescription}
-                    onChange={(event) => setEditDescription(event.target.value)}
-                  />
-                ) : (
-                  <p>{item.description}</p>
-                )}
-                {item.rationale && !isEditing && (
-                  <p>{item.rationale}</p>
-                )}
-              </div>
-
-              <div>
-                <Switch
-                  checked={item.enabled !== false}
-                  onCheckedChange={() => toggleItem(index)}
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={item.enabled !== false}
+                  onClick={() => toggleItem(index)}
                   disabled={isEditing || saving}
-                  aria-label={`Toggle rule ${index + 1}`}
-                />
-                {isEditing ? (
-                  <>
-                    <Button variant="ghost" size="icon" onClick={cancelEdit} disabled={saving}>
-                      <X />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={saveEdit} disabled={saving}>
-                      {saving ? <Loader2 /> : <Save />}
-                    </Button>
-                  </>
-                ) : (
-                  <Button
-                    variant="ghost"
-                    size="icon"
+                  style={{
+                    width: 28, height: 16, borderRadius: 99, border: "none",
+                    cursor: isEditing || saving ? "default" : "pointer",
+                    background: item.enabled !== false ? "var(--accent)" : "var(--line)",
+                    position: "relative", flexShrink: 0, padding: 0, marginTop: 2,
+                  }}
+                >
+                  <span style={{
+                    position: "absolute", top: 2, left: item.enabled !== false ? 13 : 2,
+                    width: 12, height: 12, borderRadius: 99, background: "#fff",
+                    transition: "left 0.15s", display: "block",
+                  }} />
+                </button>
+                {!isEditing && (
+                  <button
+                    type="button"
+                    className="btn ghost sm"
+                    style={{ padding: "3px 5px", marginTop: 1 }}
                     onClick={() => startEdit(index)}
                     disabled={editingIndex !== null || saving}
                   >
-                    <Pencil />
-                  </Button>
+                    <Pencil size={10} strokeWidth={1.8} />
+                  </button>
                 )}
               </div>
-            </div>
-          </div>
-        );
-      })}
-
-      <div>
-        <Link to="/admin/best-practices">
-          Open in Admin - Best Practices
-        </Link>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

@@ -1434,6 +1434,15 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AiPromptVersion"
+    delete:
+      operationId: deleteAiPromptVersion
+      tags: [ai-learning]
+      summary: Delete an AI prompt version
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Deleted
 
   /ai-run-evaluations:
     get:
@@ -2489,6 +2498,33 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/PromptSection"
+
+  /chat/route-preview:
+    post:
+      operationId: previewChatRoute
+      tags: [chat]
+      summary: Simulate skill routing for a sample message (router simulator)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PreviewPromptBody"
+      responses:
+        "200":
+          description: The routing decision plus the assembled prompt sections
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  decision:
+                    $ref: "#/components/schemas/RoutingDecision"
+                  sections:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PromptSection"
+                required: [decision, sections]
 
   /chat/lever-presets:
     get:
@@ -5818,18 +5854,41 @@ components:
         - kind
         - snapshot
 
+    ChatAttachmentDocument:
+      type: object
+      description: Snapshot of an uploaded document file.
+      properties:
+        kind:
+          type: string
+          enum: [document]
+        snapshot:
+          type: object
+          properties:
+            filename:
+              type: string
+            contentText:
+              type: string
+          required:
+            - filename
+            - contentText
+      required:
+        - kind
+        - snapshot
+
     ChatAttachment:
       description: Discriminated union of attachment kinds.
       oneOf:
         - $ref: "#/components/schemas/ChatAttachmentBaseResume"
         - $ref: "#/components/schemas/ChatAttachmentJob"
         - $ref: "#/components/schemas/ChatAttachmentClaims"
+        - $ref: "#/components/schemas/ChatAttachmentDocument"
       discriminator:
         propertyName: kind
         mapping:
           base_resume: "#/components/schemas/ChatAttachmentBaseResume"
           job: "#/components/schemas/ChatAttachmentJob"
           claims: "#/components/schemas/ChatAttachmentClaims"
+          document: "#/components/schemas/ChatAttachmentDocument"
 
     ChatMessage:
       type: object
@@ -5887,6 +5946,12 @@ components:
         jdParseEnabled:
           type: boolean
           default: false
+        explicitSkillSlugs:
+          type: array
+          maxItems: 2
+          items:
+            type: string
+          description: Explicitly selected skill slugs for this turn. Only used when skillRoutingMode is 'explicit'.
       required:
         - content
 
@@ -5915,7 +5980,11 @@ components:
           type: boolean
         skillRoutingMode:
           type: string
-          enum: [all, classified]
+          enum: [none, auto, explicit, debug_all]
+        skillTokenBudget:
+          type: integer
+        maxSelectedSkills:
+          type: integer
         createdAt:
           type: string
           format: date-time
@@ -5928,6 +5997,8 @@ components:
         - skillsEnabled
         - bestPracticesEnabled
         - skillRoutingMode
+        - skillTokenBudget
+        - maxSelectedSkills
         - createdAt
         - updatedAt
 
@@ -5943,14 +6014,21 @@ components:
           type: boolean
         skillRoutingMode:
           type: string
-          enum: [all, classified]
+          enum: [none, auto, explicit, debug_all]
+        skillTokenBudget:
+          type: integer
+          minimum: 0
+        maxSelectedSkills:
+          type: integer
+          minimum: 1
+          maximum: 2
 
     PromptSection:
       type: object
       properties:
         lever:
           type: string
-          enum: [identity, skill, best_practices, attachments]
+          enum: [identity, skill_catalog, skill, best_practices, attachments]
         label:
           type: string
         content:
@@ -5971,6 +6049,11 @@ components:
           maxItems: 20
           items:
             $ref: "#/components/schemas/ChatAttachment"
+        explicitSkillSlugs:
+          type: array
+          maxItems: 2
+          items:
+            type: string
         overrides:
           type: object
           properties:
@@ -5982,9 +6065,49 @@ components:
               type: boolean
             skillRoutingMode:
               type: string
-              enum: [all, classified]
+              enum: [none, auto, explicit, debug_all]
+            skillTokenBudget:
+              type: integer
+            maxSelectedSkills:
+              type: integer
       required:
         - sampleMessage
+
+    RoutingDecision:
+      type: object
+      properties:
+        selectedSlugs:
+          type: array
+          items:
+            type: string
+        confidence:
+          type: number
+        reason:
+          type: string
+        candidates:
+          type: array
+          items:
+            type: object
+            properties:
+              slug:
+                type: string
+              score:
+                type: number
+            required: [slug, score]
+        llmUsed:
+          type: boolean
+        budgetTrimmed:
+          type: boolean
+        skillPromptTokens:
+          type: integer
+      required:
+        - selectedSlugs
+        - confidence
+        - reason
+        - candidates
+        - llmUsed
+        - budgetTrimmed
+        - skillPromptTokens
 
     ChatLeverSnapshot:
       type: object
@@ -5997,6 +6120,10 @@ components:
           type: boolean
         skillRoutingMode:
           type: string
+        skillTokenBudget:
+          type: integer
+        maxSelectedSkills:
+          type: integer
         activePromptVersionIds:
           type: array
           items:
@@ -6006,6 +6133,8 @@ components:
         - skillsEnabled
         - bestPracticesEnabled
         - skillRoutingMode
+        - skillTokenBudget
+        - maxSelectedSkills
         - activePromptVersionIds
 
     ChatLeverPreset:

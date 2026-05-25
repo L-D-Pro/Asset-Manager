@@ -5,6 +5,7 @@ import {
   conversations,
   messages,
   eventLogsTable,
+  chatRoutingDecisionsTable,
   aiModelConfigsTable,
   type MessageAttachment,
   type AiModelConfig,
@@ -14,9 +15,12 @@ import { logger } from "../logger";
 import { mintRunId } from "../lineage";
 import { selectModelForTask, type SelectedModel } from "../model-router";
 import { classifyIntent } from "./intent-classifier";
-import { resolveChatSystemPrompt } from "./resolve-system-prompt";
+import { resolveChatPrompt } from "./resolve-system-prompt";
 import { resolveChatPromptVersionId } from "./prompt-versions";
 import { buildParsedJdBlock, type ParsedJd } from "./context-builder";
+import { parseJdText } from "./jd-parse-preprocess";
+import { validateChatOutput } from "./output-validator";
+import type { RoutingDecision } from "./skill-router";
 
 const HISTORY_TURN_LIMIT = 20;
 
@@ -27,8 +31,10 @@ export interface StreamChatCompletionOptions {
   res: Response;
   /** When set, uses this specific model config instead of selecting via task scope. */
   modelConfigId?: number;
-  /** Pre-parsed JD from the jd-parse pre-processor. Injected into system context. */
-  parsedJd?: ParsedJd | null;
+  /** When true, runs JD pre-parsing (haiku) before the main model. Main model waits for the result. */
+  jdParseEnabled?: boolean;
+  /** Skills the user explicitly picked in the composer (honored in `explicit` routing mode). */
+  explicitSkillSlugs?: string[];
   /** Allows tests to inject a fake OpenRouter client. */
   client?: { chat: { completions: { create: typeof openrouter.chat.completions.create } } };
   /** Allows tests to provide a stable runId / clock. */
@@ -66,6 +72,14 @@ async function resolveModel(
 function sseSend(res: Response, event: string | null, data: unknown): void {
   if (event) res.write(`event: ${event}\n`);
   res.write(`data: ${JSON.stringify(data)}\n\n`);
+}
+
+/** Classify how a routing decision was reached, for the decisions table. */
+function classifierTypeFor(mode: string, decision: RoutingDecision): string {
+  if (mode === "none") return "none";
+  if (mode === "explicit" || mode === "debug_all") return "manual";
+  if (decision.llmUsed) return "llm";
+  return "deterministic";
 }
 
 function extractDeltaText(chunk: unknown): string {
@@ -138,26 +152,12 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
     return;
   }
 
-  // ── Build system prompt + history ───────────────────────────────────────
-  // The system prompt is assembled from the Chat Control Plane levers
-  // (ai_chat_lever_config + active ai_prompt_versions + best practices).
+  // ── Classify intent + resolve prompt version ────────────────────────────
   const primarySkillSlug = classifyIntent(userMessage.content);
   const promptVersionId = await resolveChatPromptVersionId(primarySkillSlug);
 
-  const systemPrompt = await resolveChatSystemPrompt({
-    userMessage: userMessage.content,
-    attachments: userMessage.attachments,
-  });
-
-  const fullSystemPrompt = opts.parsedJd
-    ? `${systemPrompt}\n\n${buildParsedJdBlock(opts.parsedJd)}`
-    : systemPrompt;
-
   const historyRows = await db
-    .select({
-      role: messages.role,
-      content: messages.content,
-    })
+    .select({ role: messages.role, content: messages.content })
     .from(messages)
     .where(eq(messages.conversationId, conversationId))
     .orderBy(desc(messages.createdAt))
@@ -170,7 +170,7 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
 
   const runId = opts.runIdOverride ?? mintRunId();
 
-  // ── SSE headers ─────────────────────────────────────────────────────────
+  // ── SSE headers — open the stream before any blocking AI work ───────────
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache, no-transform");
   res.setHeader("Connection", "keep-alive");
@@ -178,6 +178,40 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
   res.flushHeaders?.();
 
   sseSend(res, "user-message", { id: userTurn!.id, role: "user" });
+
+  // ── JD pre-parsing (runs with SSE open; main model waits for result) ────
+  // The SSE connection is alive here, so the frontend sees activity.
+  // The main model will not start until this await resolves.
+  let parsedJd: ParsedJd | null = null;
+  if (opts.jdParseEnabled) {
+    sseSend(res, "jd-parsing", {});
+    parsedJd = await parseJdText(userMessage.content);
+    if (parsedJd) {
+      sseSend(res, "jd-parsed", { requiredSkills: parsedJd.requiredSkills, senioritySignal: parsedJd.senioritySignal });
+    } else {
+      logger.warn({ conversationId }, "jdParseEnabled but parseJdText returned null — proceeding without parsed JD");
+      sseSend(res, "jd-parse-failed", {});
+    }
+  }
+
+  // ── Route skills + build system prompt (after JD parse) ─────────────────
+  const { systemPrompt, decision: routingDecision, mode: routingMode } =
+    await resolveChatPrompt({
+      userMessage: userMessage.content,
+      attachments: userMessage.attachments,
+      explicitSlugs: opts.explicitSkillSlugs,
+    });
+
+  sseSend(res, "skill-routing", {
+    selectedSlugs: routingDecision.selectedSlugs,
+    confidence: routingDecision.confidence,
+    reason: routingDecision.reason,
+    llmUsed: routingDecision.llmUsed,
+  });
+
+  const fullSystemPrompt = parsedJd
+    ? `${systemPrompt}\n\n${buildParsedJdBlock(parsedJd)}`
+    : systemPrompt;
 
   // ── Stream the assistant turn ───────────────────────────────────────────
   let assistantText = "";
@@ -294,6 +328,28 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
     .set({ updatedAt: new Date() })
     .where(eq(conversations.id, conversationId));
 
+  // ── Persist the routing decision (observability + evals) ────────────────
+  await db.insert(chatRoutingDecisionsTable).values({
+    runId,
+    conversationId,
+    messageId: assistantTurn!.id,
+    routingMode,
+    candidates: routingDecision.candidates,
+    selectedSkills: routingDecision.selectedSlugs,
+    classifierType: classifierTypeFor(routingMode, routingDecision),
+    confidence: routingDecision.confidence.toFixed(2),
+    llmUsed: routingDecision.llmUsed,
+    rationale: routingDecision.reason,
+    skillPromptTokens: routingDecision.skillPromptTokens,
+    budgetTrimmed: routingDecision.budgetTrimmed,
+  });
+
+  // ── Light output validation (non-blocking — output already streamed) ────
+  const validation = validateChatOutput(assistantText);
+  if (validation.warnings.length > 0) {
+    logger.warn({ conversationId, runId, warnings: validation.warnings }, "chat output validation warnings");
+  }
+
   const costIn = activeModel.costPerInputToken && promptTokens != null
     ? parseFloat(activeModel.costPerInputToken) * promptTokens
     : null;
@@ -321,6 +377,16 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
         primaryModelName: model.modelName,
         usedFallback: activeModel.id !== model.id,
         primarySkill: primarySkillSlug,
+        jdParsed: parsedJd != null,
+        routing: {
+          mode: routingMode,
+          selectedSlugs: routingDecision.selectedSlugs,
+          confidence: routingDecision.confidence,
+          llmUsed: routingDecision.llmUsed,
+          skillPromptTokens: routingDecision.skillPromptTokens,
+          budgetTrimmed: routingDecision.budgetTrimmed,
+        },
+        validation: { lengthOk: validation.lengthOk, formatOk: validation.formatOk, warnings: validation.warnings },
         chatMessageEntityType: "chat_message",
         chatMessageId: assistantTurn!.id,
         promptTokens: promptTokens ?? null,

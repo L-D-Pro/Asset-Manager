@@ -1,4 +1,5 @@
-import { useState } from "react";
+﻿import React, { useState } from "react";
+import { Portal } from "@/components/ui/portal";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListAiModelConfigs,
@@ -6,14 +7,16 @@ import {
   useGetAiPipelineOverview,
   useCreateAiModelConfig,
   useUpdateAiModelConfig,
+  useDeleteAiModelConfig,
   type AiModelConfig,
   type AiPipelineTaskSummary,
 } from "@workspace/api-client-react";
-import { Plus, Shield, X, Pencil } from "lucide-react";
+import { Plus, Shield, X, Pencil, Trash2 } from "lucide-react";
 
 const COMMON_SCOPES = ["chat", "default", "jd_parsing", "resume_tailoring", "cover_letter", "claim_generation"] as const;
 
 export default function ModelsPage() {
+  const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingModel, setEditingModel] = useState<AiModelConfig | null>(null);
   const { data: models = [], isLoading } = useListAiModelConfigs();
@@ -84,7 +87,7 @@ export default function ModelsPage() {
             <div className="dim" style={{ padding: "32px 18px", textAlign: "center", fontSize: 13 }}>No model configs yet.</div>
           )}
           {models.map((m) => (
-            <ModelRow key={m.id} model={m} allModels={models} onEdit={setEditingModel} />
+            <ModelRow key={m.id} model={m} allModels={models} onEdit={setEditingModel} onDeleted={() => queryClient.invalidateQueries({ queryKey: ["/api/ai-model-configs"] })} />
           ))}
         </div>
       </div>
@@ -117,10 +120,22 @@ export default function ModelsPage() {
   );
 }
 
-function ModelRow({ model, allModels, onEdit }: { model: AiModelConfig; allModels: AiModelConfig[]; onEdit: (m: AiModelConfig) => void }) {
+function ModelRow({ model, allModels, onEdit, onDeleted }: { model: AiModelConfig; allModels: AiModelConfig[]; onEdit: (m: AiModelConfig) => void; onDeleted: () => void }) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const { mutateAsync: deleteConfig, isPending } = useDeleteAiModelConfig();
   const fallback = allModels.find((m) => m.id === model.fallbackModelId);
+
+  async function handleDelete() {
+    try {
+      await deleteConfig({ id: model.id });
+      onDeleted();
+    } catch (err) {
+      alert((err as Error).message ?? "Delete failed");
+    }
+  }
+
   return (
-    <div className="row" style={{ gridTemplateColumns: "1fr 140px 200px 200px 90px 90px 70px 32px", cursor: "default" }}>
+    <div className="row" style={{ gridTemplateColumns: "1fr 140px 200px 200px 90px 90px 70px 64px", cursor: "default" }}>
       <div>
         <div style={{ fontSize: 13.5, fontWeight: 500 }}>{model.taskScope.replaceAll("_", " ")}</div>
         <div className="dim mono" style={{ fontSize: 11, marginTop: 2 }}>priority {model.priority}</div>
@@ -139,15 +154,20 @@ function ModelRow({ model, allModels, onEdit }: { model: AiModelConfig; allModel
       <span className={`chip ${model.isActive ? "success" : "ghost"} dot`} style={{ fontSize: 10.5 }}>
         {model.isActive ? "active" : "off"}
       </span>
-      <button
-        type="button"
-        className="btn ghost"
-        style={{ padding: "3px 6px" }}
-        title="Edit config"
-        onClick={() => onEdit(model)}
-      >
-        <Pencil size={12} strokeWidth={1.8} />
-      </button>
+      <span style={{ display: "flex", gap: 4 }}>
+        <button type="button" className="btn ghost" style={{ padding: "3px 6px" }} title="Edit config" onClick={() => onEdit(model)}>
+          <Pencil size={12} strokeWidth={1.8} />
+        </button>
+        {confirmDelete ? (
+          <button type="button" className="btn danger" style={{ padding: "3px 6px", fontSize: 11 }} disabled={isPending} onClick={handleDelete} title="Confirm delete">
+            {isPending ? "…" : "✓"}
+          </button>
+        ) : (
+          <button type="button" className="btn ghost" style={{ padding: "3px 6px", color: "var(--danger, #d73a49)" }} title="Delete config" onClick={() => setConfirmDelete(true)} onBlur={() => setConfirmDelete(false)}>
+            <Trash2 size={12} strokeWidth={1.8} />
+          </button>
+        )}
+      </span>
     </div>
   );
 }
@@ -206,8 +226,9 @@ function CreateConfigDialog({ allModels, onClose }: { allModels: AiModelConfig[]
   }
 
   return (
+    <Portal>
     <div
-      style={{ position: "fixed", inset: 0, zIndex: 400, background: "rgba(0,0,0,0.55)", display: "grid", placeItems: "center" }}
+      style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.55)", display: "grid", placeItems: "center", padding: 24 }}
       onClick={onClose}
     >
       <div
@@ -223,19 +244,17 @@ function CreateConfigDialog({ allModels, onClose }: { allModels: AiModelConfig[]
           {/* Task scope */}
           <div>
             <label className="label" style={{ display: "block", marginBottom: 5 }}>Task scope</label>
-            <input
+            <select
               className="input"
               value={form.taskScope}
               onChange={(e) => set("taskScope", e.target.value)}
-              list="scope-suggestions"
-              placeholder="e.g. chat"
               autoFocus
-            />
-            <datalist id="scope-suggestions">
-              {COMMON_SCOPES.map((s) => <option key={s} value={s} />)}
-            </datalist>
+            >
+              <option value="">— select a scope —</option>
+              {COMMON_SCOPES.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
             <div className="dim" style={{ fontSize: 11, marginTop: 4 }}>
-              e.g. <code>chat</code>, <code>jd_parsing</code>, <code>resume_tailoring</code>
+              Scopes are fixed — each maps to a specific pipeline in the backend.
             </div>
           </div>
 
@@ -321,6 +340,7 @@ function CreateConfigDialog({ allModels, onClose }: { allModels: AiModelConfig[]
         </form>
       </div>
     </div>
+    </Portal>
   );
 }
 
@@ -368,8 +388,9 @@ function EditConfigDialog({ model, allModels, onClose }: { model: AiModelConfig;
   }
 
   return (
+    <Portal>
     <div
-      style={{ position: "fixed", inset: 0, zIndex: 400, background: "rgba(0,0,0,0.55)", display: "grid", placeItems: "center" }}
+      style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.55)", display: "grid", placeItems: "center", padding: 24 }}
       onClick={onClose}
     >
       <div
@@ -384,10 +405,10 @@ function EditConfigDialog({ model, allModels, onClose }: { model: AiModelConfig;
         <form onSubmit={handleSubmit} style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
           <div>
             <label className="label" style={{ display: "block", marginBottom: 5 }}>Task scope</label>
-            <input className="input" value={form.taskScope} onChange={(e) => set("taskScope", e.target.value)} list="scope-suggestions-edit" />
-            <datalist id="scope-suggestions-edit">
-              {COMMON_SCOPES.map((s) => <option key={s} value={s} />)}
-            </datalist>
+            <select className="input" value={form.taskScope} onChange={(e) => set("taskScope", e.target.value)}>
+              <option value="">— select a scope —</option>
+              {COMMON_SCOPES.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
           </div>
 
           <div>
@@ -436,6 +457,7 @@ function EditConfigDialog({ model, allModels, onClose }: { model: AiModelConfig;
         </form>
       </div>
     </div>
+    </Portal>
   );
 }
 
@@ -454,8 +476,8 @@ function PipelineViz({ pipeline }: { pipeline: AiPipelineTaskSummary[] }) {
         const live = pipeline.find((p) => p.taskScope === s.name);
         const modelLabel = live?.modelName ?? s.model;
         return (
-          <>
-            <div key={s.name} style={{
+          <React.Fragment key={s.name}>
+            <div style={{
               padding: "10px 14px",
               borderRadius: 8,
               border: "1px solid var(--line)",
@@ -470,9 +492,9 @@ function PipelineViz({ pipeline }: { pipeline: AiPipelineTaskSummary[] }) {
               <span className={`chip ${s.color} dot`} style={{ fontSize: 10.5, marginTop: 6 }}>{modelLabel}</span>
             </div>
             {i < PIPELINE_STEPS.length - 1 && (
-              <span key={`arrow-${i}`} style={{ color: "var(--ink-4)", flexShrink: 0, fontSize: 16 }}>›</span>
+              <span style={{ color: "var(--ink-4)", flexShrink: 0, fontSize: 16 }}>›</span>
             )}
-          </>
+          </React.Fragment>
         );
       })}
     </div>

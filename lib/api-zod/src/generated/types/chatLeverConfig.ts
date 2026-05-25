@@ -13,6 +13,8 @@ export interface ChatLeverConfig {
   skillsEnabled: boolean;
   bestPracticesEnabled: boolean;
   skillRoutingMode: ChatLeverConfigSkillRoutingMode;
+  skillTokenBudget: number;
+  maxSelectedSkills: number;
   createdAt: Date;
   updatedAt: Date;
 }

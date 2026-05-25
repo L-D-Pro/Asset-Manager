@@ -35,6 +35,59 @@ pnpm run smoke:test       # Smoke tests against a running instance
 # Playwright: cd artifacts/dashboard && pnpm exec playwright test
 ```
 
+## Code Search
+
+Use `semble search` to find code by describing what it does or naming a symbol/identifier, instead of grep:
+
+```bash
+semble search "authentication flow" ./my-project
+semble search "save_pretrained" ./my-project
+semble search "save model to disk" ./my-project --top-k 10
+```
+
+If you anticipate doing more than one search, use `semble index` to create an index.
+
+```bash
+semble index ./my-project -o my_index
+```
+
+You can then reuse this index later on:
+
+```bash
+semble search "save_pretrained" --index my_index
+```
+
+An index is not automatically updated, so if the code changes significantly, reindex. If you notice stale results while resolving searches to files, reindex.
+
+Use `--content docs` to search documentation and prose, `--content config` for config files (yaml, toml, etc.), or `--content all` to search code, docs, and config:
+
+```bash
+semble search "deployment guide" ./my-project --content docs
+semble search "database host port" ./my-project --content config
+semble search "authentication" ./my-project --content all
+```
+
+Use `semble find-related` to discover code similar to a known location (pass `file_path` and `line` from a prior search result):
+
+```bash
+semble find-related src/auth.py 42 ./my-project
+```
+
+Like search, `find-related` also accepts an `--index` argument.
+
+`path` defaults to the current directory when omitted; git URLs are accepted.
+
+If `semble` is not on `$PATH`, use `uvx --from "semble[mcp]" semble` in its place.
+
+### Search Workflow
+
+1. Index the repo using `semble index -o cached_index`.
+2. Start with `semble search` to find relevant chunks. Pass the index to achieve results faster.
+3. Use `--content docs` for documentation, `--content config` for config files, or `--content all` for everything.
+4. Inspect full files only when the returned chunk does not give enough context.
+5. Optionally use `semble find-related` with a promising result's `file_path` and `line` to discover related implementations.
+6. Use grep only when you need exhaustive literal matches or quick confirmation of an exact string.
+
 ## Architecture
 
 Pnpm monorepo with three tiers:
@@ -44,7 +97,7 @@ Browser (React 19 + TanStack Query)
   ↓ /api/* (generated hooks from lib/api-client-react/)
 Express 5 API (artifacts/api-server/, port 8080)
   ↓ Zod validation (generated from lib/api-zod/)
-PostgreSQL (Drizzle ORM, ~32 tables)
+PostgreSQL (Drizzle ORM, ~45 tables)
 ```
 
 **Spec-first API** — `lib/api-spec/openapi.yaml` is the single source of truth. [Orval](https://orval.dev/) generates:
@@ -57,16 +110,16 @@ Never hand-edit files in those `generated/` directories. After changing `openapi
 
 | Path | Purpose |
 |------|---------|
-| `artifacts/api-server/src/routes/` | ~34 Express route modules |
+| `artifacts/api-server/src/routes/` | ~35 Express route modules |
 | `artifacts/api-server/src/lib/pipelines/` | AI task pipelines (resume-tailor, cover-letter-draft, jd-parse, etc.) |
 | `artifacts/api-server/src/lib/` | AI client, model router, prompt router, learning processor |
-| `artifacts/dashboard/src/pages/` | ~25 React page modules |
+| `artifacts/dashboard/src/pages/` | ~40 React page modules |
 | `lib/db/src/schema/` | All Drizzle table definitions |
 | `lib/api-spec/openapi.yaml` | REST API specification (source of truth) |
 
 ### AI Runtime
 
-Eight specialized agent roles (Resume Expert, Cover Letter Strategist, Application Analyst, etc.) each have database-configurable prompts and model assignments via `ai_model_configs` + `ai_prompt_versions`. The runtime falls back to in-code `SYSTEM_PROMPT` constants when no DB config exists.
+Ten specialized agent roles (Resume Expert, Cover Letter Strategist, Application Analyst, Fact Reviewer, Resume Profile Builder, etc.) each have database-configurable prompts and model assignments via `ai_model_configs` + `ai_prompt_versions`. The runtime falls back to in-code `SYSTEM_PROMPT` constants when no DB config exists.
 
 **Closed learning loop:**
 1. AI generates output → logged to `event_logs`
@@ -80,7 +133,7 @@ Key AI files: `lib/ai-client.ts`, `lib/prompt-router.ts`, `lib/model-router.ts`,
 
 ### Database Domains
 
-Seven domains across ~32 tables: Job Search, Audit/Learning, Assisted Apply, Freelance Copilot, Auth/Session, Gamification, Onboarding/Config.
+Nine domains across ~45 tables: Job Search, Audit/Learning, Assisted Apply, Freelance Copilot, Auth/User Management, Chat, Gamification, Job Board, Platform/UX (onboarding, wizard sessions, feedback, best practices).
 
 ### State Machine Contracts
 

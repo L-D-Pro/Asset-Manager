@@ -1,30 +1,15 @@
-import { useState, useEffect, useCallback } from "react";
-import { Link } from "react-router-dom";
-import { PageHeader } from "@/components/ui/page-header";
-import { ContentCard } from "@/components/ui/content-card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { toast } from "@/hooks/use-toast";
+﻿import { useState, useEffect, useCallback } from "react";
+import { Portal } from "@/components/ui/portal";
 import { useAuth } from "@/context/auth";
-import { Loader2, RefreshCw, Plus, Pencil, Save, X } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { RefreshCw, Plus, Pencil, Save, X } from "lucide-react";
 
 interface BestPracticeItem {
   description: string;
   source: "ai" | "hardcoded" | "hybrid";
   rationale?: string;
   frequency?: number;
-  enabled?: boolean; // local-only flag for UI toggling
+  enabled?: boolean;
 }
 
 interface BestPracticesConfig {
@@ -36,10 +21,7 @@ interface BestPracticesConfig {
 }
 
 function cloneConfig(config: BestPracticesConfig): BestPracticesConfig {
-  return {
-    ...config,
-    items: config.items.map((item) => ({ ...item })),
-  };
+  return { ...config, items: config.items.map((item) => ({ ...item })) };
 }
 
 function configsEqual(a: BestPracticesConfig, b: BestPracticesConfig): boolean {
@@ -53,25 +35,28 @@ function configsEqual(a: BestPracticesConfig, b: BestPracticesConfig): boolean {
       ai.rationale !== bi.rationale ||
       ai.frequency !== bi.frequency ||
       ai.enabled !== bi.enabled
-    ) {
-      return false;
-    }
+    ) return false;
   }
   return true;
 }
 
+const SOURCE_CHIP: Record<string, string> = {
+  ai: "chip accent dot",
+  hardcoded: "chip ghost dot",
+  hybrid: "chip warn dot",
+};
+
 export default function BestPracticesAdminPage() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [config, setConfig] = useState<BestPracticesConfig | null>(null);
   const [originalConfig, setOriginalConfig] = useState<BestPracticesConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editDescription, setEditDescription] = useState("");
-
-  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
   const [newDescription, setNewDescription] = useState("");
   const [newRationale, setNewRationale] = useState("");
 
@@ -81,388 +66,349 @@ export default function BestPracticesAdminPage() {
       const res = await fetch("/api/best-practices", { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch best practices");
       const data = (await res.json()) as BestPracticesConfig;
-      const mapped: BestPracticesConfig = {
-        ...data,
-        items: data.items.map((item) => ({ ...item, enabled: true })),
-      };
+      const mapped = { ...data, items: data.items.map((item) => ({ ...item, enabled: true })) };
       setConfig(mapped);
       setOriginalConfig(cloneConfig(mapped));
-    } catch (err) {
-      toast({
-        title: "Error",
-        description: err instanceof Error ? err.message : "Could not load best practices",
-        variant: "destructive",
-      });
+    } catch {
+      toast({ title: "Could not load best practices", variant: "destructive" });
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [toast]);
 
-  useEffect(() => {
-    void fetchConfig();
-  }, [fetchConfig]);
+  useEffect(() => { void fetchConfig(); }, [fetchConfig]);
 
-  const hasChanges =
-    config !== null &&
-    originalConfig !== null &&
-    !configsEqual(config, originalConfig);
+  const hasChanges = config !== null && originalConfig !== null && !configsEqual(config, originalConfig);
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    try {
-      const res = await fetch("/api/best-practices/refresh", {
-        method: "POST",
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Failed to refresh");
-      const data = (await res.json()) as BestPracticesConfig;
-      const mapped: BestPracticesConfig = {
-        ...data,
-        items: data.items.map((item) => ({ ...item, enabled: true })),
-      };
-      setConfig(mapped);
-      setOriginalConfig(cloneConfig(mapped));
-      toast({ title: "Refreshed", description: "Best practices updated from AI" });
-    } catch (err) {
-      toast({
-        title: "Error",
-        description: err instanceof Error ? err.message : "Refresh failed",
-        variant: "destructive",
-      });
-    } finally {
-      setRefreshing(false);
-    }
-  };
-
-  const doSave = async (nextConfig: BestPracticesConfig) => {
+  async function doSave(nextConfig: BestPracticesConfig) {
     setSaving(true);
     try {
       const activeItems = nextConfig.items
-        .filter((item) => item.enabled !== false)
-        .map(({ enabled: _enabled, ...rest }) => rest);
-
+        .filter((i) => i.enabled !== false)
+        .map(({ enabled: _e, ...rest }) => rest);
       const res = await fetch("/api/best-practices", {
-        method: "PUT",
-        credentials: "include",
+        method: "PUT", credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          domain: nextConfig.domain,
-          items: activeItems,
-        }),
+        body: JSON.stringify({ domain: nextConfig.domain, items: activeItems }),
       });
       if (!res.ok) {
-        const err = (await res.json()) as { error: string };
-        throw new Error(err.error ?? "Save failed");
+        const e = (await res.json()) as { error: string };
+        throw new Error(e.error ?? "Save failed");
       }
       const data = (await res.json()) as BestPracticesConfig;
-      const mapped: BestPracticesConfig = {
-        ...data,
-        items: data.items.map((item) => ({ ...item, enabled: true })),
-      };
+      const mapped = { ...data, items: data.items.map((item) => ({ ...item, enabled: true })) };
       setConfig(mapped);
       setOriginalConfig(cloneConfig(mapped));
       setEditingIndex(null);
-      toast({ title: "Saved", description: "Best practices updated" });
+      toast({ title: "Best practices saved" });
     } catch (err) {
-      toast({
-        title: "Error",
-        description: err instanceof Error ? err.message : "Save failed",
-        variant: "destructive",
-      });
+      toast({ title: err instanceof Error ? err.message : "Save failed", variant: "destructive" });
     } finally {
       setSaving(false);
     }
-  };
+  }
 
-  const handleSaveAll = () => {
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      const res = await fetch("/api/best-practices/refresh", { method: "POST", credentials: "include" });
+      if (!res.ok) throw new Error("Failed to refresh");
+      const data = (await res.json()) as BestPracticesConfig;
+      const mapped = { ...data, items: data.items.map((item) => ({ ...item, enabled: true })) };
+      setConfig(mapped);
+      setOriginalConfig(cloneConfig(mapped));
+      toast({ title: "Best practices refreshed from AI" });
+    } catch {
+      toast({ title: "Refresh failed", variant: "destructive" });
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
+  function startEdit(index: number) {
     if (!config) return;
-    void doSave(config);
-  };
+    setEditingIndex(index);
+    setEditDescription(config.items[index]!.description);
+  }
 
-  const handleSaveEdit = () => {
+  function handleCancelEdit() {
+    if (!originalConfig || editingIndex === null) return;
+    const newItems = [...config!.items];
+    newItems[editingIndex] = { ...originalConfig.items[editingIndex]! };
+    setConfig({ ...config!, items: newItems });
+    setEditingIndex(null);
+  }
+
+  function handleSaveEdit() {
     if (!config || editingIndex === null) return;
     const newItems = [...config.items];
     newItems[editingIndex] = { ...newItems[editingIndex]!, description: editDescription };
     const nextConfig = { ...config, items: newItems };
     setConfig(nextConfig);
     void doSave(nextConfig);
-  };
+  }
 
-  const handleCancelEdit = () => {
-    if (!originalConfig || editingIndex === null) return;
-    const newItems = [...config!.items];
-    newItems[editingIndex] = { ...originalConfig.items[editingIndex]! };
-    setConfig({ ...config!, items: newItems });
-    setEditingIndex(null);
-    setEditDescription("");
-  };
-
-  const startEdit = (index: number) => {
-    if (!config) return;
-    setEditingIndex(index);
-    setEditDescription(config.items[index]!.description);
-  };
-
-  const toggleItem = (index: number) => {
+  function toggleItem(index: number) {
     if (!config) return;
     const newItems = [...config.items];
     newItems[index] = { ...newItems[index]!, enabled: !newItems[index]!.enabled };
     setConfig({ ...config, items: newItems });
-  };
+  }
 
-  const handleAdd = () => {
+  function handleAdd() {
     if (!newDescription.trim()) {
-      toast({
-        title: "Validation",
-        description: "Description is required",
-        variant: "destructive",
-      });
+      toast({ title: "Description is required", variant: "destructive" });
       return;
     }
     if (!config) return;
-
     const newItem: BestPracticeItem = {
       description: newDescription.trim(),
       source: "hybrid",
       rationale: newRationale.trim() || undefined,
       enabled: true,
     };
-
-    const nextConfig = {
-      ...config,
-      items: [...config.items, newItem],
-    };
+    const nextConfig = { ...config, items: [...config.items, newItem] };
     setConfig(nextConfig);
     setNewDescription("");
     setNewRationale("");
-    setAddDialogOpen(false);
+    setAddOpen(false);
     void doSave(nextConfig);
-  };
+  }
 
   if (user?.role !== "admin") {
     return (
-      <ContentCard>
-        <div>
-          <h2>Access Denied</h2>
-          <p>Admin access required.</p>
+      <div className="page fade-up">
+        <div className="card flat" style={{ padding: 32, textAlign: "center" }}>
+          <div className="dim" style={{ fontSize: 13 }}>Access denied.</div>
         </div>
-      </ContentCard>
+      </div>
     );
   }
 
-  const sourceVariant = (source: string): "default" | "secondary" | "outline" => {
-    switch (source) {
-      case "ai":
-        return "default";
-      case "hardcoded":
-        return "secondary";
-      case "hybrid":
-        return "outline";
-      default:
-        return "secondary";
-    }
-  };
-
   return (
-    <div>
-      <PageHeader
-        title="Best Practices"
-        subtitle="AI quality rules for resume and cover letter generation"
-        variant="admin"
-      >
-        {hasChanges && (
-          <Button onClick={handleSaveAll} disabled={saving}>
-            {saving ? <Loader2 /> : <Save />}
-            Save Changes
-          </Button>
-        )}
-        <Button
-          variant="outline"
-          onClick={handleRefresh}
-          disabled={refreshing}
-        >
-          {refreshing ? <Loader2 /> : <RefreshCw />}
-          Refresh from AI
-        </Button>
-      </PageHeader>
-
-      <p>
-        Edit best practices alongside the prompt, role, and model for one task in the{" "}
-        <Link to="/pipeline-diagram">
-          AI Pipeline Hub
-        </Link>
-        .
-      </p>
-
-      {loading ? (
+    <div className="page fade-up" style={{ maxWidth: 900 }}>
+      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 22 }}>
         <div>
-          <Loader2 />
+          <div className="eyebrow">admin · ai quality rules</div>
+          <h1 className="h-display" style={{ marginTop: 4 }}>Best practices <em>· rules the AI reads</em></h1>
         </div>
-      ) : !config ? (
-        <div>
-          Failed to load best practices.
-        </div>
-      ) : (
-        <>
-          <div>
-            {config.items.map((item, index) => {
-              const isEditing = editingIndex === index;
-              const isDisabled = item.enabled === false;
-
-              return (
-                <ContentCard
-                  key={index}
-                  
-                  index={index}
-                >
-                  <div>
-                    <div>
-                      <div>
-                        <Badge variant={sourceVariant(item.source)}>
-                          {item.source}
-                        </Badge>
-                        {typeof item.frequency === "number" && (
-                          <span>
-                            Frequency: {item.frequency}
-                          </span>
-                        )}
-                      </div>
-
-                      {isEditing ? (
-                        <Textarea
-                          value={editDescription}
-                          onChange={(e) => setEditDescription(e.target.value)}
-                          rows={3}
-                        />
-                      ) : (
-                        <p>
-                          {item.description}
-                        </p>
-                      )}
-
-                      {item.rationale && (
-                        <p>
-                          {item.rationale}
-                        </p>
-                      )}
-                    </div>
-
-                    <div>
-                      <Switch
-                        checked={item.enabled !== false}
-                        onCheckedChange={() => toggleItem(index)}
-                        disabled={isEditing}
-                      />
-                      {isEditing ? (
-                        <>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={handleCancelEdit}
-                            disabled={saving}
-                          >
-                            <X />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={handleSaveEdit}
-                            disabled={saving}
-                          >
-                            {saving ? (
-                              <Loader2 />
-                            ) : (
-                              <Save />
-                            )}
-                          </Button>
-                        </>
-                      ) : (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => startEdit(index)}
-                          disabled={editingIndex !== null || saving}
-                        >
-                          <Pencil />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </ContentCard>
-              );
-            })}
-          </div>
-
-          {/* Hardcoded Guards */}
-          {config.hardcodedGuards && Object.keys(config.hardcodedGuards).length > 0 && (
-            <ContentCard>
-              <div>
-                <h3>
-                  Hardcoded Guards
-                </h3>
-                <div>
-                  {Object.entries(config.hardcodedGuards).map(([key, value]) => (
-                    <div
-                      key={key}
-                    >
-                      <span>
-                        {key}
-                      </span>
-                      <Badge variant={value ? "default" : "destructive"}>
-                        {value ? "ON" : "OFF"}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </ContentCard>
+        <div style={{ display: "flex", gap: 8 }}>
+          {hasChanges && (
+            <button className="btn primary sm" type="button" onClick={() => config && void doSave(config)} disabled={saving}>
+              <Save size={13} strokeWidth={1.8} />
+              {saving ? "Saving…" : "Save changes"}
+            </button>
           )}
+          <button className="btn sm" type="button" onClick={() => void handleRefresh()} disabled={refreshing}>
+            <RefreshCw size={13} strokeWidth={1.8} style={{ animation: refreshing ? "spin 1s linear infinite" : "none" }} />
+            {refreshing ? "Refreshing…" : "Refresh from AI"}
+          </button>
+          <button className="btn accent sm" type="button" onClick={() => setAddOpen(true)}>
+            <Plus size={13} strokeWidth={2} />
+            Add rule
+          </button>
+        </div>
+      </div>
 
-          <div>
-            <Button onClick={() => setAddDialogOpen(true)}>
-              <Plus />
-              Add Rule
-            </Button>
-          </div>
-        </>
+      {config?.lastRefreshedAt && (
+        <div className="dim mono" style={{ fontSize: 11.5, marginBottom: 14 }}>
+          Last refreshed · {new Date(config.lastRefreshedAt).toLocaleString()}
+        </div>
       )}
 
-      {/* Add Rule Dialog */}
-      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add New Rule</DialogTitle>
-          </DialogHeader>
-          <div>
-            <div>
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={newDescription}
-                onChange={(e) => setNewDescription(e.target.value)}
-                placeholder="Enter rule description..."
-                rows={3}
-              />
+      <div className="card">
+        <div style={{
+          display: "grid", gridTemplateColumns: "1fr 90px 80px 90px",
+          alignItems: "center", gap: 14, padding: "10px 18px",
+          borderBottom: "1px solid var(--line)", background: "var(--paper-2)",
+          fontSize: 11, color: "var(--ink-4)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 500,
+        }}>
+          <span>Rule</span><span>Source</span><span>Freq</span><span>Active</span>
+        </div>
+        <div className="row-list">
+          {loading && (
+            <div className="dim" style={{ padding: "32px 18px", textAlign: "center", fontSize: 13 }}>Loading…</div>
+          )}
+          {!loading && config && config.items.length === 0 && (
+            <div className="dim" style={{ padding: "32px 18px", textAlign: "center", fontSize: 13 }}>
+              No rules yet. Add one or refresh from AI.
             </div>
-            <div>
-              <Label htmlFor="rationale">Rationale (optional)</Label>
-              <Textarea
-                id="rationale"
-                value={newRationale}
-                onChange={(e) => setNewRationale(e.target.value)}
-                placeholder="Why is this rule important?"
-                rows={2}
-              />
+          )}
+          {config?.items.map((item, index) => {
+            const isEditing = editingIndex === index;
+            const isOff = item.enabled === false;
+            return (
+              <div
+                key={index}
+                className="row"
+                style={{
+                  gridTemplateColumns: "1fr 90px 80px 90px",
+                  alignItems: "flex-start",
+                  opacity: isOff ? 0.5 : 1,
+                  cursor: "default",
+                }}
+              >
+                <div style={{ minWidth: 0, paddingTop: 2 }}>
+                  {isEditing ? (
+                    <textarea
+                      className="input"
+                      value={editDescription}
+                      onChange={(e) => setEditDescription(e.target.value)}
+                      rows={3}
+                      style={{ width: "100%", marginBottom: 8, resize: "vertical", fontFamily: "var(--font-ui)" }}
+                    />
+                  ) : (
+                    <div style={{ fontSize: 13.5, color: "var(--ink)", lineHeight: 1.55 }}>{item.description}</div>
+                  )}
+                  {item.rationale && !isEditing && (
+                    <div className="dim" style={{ fontSize: 12, marginTop: 4 }}>{item.rationale}</div>
+                  )}
+                  {isEditing && (
+                    <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+                      <button className="btn ghost sm" type="button" onClick={handleCancelEdit} disabled={saving}>
+                        <X size={12} strokeWidth={2} /> Cancel
+                      </button>
+                      <button className="btn primary sm" type="button" onClick={handleSaveEdit} disabled={saving}>
+                        <Save size={12} strokeWidth={2} /> {saving ? "Saving…" : "Save"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <div style={{ paddingTop: 2 }}>
+                  <span className={SOURCE_CHIP[item.source] ?? "chip ghost"} style={{ fontSize: 10.5 }}>
+                    {item.source}
+                  </span>
+                </div>
+                <span className="mono dim" style={{ fontSize: 12, paddingTop: 2 }}>
+                  {item.frequency != null ? `×${item.frequency}` : "—"}
+                </span>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 2 }}>
+                  <ToggleSwitch
+                    checked={item.enabled !== false}
+                    onChange={() => toggleItem(index)}
+                    disabled={isEditing}
+                  />
+                  {!isEditing && (
+                    <button
+                      className="btn ghost sm"
+                      type="button"
+                      style={{ padding: "3px 6px" }}
+                      onClick={() => startEdit(index)}
+                      disabled={editingIndex !== null || saving}
+                    >
+                      <Pencil size={11} strokeWidth={1.8} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {config?.hardcodedGuards && Object.keys(config.hardcodedGuards).length > 0 && (
+        <div className="card" style={{ marginTop: 14 }}>
+          <div className="card-h">
+            <h2 className="card-title" style={{ fontSize: 14 }}>Hardcoded guards</h2>
+            <span className="dim mono" style={{ fontSize: 11 }}>always enforced · not editable</span>
+          </div>
+          <div style={{ padding: "10px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
+            {Object.entries(config.hardcodedGuards).map(([key, value]) => (
+              <div key={key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span className="mono" style={{ fontSize: 12.5, color: "var(--ink-2)" }}>{key}</span>
+                <span className={value ? "chip success dot" : "chip danger dot"} style={{ fontSize: 10.5 }}>
+                  {value ? "ON" : "OFF"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {addOpen && (
+        <Portal>
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.6)", display: "grid", placeItems: "center", padding: 24 }}
+          onClick={() => setAddOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: 480, background: "var(--card)", border: "1px solid var(--line)",
+              borderRadius: "var(--r-xl)", boxShadow: "var(--shadow-pop)", overflow: "hidden",
+            }}
+          >
+            <div className="card-h">
+              <h2 className="card-title">Add new rule</h2>
+              <button type="button" className="settings-x" onClick={() => setAddOpen(false)}>
+                <X size={14} strokeWidth={2} />
+              </button>
+            </div>
+            <div style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
+              <div className="field">
+                <label>Description</label>
+                <textarea
+                  className="input"
+                  value={newDescription}
+                  onChange={(e) => setNewDescription(e.target.value)}
+                  placeholder="Enter rule description…"
+                  rows={3}
+                  style={{ resize: "vertical", fontFamily: "var(--font-ui)" }}
+                />
+              </div>
+              <div className="field">
+                <label>Rationale <span className="dim">(optional)</span></label>
+                <textarea
+                  className="input"
+                  value={newRationale}
+                  onChange={(e) => setNewRationale(e.target.value)}
+                  placeholder="Why is this rule important?"
+                  rows={2}
+                  style={{ resize: "vertical", fontFamily: "var(--font-ui)" }}
+                />
+              </div>
+            </div>
+            <div style={{ padding: "14px 20px", borderTop: "1px solid var(--line-soft)", display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button type="button" className="btn ghost sm" onClick={() => setAddOpen(false)}>Cancel</button>
+              <button type="button" className="btn primary sm" onClick={handleAdd}>Add rule</button>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setAddDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleAdd}>Add Rule</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
+        </Portal>
+      )}
     </div>
+  );
+}
+
+function ToggleSwitch({
+  checked,
+  onChange,
+  disabled = false,
+}: {
+  checked: boolean;
+  onChange: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={onChange}
+      disabled={disabled}
+      style={{
+        width: 32, height: 18, borderRadius: 99, border: "none", cursor: disabled ? "default" : "pointer",
+        background: checked ? "var(--accent)" : "var(--line)",
+        transition: "background 0.2s",
+        position: "relative", flexShrink: 0, padding: 0,
+      }}
+    >
+      <span style={{
+        position: "absolute", top: 2, left: checked ? 16 : 2,
+        width: 14, height: 14, borderRadius: 99,
+        background: "#fff", transition: "left 0.15s",
+        display: "block",
+      }} />
+    </button>
   );
 }

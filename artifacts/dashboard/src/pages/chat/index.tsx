@@ -1,10 +1,10 @@
-﻿import { useCallback, useEffect, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Portal } from "@/components/ui/portal";
 
 import { smartApi } from "@/lib/smart-ai-api";
 import { toast } from "@/hooks/use-toast";
-import { Plus, X, Sparkles, Check, FileText, Briefcase, Shield, Send, MessageCircle, Pencil, Paperclip, ChevronDown, Eye } from "lucide-react";
-import { useListAiModelConfigs, useListAiPromptVersions, usePreviewChatPrompt, type AiModelConfig, type AiPromptVersion, type PromptSection } from "@workspace/api-client-react";
+import { Plus, X, Sparkles, Check, Copy, FileText, Briefcase, Shield, Send, MessageCircle, Pencil, Paperclip, ChevronDown, Eye } from "lucide-react";
+import { useGetChatLeverConfig, useListAiModelConfigs, useListAiPromptVersions, usePreviewChatPrompt, type AiModelConfig, type AiPromptVersion, type PromptSection } from "@workspace/api-client-react";
 
 import { chatApi, type ChatAttachment, type ChatMessage, type ChatThread } from "./api";
 import { useChatStream } from "./use-chat-stream";
@@ -29,11 +29,22 @@ export default function ChatPage() {
   // selectedConfigId[threadId] = the modelConfigId the user picked for that thread
   const [selectedConfigId, setSelectedConfigId] = useState<Record<number, number>>({});
   const [inspectorOpen, setInspectorOpen] = useState(false);
+  const [explicitSkillSlugs, setExplicitSkillSlugs] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
 
   const { data: chatConfigs = [] } = useListAiModelConfigs({ taskScope: "chat", isActive: true });
   const { data: activeSkills = [] } = useListAiPromptVersions({ taskScope: "chat", isActive: true });
+  const { data: chatConfig } = useGetChatLeverConfig();
+  const dedupedSkills = useMemo(() => {
+    const byLabel = new Map<string, AiPromptVersion>();
+    for (const s of activeSkills) {
+      if ((s.metadata as { status?: string } | null)?.status === "deprecated") continue;
+      const cur = byLabel.get(s.label);
+      if (!cur || s.version > cur.version) byLabel.set(s.label, s);
+    }
+    return [...byLabel.values()].sort((a, b) => a.label.localeCompare(b.label));
+  }, [activeSkills]);
 
   const refreshThreads = useCallback(async () => {
     const list = await chatApi.listThreads();
@@ -135,13 +146,14 @@ export default function ChatPage() {
     const attachments = await buildAttachmentsPayload();
     setInput("");
     setJdParseEnabled(false); // JD parse is per-message; attachments persist until manually removed
+    setExplicitSkillSlugs([]); // explicit skill picks are per-message, like JD parse
     setMessages((prev) => [...prev, {
       id: -Date.now(), conversationId: activeThread.id, role: "user", content: text,
       attachments, runId: null, promptVersionId: null, modelName: null,
       promptTokens: null, completionTokens: null, createdAt: new Date().toISOString(),
     }]);
     const modelConfigId = selectedConfigId[activeThread.id];
-    await stream.send(activeThread.id, text, attachments, modelConfigId, jdParse);
+    await stream.send(activeThread.id, text, attachments, modelConfigId, jdParse, explicitSkillSlugs);
   }
 
   async function handleFeedback(message: ChatMessage, outcome: "approved" | "rejected") {
@@ -237,7 +249,7 @@ export default function ChatPage() {
                 {messages.map((m) => (
                   <MessageBubble key={m.id} message={m} onFeedback={handleFeedback} onEdit={handleEditMessage} />
                 ))}
-                {stream.state.active && <StreamingBubble text={stream.state.text} fallbackModel={stream.state.fallbackModel} preHint={jdParseEnabled && !stream.state.text ? "Analyzing job description…" : undefined} />}
+                {stream.state.active && <StreamingBubble text={stream.state.text} fallbackModel={stream.state.fallbackModel} skillRouting={stream.state.skillRouting} preHint={!stream.state.text ? (stream.state.jdParsing ? "Parsing job description…" : stream.state.jdParsed ? "JD parsed · thinking…" : "thinking…") : undefined} />}
                 {stream.state.error && (
                   <div className="chip danger" style={{ alignSelf: "center" }}>{stream.state.error}</div>
                 )}
@@ -264,6 +276,10 @@ export default function ChatPage() {
                 onOpenJobPicker={() => setJobPickerOpen(true)}
                 onOpenClaimsPicker={() => setClaimsPickerOpen(true)}
                 textareaRef={composerRef}
+                explicitSkillSlugs={explicitSkillSlugs}
+                setExplicitSkillSlugs={setExplicitSkillSlugs}
+                dedupedSkills={dedupedSkills}
+                routingMode={chatConfig?.skillRoutingMode}
               />
             </>
           ) : (
@@ -339,6 +355,14 @@ function MessageBubble({ message, onFeedback, onEdit }: {
 }) {
   const isUser = message.role === "user";
   const time = new Date(message.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  const [copied, setCopied] = useState(false);
+
+  function handleCopy() {
+    navigator.clipboard.writeText(message.content).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }
 
   if (isUser) {
     return (
@@ -376,9 +400,18 @@ function MessageBubble({ message, onFeedback, onEdit }: {
           <span>{time}</span>
           {message.modelName && <span>· <span style={{ color: "var(--ink-3)" }}>{message.modelName}</span></span>}
           {message.completionTokens != null && <span>· <span className="mono">{message.completionTokens} tok</span></span>}
+          <span style={{ flex: 1 }} />
+          <button
+            type="button"
+            className="btn ghost"
+            style={{ padding: "2px 6px", fontSize: 11 }}
+            title={copied ? "Copied!" : "Copy reply"}
+            onClick={handleCopy}
+          >
+            {copied ? <Check size={12} strokeWidth={2} /> : <Copy size={12} strokeWidth={1.8} />}
+          </button>
           {message.runId && (
             <>
-              <span style={{ flex: 1 }} />
               <button type="button" className="btn ghost" style={{ padding: "2px 6px", fontSize: 11 }} title="Helpful" onClick={() => onFeedback(message, "approved")}>👍</button>
               <button type="button" className="btn ghost" style={{ padding: "2px 6px", fontSize: 11 }} title="Not helpful" onClick={() => onFeedback(message, "rejected")}>👎</button>
             </>
@@ -389,7 +422,7 @@ function MessageBubble({ message, onFeedback, onEdit }: {
   );
 }
 
-function StreamingBubble({ text, fallbackModel, preHint }: { text: string; fallbackModel: string | null; preHint?: string }) {
+function StreamingBubble({ text, fallbackModel, skillRouting, preHint }: { text: string; fallbackModel: string | null; skillRouting: { selectedSlugs: string[]; reason?: string } | null; preHint?: string }) {
   return (
     <div className="msg-ai">
       <div className="msg-ai-avatar"><Sparkles size={14} strokeWidth={1.8} /></div>
@@ -397,6 +430,11 @@ function StreamingBubble({ text, fallbackModel, preHint }: { text: string; fallb
         {fallbackModel && (
           <div className="dim" style={{ fontSize: 11, marginBottom: 6, fontStyle: "italic" }}>
             ↩ switched to fallback: {fallbackModel}
+          </div>
+        )}
+        {skillRouting && skillRouting.selectedSlugs.length > 0 && (
+          <div className="dim" style={{ fontSize: 11, marginBottom: 6, fontStyle: "italic" }}>
+            Using skill: {skillRouting.selectedSlugs.join(", ")}
           </div>
         )}
         <div className="msg-ai-bubble">
@@ -506,7 +544,7 @@ function ThreadInspector({ messages }: { messages: ChatMessage[] }) {
   );
 }
 
-function Composer({ input, setInput, onSend, onStop, streaming, stagedCount, attachBaseResume, setAttachBaseResume, attachedJobs, setAttachedJobs, attachedClaims, setAttachedClaims, attachedDocs, setAttachedDocs, jdParseEnabled, setJdParseEnabled, onOpenJobPicker, onOpenClaimsPicker, textareaRef }: {
+function Composer({ input, setInput, onSend, onStop, streaming, stagedCount, attachBaseResume, setAttachBaseResume, attachedJobs, setAttachedJobs, attachedClaims, setAttachedClaims, attachedDocs, setAttachedDocs, jdParseEnabled, setJdParseEnabled, onOpenJobPicker, onOpenClaimsPicker, textareaRef, explicitSkillSlugs, setExplicitSkillSlugs, dedupedSkills, routingMode }: {
   input: string; setInput: (v: string) => void;
   onSend: () => void; onStop: () => void; streaming: boolean; stagedCount: number;
   attachBaseResume: boolean; setAttachBaseResume: (v: boolean) => void;
@@ -516,9 +554,24 @@ function Composer({ input, setInput, onSend, onStop, streaming, stagedCount, att
   jdParseEnabled: boolean; setJdParseEnabled: (v: boolean) => void;
   onOpenJobPicker: () => void; onOpenClaimsPicker: () => void;
   textareaRef?: React.RefObject<HTMLTextAreaElement | null>;
+  explicitSkillSlugs: string[]; setExplicitSkillSlugs: (v: string[]) => void;
+  dedupedSkills: AiPromptVersion[];
+  routingMode?: string;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingFile, setUploadingFile] = useState(false);
+
+  function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const html = e.clipboardData.getData("text/html");
+    if (!html) return;
+    const md = htmlToMarkdown(html);
+    if (!md) return;
+    e.preventDefault();
+    const ta = e.currentTarget;
+    const before = input.slice(0, ta.selectionStart);
+    const after = input.slice(ta.selectionEnd);
+    setInput(before + md + after);
+  }
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -591,12 +644,41 @@ function Composer({ input, setInput, onSend, onStop, streaming, stagedCount, att
             <Sparkles size={11} strokeWidth={1.8} /> JD Parse
           </button>
         </div>
+        {dedupedSkills.length > 0 && (
+          <div className="composer-attach-row" style={{ marginTop: 2, paddingTop: 6, borderTop: "1px solid var(--line-soft)" }}>
+            <span className="dim" style={{ fontSize: 10.5, alignSelf: "center" }}>Explicit:</span>
+            {dedupedSkills.map((s) => {
+              const selected = explicitSkillSlugs.includes(s.label);
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  className={`attach-btn${selected ? " active" : ""}`}
+                  onClick={() => {
+                    if (selected) {
+                      setExplicitSkillSlugs(explicitSkillSlugs.filter((x) => x !== s.label));
+                    } else if (explicitSkillSlugs.length < 2) {
+                      setExplicitSkillSlugs([...explicitSkillSlugs, s.label]);
+                    }
+                  }}
+                  title={selected ? "Remove" : "Add"}
+                >
+                  <Sparkles size={11} strokeWidth={1.8} /> {s.roleLabel ?? s.label}
+                </button>
+              );
+            })}
+            {routingMode !== "explicit" && explicitSkillSlugs.length > 0 && (
+              <span className="dim" style={{ fontSize: 10.5, marginLeft: 4 }}>(only in Explicit mode)</span>
+            )}
+          </div>
+        )}
         <textarea
           ref={textareaRef}
           className="composer-textarea"
           placeholder="Ask anything. Attach a resume, job, claims, or file above."
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          onPaste={handlePaste}
           disabled={streaming}
           rows={3}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSend(); } }}
@@ -725,6 +807,35 @@ function EmptyState({ onNew }: { onNew: () => void }) {
       </button>
     </div>
   );
+}
+
+function htmlToMarkdown(html: string): string {
+  const div = document.createElement("div");
+  div.innerHTML = html;
+
+  function walk(node: Node): string {
+    if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? "";
+    if (node.nodeType !== Node.ELEMENT_NODE) return "";
+    const el = node as Element;
+    const tag = el.tagName.toLowerCase();
+    const inner = Array.from(el.childNodes).map(walk).join("");
+    switch (tag) {
+      case "h1": return `# ${inner.trim()}\n\n`;
+      case "h2": return `## ${inner.trim()}\n\n`;
+      case "h3": return `### ${inner.trim()}\n\n`;
+      case "h4": case "h5": case "h6": return `#### ${inner.trim()}\n\n`;
+      case "p": return `${inner.trim()}\n\n`;
+      case "br": return "\n";
+      case "strong": case "b": return `**${inner}**`;
+      case "em": case "i": return `*${inner}*`;
+      case "li": return `- ${inner.trim()}\n`;
+      case "ul": case "ol": return `\n${inner}`;
+      case "a": return inner;
+      default: return inner;
+    }
+  }
+
+  return walk(div).replace(/\n{3,}/g, "\n\n").trim();
 }
 
 function attachmentLabel(a: ChatAttachment): string {

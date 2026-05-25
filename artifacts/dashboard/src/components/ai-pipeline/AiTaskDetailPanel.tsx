@@ -1,39 +1,45 @@
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useState } from "react";
 import { PromptTab } from "./tabs/PromptTab";
 import { RoleTab } from "./tabs/RoleTab";
 import { ModelTab } from "./tabs/ModelTab";
 import { BestPracticesTab } from "./tabs/BestPracticesTab";
 import { ExamplesTab } from "./tabs/ExamplesTab";
 
+const TABS = [
+  { id: "prompt",         label: "Prompt" },
+  { id: "role",           label: "Role" },
+  { id: "model",          label: "Model" },
+  { id: "best-practices", label: "Best practices" },
+  { id: "examples",       label: "Examples" },
+];
+
 interface AiTaskDetailPanelProps {
   taskScope: string;
 }
 
 export function AiTaskDetailPanel({ taskScope }: AiTaskDetailPanelProps) {
+  const [active, setActive] = useState("prompt");
+
   return (
-    <Tabs defaultValue="prompt">
-      <TabsList>
-        <TabsTrigger value="prompt">Prompt</TabsTrigger>
-        <TabsTrigger value="role">Role</TabsTrigger>
-        <TabsTrigger value="model">Model</TabsTrigger>
-        <TabsTrigger value="best-practices">Best Practices</TabsTrigger>
-        <TabsTrigger value="examples">Examples</TabsTrigger>
-      </TabsList>
-      <TabsContent value="prompt">
-        <PromptTab taskScope={taskScope} />
-      </TabsContent>
-      <TabsContent value="role">
-        <RoleTab taskScope={taskScope} />
-      </TabsContent>
-      <TabsContent value="model">
-        <ModelTab taskScope={taskScope} />
-      </TabsContent>
-      <TabsContent value="best-practices">
-        <BestPracticesTab taskScope={taskScope} />
-      </TabsContent>
-      <TabsContent value="examples">
-        <ExamplesTab taskScope={taskScope} />
-      </TabsContent>
-    </Tabs>
+    <div>
+      <div className="tabs" style={{ padding: "0 18px", borderBottom: "1px solid var(--line-soft)" }}>
+        {TABS.map((t) => (
+          <div
+            key={t.id}
+            className={`tab${active === t.id ? " active" : ""}`}
+            onClick={() => setActive(t.id)}
+          >
+            {t.label}
+          </div>
+        ))}
+      </div>
+      <div style={{ padding: "18px 20px" }}>
+        {active === "prompt"         && <PromptTab taskScope={taskScope} />}
+        {active === "role"           && <RoleTab taskScope={taskScope} />}
+        {active === "model"          && <ModelTab taskScope={taskScope} />}
+        {active === "best-practices" && <BestPracticesTab taskScope={taskScope} />}
+        {active === "examples"       && <ExamplesTab taskScope={taskScope} />}
+      </div>
+    </div>
   );
 }

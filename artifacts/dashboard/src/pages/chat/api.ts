@@ -1,7 +1,7 @@
 import { smartApi } from "@/lib/smart-ai-api";
 
 export interface ChatAttachment {
-  kind: "base_resume" | "job" | "claims";
+  kind: "base_resume" | "job" | "claims" | "document";
   refId?: number;
   snapshot: Record<string, unknown>;
 }

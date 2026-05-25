@@ -191,6 +191,116 @@ Event logs are append-only. No update/delete endpoints are exposed.
 | GET | `/client-message-templates` | List client message templates |
 | POST | `/client-message-templates` | Create client message template |
 
+### Chat
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/chat/threads` | List conversation threads |
+| POST | `/chat/threads` | Create a new thread |
+| PATCH | `/chat/threads/:id` | Rename or update a thread |
+| DELETE | `/chat/threads/:id` | Delete a thread |
+| GET | `/chat/threads/:id/messages` | List messages in a thread |
+| POST | `/chat/threads/:id/messages` | Send a message (streams AI reply) |
+| POST | `/chat/messages/:id/feedback` | Submit thumbs up/down on a message |
+
+### Gamification
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/gamification/stats` | User XP, level, streaks, counts |
+| GET | `/gamification/xp/history` | XP event log |
+| GET | `/gamification/achievements` | All achievements with unlock state |
+| POST | `/gamification/achievements/:id/seen` | Mark achievement notification seen |
+| GET | `/gamification/quests` | Active and available quests |
+| POST | `/gamification/quests/:questId/accept` | Accept a quest |
+| GET | `/gamification/next-actions` | Suggested next actions for XP |
+
+### Job Board
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/job-board/listings` | Browse aggregated job listings (filter: `search`, `location`) |
+| GET | `/job-board/sources` | List configured RSS/Atom feed sources |
+
+### Trends
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/trends/research` | Trigger AI market research pipeline for a query |
+
+### Resume Utilities
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/resume-to-profile` | Extract a role profile from a resume text (AI) |
+| POST | `/jobs/:id/resume-score` | Score the current base resume against a job |
+| GET | `/resume-templates` | List saved resume templates |
+| POST | `/resume-templates` | Create a resume template |
+| PATCH | `/resume-templates/:id` | Update a resume template |
+| DELETE | `/resume-templates/:id` | Delete a resume template |
+
+### Onboarding
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/onboarding/state` | Get current onboarding progress |
+| POST | `/onboarding/welcome-seen` | Mark welcome screen as seen |
+| POST | `/onboarding/complete-step` | Mark a step complete |
+| POST | `/onboarding/dismiss-hint` | Dismiss a contextual hint |
+
+### Wizard Sessions
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/wizard-sessions` | List wizard sessions for current user |
+| POST | `/wizard-sessions` | Create a wizard session |
+| GET | `/wizard-sessions/:id` | Get session state |
+| DELETE | `/wizard-sessions/:id` | Delete a session |
+
+### AI Pipeline Overview
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/ai-pipeline/overview` | Snapshot of pipeline config, active models, and prompt versions |
+
+### AI Metrics
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/ai-metrics/snapshot` | Aggregated AI run stats (costs, tokens, approval rates) |
+
+### Users (Admin)
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/users` | List users (admin only) |
+| PATCH | `/users/:id` | Update user (admin only) |
+
+### Invite Codes (Public + Admin)
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/invite-codes` | List invite codes (admin only) |
+| POST | `/invite-codes` | Create an invite code (admin only) |
+| DELETE | `/invite-codes/:id` | Delete an invite code (admin only) |
+| POST | `/invite-codes/validate` | Validate a code (public) |
+
+### Usage Limits
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/usage-limits` | Get current user's usage limits |
+| PATCH | `/usage-limits/:id` | Update a usage limit (admin only) |
+
+### Platform Feedback
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/feedback` | Submit in-app feedback (rating + comment) |
+
+### Best Practices
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/best-practices` | List curated best-practice tips |
+
+### Growth / Landing (Public)
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/growth/waitlist` | Join the waitlist |
+
+### Admin Utilities
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/admin/health` | Detailed internal health check (admin only) |
+| POST | `/admin/reset` | Reset demo/test data (admin only) |
+
 ### Health
 | Method | Path | Description |
 |--------|------|-------------|

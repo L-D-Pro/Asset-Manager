@@ -2080,13 +2080,34 @@ export interface ChatAttachmentClaims {
   snapshot: ChatAttachmentClaimsSnapshot;
 }
 
+export type ChatAttachmentDocumentKind =
+  (typeof ChatAttachmentDocumentKind)[keyof typeof ChatAttachmentDocumentKind];
+
+export const ChatAttachmentDocumentKind = {
+  document: "document",
+} as const;
+
+export type ChatAttachmentDocumentSnapshot = {
+  filename: string;
+  contentText: string;
+};
+
+/**
+ * Snapshot of an uploaded document file.
+ */
+export interface ChatAttachmentDocument {
+  kind: ChatAttachmentDocumentKind;
+  snapshot: ChatAttachmentDocumentSnapshot;
+}
+
 /**
  * Discriminated union of attachment kinds.
  */
 export type ChatAttachment =
   | ChatAttachmentBaseResume
   | ChatAttachmentJob
-  | ChatAttachmentClaims;
+  | ChatAttachmentClaims
+  | ChatAttachmentDocument;
 
 export type ChatMessageRole =
   (typeof ChatMessageRole)[keyof typeof ChatMessageRole];
@@ -2134,6 +2155,11 @@ export interface PostChatMessageBody {
   /** @minimum 1 */
   modelConfigId?: number;
   jdParseEnabled?: boolean;
+  /**
+   * Explicitly selected skill slugs for this turn. Only used when skillRoutingMode is 'explicit'.
+   * @maxItems 2
+   */
+  explicitSkillSlugs?: string[];
 }
 
 export type ChatFeedbackBodyOutcome =
@@ -2154,8 +2180,10 @@ export type ChatLeverConfigSkillRoutingMode =
   (typeof ChatLeverConfigSkillRoutingMode)[keyof typeof ChatLeverConfigSkillRoutingMode];
 
 export const ChatLeverConfigSkillRoutingMode = {
-  all: "all",
-  classified: "classified",
+  none: "none",
+  auto: "auto",
+  explicit: "explicit",
+  debug_all: "debug_all",
 } as const;
 
 export interface ChatLeverConfig {
@@ -2164,6 +2192,8 @@ export interface ChatLeverConfig {
   skillsEnabled: boolean;
   bestPracticesEnabled: boolean;
   skillRoutingMode: ChatLeverConfigSkillRoutingMode;
+  skillTokenBudget: number;
+  maxSelectedSkills: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -2172,8 +2202,10 @@ export type UpdateChatLeverConfigBodySkillRoutingMode =
   (typeof UpdateChatLeverConfigBodySkillRoutingMode)[keyof typeof UpdateChatLeverConfigBodySkillRoutingMode];
 
 export const UpdateChatLeverConfigBodySkillRoutingMode = {
-  all: "all",
-  classified: "classified",
+  none: "none",
+  auto: "auto",
+  explicit: "explicit",
+  debug_all: "debug_all",
 } as const;
 
 export interface UpdateChatLeverConfigBody {
@@ -2182,6 +2214,13 @@ export interface UpdateChatLeverConfigBody {
   skillsEnabled?: boolean;
   bestPracticesEnabled?: boolean;
   skillRoutingMode?: UpdateChatLeverConfigBodySkillRoutingMode;
+  /** @minimum 0 */
+  skillTokenBudget?: number;
+  /**
+   * @minimum 1
+   * @maximum 2
+   */
+  maxSelectedSkills?: number;
 }
 
 export type PromptSectionLever =
@@ -2189,6 +2228,7 @@ export type PromptSectionLever =
 
 export const PromptSectionLever = {
   identity: "identity",
+  skill_catalog: "skill_catalog",
   skill: "skill",
   best_practices: "best_practices",
   attachments: "attachments",
@@ -2204,8 +2244,10 @@ export type PreviewPromptBodyOverridesSkillRoutingMode =
   (typeof PreviewPromptBodyOverridesSkillRoutingMode)[keyof typeof PreviewPromptBodyOverridesSkillRoutingMode];
 
 export const PreviewPromptBodyOverridesSkillRoutingMode = {
-  all: "all",
-  classified: "classified",
+  none: "none",
+  auto: "auto",
+  explicit: "explicit",
+  debug_all: "debug_all",
 } as const;
 
 export type PreviewPromptBodyOverrides = {
@@ -2213,6 +2255,8 @@ export type PreviewPromptBodyOverrides = {
   skillsEnabled?: boolean;
   bestPracticesEnabled?: boolean;
   skillRoutingMode?: PreviewPromptBodyOverridesSkillRoutingMode;
+  skillTokenBudget?: number;
+  maxSelectedSkills?: number;
 };
 
 export interface PreviewPromptBody {
@@ -2220,7 +2264,24 @@ export interface PreviewPromptBody {
   sampleMessage: string;
   /** @maxItems 20 */
   attachments?: ChatAttachment[];
+  /** @maxItems 2 */
+  explicitSkillSlugs?: string[];
   overrides?: PreviewPromptBodyOverrides;
+}
+
+export type RoutingDecisionCandidatesItem = {
+  slug: string;
+  score: number;
+};
+
+export interface RoutingDecision {
+  selectedSlugs: string[];
+  confidence: number;
+  reason: string;
+  candidates: RoutingDecisionCandidatesItem[];
+  llmUsed: boolean;
+  budgetTrimmed: boolean;
+  skillPromptTokens: number;
 }
 
 export interface ChatLeverSnapshot {
@@ -2228,6 +2289,8 @@ export interface ChatLeverSnapshot {
   skillsEnabled: boolean;
   bestPracticesEnabled: boolean;
   skillRoutingMode: string;
+  skillTokenBudget: number;
+  maxSelectedSkills: number;
   activePromptVersionIds: number[];
 }
 
@@ -2405,3 +2468,8 @@ export const ListChatThreadsIncludeArchived = {
   NUMBER_1: "1",
   true: "true",
 } as const;
+
+export type PreviewChatRoute200 = {
+  decision: RoutingDecision;
+  sections: PromptSection[];
+};

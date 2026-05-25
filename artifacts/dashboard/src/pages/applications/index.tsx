@@ -1,11 +1,11 @@
-import { useListApplications, useCreateApplication, useUpdateApplication, getListApplicationsQueryKey, type Application } from "@workspace/api-client-react";
+import { useListApplications, useCreateApplication, useUpdateApplication, useDeleteApplication, getListApplicationsQueryKey, type Application } from "@workspace/api-client-react";
 import { CardContent } from "@/components/ui/card";
 import { ContentCard } from "@/components/ui/content-card";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Activity, Plus, FileText, Mail } from "lucide-react";
+import { Activity, Plus, FileText, Mail, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -43,8 +43,10 @@ export default function ApplicationsPage() {
  );
  const createApplication = useCreateApplication();
  const updateApplication = useUpdateApplication();
+ const deleteApplication = useDeleteApplication();
  const [isDialogOpen, setIsDialogOpen] = useState(false);
  const [editingId, setEditingId] = useState<number | null>(null);
+ const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
  const { toast } = useToast();
  const queryClient = useQueryClient();
 
@@ -111,6 +113,22 @@ export default function ApplicationsPage() {
  setIsDialogOpen(false);
  setEditingId(null);
  form.reset({ jobId: 0, status: "draft", applyMode: "manual", notes: "" });
+ };
+
+ const handleDelete = (id: number) => {
+ if (confirmDeleteId !== id) { setConfirmDeleteId(id); return; }
+ deleteApplication.mutate(
+   { id },
+   {
+     onSuccess: () => {
+       toast({ title: "Application removed" });
+       setConfirmDeleteId(null);
+       queryClient.invalidateQueries({ queryKey: getListApplicationsQueryKey() });
+     },
+     onError: (error) =>
+       toast({ title: "Delete failed", description: (error as Error).message, variant: "destructive" }),
+   }
+ );
  };
 
  const statuses = ["all", "draft", "submitted", "interviewing", "offer", "rejected", "withdrawn"];
@@ -279,6 +297,16 @@ export default function ApplicationsPage() {
  )}
  </div>
  <Button variant="ghost" size="sm" onClick={() => handleEdit(app)} data-testid={`btn-edit-app-${app.id}`}>Edit</Button>
+ <Button
+   variant={confirmDeleteId === app.id ? "destructive" : "ghost"}
+   size="sm"
+   onClick={() => handleDelete(app.id)}
+   onBlur={() => setConfirmDeleteId(null)}
+   disabled={deleteApplication.isPending && confirmDeleteId === app.id}
+   data-testid={`btn-delete-app-${app.id}`}
+ >
+   {confirmDeleteId === app.id ? "Confirm" : <Trash2 size={14} strokeWidth={1.8} />}
+ </Button>
  </div>
  ))}
  </div>
