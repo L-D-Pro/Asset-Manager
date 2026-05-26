@@ -43,11 +43,64 @@ function extractLabelFromUrl(url: string): string {
   return mdIdx > 0 ? parts[mdIdx - 1] : parts[parts.length - 1];
 }
 
-function parseSkillMd(content: string): { roleLabel: string; body: string } {
+interface ParsedSkillMd {
+  roleLabel: string;
+  body: string;
+  routerDescription: string;
+  triggerExamples: string[];
+  negativeTriggers: string[];
+  priority: number | null;
+  status: string;
+}
+
+function parseSkillMd(content: string): ParsedSkillMd {
+  const empty: ParsedSkillMd = {
+    roleLabel: "", body: content.trim(), routerDescription: "",
+    triggerExamples: [], negativeTriggers: [], priority: null, status: "active",
+  };
   const m = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
-  if (!m) return { roleLabel: "", body: content.trim() };
-  const nameMatch = m[1].match(/^name:\s*(.+)$/m);
-  return { roleLabel: nameMatch?.[1]?.trim() ?? "", body: m[2].trim() };
+  if (!m) return empty;
+
+  // Minimal YAML parser — handles scalars and block/inline arrays.
+  const fm: Record<string, string | string[]> = {};
+  const lines = m[1]!.split(/\r?\n/);
+  let curKey: string | null = null;
+  let curArr: string[] | null = null;
+
+  for (const line of lines) {
+    const item = line.match(/^\s+-\s+(.+)$/);
+    if (item && curKey && curArr) { curArr.push(item[1]!.trim()); continue; }
+    if (curKey && curArr) { fm[curKey] = curArr; curKey = null; curArr = null; }
+    const colon = line.indexOf(":");
+    if (colon < 0) continue;
+    const key = line.slice(0, colon).trim();
+    if (!key) continue;
+    let val = line.slice(colon + 1).trim();
+    if (!val) { curKey = key; curArr = []; continue; }
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) val = val.slice(1, -1);
+    if (val.startsWith("[") && val.endsWith("]")) {
+      fm[key] = val.slice(1, -1).split(",").map((s) => s.trim()).filter(Boolean);
+    } else {
+      fm[key] = val;
+    }
+  }
+  if (curKey && curArr) fm[curKey] = curArr;
+
+  const str = (k: string) => (typeof fm[k] === "string" ? (fm[k] as string) : "");
+  const arr = (...keys: string[]) => {
+    for (const k of keys) { if (Array.isArray(fm[k])) return fm[k] as string[]; }
+    return [];
+  };
+
+  return {
+    roleLabel: str("name"),
+    body: m[2]!.trimStart(),
+    routerDescription: str("description"),
+    triggerExamples: arr("trigger_examples", "triggers"),
+    negativeTriggers: arr("negative_triggers"),
+    priority: fm["priority"] != null ? (Number(fm["priority"]) || null) : null,
+    status: str("status") || "active",
+  };
 }
 
 export default function AiControlPlanePage() {
@@ -441,7 +494,7 @@ function SkillsCard({ skillsEnabled, promptVersions, previewActiveIds, isPreview
   const [adding, setAdding] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState<AiPromptVersion | null>(null);
   const [fetchOpen, setFetchOpen] = useState(false);
-  const [skillPrefill, setSkillPrefill] = useState<{ label: string; roleLabel: string; body: string } | null>(null);
+  const [skillPrefill, setSkillPrefill] = useState<ParsedSkillMd & { label: string } | null>(null);
 
   const skills = useMemo(() => latestPerLabel(promptVersions), [promptVersions]);
   const activeSet = useMemo(
@@ -576,7 +629,7 @@ function SkillsCard({ skillsEnabled, promptVersions, previewActiveIds, isPreview
 }
 
 function FetchSkillModal({ onFetched, onClose }: {
-  onFetched: (prefill: { label: string; roleLabel: string; body: string }) => void;
+  onFetched: (prefill: ParsedSkillMd & { label: string }) => void;
   onClose: () => void;
 }) {
   const [url, setUrl] = useState("");
@@ -592,10 +645,10 @@ function FetchSkillModal({ onFetched, onClose }: {
       const res = await fetch(rawUrl);
       if (!res.ok) throw new Error(`HTTP ${res.status} — check the URL and try again.`);
       const content = await res.text();
-      const { roleLabel, body } = parseSkillMd(content);
-      if (!body) throw new Error("SKILL.md body is empty.");
+      const parsed = parseSkillMd(content);
+      if (!parsed.body) throw new Error("SKILL.md body is empty.");
       const label = extractLabelFromUrl(url.trim());
-      onFetched({ label, roleLabel, body });
+      onFetched({ ...parsed, label });
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -647,7 +700,7 @@ function FetchSkillModal({ onFetched, onClose }: {
 function SkillEditorModal({ mode, existing, prefill, onClose, onSaved }: {
   mode: "edit" | "add";
   existing?: AiPromptVersion;
-  prefill?: { label: string; roleLabel: string; body: string };
+  prefill?: ParsedSkillMd & { label: string };
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -658,12 +711,12 @@ function SkillEditorModal({ mode, existing, prefill, onClose, onSaved }: {
   const [label, setLabel] = useState(prefill?.label ?? existing?.label ?? "");
   const [roleLabel, setRoleLabel] = useState(prefill?.roleLabel ?? existing?.roleLabel ?? "");
   const [body, setBody] = useState(prefill?.body ?? existing?.systemPrompt ?? "");
-  const [routerDescription, setRouterDescription] = useState(existingMeta.routerDescription ?? "");
-  const [triggers, setTriggers] = useState((existingMeta.triggerExamples ?? []).join("\n"));
-  const [negatives, setNegatives] = useState((existingMeta.negativeTriggers ?? []).join("\n"));
+  const [routerDescription, setRouterDescription] = useState(existingMeta.routerDescription || prefill?.routerDescription || "");
+  const [triggers, setTriggers] = useState(existingMeta.triggerExamples?.join("\n") || prefill?.triggerExamples?.join("\n") || "");
+  const [negatives, setNegatives] = useState(existingMeta.negativeTriggers?.join("\n") || prefill?.negativeTriggers?.join("\n") || "");
   const [taskTypesStr, setTaskTypesStr] = useState((existingMeta.taskTypes ?? ["chat"]).join(", "));
-  const [priority, setPriority] = useState(existingMeta.priority ?? 50);
-  const [status, setStatus] = useState(existingMeta.status ?? "active");
+  const [priority, setPriority] = useState(existingMeta.priority ?? prefill?.priority ?? 50);
+  const [status, setStatus] = useState(existingMeta.status || prefill?.status || "active");
   const create = useCreateAiPromptVersion();
   const update = useUpdateAiPromptVersion();
 

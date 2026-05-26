@@ -41,7 +41,11 @@
       "Bash(grep -r \"--sidebar\\\\|sidebar-primary\\\\|sidebar-foreground\" \"C:\\\\Users\\\\uberc\\\\LD Pro\\\\Asset-Manager\\\\artifacts\\\\dashboard\" --include=\"*.ts\" --include=\"*.tsx\" --include=\"*.css\" --include=\"*.json\")",
       "Bash(tar -xf -)",
       "Bash(curl -sSL \"https://api.anthropic.com/v1/design/h/TQxO0WG8g2JDyr7g6f88bQ\" -o /tmp/design-bundle.html)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Skill(superpowers:receiving-code-review)",
+      "Skill(superpowers:receiving-code-review:*)",
+      "Bash(pnpm run *)",
+      "Bash(export npm_config_verify_deps_before_run=false)"
     ],
     "additionalDirectories": [
       "C:\\Users\\uberc\\LD Pro\\Asset-Manager\\artifacts\\api-server"
