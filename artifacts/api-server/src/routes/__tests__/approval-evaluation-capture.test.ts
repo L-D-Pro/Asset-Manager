@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // We test approve/reject handlers in-process (no supertest) by locating the
 // handler in the router stack and invoking it with req/res stubs.
@@ -32,6 +32,13 @@ function makeRes() {
 
 // Shared db mock that captures transaction activity.
 vi.mock("@workspace/db", () => {
+  const directUpdateMock = vi.fn(() => ({
+    set: vi.fn(() => ({
+      where: vi.fn(() => ({
+        returning: vi.fn(() => []),
+      })),
+    })),
+  }));
   const tx: TxMock = {
     update: vi.fn(() => ({
       set: vi.fn(() => ({
@@ -72,6 +79,7 @@ vi.mock("@workspace/db", () => {
 
   const dbMock = {
     select: vi.fn(),
+    update: directUpdateMock,
     transaction: vi.fn(async (fn: (tx: any) => any) => fn(tx)),
   };
 
@@ -93,7 +101,7 @@ vi.mock("@workspace/db", () => {
     coverLetterVersionsTable,
     eventLogsTable,
     aiRunEvaluationsTable,
-    __approvalEvalCaptureTest: { dbMock, tx },
+    __approvalEvalCaptureTest: { dbMock, tx, directUpdateMock },
   };
 });
 
@@ -105,6 +113,15 @@ vi.mock("../../lib/lineage", () => {
 });
 
 describe("approval evaluation capture", () => {
+  beforeEach(async () => {
+    const mocks = (await import("@workspace/db") as any).__approvalEvalCaptureTest;
+    mocks.dbMock.select.mockReset();
+    mocks.dbMock.transaction.mockClear();
+    mocks.tx.update.mockClear();
+    mocks.tx.insert.mockClear();
+    mocks.directUpdateMock.mockClear();
+  });
+
   it("upserts ai_run_evaluations when approving a resume version", async () => {
     const { default: resumeRouter } = await import("../resume-versions");
 
@@ -181,6 +198,139 @@ describe("approval evaluation capture", () => {
     expect(evaluationInsert.formattingScore).toBe(3);
     expect(evaluationInsert.attributionScore).toBe(2);
     expect(evaluationInsert.notes).toBe("LGTM");
+  });
+
+  it("approves a newly generated structured resume artifact", async () => {
+    const { default: resumeRouter } = await import("../resume-versions");
+
+    (await import("@workspace/db") as any).__approvalEvalCaptureTest.dbMock.select.mockReturnValueOnce({
+      from() {
+        return {
+          where() {
+            return [
+              {
+                id: 124,
+                status: "pending_approval",
+                jobId: 77,
+                runId: "run_20250101t000000z_structuredok",
+                eventLogId: 601,
+                templateId: "software_developer",
+                tailoredBullets: [
+                  {
+                    text: "Senior Instructional Designer | Acme Health | San Diego, CA | Jan 2021 - Present",
+                    claimIds: [],
+                    section: "experience",
+                    baseSourceRefs: ["base:experience:b001"],
+                  },
+                  {
+                    text: "Led project delivery across learning deployments and stakeholder reviews.",
+                    claimIds: [1],
+                    section: "experience",
+                  },
+                ],
+                diffData: {
+                  modelContract: "resume_tailoring_v2_simple",
+                  templateValidation: { templateId: "software_developer", templateLabel: "Software Developer" },
+                  sourceValidation: { passed: true, validItemCount: 2, claimBackedCount: 1, baseBackedCount: 1 },
+                  semanticValidation: { passed: true, sectionCounts: { experience: 2 } },
+                },
+                notes: "Tailored resume generated with structured source validation.",
+              },
+            ];
+          },
+        };
+      },
+    });
+
+    const layer = (resumeRouter as any).stack.find(
+      (l: any) => l.route?.path === "/resume-versions/:id/approve" && l.route?.methods?.post,
+    );
+    const handler = layer.route.stack[0].handle;
+    const req: any = {
+      params: { id: "124" },
+      body: { notes: "Structured draft looks good" },
+      session: { adminId: 27 },
+      log: { info: vi.fn(), warn: vi.fn() },
+    };
+    const res = makeRes();
+
+    await handler(req, res);
+
+    expect(res.statusCode).toBe(200);
+  });
+
+  it("rejects approval when structured bullet data is missing", async () => {
+    const { default: resumeRouter } = await import("../resume-versions");
+
+    (await import("@workspace/db") as any).__approvalEvalCaptureTest.dbMock.select.mockReturnValueOnce({
+      from() {
+        return {
+          where() {
+            return [
+              {
+                id: 125,
+                status: "pending_approval",
+                jobId: 77,
+                runId: "run_20250101t000000z_missingbullets",
+                eventLogId: 602,
+                templateId: "software_developer",
+                tailoredBullets: [],
+                diffData: {
+                  modelContract: "resume_tailoring_v2_simple",
+                  templateValidation: { templateId: "software_developer", templateLabel: "Software Developer" },
+                  sourceValidation: { passed: true, validItemCount: 1 },
+                  semanticValidation: { passed: true, sectionCounts: { experience: 1 } },
+                },
+                notes: "Tailored resume generated with structured source validation.",
+              },
+            ];
+          },
+        };
+      },
+    });
+
+    const layer = (resumeRouter as any).stack.find(
+      (l: any) => l.route?.path === "/resume-versions/:id/approve" && l.route?.methods?.post,
+    );
+    const handler = layer.route.stack[0].handle;
+    const req: any = {
+      params: { id: "125" },
+      body: {},
+      session: { adminId: 27 },
+      log: { info: vi.fn(), warn: vi.fn() },
+    };
+    const res = makeRes();
+
+    await handler(req, res);
+
+    expect(res.statusCode).toBe(422);
+    expect(res.payload).toMatchObject({
+      error: "Resume must be regenerated before approval",
+    });
+  });
+
+  it("blocks direct status mutation through the generic PATCH route", async () => {
+    const { default: resumeRouter } = await import("../resume-versions");
+
+    const layer = (resumeRouter as any).stack.find(
+      (l: any) => l.route?.path === "/resume-versions/:id" && l.route?.methods?.patch,
+    );
+    expect(layer).toBeTruthy();
+
+    const handler = layer.route.stack[0].handle;
+    const req: any = {
+      params: { id: "123" },
+      body: { status: "approved", notes: "bypass" },
+      session: { adminId: 27 },
+      log: { info: vi.fn(), warn: vi.fn() },
+    };
+    const res = makeRes();
+
+    await handler(req, res);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.payload?.error).toContain("/approve or /reject");
+    expect((await import("@workspace/db") as any).__approvalEvalCaptureTest.directUpdateMock).not.toHaveBeenCalled();
   });
 
   it("allows rejecting a previously approved resume when it now fails approval validation", async () => {

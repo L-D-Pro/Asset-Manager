@@ -230,8 +230,32 @@ describe("job lineage pipelines", () => {
     expect(inserted.label).not.toContain("generation failed");
     expect(inserted.tailoredDocumentText).toContain("EXPERIENCE");
     expect(inserted.tailoredDocumentText).toContain("Led project delivery");
+    expect(inserted.tailoredBullets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          section: "summary",
+          text: "Senior Instructional Designer with 13+ years delivering enterprise learning systems.",
+          claimIds: [1],
+        }),
+        expect.objectContaining({
+          section: "experience",
+          text: "Led project delivery across learning deployments and stakeholder reviews.",
+          claimIds: [1],
+        }),
+      ]),
+    );
     expect(inserted.templateId).toBe("software_developer");
     expect(inserted.diffData.modelContract).toBe("resume_tailoring_v2_simple");
+    expect(inserted.diffData.templateValidation).toMatchObject({
+      templateId: "software_developer",
+      templateLabel: "Software Developer",
+    });
+    expect(inserted.diffData.sourceValidation).toMatchObject({
+      passed: true,
+    });
+    expect(inserted.diffData.semanticValidation).toMatchObject({
+      passed: true,
+    });
     expect(inserted.runId).toBe("run_resume_plan_1234567890");
     expect(inserted.eventLogId).toBe(321);
   });
@@ -263,9 +287,16 @@ describe("job lineage pipelines", () => {
     );
 
     const inserted = resumeInsertValuesMock.mock.calls.at(-1)?.[0];
-    expect(inserted.label).toContain("AI tailored resume");
+    expect(inserted.label).toContain("truth lock failure");
     expect(inserted.runId).toBe("run_resume_failure_1234567890");
     expect(inserted.eventLogId).toBe(654);
+    expect(inserted.tailoredBullets).toEqual([]);
+    expect(inserted.diffData.sourceValidation).toMatchObject({
+      passed: false,
+    });
+    expect(inserted.diffData.semanticValidation).toMatchObject({
+      passed: false,
+    });
   });
 
   it("propagates AI call failures without saving a fallback", async () => {

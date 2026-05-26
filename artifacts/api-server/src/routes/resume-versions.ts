@@ -122,6 +122,12 @@ router.patch("/resume-versions/:id", async (req: JobOpsRequest, res): Promise<vo
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  if (parsed.data.status != null) {
+    res.status(400).json({
+      error: 'Resume status can only change through /approve or /reject. Direct PATCH status updates are not allowed.',
+    });
+    return;
+  }
   const [row] = await db
     .update(resumeVersionsTable)
     .set(parsed.data)
