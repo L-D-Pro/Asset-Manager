@@ -61,7 +61,7 @@ describe("routeSkills — mode: none", () => {
     });
     expect(decision.selectedSlugs).toEqual([]);
     expect(decision.confidence).toBe(0);
-    expect(decision.reason).toContain("catalog only");
+    expect(decision.reason).toContain("no skill injected");
     expect(decision.llmUsed).toBe(false);
     expect(decision.skillPromptTokens).toBe(0);
   });

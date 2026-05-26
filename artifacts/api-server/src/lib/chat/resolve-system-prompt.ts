@@ -22,6 +22,7 @@ import {
   routeSkills,
   type RouterSkill,
   type RoutingDecision,
+  type RoutingConfig,
 } from "./skill-router";
 import {
   loadOrCreateBestPractices,
@@ -142,8 +143,21 @@ async function classifyWithLLM(
       const result = await callAI({ taskType, userId, systemPrompt: ROUTER_SYSTEM_PROMPT, userPrompt });
       const parsed = parseJsonResponse<RouterLlmResponse>(result.content);
       if (!parsed) return null;
+
+      // Fail closed on invalid confidence — do not invent a default.
+      const rawConfidence = parsed.confidence;
+      if (
+        typeof rawConfidence !== "number" ||
+        !isFinite(rawConfidence) ||
+        rawConfidence < 0 ||
+        rawConfidence > 1
+      ) {
+        logger.warn({ taskType, rawConfidence }, "skill-router: LLM returned invalid confidence — failing closed");
+        return null;
+      }
+      const score = rawConfidence;
+
       const slugs = (parsed.selectedSkillSlugs ?? []).filter((s) => validSlugs.has(s));
-      const score = typeof parsed.confidence === "number" ? parsed.confidence : 0.6;
       return slugs.map((slug) => ({ slug, score }));
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -179,6 +193,8 @@ export interface ResolvedChatPrompt {
   decision: RoutingDecision;
   /** The routing mode actually applied (after override + skillsEnabled gating). */
   mode: RoutingMode;
+  /** Maximum history turns to feed to the model — from DB lever config. */
+  historyTurnLimit: number;
 }
 
 /**
@@ -208,6 +224,19 @@ export async function resolveChatPrompt(
   const tokenBudget = o.skillTokenBudget ?? config.skillTokenBudget;
   const maxSkills = o.maxSelectedSkills ?? config.maxSelectedSkills;
 
+  const routingConfig: RoutingConfig = {
+    autoThreshold: config.autoThreshold,
+    triggerWeight: config.triggerWeight,
+    negativeTriggerWeight: config.negativeTriggerWeight,
+    ambiguousGap: config.ambiguousGap,
+    llmConfidenceThreshold: config.llmConfidenceThreshold,
+    coverBoost: config.coverBoost,
+    boostTailorPlusJob: config.boostTailorPlusJob,
+    boostResumePlusJob: config.boostResumePlusJob,
+    boostAuditTailoredJob: config.boostAuditTailoredJob,
+    boostAuditTailoredOnly: config.boostAuditTailoredOnly,
+  };
+
   const allSkills = skillsEnabled ? allSkillsRaw : [];
 
   const decision = await routeSkills({
@@ -218,6 +247,7 @@ export async function resolveChatPrompt(
     explicitSlugs: params.explicitSlugs,
     tokenBudget,
     maxSkills,
+    routingConfig,
     classify: (catalog, message) => classifyWithLLM(catalog, message, params.userId),
   });
 
@@ -247,6 +277,7 @@ export async function resolveChatPrompt(
     sections: buildSystemPromptSections(inputs),
     decision,
     mode,
+    historyTurnLimit: config.historyTurnLimit,
   };
 }
 
