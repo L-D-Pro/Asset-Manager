@@ -88,6 +88,32 @@ describe("buildSystemPromptSections", () => {
   });
 });
 
+describe("buildSystemPromptSections — catalog excluded", () => {
+  it("empty catalog produces no skill_catalog section", () => {
+    const sections = buildSystemPromptSections({
+      identityText: "You are a copilot.",
+      catalog: [],
+      skills: [],
+      bestPracticesText: "",
+      attachments: [],
+    });
+    expect(sections.every((s) => s.lever !== "skill_catalog")).toBe(true);
+  });
+});
+
+describe("buildSystemPrompt — catalog excluded from prompt", () => {
+  it("empty catalog produces no skill_catalog section", () => {
+    const sections = buildSystemPromptSections({
+      identityText: "You are a copilot.",
+      catalog: [],
+      skills: [],
+      bestPracticesText: "",
+      attachments: [],
+    });
+    expect(sections.every((s) => s.lever !== "skill_catalog")).toBe(true);
+  });
+});
+
 describe("buildSystemPrompt", () => {
   it("joins section contents with the --- separator in order", () => {
     const out = buildSystemPrompt(baseInputs);

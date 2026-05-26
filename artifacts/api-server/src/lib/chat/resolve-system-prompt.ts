@@ -40,6 +40,23 @@ function asMode(raw: string): RoutingMode {
   return "auto";
 }
 
+/**
+ * Guard against debug_all in production.
+ * Returns the mode unchanged unless NODE_ENV is "production" and mode is "debug_all",
+ * in which case downgrades to "auto" and logs a warning.
+ */
+function guardDebugMode(mode: RoutingMode): RoutingMode {
+  if (mode === "debug_all" && process.env.NODE_ENV === "production") {
+    // Import logger is already at top of file
+    logger.warn(
+      "debug_all routing mode is not allowed in production — downgrading to auto. " +
+      "This mode injects all skill bodies and bypasses budget controls. Use only in development.",
+    );
+    return "auto";
+  }
+  return mode;
+}
+
 /** Coerce the `metadata` JSONB column into a complete ChatSkillMetadata. */
 function coerceMeta(raw: unknown): ChatSkillMetadata {
   const m = (raw ?? {}) as Partial<ChatSkillMetadata>;
@@ -186,7 +203,7 @@ export async function resolveChatPrompt(
   const skillsEnabled = o.skillsEnabled ?? config.skillsEnabled;
   const bestPracticesEnabled = o.bestPracticesEnabled ?? config.bestPracticesEnabled;
   const mode: RoutingMode = skillsEnabled
-    ? asMode(o.skillRoutingMode ?? config.skillRoutingMode)
+    ? guardDebugMode(asMode(o.skillRoutingMode ?? config.skillRoutingMode))
     : "none";
   const tokenBudget = o.skillTokenBudget ?? config.skillTokenBudget;
   const maxSkills = o.maxSelectedSkills ?? config.maxSelectedSkills;
@@ -208,12 +225,10 @@ export async function resolveChatPrompt(
     .filter((s) => decision.selectedSlugs.includes(s.slug))
     .map((s) => ({ slug: s.slug, body: s.body }));
 
-  // Catalog is shown whenever skills are enabled, except in debug_all (where
-  // every full body is already injected so the catalog would be redundant).
-  const catalog: CatalogEntry[] =
-    skillsEnabled && mode !== "debug_all"
-      ? allSkills.map((s) => ({ slug: s.slug, name: s.name, description: s.meta.routerDescription }))
-      : [];
+  // Catalog is NOT included in the final generation prompt — the router sees
+  // skill metadata internally but the main model only sees selected skill bodies.
+  // An empty catalog array causes buildSystemPromptSections to skip that section.
+  const catalog: CatalogEntry[] = [];
 
   const bestPracticesText = bestPracticesEnabled
     ? formatBestPracticesForPrompt(bestPractices)

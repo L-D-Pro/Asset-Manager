@@ -7,8 +7,10 @@
  * 2. `debug_all` → all active skills, skip cap/budget.
  * 3. `explicit` → the user's picked slugs, then shared cap + budget.
  * 4. `auto`:
- *    - Deterministic scoring via `scoreSkills(message, skills)`.
+ *    - Deterministic scoring via `scoreSkills(message, attachmentKinds, skills)`.
+ *    - 4b. Attachment/context boosts applied to deterministic scores before threshold check.
  *    - One clear winner at/above threshold → select it, skip LLM.
+ *    - 4c. Zero deterministic matches + strong attachment context → LLM routing attempt.
  *    - Zero candidates at/above threshold → empty (no fallback-to-all).
  *    - Ambiguous (≥2 candidates within the gap) → injected `classify` (LLM).
  *    - then shared cap + budget.
@@ -62,14 +64,69 @@ const AMBIGUOUS_GAP = 0.15;
 const HARD_MAX_SKILLS = 2;
 
 /**
+ * Computes slug → extra score boosts based on attachment context.
+ * Uses partial slug matching (e.g. "resume-tailoring" matches boost for "tailor").
+ */
+function attachmentBoosts(
+  attachmentKinds: string[],
+  skills: RouterSkill[],
+): Map<string, number> {
+  const boosts = new Map<string, number>();
+  const hasBaseResume = attachmentKinds.includes("base_resume");
+  const hasTailoredResume = attachmentKinds.includes("tailored_resume");
+  const hasJob = attachmentKinds.includes("job");
+
+  const addBoost = (slug: string, amount: number) => {
+    boosts.set(slug, (boosts.get(slug) ?? 0) + amount);
+  };
+
+  for (const skill of skills) {
+    const slug = skill.slug;
+
+    // base_resume + job → tailor boost
+    if (hasBaseResume && hasJob) {
+      if (slug.includes("tailor") || slug.includes("tailored-resume")) {
+        addBoost(slug, 0.4);
+      }
+      if (slug.includes("resume")) {
+        addBoost(slug, 0.2);
+      }
+    }
+
+    // tailored_resume + job → audit boost
+    if (hasTailoredResume && hasJob) {
+      if (slug.includes("audit") || slug.includes("resume-audit")) {
+        addBoost(slug, 0.4);
+      }
+    }
+
+    // tailored_resume only (no job) → audit boost
+    if (hasTailoredResume && !hasJob) {
+      if (slug.includes("audit")) {
+        addBoost(slug, 0.2);
+      }
+    }
+  }
+
+  return boosts;
+}
+
+/**
  * Deterministic scorer — generalizes the old `intent-classifier` regexes into a
  * metadata-driven score: +per positive trigger, − per negative trigger.
+ * Also applies attachment-context boosts.
  */
 function scoreSkills(
   message: string,
+  attachmentKinds: string[],
   skills: RouterSkill[],
 ): Array<{ slug: string; score: number }> {
   const text = message.toLowerCase();
+  const hasCover =
+    attachmentKinds.some((k) => k.toLowerCase().includes("cover")) ||
+    text.includes("cover");
+  const boosts = attachmentBoosts(attachmentKinds, skills);
+
   return skills.map((skill) => {
     let score = 0;
     for (const ex of skill.meta.triggerExamples ?? []) {
@@ -77,6 +134,10 @@ function scoreSkills(
     }
     for (const neg of skill.meta.negativeTriggers ?? []) {
       if (neg && text.includes(neg.toLowerCase())) score -= NEGATIVE_WEIGHT;
+    }
+    score += boosts.get(skill.slug) ?? 0;
+    if (hasCover && skill.slug.includes("cover")) {
+      score += 0.3;
     }
     return { slug: skill.slug, score };
   });
@@ -101,8 +162,8 @@ function finalizeSelection(
 }
 
 export async function routeSkills(params: RouteParams): Promise<RoutingDecision> {
-  const { userMessage, skills, mode, explicitSlugs, tokenBudget, maxSkills, classify } = params;
-  const candidates = scoreSkills(userMessage, skills);
+  const { userMessage, attachmentKinds, skills, mode, explicitSlugs, tokenBudget, maxSkills, classify } = params;
+  const candidates = scoreSkills(userMessage, attachmentKinds, skills);
 
   // 1. none → no skills selected (catalog still shown by the prompt builder).
   if (mode === "none") {
@@ -147,7 +208,40 @@ export async function routeSkills(params: RouteParams): Promise<RoutingDecision>
   } else {
     // 4. auto (also: explicit with no valid picks falls through to auto).
     const above = candidates.filter((c) => c.score >= AUTO_THRESHOLD);
+
     if (above.length === 0) {
+      // 4c. Zero deterministic matches: try LLM if strong attachment context exists.
+      const strongAttachment =
+        attachmentKinds.includes("base_resume") ||
+        attachmentKinds.includes("tailored_resume") ||
+        attachmentKinds.includes("job");
+
+      if (strongAttachment && classify) {
+        const llm = await classify(skills, userMessage);
+        if (llm && llm.length > 0) {
+          rawSlugs = llm.map((r) => r.slug);
+          confidence = Math.max(...llm.map((r) => r.score));
+          reason = "No deterministic match; LLM routing from attachment context";
+          llmUsed = true;
+
+          const { slugs, budgetTrimmed, skillPromptTokens } = finalizeSelection(
+            rawSlugs,
+            skills,
+            maxSkills,
+            tokenBudget,
+          );
+          return {
+            selectedSlugs: slugs,
+            confidence,
+            reason,
+            candidates,
+            llmUsed,
+            budgetTrimmed,
+            skillPromptTokens,
+          };
+        }
+      }
+
       return {
         selectedSlugs: [],
         confidence: 0,

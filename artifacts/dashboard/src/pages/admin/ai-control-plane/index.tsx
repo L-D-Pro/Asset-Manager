@@ -998,7 +998,8 @@ function NewPresetModal({ promptVersions, onClose, onCreated }: {
                   <button
                     key={mode}
                     type="button"
-                    className={`btn sm${skillRoutingMode === mode ? " accent" : " ghost"}`}
+                    className={`btn sm${skillRoutingMode === mode ? (mode === "debug_all" ? " destructive" : " accent") : " ghost"}`}
+                    title={mode === "debug_all" ? "Development only — not for production use" : undefined}
                     onClick={() => setSkillRoutingMode(mode)}
                   >
                     {label}
@@ -1069,7 +1070,7 @@ const ROUTING_MODES = [
   ["none", "None", "Never inject a skill body — catalog only."],
   ["auto", "Auto", "Deterministic rules first; LLM resolves ambiguous cases. No fallback-to-all."],
   ["explicit", "Explicit", "Inject only the skill(s) the user picks in the chat composer."],
-  ["debug_all", "Debug · all", "Inject every active skill body (bypasses cap + budget)."],
+  ["debug_all", "⚠ Debug only", "Development only — injects ALL skill bodies and bypasses normal routing, cap, and token-budget controls. Blocked in production. Do not use in normal operation."],
 ] as const;
 
 function RoutingCard({ skillRoutingMode, skillTokenBudget, maxSelectedSkills, isPreview, onChanged }: {
@@ -1118,8 +1119,9 @@ function RoutingCard({ skillRoutingMode, skillTokenBudget, maxSelectedSkills, is
             <button
               key={mode}
               type="button"
-              className={`btn sm${skillRoutingMode === mode ? " accent" : " ghost"}`}
+              className={`btn sm${skillRoutingMode === mode ? (mode === "debug_all" ? " destructive" : " accent") : " ghost"}`}
               disabled={update.isPending || isPreview}
+              title={mode === "debug_all" ? "Development only — not for production use" : undefined}
               onClick={() => setMode(mode)}
             >
               {label}

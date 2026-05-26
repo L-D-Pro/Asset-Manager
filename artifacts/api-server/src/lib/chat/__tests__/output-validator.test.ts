@@ -39,3 +39,68 @@ describe("validateChatOutput", () => {
     expect(r.warnings.some((w) => /scaffolding/i.test(w))).toBe(true);
   });
 });
+
+describe("validateChatOutput — resume-specific checks (resume-tailoring slug)", () => {
+  const resumeOpts = { selectedSlugs: ["resume-tailoring"] };
+
+  it("passes a normal concise resume output", () => {
+    const r = validateChatOutput("Here is your tailored resume:\n\n- Built X\n- Led Y", resumeOpts);
+    expect(r.formatOk).toBe(true);
+    expect(r.warnings).toEqual([]);
+  });
+
+  it("flags process leakage — STEP 1", () => {
+    const r = validateChatOutput("STEP 1: Extract keywords", resumeOpts);
+    expect(r.formatOk).toBe(false);
+    expect(r.warnings.some((w) => /process leakage/i.test(w))).toBe(true);
+  });
+
+  it("flags process leakage — JD KEYWORD EXTRACTION", () => {
+    const r = validateChatOutput("JD KEYWORD EXTRACTION\n...", resumeOpts);
+    expect(r.formatOk).toBe(false);
+  });
+
+  it("flags process leakage — I'll work through", () => {
+    const r = validateChatOutput("I'll work through the JD first.", resumeOpts);
+    expect(r.formatOk).toBe(false);
+  });
+
+  it("flags process leakage — internal audit", () => {
+    const r = validateChatOutput("Running internal audit of your skills.", resumeOpts);
+    expect(r.formatOk).toBe(false);
+  });
+
+  it("flags over-budget bullet count (>25 bullets)", () => {
+    const manyBullets = Array.from({ length: 26 }, (_, i) => `- bullet ${i + 1}`).join("\n");
+    const r = validateChatOutput(manyBullets, resumeOpts);
+    expect(r.warnings.some((w) => /bullet count/i.test(w))).toBe(true);
+  });
+
+  it("does not flag 25 or fewer bullets", () => {
+    const bullets = Array.from({ length: 25 }, (_, i) => `- bullet ${i + 1}`).join("\n");
+    const r = validateChatOutput(bullets, resumeOpts);
+    expect(r.warnings.some((w) => /bullet count/i.test(w))).toBe(false);
+  });
+
+  it("flags tables inside resume", () => {
+    const r = validateChatOutput("| Skill | Level |\n| ----- | ----- |", resumeOpts);
+    expect(r.warnings.some((w) => /tables detected/i.test(w))).toBe(true);
+  });
+
+  it("flags excessive separators", () => {
+    const r = validateChatOutput("Section\n-----\nContent", resumeOpts);
+    expect(r.warnings.some((w) => /separator/i.test(w))).toBe(true);
+  });
+});
+
+describe("validateChatOutput — resume checks do NOT apply for non-resume slugs", () => {
+  it("does not flag process leakage for general chat (no slug)", () => {
+    const r = validateChatOutput("STEP 1: Here is my answer.");
+    expect(r.warnings.some((w) => /process leakage/i.test(w))).toBe(false);
+  });
+
+  it("does not flag process leakage for cover-letter slug", () => {
+    const r = validateChatOutput("STEP 1: Let me write your cover letter.", { selectedSlugs: ["cover-letter"] });
+    expect(r.warnings.some((w) => /process leakage/i.test(w))).toBe(false);
+  });
+});

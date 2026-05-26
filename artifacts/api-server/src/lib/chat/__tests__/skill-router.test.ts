@@ -244,3 +244,251 @@ describe("routeSkills — token budget", () => {
     expect(decision.selectedSlugs).toEqual(["big"]);
   });
 });
+
+describe("routeSkills — attachment-aware routing", () => {
+  // Uses the same mockSkills as the outer scope:
+  // - "tailored-resume" (slug contains "tailor" and "resume")
+  // - "cover-letter"
+  // - "resume-ats" (slug contains "resume")
+
+  it("resume + JD attachment boosts tailored-resume skill above threshold for vague message", async () => {
+    // "make this fit better" has no trigger words for any skill.
+    // base_resume + job → +0.4 on slugs with "tailor", +0.2 on slugs with "resume".
+    // tailored-resume: 0.4 (tailor) + 0.2 (resume) = 0.6 >= AUTO_THRESHOLD (0.3) → deterministic match.
+    const decision = await routeSkills({
+      ...baseParams(mockSkills),
+      userMessage: "make this fit better",
+      attachmentKinds: ["base_resume", "job"],
+      mode: "auto",
+    });
+    expect(decision.selectedSlugs).toContain("tailored-resume");
+  });
+
+  it("general chat with no attachments loads no skill", async () => {
+    const decision = await routeSkills({
+      ...baseParams(mockSkills),
+      userMessage: "what is the weather today",
+      attachmentKinds: [],
+      mode: "auto",
+    });
+    expect(decision.selectedSlugs).toEqual([]);
+  });
+
+  it("strong attachment context + no deterministic match calls LLM router", async () => {
+    // Neutral slugs (no "tailor"/"resume"/"audit"/"cover") so attachment boosts stay 0.
+    // Triggers that won't match the vague message → zero deterministic candidates.
+    // With strong attachment context + classify provided, LLM routing should fire.
+    const neutralSkills: RouterSkill[] = [
+      {
+        slug: "skill-alpha",
+        body: "Skill alpha body.",
+        meta: defaultMeta({
+          triggerExamples: ["very specific phrase only"],
+          priority: 1,
+        }),
+      },
+      {
+        slug: "skill-beta",
+        body: "Skill beta body.",
+        meta: defaultMeta({
+          triggerExamples: ["another very specific phrase"],
+          priority: 1,
+        }),
+      },
+    ];
+
+    let classifyCalled = false;
+    const decision = await routeSkills({
+      ...baseParams(neutralSkills),
+      userMessage: "is this any good?",
+      attachmentKinds: ["base_resume", "job"],
+      mode: "auto",
+      classify: async () => {
+        classifyCalled = true;
+        return [{ slug: "skill-alpha", score: 0.7 }];
+      },
+    });
+
+    expect(classifyCalled).toBe(true);
+    expect(decision.llmUsed).toBe(true);
+    expect(decision.selectedSlugs).toContain("skill-alpha");
+  });
+
+  it("strong attachment context + no deterministic match + no classify → no skill", async () => {
+    // Neutral slugs so no attachment boosts fire.
+    const neutralSkills: RouterSkill[] = [
+      {
+        slug: "skill-alpha",
+        body: "Skill alpha body.",
+        meta: defaultMeta({
+          triggerExamples: ["very specific phrase only"],
+          priority: 1,
+        }),
+      },
+    ];
+
+    const decision = await routeSkills({
+      ...baseParams(neutralSkills),
+      userMessage: "is this any good?",
+      attachmentKinds: ["base_resume", "job"],
+      mode: "auto",
+      // No classify provided.
+    });
+
+    expect(decision.selectedSlugs).toEqual([]);
+    expect(decision.llmUsed).toBe(false);
+  });
+
+  it("strong attachment context + no deterministic match + classify returns null → no skill", async () => {
+    // Neutral slugs so no attachment boosts fire.
+    const neutralSkills: RouterSkill[] = [
+      {
+        slug: "skill-alpha",
+        body: "Skill alpha body.",
+        meta: defaultMeta({
+          triggerExamples: ["very specific phrase only"],
+          priority: 1,
+        }),
+      },
+    ];
+
+    const decision = await routeSkills({
+      ...baseParams(neutralSkills),
+      userMessage: "is this any good?",
+      attachmentKinds: ["base_resume", "job"],
+      mode: "auto",
+      classify: async () => null,
+    });
+
+    expect(decision.selectedSlugs).toEqual([]);
+  });
+});
+
+describe("routeSkills — attachment-aware routing", () => {
+  // Use neutral skill slugs (no "tailor"/"resume"/"cover" substrings) to isolate
+  // attachment boosts from slug-substring matching.
+  const neutralSkills: RouterSkill[] = [
+    {
+      slug: "skill-alpha",
+      body: "Tailor a resume to a job description.",
+      meta: defaultMeta({
+        routerDescription: "Tailors a resume to a JD",
+        triggerExamples: ["tailor my resume", "resume for this job", "tailored resume"],
+        negativeTriggers: ["cover letter"],
+        priority: 1,
+      }),
+    },
+    {
+      slug: "skill-beta",
+      body: "Write cover letters.",
+      meta: defaultMeta({
+        routerDescription: "Writes cover letters",
+        triggerExamples: ["cover letter", "application letter"],
+        priority: 1,
+      }),
+    },
+    {
+      slug: "skill-gamma",
+      body: "Optimize resume for ATS.",
+      meta: defaultMeta({
+        routerDescription: "Optimizes for ATS",
+        triggerExamples: ["ats", "keyword match"],
+        priority: 2,
+      }),
+    },
+  ];
+
+  it("vague message with base_resume + job attachments calls LLM (no deterministic match)", async () => {
+    let classified = false;
+    const decision = await routeSkills({
+      ...baseParams(neutralSkills),
+      userMessage: "is this any good?",
+      attachmentKinds: ["base_resume", "job"],
+      mode: "auto",
+      classify: async () => {
+        classified = true;
+        return [{ slug: "skill-alpha", score: 0.7 }];
+      },
+    });
+    expect(classified).toBe(true);
+    expect(decision.llmUsed).toBe(true);
+    expect(decision.selectedSlugs).toContain("skill-alpha");
+  });
+
+  it("vague message + strong attachments + no classify → no skill selected", async () => {
+    const decision = await routeSkills({
+      ...baseParams(neutralSkills),
+      userMessage: "is this any good?",
+      attachmentKinds: ["base_resume", "job"],
+      mode: "auto",
+      // no classify provided
+    });
+    expect(decision.selectedSlugs).toEqual([]);
+    expect(decision.llmUsed).toBe(false);
+  });
+
+  it("vague message + strong attachments + classify returns null → no skill selected", async () => {
+    const decision = await routeSkills({
+      ...baseParams(neutralSkills),
+      userMessage: "is this any good?",
+      attachmentKinds: ["base_resume", "job"],
+      mode: "auto",
+      classify: async () => null,
+    });
+    expect(decision.selectedSlugs).toEqual([]);
+  });
+
+  it("general chat with no attachments loads no skill", async () => {
+    const decision = await routeSkills({
+      ...baseParams(neutralSkills),
+      userMessage: "what is the weather today?",
+      attachmentKinds: [],
+      mode: "auto",
+    });
+    expect(decision.selectedSlugs).toEqual([]);
+    expect(decision.reason).toContain("No skill matched");
+  });
+
+  it("attachment boost pushes a skill above threshold for vague message with real slugs", async () => {
+    // "tailored-resume" slug contains "tailor" → gets +0.4 from base_resume+job combo
+    // That alone exceeds AUTO_THRESHOLD (0.3), so it's selected deterministically.
+    const mockSkills: RouterSkill[] = [
+      {
+        slug: "tailored-resume",
+        body: "You tailor resumes to a job description.",
+        meta: defaultMeta({
+          routerDescription: "Tailors a resume to a JD",
+          triggerExamples: ["tailor my resume", "tailored resume", "resume for this job"],
+          negativeTriggers: ["cover letter"],
+          priority: 1,
+        }),
+      },
+      {
+        slug: "cover-letter",
+        body: "You write cover letters.",
+        meta: defaultMeta({
+          routerDescription: "Writes cover letters",
+          triggerExamples: ["cover letter", "application letter"],
+          priority: 1,
+        }),
+      },
+      {
+        slug: "resume-ats",
+        body: "You optimize resumes for ATS.",
+        meta: defaultMeta({
+          routerDescription: "Optimizes resumes for ATS",
+          triggerExamples: ["ats", "applicant tracking", "keyword match"],
+          negativeTriggers: ["cover letter", "tailor my resume"],
+          priority: 2,
+        }),
+      },
+    ];
+    const decision = await routeSkills({
+      ...baseParams(mockSkills),
+      userMessage: "make this fit better",
+      attachmentKinds: ["base_resume", "job"],
+      mode: "auto",
+    });
+    expect(decision.selectedSlugs).toContain("tailored-resume");
+  });
+});

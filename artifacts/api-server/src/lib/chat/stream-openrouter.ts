@@ -14,7 +14,6 @@ import { openrouter } from "@workspace/integrations-openrouter-ai";
 import { logger } from "../logger";
 import { mintRunId } from "../lineage";
 import { selectModelForTask, type SelectedModel } from "../model-router";
-import { classifyIntent } from "./intent-classifier";
 import { resolveChatPrompt } from "./resolve-system-prompt";
 import { resolveChatPromptVersionId } from "./prompt-versions";
 import { buildParsedJdBlock, type ParsedJd } from "./context-builder";
@@ -152,9 +151,10 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
     return;
   }
 
-  // ── Classify intent + resolve prompt version ────────────────────────────
-  const primarySkillSlug = classifyIntent(userMessage.content);
-  const promptVersionId = await resolveChatPromptVersionId(primarySkillSlug);
+  // ── Prompt version + primary skill slug resolved from routing decision ──
+  // Attribution deferred until after routing (see below).
+  let promptVersionId: number | null = null;
+  let primarySkillSlug: string | null = null;
 
   const historyRows = await db
     .select({ role: messages.role, content: messages.content })
@@ -209,6 +209,13 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
     reason: routingDecision.reason,
     llmUsed: routingDecision.llmUsed,
   });
+
+  // ── Resolve prompt version attribution from routing decision ────────────
+  // Use the first selected skill slug (if any); null means no skill was selected.
+  primarySkillSlug = routingDecision.selectedSlugs[0] ?? null;
+  if (primarySkillSlug) {
+    promptVersionId = await resolveChatPromptVersionId(primarySkillSlug);
+  }
 
   const fullSystemPrompt = parsedJd
     ? `${systemPrompt}\n\n${buildParsedJdBlock(parsedJd)}`
@@ -348,7 +355,7 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
   });
 
   // ── Light output validation (non-blocking — output already streamed) ────
-  const validation = validateChatOutput(assistantText);
+  const validation = validateChatOutput(assistantText, { selectedSlugs: routingDecision.selectedSlugs });
   if (validation.warnings.length > 0) {
     logger.warn({ conversationId, runId, warnings: validation.warnings }, "chat output validation warnings");
   }
