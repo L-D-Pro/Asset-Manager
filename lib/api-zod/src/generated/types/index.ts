@@ -108,8 +108,6 @@ export * from "./createChatThreadBody";
 export * from "./createClaimBody";
 export * from "./createClientMessageTemplateBody";
 export * from "./createClientMessageTemplateBodyMetadata";
-export * from "./createEventLogBody";
-export * from "./createEventLogBodyMetadata";
 export * from "./createFeedbackSignalBody";
 export * from "./createFeedbackSignalBodyAttributionData";
 export * from "./createFreelanceProfileBody";

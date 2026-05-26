@@ -6,6 +6,7 @@ vi.mock("@workspace/db", () => {
       select: vi.fn(),
     },
     aiRunEvaluationsTable: {
+      userId: "ai_run_evaluations.user_id",
       runId: "ai_run_evaluations.run_id",
       taskScope: "ai_run_evaluations.task_scope",
       eventLogId: "ai_run_evaluations.event_log_id",
@@ -19,6 +20,7 @@ vi.mock("@workspace/db", () => {
       attributionScore: "ai_run_evaluations.attribution_score",
     },
     eventLogsTable: {
+      userId: "event_logs.user_id",
       entityType: "event_logs.entity_type",
       runId: "event_logs.run_id",
     },
@@ -73,6 +75,7 @@ describe("ai metrics snapshot route", () => {
     const handler = route.route.stack[0].handle;
 
     const req: any = {
+      session: { adminId: 27 },
       query: {
         metricsVersion: "v1",
         windowStart: "2026-04-18T10:01:02.000Z",

@@ -12,6 +12,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { applicationsTable } from "./applications";
 import { jobsTable } from "./jobs";
+import { adminUsersTable } from "./admin-users";
 
 export const siteAdaptersTable = pgTable(
   "site_adapters",
@@ -47,6 +48,9 @@ export const applicationSessionsTable = pgTable(
   "application_sessions",
   {
     id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => adminUsersTable.id, { onDelete: "cascade" }),
     applicationId: integer("application_id").references(
       () => applicationsTable.id,
       { onDelete: "cascade" },
@@ -73,6 +77,8 @@ export const applicationSessionsTable = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => [
+    index("application_sessions_user_created_at_idx").on(table.userId, table.createdAt),
+    index("application_sessions_user_status_idx").on(table.userId, table.status),
     index("application_sessions_application_id_idx").on(table.applicationId),
     index("application_sessions_job_id_idx").on(table.jobId),
     index("application_sessions_platform_idx").on(table.platform),
@@ -145,7 +151,7 @@ export const insertSiteAdapterSchema = createInsertSchema(siteAdaptersTable).omi
 });
 export const insertApplicationSessionSchema = createInsertSchema(
   applicationSessionsTable,
-).omit({ id: true, createdAt: true, updatedAt: true });
+).omit({ id: true, userId: true, createdAt: true, updatedAt: true });
 export const insertApplicationFormFieldSchema = createInsertSchema(
   applicationFormFieldsTable,
 ).omit({ id: true, createdAt: true, updatedAt: true });

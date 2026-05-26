@@ -40,7 +40,8 @@ export function buildRoleBlock(args: {
  * placeholder is missing, the template is prepended as extra instruction so
  * existing pipeline prompts still provide the runtime context.
  */
-async function fetchFewShotExamples(taskScope: string): Promise<string> {
+async function fetchFewShotExamples(taskScope: string, userId?: number): Promise<string> {
+  if (userId == null) return "";
   try {
     const examples = await db
       .select({
@@ -51,6 +52,7 @@ async function fetchFewShotExamples(taskScope: string): Promise<string> {
         and(
           eq(aiTrainingExamplesTable.taskScope, taskScope),
           eq(aiTrainingExamplesTable.isActive, true),
+          eq(aiTrainingExamplesTable.userId, userId),
         ),
       )
       .orderBy(desc(aiTrainingExamplesTable.qualityScore))
@@ -73,6 +75,7 @@ export async function resolvePromptForTask(
   taskScope: string,
   fallbackSystemPrompt: string,
   fallbackUserPrompt: string,
+  userId?: number,
 ): Promise<ResolvedPrompt> {
   let row;
 
@@ -103,7 +106,7 @@ export async function resolvePromptForTask(
   }
 
   if (!row) {
-    const fewShot = await fetchFewShotExamples(taskScope);
+    const fewShot = await fetchFewShotExamples(taskScope, userId);
     return {
       systemPrompt: fallbackSystemPrompt,
       userPrompt: fewShot ? `${fallbackUserPrompt}${fewShot}` : fallbackUserPrompt,

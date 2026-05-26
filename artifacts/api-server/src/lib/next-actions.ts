@@ -1,4 +1,4 @@
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   baseResumeVersionsTable,
@@ -17,12 +17,13 @@ export interface NextAction {
   category: "setup" | "action" | "review";
 }
 
-export async function getNextActions(_userId: number): Promise<NextAction[]> {
+export async function getNextActions(userId: number): Promise<NextAction[]> {
   const actions: NextAction[] = [];
 
   const [resume] = await db
     .select()
     .from(baseResumeVersionsTable)
+    .where(eq(baseResumeVersionsTable.userId, userId))
     .limit(1);
   if (!resume) {
     actions.push({
@@ -38,6 +39,7 @@ export async function getNextActions(_userId: number): Promise<NextAction[]> {
   const [profile] = await db
     .select()
     .from(roleProfilesTable)
+    .where(eq(roleProfilesTable.userId, userId))
     .limit(1);
   if (!profile) {
     actions.push({
@@ -52,7 +54,8 @@ export async function getNextActions(_userId: number): Promise<NextAction[]> {
 
   const jobCount = await db
     .select({ count: sql<number>`count(*)` })
-    .from(jobsTable);
+    .from(jobsTable)
+    .where(eq(jobsTable.userId, userId));
   if (jobCount[0].count === 0) {
     actions.push({
       id: "ingest_job",
@@ -66,7 +69,8 @@ export async function getNextActions(_userId: number): Promise<NextAction[]> {
 
   const appCount = await db
     .select({ count: sql<number>`count(*)` })
-    .from(applicationsTable);
+    .from(applicationsTable)
+    .where(eq(applicationsTable.userId, userId));
   if (appCount[0].count === 0 && jobCount[0].count > 0) {
     actions.push({
       id: "track_application",
@@ -80,7 +84,8 @@ export async function getNextActions(_userId: number): Promise<NextAction[]> {
 
   const wizardCount = await db
     .select({ count: sql<number>`count(*)` })
-    .from(wizardSessionsTable);
+    .from(wizardSessionsTable)
+    .where(eq(wizardSessionsTable.userId, userId));
   if (wizardCount[0].count === 0 && jobCount[0].count > 0) {
     actions.push({
       id: "try_wizard",

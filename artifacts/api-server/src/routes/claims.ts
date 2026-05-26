@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and } from "drizzle-orm";
-import { db, claimsTable } from "@workspace/db";
+import { db, claimsTable, jobsTable } from "@workspace/db";
 import {
   ListClaimsQueryParams,
   ListClaimsResponse,
@@ -24,10 +24,13 @@ import {
   ClaimDraftingUnavailableError,
 } from "../lib/pipelines/claim-generation";
 import { extractClaimsFromChatPipeline } from "../lib/pipelines/gap-analysis";
+import type { JobOpsRequest } from "../lib/http-types";
+import { currentUserId } from "../lib/ownership";
 
 const router: IRouter = Router();
 
-router.get("/claims", async (req, res): Promise<void> => {
+router.get("/claims", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   req.log.info("Listing claims");
   const query = ListClaimsQueryParams.safeParse(req.query);
   if (!query.success) {
@@ -35,7 +38,7 @@ router.get("/claims", async (req, res): Promise<void> => {
     return;
   }
 
-  const conditions = [];
+  const conditions = [eq(claimsTable.userId, userId)];
   if (query.data.domain != null) {
     conditions.push(eq(claimsTable.domain, query.data.domain));
   }
@@ -46,23 +49,24 @@ router.get("/claims", async (req, res): Promise<void> => {
   const rows = await db
     .select()
     .from(claimsTable)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .where(and(...conditions))
     .orderBy(claimsTable.createdAt);
   res.json(ListClaimsResponse.parse(rows));
 });
 
-router.post("/claims", async (req, res): Promise<void> => {
+router.post("/claims", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const parsed = CreateClaimBody.safeParse(req.body);
   if (!parsed.success) {
     req.log.warn({ error: parsed.error.message }, "Invalid create claim body");
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [row] = await db.insert(claimsTable).values(parsed.data).returning();
+  const [row] = await db.insert(claimsTable).values({ ...parsed.data, userId }).returning();
   res.status(201).json(GetClaimResponse.parse(row));
 });
 
-router.post("/claims/draft", async (req, res): Promise<void> => {
+router.post("/claims/draft", async (req: JobOpsRequest, res): Promise<void> => {
   try {
     await parseSingleDocumentUpload(req, res);
 
@@ -84,6 +88,7 @@ router.post("/claims/draft", async (req, res): Promise<void> => {
     }
 
     const result = await draftClaimsFromSource({
+      userId: currentUserId(req),
       sourceText,
       prompt,
       extractedText,
@@ -109,14 +114,25 @@ router.post("/claims/draft", async (req, res): Promise<void> => {
   }
 });
 
-router.post("/claims/extract-from-chat", async (req, res): Promise<void> => {
+router.post("/claims/extract-from-chat", async (req: JobOpsRequest, res): Promise<void> => {
   try {
+    const userId = currentUserId(req);
     const { question, answer, jobId } = req.body;
     if (!question || !answer) {
       res.status(400).json({ error: "question and answer are required" });
       return;
     }
-    const result = await extractClaimsFromChatPipeline(question, answer, jobId);
+    if (typeof jobId === "number") {
+      const [job] = await db
+        .select({ id: jobsTable.id })
+        .from(jobsTable)
+        .where(and(eq(jobsTable.id, jobId), eq(jobsTable.userId, userId)));
+      if (!job) {
+        res.status(404).json({ error: "Job not found" });
+        return;
+      }
+    }
+    const result = await extractClaimsFromChatPipeline(question, answer, jobId, userId);
     // Since DraftClaimsResponse expects `draftClaims`, the pipeline returns the correct shape
     res.json(result);
   } catch (err) {
@@ -127,7 +143,8 @@ router.post("/claims/extract-from-chat", async (req, res): Promise<void> => {
   }
 });
 
-router.get("/claims/:id", async (req, res): Promise<void> => {
+router.get("/claims/:id", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = GetClaimParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -136,7 +153,7 @@ router.get("/claims/:id", async (req, res): Promise<void> => {
   const [row] = await db
     .select()
     .from(claimsTable)
-    .where(eq(claimsTable.id, params.data.id));
+    .where(and(eq(claimsTable.id, params.data.id), eq(claimsTable.userId, userId)));
   if (!row) {
     res.status(404).json({ error: "Claim not found" });
     return;
@@ -144,7 +161,8 @@ router.get("/claims/:id", async (req, res): Promise<void> => {
   res.json(GetClaimResponse.parse(row));
 });
 
-router.patch("/claims/:id", async (req, res): Promise<void> => {
+router.patch("/claims/:id", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = UpdateClaimParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -159,7 +177,7 @@ router.patch("/claims/:id", async (req, res): Promise<void> => {
   const [row] = await db
     .update(claimsTable)
     .set(parsed.data)
-    .where(eq(claimsTable.id, params.data.id))
+    .where(and(eq(claimsTable.id, params.data.id), eq(claimsTable.userId, userId)))
     .returning();
   if (!row) {
     res.status(404).json({ error: "Claim not found" });
@@ -168,7 +186,8 @@ router.patch("/claims/:id", async (req, res): Promise<void> => {
   res.json(UpdateClaimResponse.parse(row));
 });
 
-router.delete("/claims/:id", async (req, res): Promise<void> => {
+router.delete("/claims/:id", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = DeleteClaimParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -176,7 +195,7 @@ router.delete("/claims/:id", async (req, res): Promise<void> => {
   }
   const [row] = await db
     .delete(claimsTable)
-    .where(eq(claimsTable.id, params.data.id))
+    .where(and(eq(claimsTable.id, params.data.id), eq(claimsTable.userId, userId)))
     .returning();
   if (!row) {
     res.status(404).json({ error: "Claim not found" });

@@ -79,6 +79,8 @@ export interface AiCallOptions {
   jobId?: number;
   /** Application ID for EventLog context. Pass when the call is tied to a specific application. */
   applicationId?: number;
+  /** Owning user for calls operating on private content. */
+  userId?: number;
   /** Optional pre-minted canonical lineage ID. If omitted, callAI mints one once and reuses it across retries. */
   runId?: string;
   /** Optional one-off model override used for comparison flows. */
@@ -304,12 +306,13 @@ async function adaptRequestParamsForModel(args: {
  * reads these automatically.
  */
 export async function callAI(opts: AiCallOptions): Promise<AiCallResult> {
-  const { taskType, systemPrompt, userPrompt, jobId, applicationId, modelOverride, extraParams, validateContent } = opts;
+  const { taskType, systemPrompt, userPrompt, jobId, applicationId, userId, modelOverride, extraParams, validateContent } = opts;
   const runId = opts.runId ?? mintRunId();
   const resolvedPrompt = await resolvePromptForTask(
     taskType,
     systemPrompt,
     userPrompt,
+    userId,
   );
 
   const modelChain = await resolveModelChainForCall(taskType, modelOverride);
@@ -426,6 +429,7 @@ export async function callAI(opts: AiCallOptions): Promise<AiCallResult> {
       );
 
       const [eventLog] = await db.insert(eventLogsTable).values({
+        userId: userId ?? null,
         entityType: "ai_call",
         entityId: jobId ?? 0,
         applicationId: applicationId ?? null,
@@ -506,6 +510,7 @@ export async function callAI(opts: AiCallOptions): Promise<AiCallResult> {
   // Log the terminal failure to EventLog for auditability
   try {
     const [failureEvent] = await db.insert(eventLogsTable).values({
+      userId: userId ?? null,
       entityType: "ai_call",
       entityId: jobId ?? 0,
       applicationId: applicationId ?? null,

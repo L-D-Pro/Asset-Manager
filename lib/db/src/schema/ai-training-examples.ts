@@ -11,6 +11,7 @@ import {
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { aiRunEvaluationsTable } from "./ai-run-evaluations";
+import { adminUsersTable } from "./admin-users";
 
 /**
  * Curated examples for future few-shot prompts, eval fixtures, or fine-tuning.
@@ -21,6 +22,9 @@ export const aiTrainingExamplesTable = pgTable(
   "ai_training_examples",
   {
     id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => adminUsersTable.id, { onDelete: "cascade" }),
     taskScope: text("task_scope").notNull(),
     sourceEntityType: text("source_entity_type"),
     sourceEntityId: integer("source_entity_id"),
@@ -44,6 +48,7 @@ export const aiTrainingExamplesTable = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => [
+    index("ai_training_examples_user_created_at_idx").on(table.userId, table.createdAt),
     index("ai_training_examples_task_scope_idx").on(table.taskScope),
     index("ai_training_examples_source_idx").on(
       table.sourceEntityType,
@@ -57,6 +62,7 @@ export const insertAiTrainingExampleSchema = createInsertSchema(
   aiTrainingExamplesTable,
 ).omit({
   id: true,
+  userId: true,
   createdAt: true,
   updatedAt: true,
 });

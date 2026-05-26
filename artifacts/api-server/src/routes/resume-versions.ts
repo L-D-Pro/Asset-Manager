@@ -20,6 +20,8 @@ import {
 import { validateLineage } from "../lib/lineage";
 import { generateResumeDocx } from "../lib/docx-export";
 import { scrubWizardStateReferences } from "../lib/wizard-state-cleanup";
+import type { JobOpsRequest } from "../lib/http-types";
+import { currentUserId } from "../lib/ownership";
 
 const router: IRouter = Router();
 
@@ -64,7 +66,8 @@ function getResumeApprovalBlocker(resumeVersion: typeof resumeVersionsTable.$inf
   return null;
 }
 
-router.get("/resume-versions", async (req, res): Promise<void> => {
+router.get("/resume-versions", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   req.log.info("Listing resume versions");
   const query = ListResumeVersionsQueryParams.safeParse(req.query);
   if (!query.success) {
@@ -72,7 +75,7 @@ router.get("/resume-versions", async (req, res): Promise<void> => {
     return;
   }
 
-  const conditions = [];
+  const conditions = [eq(resumeVersionsTable.userId, userId)];
   if (query.data.jobId != null) {
     conditions.push(eq(resumeVersionsTable.jobId, query.data.jobId));
   }
@@ -83,12 +86,13 @@ router.get("/resume-versions", async (req, res): Promise<void> => {
   const rows = await db
     .select()
     .from(resumeVersionsTable)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .where(and(...conditions))
     .orderBy(resumeVersionsTable.createdAt);
   res.json(ListResumeVersionsResponse.parse(rows));
 });
 
-router.get("/resume-versions/:id", async (req, res): Promise<void> => {
+router.get("/resume-versions/:id", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = GetResumeVersionParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -97,7 +101,7 @@ router.get("/resume-versions/:id", async (req, res): Promise<void> => {
   const [row] = await db
     .select()
     .from(resumeVersionsTable)
-    .where(eq(resumeVersionsTable.id, params.data.id));
+    .where(and(eq(resumeVersionsTable.id, params.data.id), eq(resumeVersionsTable.userId, userId)));
   if (!row) {
     res.status(404).json({ error: "Resume version not found" });
     return;
@@ -105,7 +109,8 @@ router.get("/resume-versions/:id", async (req, res): Promise<void> => {
   res.json(GetResumeVersionResponse.parse(row));
 });
 
-router.patch("/resume-versions/:id", async (req, res): Promise<void> => {
+router.patch("/resume-versions/:id", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = UpdateResumeVersionParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -120,7 +125,7 @@ router.patch("/resume-versions/:id", async (req, res): Promise<void> => {
   const [row] = await db
     .update(resumeVersionsTable)
     .set(parsed.data)
-    .where(eq(resumeVersionsTable.id, params.data.id))
+    .where(and(eq(resumeVersionsTable.id, params.data.id), eq(resumeVersionsTable.userId, userId)))
     .returning();
   if (!row) {
     res.status(404).json({ error: "Resume version not found" });
@@ -129,7 +134,8 @@ router.patch("/resume-versions/:id", async (req, res): Promise<void> => {
   res.json(UpdateResumeVersionResponse.parse(row));
 });
 
-router.delete("/resume-versions/:id", async (req, res): Promise<void> => {
+router.delete("/resume-versions/:id", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = DeleteResumeVersionParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -137,17 +143,18 @@ router.delete("/resume-versions/:id", async (req, res): Promise<void> => {
   }
   const [row] = await db
     .delete(resumeVersionsTable)
-    .where(eq(resumeVersionsTable.id, params.data.id))
+    .where(and(eq(resumeVersionsTable.id, params.data.id), eq(resumeVersionsTable.userId, userId)))
     .returning();
   if (!row) {
     res.status(404).json({ error: "Resume version not found" });
     return;
   }
-  await scrubWizardStateReferences({ resumeVersionIds: [params.data.id] });
+  await scrubWizardStateReferences({ userId, resumeVersionIds: [params.data.id] });
   res.sendStatus(204);
 });
 
-router.post("/resume-versions/:id/approve", async (req, res): Promise<void> => {
+router.post("/resume-versions/:id/approve", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = ApproveResumeVersionParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -164,7 +171,7 @@ router.post("/resume-versions/:id/approve", async (req, res): Promise<void> => {
   const existing = await db
     .select()
     .from(resumeVersionsTable)
-    .where(eq(resumeVersionsTable.id, params.data.id));
+    .where(and(eq(resumeVersionsTable.id, params.data.id), eq(resumeVersionsTable.userId, userId)));
   if (!existing[0]) {
     res.status(404).json({ error: "Resume version not found" });
     return;
@@ -219,12 +226,13 @@ router.post("/resume-versions/:id/approve", async (req, res): Promise<void> => {
     const [updated] = await tx
       .update(resumeVersionsTable)
       .set({ status: "approved" })
-      .where(eq(resumeVersionsTable.id, params.data.id))
+      .where(and(eq(resumeVersionsTable.id, params.data.id), eq(resumeVersionsTable.userId, userId)))
       .returning();
 
     const [eventLog] = await tx
       .insert(eventLogsTable)
       .values({
+        userId,
         entityType: "resume_version",
         entityId: params.data.id,
         jobId: existing[0]!.jobId ?? null,
@@ -241,6 +249,7 @@ router.post("/resume-versions/:id/approve", async (req, res): Promise<void> => {
     await tx
       .insert(aiRunEvaluationsTable)
       .values({
+        userId,
         runId: resumeVersion.runId,
         taskScope: "resume_review",
         entityType: "resume_version",
@@ -284,6 +293,7 @@ router.post("/resume-versions/:id/approve", async (req, res): Promise<void> => {
   if (row.runId && row.tailoredDocumentText) {
     db.insert(aiTrainingExamplesTable)
       .values({
+        userId,
         taskScope: "resume_tailoring",
         sourceEntityType: "resume_version",
         sourceEntityId: row.id,
@@ -307,7 +317,8 @@ router.post("/resume-versions/:id/approve", async (req, res): Promise<void> => {
   res.json(ApproveResumeVersionResponse.parse(row));
 });
 
-router.post("/resume-versions/:id/reject", async (req, res): Promise<void> => {
+router.post("/resume-versions/:id/reject", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = RejectResumeVersionParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -324,7 +335,7 @@ router.post("/resume-versions/:id/reject", async (req, res): Promise<void> => {
   const existing = await db
     .select()
     .from(resumeVersionsTable)
-    .where(eq(resumeVersionsTable.id, params.data.id));
+    .where(and(eq(resumeVersionsTable.id, params.data.id), eq(resumeVersionsTable.userId, userId)));
   if (!existing[0]) {
     res.status(404).json({ error: "Resume version not found" });
     return;
@@ -371,12 +382,13 @@ router.post("/resume-versions/:id/reject", async (req, res): Promise<void> => {
     const [updated] = await tx
       .update(resumeVersionsTable)
       .set({ status: "rejected" })
-      .where(eq(resumeVersionsTable.id, params.data.id))
+      .where(and(eq(resumeVersionsTable.id, params.data.id), eq(resumeVersionsTable.userId, userId)))
       .returning();
 
     const [eventLog] = await tx
       .insert(eventLogsTable)
       .values({
+        userId,
         entityType: "resume_version",
         entityId: params.data.id,
         jobId: existing[0]!.jobId ?? null,
@@ -393,6 +405,7 @@ router.post("/resume-versions/:id/reject", async (req, res): Promise<void> => {
     await tx
       .insert(aiRunEvaluationsTable)
       .values({
+        userId,
         runId: resumeVersion.runId,
         taskScope: "resume_review",
         entityType: "resume_version",
@@ -436,7 +449,8 @@ router.post("/resume-versions/:id/reject", async (req, res): Promise<void> => {
   res.json(RejectResumeVersionResponse.parse(row));
 });
 
-router.get("/resume-versions/:id/export", async (req, res): Promise<void> => {
+router.get("/resume-versions/:id/export", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = GetResumeVersionParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -446,7 +460,7 @@ router.get("/resume-versions/:id/export", async (req, res): Promise<void> => {
   const [row] = await db
     .select()
     .from(resumeVersionsTable)
-    .where(eq(resumeVersionsTable.id, params.data.id));
+    .where(and(eq(resumeVersionsTable.id, params.data.id), eq(resumeVersionsTable.userId, userId)));
     
   if (!row) {
     res.status(404).json({ error: "Resume version not found" });

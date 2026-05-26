@@ -5,9 +5,12 @@ import {
   timestamp,
   jsonb,
   boolean,
+  integer,
+  index,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { adminUsersTable } from "./admin-users";
 
 /**
  * Role profiles define what the user is looking for in a target role.
@@ -26,6 +29,10 @@ import { z } from "zod/v4";
 export const roleProfilesTable = pgTable("role_profiles", {
   /** Auto-incrementing primary key. */
   id: serial("id").primaryKey(),
+
+  userId: integer("user_id")
+    .notNull()
+    .references(() => adminUsersTable.id, { onDelete: "cascade" }),
 
   /** Human-readable profile name (e.g. "Senior Frontend"). */
   name: text("name").notNull(),
@@ -61,13 +68,17 @@ export const roleProfilesTable = pgTable("role_profiles", {
     .notNull()
     .defaultNow()
     .$onUpdate(() => new Date()),
-});
+}, (table) => [
+  index("role_profiles_user_created_at_idx").on(table.userId, table.createdAt),
+  index("role_profiles_user_active_idx").on(table.userId, table.isActive),
+]);
 
 /** Zod schema for inserting a role profile (omits server-managed fields). */
 export const insertRoleProfileSchema = createInsertSchema(
   roleProfilesTable,
 ).omit({
   id: true,
+  userId: true,
   createdAt: true,
   updatedAt: true,
 });

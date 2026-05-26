@@ -14,11 +14,12 @@ Return ONLY valid JSON with this exact structure:
 }
 Be precise and conservative — only include skills explicitly mentioned.`;
 
-export async function parseJdText(text: string): Promise<ParsedJd | null> {
+export async function parseJdText(text: string, userId?: number): Promise<ParsedJd | null> {
   for (const taskType of ["jd_parsing", "chat"]) {
     try {
       const result = await callAI({
         taskType,
+        userId,
         systemPrompt: JD_SYSTEM_PROMPT,
         userPrompt: `Parse this job description:\n\n${text}`,
       });

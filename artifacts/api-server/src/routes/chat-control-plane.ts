@@ -20,11 +20,13 @@ import {
   resolveChatSystemPromptSections,
   resolveChatPrompt,
 } from "../lib/chat/resolve-system-prompt";
+import { requireAdmin } from "../middlewares/admin";
+import { currentUserId } from "../lib/ownership";
 
 const router: IRouter = Router();
 
-const idParam = (raw: string): number | null => {
-  const n = Number(raw);
+const idParam = (raw: string | string[]): number | null => {
+  const n = Number(Array.isArray(raw) ? raw[0] : raw);
   return Number.isInteger(n) && n > 0 ? n : null;
 };
 
@@ -38,11 +40,7 @@ router.get("/chat/lever-config", async (req, res): Promise<void> => {
   res.json(await getChatLeverConfig());
 });
 
-router.patch("/chat/lever-config", async (req, res): Promise<void> => {
-  if (!(req as JobOpsRequest).session.adminId) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
+router.patch("/chat/lever-config", requireAdmin, async (req, res): Promise<void> => {
   const parsed = UpdateChatLeverConfigBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -72,6 +70,7 @@ router.post("/chat/preview-prompt", async (req, res): Promise<void> => {
   }
 
   const sections = await resolveChatSystemPromptSections({
+    userId: currentUserId(req as JobOpsRequest),
     userMessage: parsed.data.sampleMessage,
     attachments: (parsed.data.attachments ?? []) as never,
     overrides: parsed.data.overrides,
@@ -93,6 +92,7 @@ router.post("/chat/route-preview", async (req, res): Promise<void> => {
   }
 
   const { decision, sections } = await resolveChatPrompt({
+    userId: currentUserId(req as JobOpsRequest),
     userMessage: parsed.data.sampleMessage,
     attachments: (parsed.data.attachments ?? []) as never,
     explicitSlugs: parsed.data.explicitSkillSlugs,
@@ -128,11 +128,7 @@ const CreatePresetFromTemplateBody = z.object({
   }),
 });
 
-router.post("/chat/lever-presets/template", async (req, res): Promise<void> => {
-  if (!(req as JobOpsRequest).session.adminId) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
+router.post("/chat/lever-presets/template", requireAdmin, async (req, res): Promise<void> => {
   const parsed = CreatePresetFromTemplateBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -145,11 +141,7 @@ router.post("/chat/lever-presets/template", async (req, res): Promise<void> => {
   res.status(201).json(created);
 });
 
-router.post("/chat/lever-presets", async (req, res): Promise<void> => {
-  if (!(req as JobOpsRequest).session.adminId) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
+router.post("/chat/lever-presets", requireAdmin, async (req, res): Promise<void> => {
   const parsed = CreateChatLeverPresetBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -185,11 +177,7 @@ router.post("/chat/lever-presets", async (req, res): Promise<void> => {
   res.status(201).json(created);
 });
 
-router.patch("/chat/lever-presets/:id", async (req, res): Promise<void> => {
-  if (!(req as JobOpsRequest).session.adminId) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
+router.patch("/chat/lever-presets/:id", requireAdmin, async (req, res): Promise<void> => {
   const id = idParam(req.params.id);
   if (id === null) {
     res.status(400).json({ error: "Invalid id" });
@@ -231,11 +219,7 @@ router.patch("/chat/lever-presets/:id", async (req, res): Promise<void> => {
   res.json(updated);
 });
 
-router.delete("/chat/lever-presets/:id", async (req, res): Promise<void> => {
-  if (!(req as JobOpsRequest).session.adminId) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
+router.delete("/chat/lever-presets/:id", requireAdmin, async (req, res): Promise<void> => {
   const id = idParam(req.params.id);
   if (id === null) {
     res.status(400).json({ error: "Invalid id" });
@@ -254,11 +238,8 @@ router.delete("/chat/lever-presets/:id", async (req, res): Promise<void> => {
 
 router.post(
   "/chat/lever-presets/:id/apply",
+  requireAdmin,
   async (req, res): Promise<void> => {
-    if (!(req as JobOpsRequest).session.adminId) {
-      res.status(401).json({ error: "Unauthorized" });
-      return;
-    }
     const id = idParam(req.params.id);
     if (id === null) {
       res.status(400).json({ error: "Invalid id" });

@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { db, baseResumeVersionsTable } from "@workspace/db";
 import {
   GetBaseResumeResponse,
@@ -14,6 +14,8 @@ import {
   parseSingleDocumentUpload,
   UploadValidationError,
 } from "../lib/document-text";
+import type { JobOpsRequest } from "../lib/http-types";
+import { currentUserId } from "../lib/ownership";
 
 const router: IRouter = Router();
 
@@ -21,11 +23,12 @@ function buildDefaultLabel(date = new Date()): string {
   return `Base Resume - ${date.toLocaleString()}`;
 }
 
-router.get("/base-resume", async (_req, res): Promise<void> => {
+router.get("/base-resume", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const [row] = await db
     .select()
     .from(baseResumeVersionsTable)
-    .where(eq(baseResumeVersionsTable.isCurrent, true));
+    .where(and(eq(baseResumeVersionsTable.userId, userId), eq(baseResumeVersionsTable.isCurrent, true)));
 
   if (!row) {
     res.status(204).end();
@@ -35,16 +38,19 @@ router.get("/base-resume", async (_req, res): Promise<void> => {
   res.json(GetBaseResumeResponse.parse(row));
 });
 
-router.get("/base-resume/history", async (_req, res): Promise<void> => {
+router.get("/base-resume/history", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const rows = await db
     .select()
     .from(baseResumeVersionsTable)
+    .where(eq(baseResumeVersionsTable.userId, userId))
     .orderBy(desc(baseResumeVersionsTable.createdAt));
 
   res.json(ListBaseResumeHistoryResponse.parse(rows));
 });
 
-router.post("/base-resume", async (req, res): Promise<void> => {
+router.post("/base-resume", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const parsed = CreateBaseResumeBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -55,7 +61,7 @@ router.post("/base-resume", async (req, res): Promise<void> => {
     await tx
       .update(baseResumeVersionsTable)
       .set({ isCurrent: false })
-      .where(eq(baseResumeVersionsTable.isCurrent, true));
+      .where(and(eq(baseResumeVersionsTable.userId, userId), eq(baseResumeVersionsTable.isCurrent, true)));
 
     const [created] = await tx
       .insert(baseResumeVersionsTable)
@@ -63,6 +69,7 @@ router.post("/base-resume", async (req, res): Promise<void> => {
         contentText: parsed.data.contentText,
         label: parsed.data.label?.trim() || buildDefaultLabel(),
         isCurrent: true,
+        userId,
       })
       .returning();
 
@@ -72,7 +79,8 @@ router.post("/base-resume", async (req, res): Promise<void> => {
   res.status(201).json(GetBaseResumeResponse.parse(row));
 });
 
-router.post("/base-resume/import", async (req, res): Promise<void> => {
+router.post("/base-resume/import", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   try {
     await parseSingleDocumentUpload(req, res);
 
@@ -98,7 +106,7 @@ router.post("/base-resume/import", async (req, res): Promise<void> => {
       await tx
         .update(baseResumeVersionsTable)
         .set({ isCurrent: false })
-        .where(eq(baseResumeVersionsTable.isCurrent, true));
+        .where(and(eq(baseResumeVersionsTable.userId, userId), eq(baseResumeVersionsTable.isCurrent, true)));
 
       const [created] = await tx
         .insert(baseResumeVersionsTable)
@@ -106,6 +114,7 @@ router.post("/base-resume/import", async (req, res): Promise<void> => {
           contentText,
           label,
           isCurrent: true,
+          userId,
         })
         .returning();
 
@@ -124,7 +133,8 @@ router.post("/base-resume/import", async (req, res): Promise<void> => {
   }
 });
 
-router.post("/base-resume/:id/restore", async (req, res): Promise<void> => {
+router.post("/base-resume/:id/restore", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = RestoreBaseResumeVersionParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -134,7 +144,7 @@ router.post("/base-resume/:id/restore", async (req, res): Promise<void> => {
   const [source] = await db
     .select()
     .from(baseResumeVersionsTable)
-    .where(eq(baseResumeVersionsTable.id, params.data.id));
+    .where(and(eq(baseResumeVersionsTable.id, params.data.id), eq(baseResumeVersionsTable.userId, userId)));
 
   if (!source) {
     res.status(404).json({ error: "Base resume version not found" });
@@ -145,7 +155,7 @@ router.post("/base-resume/:id/restore", async (req, res): Promise<void> => {
     await tx
       .update(baseResumeVersionsTable)
       .set({ isCurrent: false })
-      .where(eq(baseResumeVersionsTable.isCurrent, true));
+      .where(and(eq(baseResumeVersionsTable.userId, userId), eq(baseResumeVersionsTable.isCurrent, true)));
 
     const [created] = await tx
       .insert(baseResumeVersionsTable)
@@ -153,6 +163,7 @@ router.post("/base-resume/:id/restore", async (req, res): Promise<void> => {
         contentText: source.contentText,
         label: `Restored - ${source.label?.trim() || `Version ${source.id}`}`,
         isCurrent: true,
+        userId,
       })
       .returning();
 
@@ -162,7 +173,8 @@ router.post("/base-resume/:id/restore", async (req, res): Promise<void> => {
   res.status(201).json(GetBaseResumeResponse.parse(row));
 });
 
-router.delete("/base-resume/:id", async (req, res): Promise<void> => {
+router.delete("/base-resume/:id", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = DeleteBaseResumeVersionParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -171,7 +183,7 @@ router.delete("/base-resume/:id", async (req, res): Promise<void> => {
 
   const [row] = await db
     .delete(baseResumeVersionsTable)
-    .where(eq(baseResumeVersionsTable.id, params.data.id))
+    .where(and(eq(baseResumeVersionsTable.id, params.data.id), eq(baseResumeVersionsTable.userId, userId)))
     .returning();
 
   if (!row) {

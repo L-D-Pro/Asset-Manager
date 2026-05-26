@@ -11,6 +11,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { applicationsTable } from "./applications";
 import { jobsTable } from "./jobs";
+import { adminUsersTable } from "./admin-users";
 
 /**
  * Event logs — immutable audit trail for all state changes and AI calls.
@@ -35,6 +36,10 @@ export const eventLogsTable = pgTable(
   {
     /** Auto-incrementing primary key. */
     id: serial("id").primaryKey(),
+
+    userId: integer("user_id").references(() => adminUsersTable.id, {
+      onDelete: "cascade",
+    }),
 
     /**
      * The type of entity this event belongs to.
@@ -98,6 +103,7 @@ export const eventLogsTable = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => [
+    index("event_logs_user_created_at_idx").on(table.userId, table.createdAt),
     index("event_logs_entity_idx").on(table.entityType, table.entityId),
     index("event_logs_application_id_idx").on(table.applicationId),
     index("event_logs_job_id_idx").on(table.jobId),
@@ -109,6 +115,7 @@ export const eventLogsTable = pgTable(
 /** Zod schema for inserting an event log entry (omits server-managed fields). */
 export const insertEventLogSchema = createInsertSchema(eventLogsTable).omit({
   id: true,
+  userId: true,
   createdAt: true,
   updatedAt: true,
 });

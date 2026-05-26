@@ -4,10 +4,12 @@ import {
   serial,
   timestamp,
   boolean,
+  integer,
   index,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { adminUsersTable } from "./admin-users";
 
 /**
  * Claims Ledger — the truth-lock source of truth.
@@ -26,6 +28,10 @@ export const claimsTable = pgTable(
   {
     /** Auto-incrementing primary key. */
     id: serial("id").primaryKey(),
+
+    userId: integer("user_id")
+      .notNull()
+      .references(() => adminUsersTable.id, { onDelete: "cascade" }),
 
     /** Canonical statement of the claim (e.g. "Led migration of monolith to microservices, reducing P99 latency by 40%"). */
     summary: text("summary").notNull(),
@@ -63,6 +69,8 @@ export const claimsTable = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => [
+    index("claims_user_created_at_idx").on(table.userId, table.createdAt),
+    index("claims_user_active_idx").on(table.userId, table.isActive),
     index("claims_domain_active_idx").on(table.domain, table.isActive),
     index("claims_active_idx").on(table.isActive),
   ],
@@ -71,6 +79,7 @@ export const claimsTable = pgTable(
 /** Zod schema for inserting a claim (omits server-managed fields). */
 export const insertClaimSchema = createInsertSchema(claimsTable).omit({
   id: true,
+  userId: true,
   createdAt: true,
   updatedAt: true,
 });

@@ -11,11 +11,15 @@ import {
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { adminUsersTable } from "./admin-users";
 
 export const freelanceProfilesTable = pgTable(
   "freelance_profiles",
   {
     id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => adminUsersTable.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     contractorResumeText: text("contractor_resume_text").notNull().default(""),
     portfolioProjects: jsonb("portfolio_projects").notNull().default([]),
@@ -38,6 +42,8 @@ export const freelanceProfilesTable = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => [
+    index("freelance_profiles_user_created_at_idx").on(table.userId, table.createdAt),
+    index("freelance_profiles_user_active_idx").on(table.userId, table.isActive),
     index("freelance_profiles_active_idx").on(table.isActive),
     index("freelance_profiles_name_idx").on(table.name),
   ],
@@ -47,6 +53,9 @@ export const projectSourcesTable = pgTable(
   "project_sources",
   {
     id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => adminUsersTable.id, { onDelete: "cascade" }),
     platform: text("platform").notNull().default("upwork"),
     sourceType: text("source_type").notNull().default("manual"),
     sourceUrl: text("source_url"),
@@ -62,6 +71,7 @@ export const projectSourcesTable = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => [
+    index("project_sources_user_created_at_idx").on(table.userId, table.createdAt),
     index("project_sources_platform_idx").on(table.platform),
     index("project_sources_source_type_idx").on(table.sourceType),
   ],
@@ -71,6 +81,9 @@ export const freelanceProjectsTable = pgTable(
   "freelance_projects",
   {
     id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => adminUsersTable.id, { onDelete: "cascade" }),
     profileId: integer("profile_id").references(() => freelanceProfilesTable.id, {
       onDelete: "set null",
     }),
@@ -102,6 +115,8 @@ export const freelanceProjectsTable = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => [
+    index("freelance_projects_user_created_at_idx").on(table.userId, table.createdAt),
+    index("freelance_projects_user_status_idx").on(table.userId, table.status),
     index("freelance_projects_profile_id_idx").on(table.profileId),
     index("freelance_projects_platform_idx").on(table.platform),
     index("freelance_projects_status_idx").on(table.status),
@@ -113,6 +128,9 @@ export const proposalVersionsTable = pgTable(
   "proposal_versions",
   {
     id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => adminUsersTable.id, { onDelete: "cascade" }),
     projectId: integer("project_id")
       .notNull()
       .references(() => freelanceProjectsTable.id, { onDelete: "cascade" }),
@@ -139,6 +157,8 @@ export const proposalVersionsTable = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => [
+    index("proposal_versions_user_created_at_idx").on(table.userId, table.createdAt),
+    index("proposal_versions_user_status_idx").on(table.userId, table.status),
     index("proposal_versions_project_id_idx").on(table.projectId),
     index("proposal_versions_profile_id_idx").on(table.profileId),
     index("proposal_versions_status_idx").on(table.status),
@@ -149,6 +169,9 @@ export const proposalOutcomesTable = pgTable(
   "proposal_outcomes",
   {
     id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => adminUsersTable.id, { onDelete: "cascade" }),
     proposalVersionId: integer("proposal_version_id").references(
       () => proposalVersionsTable.id,
       { onDelete: "set null" },
@@ -170,6 +193,7 @@ export const proposalOutcomesTable = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => [
+    index("proposal_outcomes_user_created_at_idx").on(table.userId, table.createdAt),
     index("proposal_outcomes_project_id_idx").on(table.projectId),
     index("proposal_outcomes_outcome_idx").on(table.outcome),
   ],
@@ -179,6 +203,9 @@ export const clientMessageTemplatesTable = pgTable(
   "client_message_templates",
   {
     id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => adminUsersTable.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     templateText: text("template_text").notNull(),
     useCase: text("use_case").notNull().default("proposal"),
@@ -193,6 +220,8 @@ export const clientMessageTemplatesTable = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => [
+    index("client_message_templates_user_created_at_idx").on(table.userId, table.createdAt),
+    index("client_message_templates_user_active_idx").on(table.userId, table.isActive),
     index("client_message_templates_use_case_idx").on(table.useCase),
     index("client_message_templates_active_idx").on(table.isActive),
   ],
@@ -200,24 +229,25 @@ export const clientMessageTemplatesTable = pgTable(
 
 export const insertFreelanceProfileSchema = createInsertSchema(
   freelanceProfilesTable,
-).omit({ id: true, createdAt: true, updatedAt: true });
+).omit({ id: true, userId: true, createdAt: true, updatedAt: true });
 export const insertProjectSourceSchema = createInsertSchema(projectSourcesTable).omit({
   id: true,
+  userId: true,
   createdAt: true,
   updatedAt: true,
 });
 export const insertFreelanceProjectSchema = createInsertSchema(
   freelanceProjectsTable,
-).omit({ id: true, createdAt: true, updatedAt: true });
+).omit({ id: true, userId: true, createdAt: true, updatedAt: true });
 export const insertProposalVersionSchema = createInsertSchema(
   proposalVersionsTable,
-).omit({ id: true, createdAt: true, updatedAt: true });
+).omit({ id: true, userId: true, createdAt: true, updatedAt: true });
 export const insertProposalOutcomeSchema = createInsertSchema(
   proposalOutcomesTable,
-).omit({ id: true, createdAt: true, updatedAt: true });
+).omit({ id: true, userId: true, createdAt: true, updatedAt: true });
 export const insertClientMessageTemplateSchema = createInsertSchema(
   clientMessageTemplatesTable,
-).omit({ id: true, createdAt: true, updatedAt: true });
+).omit({ id: true, userId: true, createdAt: true, updatedAt: true });
 
 export type FreelanceProfile = typeof freelanceProfilesTable.$inferSelect;
 export type ProjectSource = typeof projectSourcesTable.$inferSelect;

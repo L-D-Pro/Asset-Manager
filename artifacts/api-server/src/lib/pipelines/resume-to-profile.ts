@@ -3,7 +3,7 @@ import {
   baseResumeVersionsTable,
   roleProfilesTable,
 } from "@workspace/db";
-import { desc } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { callAI, parseJsonResponse } from "../ai-client";
 import { logger } from "../logger";
 
@@ -57,12 +57,13 @@ Analyze the resume carefully and return ONLY valid JSON with this exact structur
  * 4. Inserts the new profile with isActive: true.
  * Returns the created RoleProfile row.
  */
-export async function runResumeToProfilePipeline(): Promise<typeof roleProfilesTable.$inferSelect> {
+export async function runResumeToProfilePipeline(userId: number): Promise<typeof roleProfilesTable.$inferSelect> {
   logger.info("Starting resume-to-profile pipeline");
 
   const [baseResumeVersion] = await db
     .select()
     .from(baseResumeVersionsTable)
+    .where(eq(baseResumeVersionsTable.userId, userId))
     .orderBy(desc(baseResumeVersionsTable.id))
     .limit(1);
 
@@ -76,6 +77,7 @@ export async function runResumeToProfilePipeline(): Promise<typeof roleProfilesT
     taskType: "resume_analysis",
     systemPrompt: SYSTEM_PROMPT,
     userPrompt: `Extract a structured role profile from the following resume:\n\n${resumeContent}`,
+    userId,
   });
 
   const parsed = parseJsonResponse<AiGeneratedProfile>(result.content);
@@ -146,6 +148,7 @@ export async function runResumeToProfilePipeline(): Promise<typeof roleProfilesT
   const [row] = await db
     .insert(roleProfilesTable)
     .values({
+      userId,
       name: parsed.name.trim(),
       description: description || null,
       hardFilters,

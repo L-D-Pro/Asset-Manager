@@ -25,7 +25,8 @@ Only return JSON. Ask a maximum of 3 highly targeted questions covering the most
 
 export async function runGapAnalysisPipeline(
   job: Job,
-  claims: Claim[]
+  claims: Claim[],
+  userId: number,
 ): Promise<GapAnalysisResult> {
   if (!job.parsedRequiredSkills || job.parsedRequiredSkills.length === 0) {
     return { missingSkills: [], questionsToAsk: [] };
@@ -44,6 +45,7 @@ ${claims.map(c => `- ${c.summary}`).join("\n")}
     systemPrompt: SYSTEM_PROMPT,
     userPrompt,
     jobId: job.id,
+    userId,
   });
 
   const parsed = parseJsonResponse<GapAnalysisResult>(aiResult.content);
@@ -77,7 +79,8 @@ Output format (JSON strictly):
 export async function extractClaimsFromChatPipeline(
   question: string,
   answer: string,
-  jobId?: number
+  jobId?: number,
+  userId?: number,
 ): Promise<any> {
   const userPrompt = `
 QUESTION:
@@ -92,6 +95,7 @@ ${answer}
     systemPrompt: EXTRACT_PROMPT,
     userPrompt,
     jobId,
+    userId,
   });
 
   const parsed = parseJsonResponse<any>(aiResult.content);

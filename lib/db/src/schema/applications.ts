@@ -12,6 +12,7 @@ import { z } from "zod/v4";
 import { jobsTable } from "./jobs";
 import { resumeVersionsTable } from "./resume-versions";
 import { coverLetterVersionsTable } from "./cover-letter-versions";
+import { adminUsersTable } from "./admin-users";
 
 /**
  * Applications — tracks the full lifecycle of a submitted job application.
@@ -32,6 +33,10 @@ export const applicationsTable = pgTable(
   {
     /** Auto-incrementing primary key. */
     id: serial("id").primaryKey(),
+
+    userId: integer("user_id")
+      .notNull()
+      .references(() => adminUsersTable.id, { onDelete: "cascade" }),
 
     /** The job this application is for. Cascade-deletes the application if the job is deleted. */
     jobId: integer("job_id")
@@ -89,6 +94,8 @@ export const applicationsTable = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => [
+    index("applications_user_created_at_idx").on(table.userId, table.createdAt),
+    index("applications_user_status_idx").on(table.userId, table.status),
     index("applications_job_id_idx").on(table.jobId),
     index("applications_status_idx").on(table.status),
     index("applications_job_status_idx").on(table.jobId, table.status),
@@ -100,6 +107,7 @@ export const insertApplicationSchema = createInsertSchema(
   applicationsTable,
 ).omit({
   id: true,
+  userId: true,
   createdAt: true,
   updatedAt: true,
 });

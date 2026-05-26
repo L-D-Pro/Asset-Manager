@@ -20,10 +20,13 @@ import {
 import { validateLineage } from "../lib/lineage";
 import { generateCoverLetterDocx } from "../lib/docx-export";
 import { scrubWizardStateReferences } from "../lib/wizard-state-cleanup";
+import type { JobOpsRequest } from "../lib/http-types";
+import { currentUserId } from "../lib/ownership";
 
 const router: IRouter = Router();
 
-router.get("/cover-letter-versions", async (req, res): Promise<void> => {
+router.get("/cover-letter-versions", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   req.log.info("Listing cover letter versions");
   const query = ListCoverLetterVersionsQueryParams.safeParse(req.query);
   if (!query.success) {
@@ -31,7 +34,7 @@ router.get("/cover-letter-versions", async (req, res): Promise<void> => {
     return;
   }
 
-  const conditions = [];
+  const conditions = [eq(coverLetterVersionsTable.userId, userId)];
   if (query.data.jobId != null) {
     conditions.push(eq(coverLetterVersionsTable.jobId, query.data.jobId));
   }
@@ -42,12 +45,13 @@ router.get("/cover-letter-versions", async (req, res): Promise<void> => {
   const rows = await db
     .select()
     .from(coverLetterVersionsTable)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .where(and(...conditions))
     .orderBy(coverLetterVersionsTable.createdAt);
   res.json(ListCoverLetterVersionsResponse.parse(rows));
 });
 
-router.get("/cover-letter-versions/:id", async (req, res): Promise<void> => {
+router.get("/cover-letter-versions/:id", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = GetCoverLetterVersionParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -56,7 +60,7 @@ router.get("/cover-letter-versions/:id", async (req, res): Promise<void> => {
   const [row] = await db
     .select()
     .from(coverLetterVersionsTable)
-    .where(eq(coverLetterVersionsTable.id, params.data.id));
+    .where(and(eq(coverLetterVersionsTable.id, params.data.id), eq(coverLetterVersionsTable.userId, userId)));
   if (!row) {
     res.status(404).json({ error: "Cover letter version not found" });
     return;
@@ -64,7 +68,8 @@ router.get("/cover-letter-versions/:id", async (req, res): Promise<void> => {
   res.json(GetCoverLetterVersionResponse.parse(row));
 });
 
-router.patch("/cover-letter-versions/:id", async (req, res): Promise<void> => {
+router.patch("/cover-letter-versions/:id", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = UpdateCoverLetterVersionParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -79,7 +84,7 @@ router.patch("/cover-letter-versions/:id", async (req, res): Promise<void> => {
   const [row] = await db
     .update(coverLetterVersionsTable)
     .set(parsed.data)
-    .where(eq(coverLetterVersionsTable.id, params.data.id))
+    .where(and(eq(coverLetterVersionsTable.id, params.data.id), eq(coverLetterVersionsTable.userId, userId)))
     .returning();
   if (!row) {
     res.status(404).json({ error: "Cover letter version not found" });
@@ -88,7 +93,8 @@ router.patch("/cover-letter-versions/:id", async (req, res): Promise<void> => {
   res.json(UpdateCoverLetterVersionResponse.parse(row));
 });
 
-router.delete("/cover-letter-versions/:id", async (req, res): Promise<void> => {
+router.delete("/cover-letter-versions/:id", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = DeleteCoverLetterVersionParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -96,17 +102,18 @@ router.delete("/cover-letter-versions/:id", async (req, res): Promise<void> => {
   }
   const [row] = await db
     .delete(coverLetterVersionsTable)
-    .where(eq(coverLetterVersionsTable.id, params.data.id))
+    .where(and(eq(coverLetterVersionsTable.id, params.data.id), eq(coverLetterVersionsTable.userId, userId)))
     .returning();
   if (!row) {
     res.status(404).json({ error: "Cover letter version not found" });
     return;
   }
-  await scrubWizardStateReferences({ coverLetterVersionIds: [params.data.id] });
+  await scrubWizardStateReferences({ userId, coverLetterVersionIds: [params.data.id] });
   res.sendStatus(204);
 });
 
-router.post("/cover-letter-versions/:id/approve", async (req, res): Promise<void> => {
+router.post("/cover-letter-versions/:id/approve", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = ApproveCoverLetterVersionParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -123,7 +130,7 @@ router.post("/cover-letter-versions/:id/approve", async (req, res): Promise<void
   const existing = await db
     .select()
     .from(coverLetterVersionsTable)
-    .where(eq(coverLetterVersionsTable.id, params.data.id));
+    .where(and(eq(coverLetterVersionsTable.id, params.data.id), eq(coverLetterVersionsTable.userId, userId)));
   if (!existing[0]) {
     res.status(404).json({ error: "Cover letter version not found" });
     return;
@@ -168,12 +175,13 @@ router.post("/cover-letter-versions/:id/approve", async (req, res): Promise<void
     const [updated] = await tx
       .update(coverLetterVersionsTable)
       .set({ status: "approved" })
-      .where(eq(coverLetterVersionsTable.id, params.data.id))
+      .where(and(eq(coverLetterVersionsTable.id, params.data.id), eq(coverLetterVersionsTable.userId, userId)))
       .returning();
 
     const [eventLog] = await tx
       .insert(eventLogsTable)
       .values({
+        userId,
         entityType: "cover_letter_version",
         entityId: params.data.id,
         jobId: existing[0]!.jobId ?? null,
@@ -190,6 +198,7 @@ router.post("/cover-letter-versions/:id/approve", async (req, res): Promise<void
     await tx
       .insert(aiRunEvaluationsTable)
       .values({
+        userId,
         runId: coverLetterVersion.runId,
         taskScope: "cover_letter_review",
         entityType: "cover_letter_version",
@@ -233,6 +242,7 @@ router.post("/cover-letter-versions/:id/approve", async (req, res): Promise<void
   if (row.runId && row.draftContent) {
     db.insert(aiTrainingExamplesTable)
       .values({
+        userId,
         taskScope: "cover_letter",
         sourceEntityType: "cover_letter_version",
         sourceEntityId: row.id,
@@ -255,7 +265,8 @@ router.post("/cover-letter-versions/:id/approve", async (req, res): Promise<void
   res.json(ApproveCoverLetterVersionResponse.parse(row));
 });
 
-router.post("/cover-letter-versions/:id/reject", async (req, res): Promise<void> => {
+router.post("/cover-letter-versions/:id/reject", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = RejectCoverLetterVersionParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -272,7 +283,7 @@ router.post("/cover-letter-versions/:id/reject", async (req, res): Promise<void>
   const existing = await db
     .select()
     .from(coverLetterVersionsTable)
-    .where(eq(coverLetterVersionsTable.id, params.data.id));
+    .where(and(eq(coverLetterVersionsTable.id, params.data.id), eq(coverLetterVersionsTable.userId, userId)));
   if (!existing[0]) {
     res.status(404).json({ error: "Cover letter version not found" });
     return;
@@ -317,12 +328,13 @@ router.post("/cover-letter-versions/:id/reject", async (req, res): Promise<void>
     const [updated] = await tx
       .update(coverLetterVersionsTable)
       .set({ status: "rejected" })
-      .where(eq(coverLetterVersionsTable.id, params.data.id))
+      .where(and(eq(coverLetterVersionsTable.id, params.data.id), eq(coverLetterVersionsTable.userId, userId)))
       .returning();
 
     const [eventLog] = await tx
       .insert(eventLogsTable)
       .values({
+        userId,
         entityType: "cover_letter_version",
         entityId: params.data.id,
         jobId: existing[0]!.jobId ?? null,
@@ -339,6 +351,7 @@ router.post("/cover-letter-versions/:id/reject", async (req, res): Promise<void>
     await tx
       .insert(aiRunEvaluationsTable)
       .values({
+        userId,
         runId: coverLetterVersion.runId,
         taskScope: "cover_letter_review",
         entityType: "cover_letter_version",
@@ -382,7 +395,8 @@ router.post("/cover-letter-versions/:id/reject", async (req, res): Promise<void>
   res.json(RejectCoverLetterVersionResponse.parse(row));
 });
 
-router.get("/cover-letter-versions/:id/export", async (req, res): Promise<void> => {
+router.get("/cover-letter-versions/:id/export", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = GetCoverLetterVersionParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -392,7 +406,7 @@ router.get("/cover-letter-versions/:id/export", async (req, res): Promise<void> 
   const [row] = await db
     .select()
     .from(coverLetterVersionsTable)
-    .where(eq(coverLetterVersionsTable.id, params.data.id));
+    .where(and(eq(coverLetterVersionsTable.id, params.data.id), eq(coverLetterVersionsTable.userId, userId)));
     
   if (!row) {
     res.status(404).json({ error: "Cover letter version not found" });

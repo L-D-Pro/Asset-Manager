@@ -1,5 +1,5 @@
 import { db, jobsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { callAI, parseJsonResponse } from "../ai-client";
 import { logger } from "../logger";
 import type { Job } from "@workspace/db";
@@ -53,6 +53,7 @@ export async function runJdParsePipeline(
     systemPrompt: SYSTEM_PROMPT,
     userPrompt: `Parse this job description for ${job.title} at ${job.company}:\n\n${rawJdText}`,
     jobId: job.id,
+    userId: job.userId,
   });
 
   const parsed = parseJsonResponse<ParsedJD>(result.content);
@@ -62,7 +63,7 @@ export async function runJdParsePipeline(
     const [updated] = await db
       .update(jobsTable)
       .set({ rawJdText, status: "parse_failed" })
-      .where(eq(jobsTable.id, job.id))
+      .where(and(eq(jobsTable.id, job.id), eq(jobsTable.userId, job.userId)))
       .returning();
     return updated!;
   }
@@ -85,7 +86,7 @@ export async function runJdParsePipeline(
       salaryCurrency: parsed.salaryCurrency ?? job.salaryCurrency,
       parsedStructuredData: parsed as unknown as Record<string, unknown>,
     })
-    .where(eq(jobsTable.id, job.id))
+    .where(and(eq(jobsTable.id, job.id), eq(jobsTable.userId, job.userId)))
     .returning();
 
   logger.info(

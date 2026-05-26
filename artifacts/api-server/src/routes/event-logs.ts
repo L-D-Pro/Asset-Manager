@@ -4,22 +4,24 @@ import { db, eventLogsTable } from "@workspace/db";
 import {
   ListEventLogsQueryParams,
   ListEventLogsResponse,
-  CreateEventLogBody,
   GetEventLogParams,
   GetEventLogResponse,
 } from "@workspace/api-zod";
+import type { JobOpsRequest } from "../lib/http-types";
+import { currentUserId } from "../lib/ownership";
 
 const router: IRouter = Router();
 
-router.get("/event-logs", async (req, res): Promise<void> => {
+router.get("/event-logs", async (req: JobOpsRequest, res): Promise<void> => {
   req.log.info("Listing event logs");
+  const userId = currentUserId(req);
   const query = ListEventLogsQueryParams.safeParse(req.query);
   if (!query.success) {
     res.status(400).json({ error: query.error.message });
     return;
   }
 
-  const conditions = [];
+  const conditions = [eq(eventLogsTable.userId, userId)];
   if (query.data.entityType != null) {
     conditions.push(eq(eventLogsTable.entityType, query.data.entityType));
   }
@@ -36,23 +38,13 @@ router.get("/event-logs", async (req, res): Promise<void> => {
   const rows = await db
     .select()
     .from(eventLogsTable)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .where(and(...conditions))
     .orderBy(eventLogsTable.createdAt);
   res.json(ListEventLogsResponse.parse(rows));
 });
 
-router.post("/event-logs", async (req, res): Promise<void> => {
-  const parsed = CreateEventLogBody.safeParse(req.body);
-  if (!parsed.success) {
-    req.log.warn({ error: parsed.error.message }, "Invalid create event log body");
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
-  const [row] = await db.insert(eventLogsTable).values(parsed.data).returning();
-  res.status(201).json(GetEventLogResponse.parse(row));
-});
-
-router.get("/event-logs/:id", async (req, res): Promise<void> => {
+router.get("/event-logs/:id", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = GetEventLogParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -61,7 +53,7 @@ router.get("/event-logs/:id", async (req, res): Promise<void> => {
   const [row] = await db
     .select()
     .from(eventLogsTable)
-    .where(eq(eventLogsTable.id, params.data.id));
+    .where(and(eq(eventLogsTable.id, params.data.id), eq(eventLogsTable.userId, userId)));
   if (!row) {
     res.status(404).json({ error: "Event log not found" });
     return;

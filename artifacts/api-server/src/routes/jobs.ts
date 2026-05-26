@@ -50,6 +50,7 @@ import { mintRunId } from "../lib/lineage";
 import { awardXp } from "../lib/gamification";
 import { nukeJobAttemptData, scrubWizardStateReferences } from "../lib/wizard-state-cleanup";
 import { z } from "zod/v4";
+import { currentUserId } from "../lib/ownership";
 
 const router: IRouter = Router();
 
@@ -71,7 +72,8 @@ const promoteBodySchema = z.object({
   candidateVersionId: z.number().int().positive().optional(),
 });
 
-router.get("/jobs", async (req, res): Promise<void> => {
+router.get("/jobs", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   req.log.info("Listing jobs");
   const query = ListJobsQueryParams.safeParse(req.query);
   if (!query.success) {
@@ -79,7 +81,7 @@ router.get("/jobs", async (req, res): Promise<void> => {
     return;
   }
 
-  const conditions = [];
+  const conditions = [eq(jobsTable.userId, userId)];
   if (query.data.status != null) {
     conditions.push(eq(jobsTable.status, query.data.status));
   }
@@ -90,23 +92,35 @@ router.get("/jobs", async (req, res): Promise<void> => {
   const rows = await db
     .select()
     .from(jobsTable)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .where(and(...conditions))
     .orderBy(jobsTable.createdAt);
   res.json(ListJobsResponse.parse(rows));
 });
 
-router.post("/jobs", async (req, res): Promise<void> => {
+router.post("/jobs", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const parsed = CreateJobBody.safeParse(req.body);
   if (!parsed.success) {
     req.log.warn({ error: parsed.error.message }, "Invalid create job body");
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [row] = await db.insert(jobsTable).values(parsed.data).returning();
+  if (parsed.data.roleProfileId != null) {
+    const [profile] = await db
+      .select({ id: roleProfilesTable.id })
+      .from(roleProfilesTable)
+      .where(and(eq(roleProfilesTable.id, parsed.data.roleProfileId), eq(roleProfilesTable.userId, userId)));
+    if (!profile) {
+      res.status(400).json({ error: `Role profile ${parsed.data.roleProfileId} not found. Refresh the page and try again.` });
+      return;
+    }
+  }
+  const [row] = await db.insert(jobsTable).values({ ...parsed.data, userId }).returning();
   res.status(201).json(GetJobResponse.parse(row));
 });
 
-router.get("/jobs/:id", async (req, res): Promise<void> => {
+router.get("/jobs/:id", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = GetJobParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -115,7 +129,7 @@ router.get("/jobs/:id", async (req, res): Promise<void> => {
   const [row] = await db
     .select()
     .from(jobsTable)
-    .where(eq(jobsTable.id, params.data.id));
+    .where(and(eq(jobsTable.id, params.data.id), eq(jobsTable.userId, userId)));
   if (!row) {
     res.status(404).json({ error: "Job not found" });
     return;
@@ -123,7 +137,8 @@ router.get("/jobs/:id", async (req, res): Promise<void> => {
   res.json(GetJobResponse.parse(row));
 });
 
-router.patch("/jobs/:id", async (req, res): Promise<void> => {
+router.patch("/jobs/:id", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = UpdateJobParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -139,7 +154,7 @@ router.patch("/jobs/:id", async (req, res): Promise<void> => {
     const [exists] = await db
       .select({ id: roleProfilesTable.id })
       .from(roleProfilesTable)
-      .where(eq(roleProfilesTable.id, parsed.data.roleProfileId));
+      .where(and(eq(roleProfilesTable.id, parsed.data.roleProfileId), eq(roleProfilesTable.userId, userId)));
     if (!exists) {
       req.log.warn(
         { jobId: params.data.id, roleProfileId: parsed.data.roleProfileId },
@@ -154,7 +169,7 @@ router.patch("/jobs/:id", async (req, res): Promise<void> => {
   const [row] = await db
     .update(jobsTable)
     .set(parsed.data)
-    .where(eq(jobsTable.id, params.data.id))
+    .where(and(eq(jobsTable.id, params.data.id), eq(jobsTable.userId, userId)))
     .returning();
   if (!row) {
     res.status(404).json({ error: "Job not found" });
@@ -163,7 +178,8 @@ router.patch("/jobs/:id", async (req, res): Promise<void> => {
   res.json(UpdateJobResponse.parse(row));
 });
 
-router.delete("/jobs/:id", async (req, res): Promise<void> => {
+router.delete("/jobs/:id", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = DeleteJobParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -173,19 +189,20 @@ router.delete("/jobs/:id", async (req, res): Promise<void> => {
   const resumeRows = await db
     .select({ id: resumeVersionsTable.id })
     .from(resumeVersionsTable)
-    .where(eq(resumeVersionsTable.jobId, params.data.id));
+    .where(and(eq(resumeVersionsTable.jobId, params.data.id), eq(resumeVersionsTable.userId, userId)));
   const coverRows = await db
     .select({ id: coverLetterVersionsTable.id })
     .from(coverLetterVersionsTable)
-    .where(eq(coverLetterVersionsTable.jobId, params.data.id));
+    .where(and(eq(coverLetterVersionsTable.jobId, params.data.id), eq(coverLetterVersionsTable.userId, userId)));
 
-  const [row] = await db.delete(jobsTable).where(eq(jobsTable.id, params.data.id)).returning();
+  const [row] = await db.delete(jobsTable).where(and(eq(jobsTable.id, params.data.id), eq(jobsTable.userId, userId))).returning();
   if (!row) {
     res.status(404).json({ error: "Job not found" });
     return;
   }
 
   await scrubWizardStateReferences({
+    userId,
     jobIds: [params.data.id],
     resumeVersionIds: resumeRows.map((item) => item.id),
     coverLetterVersionIds: coverRows.map((item) => item.id),
@@ -195,6 +212,7 @@ router.delete("/jobs/:id", async (req, res): Promise<void> => {
 });
 
 router.post("/jobs/:id/nuke-attempts", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = DeleteJobParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -204,13 +222,13 @@ router.post("/jobs/:id/nuke-attempts", async (req: JobOpsRequest, res): Promise<
   const [job] = await db
     .select({ id: jobsTable.id })
     .from(jobsTable)
-    .where(eq(jobsTable.id, params.data.id));
+    .where(and(eq(jobsTable.id, params.data.id), eq(jobsTable.userId, userId)));
   if (!job) {
     res.status(404).json({ error: "Job not found" });
     return;
   }
 
-  const result = await nukeJobAttemptData(params.data.id);
+  const result = await nukeJobAttemptData(params.data.id, userId);
   req.log.info({ jobId: params.data.id, result }, "Job-scoped nuke cleanup completed");
 
   res.json({
@@ -219,7 +237,8 @@ router.post("/jobs/:id/nuke-attempts", async (req: JobOpsRequest, res): Promise<
   });
 });
 
-router.get("/jobs/:id/score", async (req, res): Promise<void> => {
+router.get("/jobs/:id/score", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = ScoreJobParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -234,7 +253,7 @@ router.get("/jobs/:id/score", async (req, res): Promise<void> => {
   const [job] = await db
     .select()
     .from(jobsTable)
-    .where(eq(jobsTable.id, params.data.id));
+    .where(and(eq(jobsTable.id, params.data.id), eq(jobsTable.userId, userId)));
   if (!job) {
     res.status(404).json({ error: "Job not found" });
     return;
@@ -244,7 +263,7 @@ router.get("/jobs/:id/score", async (req, res): Promise<void> => {
     const [latestResume] = await db
       .select()
       .from(baseResumeVersionsTable)
-      .where(eq(baseResumeVersionsTable.isCurrent, true))
+      .where(and(eq(baseResumeVersionsTable.userId, userId), eq(baseResumeVersionsTable.isCurrent, true)))
       .orderBy(desc(baseResumeVersionsTable.createdAt))
       .limit(1);
 
@@ -253,7 +272,7 @@ router.get("/jobs/:id/score", async (req, res): Promise<void> => {
       return;
     }
 
-    const result = await scoreResumeAgainstJob(latestResume.contentText, job);
+    const result = await scoreResumeAgainstJob(latestResume.contentText, job, userId);
     req.log.info(
       { jobId: job.id, overallScore: result.overallScore },
       "Job scored using resume semantic scoring",
@@ -271,7 +290,7 @@ router.get("/jobs/:id/score", async (req, res): Promise<void> => {
   const [roleProfile] = await db
     .select()
     .from(roleProfilesTable)
-    .where(eq(roleProfilesTable.id, roleProfileId));
+    .where(and(eq(roleProfilesTable.id, roleProfileId), eq(roleProfilesTable.userId, userId)));
   if (!roleProfile) {
     res.status(404).json({ error: "Role profile not found" });
     return;
@@ -285,7 +304,8 @@ router.get("/jobs/:id/score", async (req, res): Promise<void> => {
   res.json(ScoreJobResponse.parse(result));
 });
 
-router.post("/jobs/:id/parse", async (req, res): Promise<void> => {
+router.post("/jobs/:id/parse", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = ParseJobDescriptionParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -300,7 +320,7 @@ router.post("/jobs/:id/parse", async (req, res): Promise<void> => {
   const [job] = await db
     .select()
     .from(jobsTable)
-    .where(eq(jobsTable.id, params.data.id));
+    .where(and(eq(jobsTable.id, params.data.id), eq(jobsTable.userId, userId)));
   if (!job) {
     res.status(404).json({ error: "Job not found" });
     return;
@@ -319,7 +339,8 @@ router.post("/jobs/:id/parse", async (req, res): Promise<void> => {
   res.json(ParseJobDescriptionResponse.parse(updated));
 });
 
-router.post("/jobs/:id/research", async (req, res): Promise<void> => {
+router.post("/jobs/:id/research", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = GetJobParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -329,7 +350,7 @@ router.post("/jobs/:id/research", async (req, res): Promise<void> => {
   const [job] = await db
     .select()
     .from(jobsTable)
-    .where(eq(jobsTable.id, params.data.id));
+    .where(and(eq(jobsTable.id, params.data.id), eq(jobsTable.userId, userId)));
   if (!job) {
     res.status(404).json({ error: "Job not found" });
     return;
@@ -343,22 +364,23 @@ router.post("/jobs/:id/research", async (req, res): Promise<void> => {
   req.log.info({ jobId: job.id }, "Starting job research pipeline");
 
   try {
-    const researchResult = await runJobResearchPipeline(job.title, job.company, job.rawJdText, job.id);
+    const researchResult = await runJobResearchPipeline(job.title, job.company, job.rawJdText, job.id, userId);
     
     const [updated] = await db
       .update(jobsTable)
       .set({ researchData: researchResult })
-      .where(eq(jobsTable.id, job.id))
+      .where(and(eq(jobsTable.id, job.id), eq(jobsTable.userId, userId)))
       .returning();
 
-    res.json(updated);
+    res.json(GetJobResponse.parse(updated));
   } catch (error) {
     req.log.error({ error }, "Job research pipeline failed");
     res.status(500).json({ error: error instanceof Error ? error.message : "Job research failed" });
   }
 });
 
-router.post("/jobs/:id/gap-analysis", async (req, res): Promise<void> => {
+router.post("/jobs/:id/gap-analysis", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = GetJobParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -368,7 +390,7 @@ router.post("/jobs/:id/gap-analysis", async (req, res): Promise<void> => {
   const [job] = await db
     .select()
     .from(jobsTable)
-    .where(eq(jobsTable.id, params.data.id));
+    .where(and(eq(jobsTable.id, params.data.id), eq(jobsTable.userId, userId)));
   if (!job) {
     res.status(404).json({ error: "Job not found" });
     return;
@@ -377,10 +399,10 @@ router.post("/jobs/:id/gap-analysis", async (req, res): Promise<void> => {
   const allClaims = await db
     .select()
     .from(claimsTable)
-    .where(eq(claimsTable.isActive, true));
+    .where(and(eq(claimsTable.userId, userId), eq(claimsTable.isActive, true)));
 
   try {
-    const result = await runGapAnalysisPipeline(job, allClaims);
+    const result = await runGapAnalysisPipeline(job, allClaims, userId);
     res.json(result);
   } catch (error) {
     req.log.error({ error }, "Gap analysis failed");
@@ -388,7 +410,8 @@ router.post("/jobs/:id/gap-analysis", async (req, res): Promise<void> => {
   }
 });
 
-router.get("/jobs/:id/claim-matches", async (req, res): Promise<void> => {
+router.get("/jobs/:id/claim-matches", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = GetJobClaimMatchesParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -398,7 +421,7 @@ router.get("/jobs/:id/claim-matches", async (req, res): Promise<void> => {
   const [job] = await db
     .select()
     .from(jobsTable)
-    .where(eq(jobsTable.id, params.data.id));
+    .where(and(eq(jobsTable.id, params.data.id), eq(jobsTable.userId, userId)));
   if (!job) {
     res.status(404).json({ error: "Job not found" });
     return;
@@ -407,7 +430,7 @@ router.get("/jobs/:id/claim-matches", async (req, res): Promise<void> => {
   const claims = await db
     .select()
     .from(claimsTable)
-    .where(eq(claimsTable.isActive, true));
+    .where(and(eq(claimsTable.userId, userId), eq(claimsTable.isActive, true)));
 
   const matches = matchClaimsToJob(job, claims);
 
@@ -437,6 +460,7 @@ router.get("/jobs/:id/claim-matches", async (req, res): Promise<void> => {
 });
 
 router.post("/jobs/:id/tailor", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = TailorJobResumeParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -454,7 +478,7 @@ router.post("/jobs/:id/tailor", async (req: JobOpsRequest, res): Promise<void> =
   const [job] = await db
     .select()
     .from(jobsTable)
-    .where(eq(jobsTable.id, params.data.id));
+    .where(and(eq(jobsTable.id, params.data.id), eq(jobsTable.userId, userId)));
   if (!job) {
     res.status(404).json({ error: "Job not found" });
     return;
@@ -463,7 +487,7 @@ router.post("/jobs/:id/tailor", async (req: JobOpsRequest, res): Promise<void> =
   const allClaims = await db
     .select()
     .from(claimsTable)
-    .where(eq(claimsTable.isActive, true));
+    .where(and(eq(claimsTable.userId, userId), eq(claimsTable.isActive, true)));
 
   req.log.info({ jobId: job.id }, "Received resume tailor request");
 
@@ -473,6 +497,7 @@ router.post("/jobs/:id/tailor", async (req: JobOpsRequest, res): Promise<void> =
       allClaims,
       body.data.claimIds,
       {
+        userId,
         modelOverride: requestedModelOverride.success ? requestedModelOverride.data : undefined,
         templateId: body.data.templateId,
       },
@@ -491,7 +516,8 @@ router.post("/jobs/:id/tailor", async (req: JobOpsRequest, res): Promise<void> =
   }
 });
 
-router.post("/jobs/:id/cover-letter", async (req, res): Promise<void> => {
+router.post("/jobs/:id/cover-letter", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = DraftCoverLetterParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -509,7 +535,7 @@ router.post("/jobs/:id/cover-letter", async (req, res): Promise<void> => {
   const [job] = await db
     .select()
     .from(jobsTable)
-    .where(eq(jobsTable.id, params.data.id));
+    .where(and(eq(jobsTable.id, params.data.id), eq(jobsTable.userId, userId)));
   if (!job) {
     res.status(404).json({ error: "Job not found" });
     return;
@@ -518,14 +544,14 @@ router.post("/jobs/:id/cover-letter", async (req, res): Promise<void> => {
   const allClaims = await db
     .select()
     .from(claimsTable)
-    .where(eq(claimsTable.isActive, true));
+    .where(and(eq(claimsTable.userId, userId), eq(claimsTable.isActive, true)));
 
   let roleProfile = null;
   if (job.roleProfileId) {
     const [rp] = await db
       .select()
       .from(roleProfilesTable)
-      .where(eq(roleProfilesTable.id, job.roleProfileId));
+      .where(and(eq(roleProfilesTable.id, job.roleProfileId), eq(roleProfilesTable.userId, userId)));
     roleProfile = rp ?? null;
   }
 
@@ -536,13 +562,14 @@ router.post("/jobs/:id/cover-letter", async (req, res): Promise<void> => {
     roleProfile,
     allClaims,
     body.data.claimIds,
-    { modelOverride: requestedModelOverride.success ? requestedModelOverride.data : undefined },
+    { userId, modelOverride: requestedModelOverride.success ? requestedModelOverride.data : undefined },
   );
 
   res.status(201).json(GetCoverLetterVersionResponse.parse(coverLetterVersion));
 });
 
 router.post("/jobs/:id/compare/resume", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = TailorJobResumeParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -558,7 +585,7 @@ router.post("/jobs/:id/compare/resume", async (req: JobOpsRequest, res): Promise
   const [job] = await db
     .select()
     .from(jobsTable)
-    .where(eq(jobsTable.id, params.data.id));
+    .where(and(eq(jobsTable.id, params.data.id), eq(jobsTable.userId, userId)));
   if (!job) {
     res.status(404).json({ error: "Job not found" });
     return;
@@ -567,7 +594,7 @@ router.post("/jobs/:id/compare/resume", async (req: JobOpsRequest, res): Promise
   const allClaims = await db
     .select()
     .from(claimsTable)
-    .where(eq(claimsTable.isActive, true));
+    .where(and(eq(claimsTable.userId, userId), eq(claimsTable.isActive, true)));
 
   const comparisonRunId = mintRunId();
   const candidates: Array<Record<string, unknown>> = [];
@@ -578,12 +605,12 @@ router.post("/jobs/:id/compare/resume", async (req: JobOpsRequest, res): Promise
         job,
         allClaims,
         body.data.claimIds,
-        { modelOverride: model, templateId: body.data.templateId },
+        { userId, modelOverride: model, templateId: body.data.templateId },
       );
       await db
         .update(resumeVersionsTable)
         .set({ status: "comparison_candidate" })
-        .where(eq(resumeVersionsTable.id, version.id));
+        .where(and(eq(resumeVersionsTable.id, version.id), eq(resumeVersionsTable.userId, userId)));
 
       candidates.push({
         versionId: version.id,
@@ -607,6 +634,7 @@ router.post("/jobs/:id/compare/resume", async (req: JobOpsRequest, res): Promise
   }
 
   await db.insert(eventLogsTable).values({
+    userId,
     entityType: "job",
     entityId: job.id,
     jobId: job.id,
@@ -628,6 +656,7 @@ router.post("/jobs/:id/compare/resume", async (req: JobOpsRequest, res): Promise
 });
 
 router.post("/jobs/:id/compare/cover-letter", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = DraftCoverLetterParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -643,7 +672,7 @@ router.post("/jobs/:id/compare/cover-letter", async (req: JobOpsRequest, res): P
   const [job] = await db
     .select()
     .from(jobsTable)
-    .where(eq(jobsTable.id, params.data.id));
+    .where(and(eq(jobsTable.id, params.data.id), eq(jobsTable.userId, userId)));
   if (!job) {
     res.status(404).json({ error: "Job not found" });
     return;
@@ -652,14 +681,14 @@ router.post("/jobs/:id/compare/cover-letter", async (req: JobOpsRequest, res): P
   const allClaims = await db
     .select()
     .from(claimsTable)
-    .where(eq(claimsTable.isActive, true));
+    .where(and(eq(claimsTable.userId, userId), eq(claimsTable.isActive, true)));
 
   let roleProfile = null;
   if (job.roleProfileId) {
     const [rp] = await db
       .select()
       .from(roleProfilesTable)
-      .where(eq(roleProfilesTable.id, job.roleProfileId));
+      .where(and(eq(roleProfilesTable.id, job.roleProfileId), eq(roleProfilesTable.userId, userId)));
     roleProfile = rp ?? null;
   }
 
@@ -673,12 +702,12 @@ router.post("/jobs/:id/compare/cover-letter", async (req: JobOpsRequest, res): P
         roleProfile,
         allClaims,
         body.data.claimIds,
-        { modelOverride: model },
+        { userId, modelOverride: model },
       );
       await db
         .update(coverLetterVersionsTable)
         .set({ status: "comparison_candidate" })
-        .where(eq(coverLetterVersionsTable.id, version.id));
+        .where(and(eq(coverLetterVersionsTable.id, version.id), eq(coverLetterVersionsTable.userId, userId)));
 
       candidates.push({
         versionId: version.id,
@@ -701,6 +730,7 @@ router.post("/jobs/:id/compare/cover-letter", async (req: JobOpsRequest, res): P
   }
 
   await db.insert(eventLogsTable).values({
+    userId,
     entityType: "job",
     entityId: job.id,
     jobId: job.id,
@@ -721,7 +751,8 @@ router.post("/jobs/:id/compare/cover-letter", async (req: JobOpsRequest, res): P
   res.json({ comparisonRunId, candidates });
 });
 
-router.post("/jobs/:id/compare/promote-resume", async (req, res): Promise<void> => {
+router.post("/jobs/:id/compare/promote-resume", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = TailorJobResumeParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -737,7 +768,7 @@ router.post("/jobs/:id/compare/promote-resume", async (req, res): Promise<void> 
   const [job] = await db
     .select()
     .from(jobsTable)
-    .where(eq(jobsTable.id, params.data.id));
+    .where(and(eq(jobsTable.id, params.data.id), eq(jobsTable.userId, userId)));
   if (!job) {
     res.status(404).json({ error: "Job not found" });
     return;
@@ -746,13 +777,13 @@ router.post("/jobs/:id/compare/promote-resume", async (req, res): Promise<void> 
   const allClaims = await db
     .select()
     .from(claimsTable)
-    .where(eq(claimsTable.isActive, true));
+    .where(and(eq(claimsTable.userId, userId), eq(claimsTable.isActive, true)));
 
   if (body.data.candidateVersionId != null) {
     const [candidate] = await db
       .select()
       .from(resumeVersionsTable)
-      .where(eq(resumeVersionsTable.id, body.data.candidateVersionId));
+      .where(and(eq(resumeVersionsTable.id, body.data.candidateVersionId), eq(resumeVersionsTable.userId, userId)));
     if (!candidate || candidate.jobId !== job.id) {
       res.status(404).json({ error: "Resume comparison candidate not found for this job" });
       return;
@@ -765,10 +796,11 @@ router.post("/jobs/:id/compare/promote-resume", async (req, res): Promise<void> 
     const [promoted] = await db
       .update(resumeVersionsTable)
       .set({ status: "pending_approval" })
-      .where(eq(resumeVersionsTable.id, candidate.id))
+      .where(and(eq(resumeVersionsTable.id, candidate.id), eq(resumeVersionsTable.userId, userId)))
       .returning();
 
     await db.insert(eventLogsTable).values({
+      userId,
       entityType: "resume_version",
       entityId: promoted!.id,
       jobId: job.id,
@@ -801,10 +833,11 @@ router.post("/jobs/:id/compare/promote-resume", async (req, res): Promise<void> 
       job,
       allClaims,
       body.data.claimIds,
-      { modelOverride: body.data.model, templateId: body.data.templateId },
+      { userId, modelOverride: body.data.model, templateId: body.data.templateId },
     );
 
     await db.insert(eventLogsTable).values({
+      userId,
       entityType: "resume_version",
       entityId: version.id,
       jobId: job.id,
@@ -832,7 +865,8 @@ router.post("/jobs/:id/compare/promote-resume", async (req, res): Promise<void> 
   }
 });
 
-router.post("/jobs/:id/compare/promote-cover-letter", async (req, res): Promise<void> => {
+router.post("/jobs/:id/compare/promote-cover-letter", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = DraftCoverLetterParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -848,7 +882,7 @@ router.post("/jobs/:id/compare/promote-cover-letter", async (req, res): Promise<
   const [job] = await db
     .select()
     .from(jobsTable)
-    .where(eq(jobsTable.id, params.data.id));
+    .where(and(eq(jobsTable.id, params.data.id), eq(jobsTable.userId, userId)));
   if (!job) {
     res.status(404).json({ error: "Job not found" });
     return;
@@ -857,13 +891,13 @@ router.post("/jobs/:id/compare/promote-cover-letter", async (req, res): Promise<
   const allClaims = await db
     .select()
     .from(claimsTable)
-    .where(eq(claimsTable.isActive, true));
+    .where(and(eq(claimsTable.userId, userId), eq(claimsTable.isActive, true)));
 
   if (body.data.candidateVersionId != null) {
     const [candidate] = await db
       .select()
       .from(coverLetterVersionsTable)
-      .where(eq(coverLetterVersionsTable.id, body.data.candidateVersionId));
+      .where(and(eq(coverLetterVersionsTable.id, body.data.candidateVersionId), eq(coverLetterVersionsTable.userId, userId)));
     if (!candidate || candidate.jobId !== job.id) {
       res.status(404).json({ error: "Cover letter comparison candidate not found for this job" });
       return;
@@ -876,10 +910,11 @@ router.post("/jobs/:id/compare/promote-cover-letter", async (req, res): Promise<
     const [promoted] = await db
       .update(coverLetterVersionsTable)
       .set({ status: "pending_approval" })
-      .where(eq(coverLetterVersionsTable.id, candidate.id))
+      .where(and(eq(coverLetterVersionsTable.id, candidate.id), eq(coverLetterVersionsTable.userId, userId)))
       .returning();
 
     await db.insert(eventLogsTable).values({
+      userId,
       entityType: "cover_letter_version",
       entityId: promoted!.id,
       jobId: job.id,
@@ -911,7 +946,7 @@ router.post("/jobs/:id/compare/promote-cover-letter", async (req, res): Promise<
     const [rp] = await db
       .select()
       .from(roleProfilesTable)
-      .where(eq(roleProfilesTable.id, job.roleProfileId));
+      .where(and(eq(roleProfilesTable.id, job.roleProfileId), eq(roleProfilesTable.userId, userId)));
     roleProfile = rp ?? null;
   }
 
@@ -920,10 +955,11 @@ router.post("/jobs/:id/compare/promote-cover-letter", async (req, res): Promise<
     roleProfile,
       allClaims,
       body.data.claimIds,
-      { modelOverride: body.data.model },
+    { userId, modelOverride: body.data.model },
     );
 
   await db.insert(eventLogsTable).values({
+    userId,
     entityType: "cover_letter_version",
     entityId: version.id,
     jobId: job.id,

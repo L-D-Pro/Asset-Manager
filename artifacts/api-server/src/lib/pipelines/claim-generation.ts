@@ -14,6 +14,7 @@ export class ClaimDraftingUnavailableError extends Error {
 }
 
 export interface DraftClaimsInput {
+  userId: number;
   sourceText: string;
   prompt: string;
   extractedText: string;
@@ -80,6 +81,7 @@ export async function draftClaimsFromSource(
   const evidenceType = input.extractedText.trim() ? "document" : "self_attestation";
 
   const aiClaims = await draftClaimsWithAi({
+    userId: input.userId,
     aiSourceText,
     truncated,
     prompt: input.prompt,
@@ -121,6 +123,7 @@ export async function draftClaimsFromSource(
 }
 
 async function draftClaimsWithAi(args: {
+  userId: number;
   aiSourceText: string;
   truncated: boolean;
   prompt: string;
@@ -128,6 +131,7 @@ async function draftClaimsWithAi(args: {
 }): Promise<Array<Record<string, unknown>>> {
   try {
     const result = await callAI({
+      userId: args.userId,
       taskType: "claim_generation",
       systemPrompt: SYSTEM_PROMPT,
       userPrompt:

@@ -4,6 +4,8 @@ import { z } from "zod";
 import { aiRunEvaluationsTable, db, eventLogsTable } from "@workspace/db";
 import { defineSnapshotWindow, type MetricsContractVersion } from "../lib/metrics-contract";
 import { buildAiMetricsSnapshotV1, type AiRunEvaluationRowLite } from "../lib/ai-metrics-snapshot";
+import type { JobOpsRequest } from "../lib/http-types";
+import { currentUserId } from "../lib/ownership";
 
 export { buildAiMetricsSnapshotV1, type AiRunEvaluationRowLite } from "../lib/ai-metrics-snapshot";
 export type { AiMetricsSnapshotResponseV1, AiMetricsSnapshotStatus } from "../lib/ai-metrics-snapshot";
@@ -17,7 +19,8 @@ const QuerySchema = z.object({
 
 export const aiMetricsSnapshotRouter: IRouter = Router();
 
-aiMetricsSnapshotRouter.get("/ai-metrics-snapshot", async (req, res): Promise<void> => {
+aiMetricsSnapshotRouter.get("/ai-metrics-snapshot", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const parsed = QuerySchema.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -30,6 +33,7 @@ aiMetricsSnapshotRouter.get("/ai-metrics-snapshot", async (req, res): Promise<vo
   const window = defineSnapshotWindow({ start: windowStart, end: windowEnd });
 
   const where = [
+    eq(aiRunEvaluationsTable.userId, userId),
     gte(aiRunEvaluationsTable.createdAt, window.startInclusive),
     lt(aiRunEvaluationsTable.createdAt, window.endExclusive),
   ];
@@ -66,7 +70,11 @@ aiMetricsSnapshotRouter.get("/ai-metrics-snapshot", async (req, res): Promise<vo
         runId: eventLogsTable.runId,
       })
       .from(eventLogsTable)
-      .where(and(eq(eventLogsTable.entityType, "ai_call"), inArray(eventLogsTable.runId, runIds)));
+      .where(and(
+        eq(eventLogsTable.entityType, "ai_call"),
+        eq(eventLogsTable.userId, userId),
+        inArray(eventLogsTable.runId, runIds),
+      ));
 
     for (const row of rootAiEvents) {
       if (row.runId) hasRootAiEventByRunId[row.runId] = true;

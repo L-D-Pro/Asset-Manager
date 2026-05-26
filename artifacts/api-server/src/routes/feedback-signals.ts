@@ -1,7 +1,9 @@
 import { Router, type IRouter } from "express";
 import { eq, and, desc, sql } from "drizzle-orm";
-import { db, feedbackSignalsTable, applicationsTable, eventLogsTable, resumeVersionsTable, coverLetterVersionsTable, aiLearningConfigTable } from "@workspace/db";
+import { db, feedbackSignalsTable, applicationsTable, eventLogsTable, resumeVersionsTable, coverLetterVersionsTable, aiLearningConfigTable, jobsTable, roleProfilesTable, baseResumeVersionsTable } from "@workspace/db";
 import { runRecompute } from "../lib/learning-processor";
+import type { JobOpsRequest } from "../lib/http-types";
+import { currentUserId } from "../lib/ownership";
 import {
   ListFeedbackSignalsQueryParams,
   ListFeedbackSignalsResponse,
@@ -16,7 +18,8 @@ import {
 
 const router: IRouter = Router();
 
-router.get("/feedback-signals", async (req, res): Promise<void> => {
+router.get("/feedback-signals", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   req.log.info("Listing feedback signals");
   const query = ListFeedbackSignalsQueryParams.safeParse(req.query);
   if (!query.success) {
@@ -24,7 +27,7 @@ router.get("/feedback-signals", async (req, res): Promise<void> => {
     return;
   }
 
-  const conditions = [];
+  const conditions = [eq(feedbackSignalsTable.userId, userId)];
   if (query.data.applicationId != null) {
     conditions.push(eq(feedbackSignalsTable.applicationId, query.data.applicationId));
   }
@@ -35,14 +38,15 @@ router.get("/feedback-signals", async (req, res): Promise<void> => {
   const rows = await db
     .select()
     .from(feedbackSignalsTable)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .where(and(...conditions))
     .orderBy(feedbackSignalsTable.createdAt);
   res.json(ListFeedbackSignalsResponse.parse(rows));
 });
 
 import { validateLineage, isCanonicalRunId } from "../lib/lineage";
 
-router.post("/feedback-signals", async (req, res): Promise<void> => {
+router.post("/feedback-signals", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const parsed = CreateFeedbackSignalBody.safeParse(req.body);
   if (!parsed.success) {
     req.log.warn({ error: parsed.error.message }, "Invalid create feedback signal body");
@@ -53,7 +57,35 @@ router.post("/feedback-signals", async (req, res): Promise<void> => {
   const [existingApp] = await db
     .select()
     .from(applicationsTable)
-    .where(eq(applicationsTable.id, parsed.data.applicationId));
+    .where(and(eq(applicationsTable.id, parsed.data.applicationId), eq(applicationsTable.userId, userId)));
+  if (!existingApp) {
+    res.status(404).json({ error: "Application not found" });
+    return;
+  }
+  if (parsed.data.jobId != null) {
+    const [job] = await db.select({ id: jobsTable.id }).from(jobsTable)
+      .where(and(eq(jobsTable.id, parsed.data.jobId), eq(jobsTable.userId, userId)));
+    if (!job) {
+      res.status(404).json({ error: "Job not found" });
+      return;
+    }
+  }
+  if (parsed.data.roleProfileId != null) {
+    const [profile] = await db.select({ id: roleProfilesTable.id }).from(roleProfilesTable)
+      .where(and(eq(roleProfilesTable.id, parsed.data.roleProfileId), eq(roleProfilesTable.userId, userId)));
+    if (!profile) {
+      res.status(404).json({ error: "Role profile not found" });
+      return;
+    }
+  }
+  if (parsed.data.baseResumeVersionId != null) {
+    const [resume] = await db.select({ id: baseResumeVersionsTable.id }).from(baseResumeVersionsTable)
+      .where(and(eq(baseResumeVersionsTable.id, parsed.data.baseResumeVersionId), eq(baseResumeVersionsTable.userId, userId)));
+    if (!resume) {
+      res.status(404).json({ error: "Base resume version not found" });
+      return;
+    }
+  }
 
   const outcomesToStatus: Record<string, string> = {
     rejected: "rejected",
@@ -66,7 +98,11 @@ router.post("/feedback-signals", async (req, res): Promise<void> => {
   // Ensure we have a valid run_id 
   let runId: string | null = null;
   if (parsed.data.resumeVersionId) {
-    const [row] = await db.select({ runId: resumeVersionsTable.runId }).from(resumeVersionsTable).where(eq(resumeVersionsTable.id, parsed.data.resumeVersionId));
+    const [row] = await db.select({ runId: resumeVersionsTable.runId }).from(resumeVersionsTable).where(and(eq(resumeVersionsTable.id, parsed.data.resumeVersionId), eq(resumeVersionsTable.userId, userId)));
+    if (!row) {
+      res.status(404).json({ error: "Resume version not found" });
+      return;
+    }
     runId = row?.runId ?? null;
   }
 
@@ -74,7 +110,11 @@ router.post("/feedback-signals", async (req, res): Promise<void> => {
     const [row] = await db
       .select({ runId: coverLetterVersionsTable.runId })
       .from(coverLetterVersionsTable)
-      .where(eq(coverLetterVersionsTable.id, parsed.data.coverLetterVersionId));
+      .where(and(eq(coverLetterVersionsTable.id, parsed.data.coverLetterVersionId), eq(coverLetterVersionsTable.userId, userId)));
+    if (!row) {
+      res.status(404).json({ error: "Cover letter version not found" });
+      return;
+    }
     runId = row?.runId ?? null;
   }
 
@@ -121,6 +161,7 @@ router.post("/feedback-signals", async (req, res): Promise<void> => {
     .where(
       and(
         eq(eventLogsTable.runId, runId),
+        eq(eventLogsTable.userId, userId),
         eq(eventLogsTable.entityType, "ai_call"),
         eq(eventLogsTable.eventType, "ai_call"),
       ),
@@ -140,7 +181,7 @@ router.post("/feedback-signals", async (req, res): Promise<void> => {
     const [rv] = await db
       .select({ claimIds: resumeVersionsTable.claimIds })
       .from(resumeVersionsTable)
-      .where(eq(resumeVersionsTable.id, parsed.data.resumeVersionId));
+      .where(and(eq(resumeVersionsTable.id, parsed.data.resumeVersionId), eq(resumeVersionsTable.userId, userId)));
     enrichment.selectedClaimIds = rv?.claimIds ?? [];
   }
 
@@ -150,7 +191,7 @@ router.post("/feedback-signals", async (req, res): Promise<void> => {
     const [clv] = await db
       .select({ claimIds: coverLetterVersionsTable.claimIds })
       .from(coverLetterVersionsTable)
-      .where(eq(coverLetterVersionsTable.id, coverLetterVersionId));
+      .where(and(eq(coverLetterVersionsTable.id, coverLetterVersionId), eq(coverLetterVersionsTable.userId, userId)));
     if (clv?.claimIds?.length) {
       const merged = new Set([...(enrichment.selectedClaimIds ?? []), ...clv.claimIds]);
       enrichment.selectedClaimIds = Array.from(merged);
@@ -172,12 +213,13 @@ router.post("/feedback-signals", async (req, res): Promise<void> => {
   const topLevelClaimIds = parsed.data.selectedClaimIds?.length
     ? parsed.data.selectedClaimIds
     : (enrichment.selectedClaimIds ?? []);
-  const topLevelJobId = parsed.data.jobId ?? existingApp?.jobId ?? null;
+  const topLevelJobId = parsed.data.jobId ?? existingApp.jobId ?? null;
 
   const row = await db.transaction(async (tx) => {
     const [inserted] = await tx
       .insert(feedbackSignalsTable)
       .values({
+        userId,
         ...parsed.data,
         runId,
         jobId: topLevelJobId,
@@ -192,13 +234,14 @@ router.post("/feedback-signals", async (req, res): Promise<void> => {
       })
       .returning();
 
-    if (newStatus && existingApp) {
+    if (newStatus) {
       const previousStatus = existingApp.status;
       await tx
         .update(applicationsTable)
         .set({ status: newStatus })
-        .where(eq(applicationsTable.id, parsed.data.applicationId));
+        .where(and(eq(applicationsTable.id, parsed.data.applicationId), eq(applicationsTable.userId, userId)));
       await tx.insert(eventLogsTable).values({
+        userId,
         entityType: "application",
         entityId: parsed.data.applicationId,
         applicationId: parsed.data.applicationId,
@@ -219,7 +262,7 @@ router.post("/feedback-signals", async (req, res): Promise<void> => {
     return inserted;
   });
 
-  if (newStatus && existingApp) {
+  if (newStatus) {
     req.log.info(
       {
         applicationId: parsed.data.applicationId,
@@ -249,7 +292,7 @@ router.post("/feedback-signals", async (req, res): Promise<void> => {
       const [{ count }] = await db
         .select({ count: sql<number>`count(*)::int` })
         .from(feedbackSignalsTable)
-        .where(sql`${feedbackSignalsTable.processedAt} IS NULL`);
+        .where(and(eq(feedbackSignalsTable.userId, userId), sql`${feedbackSignalsTable.processedAt} IS NULL`));
 
       if (count >= (config.minSampleSize ?? 10)) {
         await runRecompute(db);
@@ -260,7 +303,8 @@ router.post("/feedback-signals", async (req, res): Promise<void> => {
   });
 });
 
-router.get("/feedback-signals/:id", async (req, res): Promise<void> => {
+router.get("/feedback-signals/:id", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = GetFeedbackSignalParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -269,7 +313,7 @@ router.get("/feedback-signals/:id", async (req, res): Promise<void> => {
   const [row] = await db
     .select()
     .from(feedbackSignalsTable)
-    .where(eq(feedbackSignalsTable.id, params.data.id));
+    .where(and(eq(feedbackSignalsTable.id, params.data.id), eq(feedbackSignalsTable.userId, userId)));
   if (!row) {
     res.status(404).json({ error: "Feedback signal not found" });
     return;
@@ -277,7 +321,8 @@ router.get("/feedback-signals/:id", async (req, res): Promise<void> => {
   res.json(GetFeedbackSignalResponse.parse(row));
 });
 
-router.patch("/feedback-signals/:id", async (req, res): Promise<void> => {
+router.patch("/feedback-signals/:id", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = UpdateFeedbackSignalParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -292,7 +337,7 @@ router.patch("/feedback-signals/:id", async (req, res): Promise<void> => {
   const [row] = await db
     .update(feedbackSignalsTable)
     .set(parsed.data)
-    .where(eq(feedbackSignalsTable.id, params.data.id))
+    .where(and(eq(feedbackSignalsTable.id, params.data.id), eq(feedbackSignalsTable.userId, userId)))
     .returning();
   if (!row) {
     res.status(404).json({ error: "Feedback signal not found" });
@@ -317,7 +362,7 @@ router.patch("/feedback-signals/:id", async (req, res): Promise<void> => {
         const [{ count }] = await db
           .select({ count: sql<number>`count(*)::int` })
           .from(feedbackSignalsTable)
-          .where(sql`${feedbackSignalsTable.processedAt} IS NULL`);
+          .where(and(eq(feedbackSignalsTable.userId, userId), sql`${feedbackSignalsTable.processedAt} IS NULL`));
 
         if (count >= (config.minSampleSize ?? 10)) {
           await runRecompute(db);
@@ -329,7 +374,8 @@ router.patch("/feedback-signals/:id", async (req, res): Promise<void> => {
   }
 });
 
-router.delete("/feedback-signals/:id", async (req, res): Promise<void> => {
+router.delete("/feedback-signals/:id", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = DeleteFeedbackSignalParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -337,7 +383,7 @@ router.delete("/feedback-signals/:id", async (req, res): Promise<void> => {
   }
   const [row] = await db
     .delete(feedbackSignalsTable)
-    .where(eq(feedbackSignalsTable.id, params.data.id))
+    .where(and(eq(feedbackSignalsTable.id, params.data.id), eq(feedbackSignalsTable.userId, userId)))
     .returning();
   if (!row) {
     res.status(404).json({ error: "Feedback signal not found" });

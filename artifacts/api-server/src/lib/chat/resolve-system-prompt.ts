@@ -112,6 +112,7 @@ interface RouterLlmResponse {
 async function classifyWithLLM(
   catalog: RouterSkill[],
   message: string,
+  userId?: number,
 ): Promise<Array<{ slug: string; score: number }> | null> {
   const catalogText = catalog
     .map((s) => `- ${s.slug}: ${s.meta.routerDescription} (triggers: ${s.meta.triggerExamples.join(", ") || "—"})`)
@@ -121,7 +122,7 @@ async function classifyWithLLM(
 
   for (const taskType of ["skill_routing", "chat"]) {
     try {
-      const result = await callAI({ taskType, systemPrompt: ROUTER_SYSTEM_PROMPT, userPrompt });
+      const result = await callAI({ taskType, userId, systemPrompt: ROUTER_SYSTEM_PROMPT, userPrompt });
       const parsed = parseJsonResponse<RouterLlmResponse>(result.content);
       if (!parsed) return null;
       const slugs = (parsed.selectedSkillSlugs ?? []).filter((s) => validSlugs.has(s));
@@ -146,6 +147,8 @@ export interface ResolveChatPromptParams {
   attachments: MessageAttachment[];
   /** Skills the user explicitly picked in the composer (explicit mode). */
   explicitSlugs?: string[];
+  /** Owning user for any classifier AI call and its audit record. */
+  userId?: number;
   /** Optional lever overrides — used by the inspector simulator. */
   overrides?: Partial<LeverConfigInput> & {
     skillTokenBudget?: number;
@@ -198,7 +201,7 @@ export async function resolveChatPrompt(
     explicitSlugs: params.explicitSlugs,
     tokenBudget,
     maxSkills,
-    classify: classifyWithLLM,
+    classify: (catalog, message) => classifyWithLLM(catalog, message, params.userId),
   });
 
   const selectedSkills: PromptSkill[] = allSkills

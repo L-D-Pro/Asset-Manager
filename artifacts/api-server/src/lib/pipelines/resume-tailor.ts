@@ -3,7 +3,7 @@ import {
   resumeVersionsTable,
   baseResumeVersionsTable,
 } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { callAI } from "../ai-client";
 import { matchClaimsToJob } from "../scoring";
 import { logger } from "../logger";
@@ -105,10 +105,12 @@ export async function runResumeTailorPipeline(
   allClaims: Claim[],
   claimIds?: number[],
   options?: {
+    userId?: number;
     modelOverride?: { provider?: string; modelName: string };
     templateId?: string | null;
   },
 ): Promise<typeof resumeVersionsTable.$inferSelect> {
+  const userId = options?.userId ?? job.userId;
   logger.info(
     { jobId: job.id, claimIds },
     "Starting resume tailor pipeline (v2 simplified)",
@@ -117,7 +119,7 @@ export async function runResumeTailorPipeline(
   const [baseResumeVersion] = await db
     .select()
     .from(baseResumeVersionsTable)
-    .where(eq(baseResumeVersionsTable.isCurrent, true));
+    .where(and(eq(baseResumeVersionsTable.userId, userId), eq(baseResumeVersionsTable.isCurrent, true)));
   if (!baseResumeVersion) throw new MissingBaseResumeError();
 
   const template = getResumeTemplate(options?.templateId);
@@ -141,6 +143,7 @@ export async function runResumeTailorPipeline(
       templateGuidance: template.label,
     }),
     jobId: job.id,
+    userId,
     modelOverride: options?.modelOverride,
     extraParams: RESUME_OUTPUT_PARAMS,
     validateContent: (content) => {
@@ -162,6 +165,7 @@ export async function runResumeTailorPipeline(
   const [row] = await db
     .insert(resumeVersionsTable)
     .values({
+      userId,
       jobId: job.id,
       label: "AI tailored resume",
       status: "pending_approval",

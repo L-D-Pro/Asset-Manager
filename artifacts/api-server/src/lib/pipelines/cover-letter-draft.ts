@@ -3,7 +3,7 @@ import {
   coverLetterVersionsTable,
   baseResumeVersionsTable,
 } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { callAI, parseJsonResponse } from "../ai-client";
 import { matchClaimsToJob } from "../scoring";
 import { validateParagraph, assertMinimumContent, TruthLockViolation, stripClaimIdRefs, validateCoverLetterQuality, validateSemanticQuality, QualityViolation, reviewGeneratedTruth } from "./validation";
@@ -159,12 +159,14 @@ export async function runCoverLetterPipeline(
   allClaims: Claim[],
   claimIds?: number[],
   options?: {
+    userId?: number;
     modelOverride?: {
       provider?: string;
       modelName: string;
     };
   },
 ): Promise<typeof coverLetterVersionsTable.$inferSelect> {
+  const userId = options?.userId ?? job.userId;
   logger.info({ jobId: job.id, claimIds }, "Starting cover letter draft pipeline");
 
   let selectedClaims: Claim[];
@@ -180,6 +182,7 @@ export async function runCoverLetterPipeline(
     const [row] = await db
       .insert(coverLetterVersionsTable)
       .values({
+        userId,
         jobId: job.id,
         label: "AI drafted — no claims available",
         status: "pending_approval",
@@ -203,7 +206,7 @@ export async function runCoverLetterPipeline(
   const [baseResumeVersion] = await db
     .select()
     .from(baseResumeVersionsTable)
-    .where(eq(baseResumeVersionsTable.isCurrent, true));
+    .where(and(eq(baseResumeVersionsTable.userId, userId), eq(baseResumeVersionsTable.isCurrent, true)));
 
   const resumeContext = baseResumeVersion
     ? `\n\nCandidate's Resume (for context — do NOT repeat verbatim, use to complement):\n${baseResumeVersion.contentText.slice(0, 2000)}`
@@ -243,6 +246,7 @@ Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed
       userPrompt:
         `Draft a cover letter for this job:\n\n${jobContext}${resumeContext}\n\nStored job/company research (use only if present; do not use model memory):\n${researchContext || "No stored research available."}\n\nAvailable claims (use ONLY these IDs):\n${claimsContext}`,
       jobId: job.id,
+      userId,
       modelOverride: options?.modelOverride,
       extraParams: COVER_LETTER_STRUCTURED_OUTPUT_PARAMS,
       validateContent: (content) => {
@@ -256,6 +260,7 @@ Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed
     const [row] = await db
       .insert(coverLetterVersionsTable)
       .values({
+        userId,
         jobId: job.id,
         label: "AI drafted — generation failed",
         status: "pending_approval",
@@ -286,6 +291,7 @@ Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed
     const [row] = await db
       .insert(coverLetterVersionsTable)
       .values({
+        userId,
         jobId: job.id,
         label: "AI drafted — generation failed",
         status: "pending_approval",
@@ -315,6 +321,7 @@ Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed
       const [row] = await db
         .insert(coverLetterVersionsTable)
         .values({
+          userId,
           jobId: job.id,
           label: "AI drafted — truth lock failure",
           status: "pending_approval",
@@ -340,7 +347,7 @@ Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed
   let qualityViolation: QualityViolation | null = null;
   try {
     validateCoverLetterQuality(fullText);
-    await validateSemanticQuality(fullText, jobContext, job.id);
+    await validateSemanticQuality(fullText, jobContext, job.id, userId);
   } catch (err) {
     if (err instanceof QualityViolation) {
       qualityViolation = err;
@@ -361,6 +368,7 @@ Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed
     const [row] = await db
       .insert(coverLetterVersionsTable)
       .values({
+        userId,
         jobId: job.id,
         label: "AI drafted — quality check failed",
         status: "pending_approval",
@@ -408,6 +416,7 @@ Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed
     const [row] = await db
       .insert(coverLetterVersionsTable)
       .values({
+        userId,
         jobId: job.id,
         label: "AI drafted â€” truth review failed",
         status: "pending_approval",
@@ -427,6 +436,7 @@ Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed
   const [row] = await db
     .insert(coverLetterVersionsTable)
     .values({
+      userId,
       jobId: job.id,
       label: `AI drafted — ${new Date().toLocaleDateString()}`,
       status: "pending_approval",

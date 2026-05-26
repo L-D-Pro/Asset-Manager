@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, count } from "drizzle-orm";
-import { db, applicationsTable, eventLogsTable } from "@workspace/db";
+import { db, applicationsTable, eventLogsTable, jobsTable, resumeVersionsTable, coverLetterVersionsTable } from "@workspace/db";
 import {
   ListApplicationsQueryParams,
   ListApplicationsResponse,
@@ -13,16 +13,20 @@ import {
   DeleteApplicationParams,
   GetApplicationStatsResponse,
 } from "@workspace/api-zod";
+import type { JobOpsRequest } from "../lib/http-types";
+import { currentUserId } from "../lib/ownership";
 
 const router: IRouter = Router();
 
 
-router.get("/applications/stats", async (req, res): Promise<void> => {
+router.get("/applications/stats", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   req.log.info("Fetching application stats");
 
   const rows = await db
     .select({ status: applicationsTable.status, cnt: count() })
     .from(applicationsTable)
+    .where(eq(applicationsTable.userId, userId))
     .groupBy(applicationsTable.status);
 
   const byStatus: Record<string, number> = {};
@@ -55,7 +59,8 @@ router.get("/applications/stats", async (req, res): Promise<void> => {
   );
 });
 
-router.get("/applications", async (req, res): Promise<void> => {
+router.get("/applications", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   req.log.info("Listing applications");
   const query = ListApplicationsQueryParams.safeParse(req.query);
   if (!query.success) {
@@ -63,7 +68,7 @@ router.get("/applications", async (req, res): Promise<void> => {
     return;
   }
 
-  const conditions = [];
+  const conditions = [eq(applicationsTable.userId, userId)];
   if (query.data.status != null) {
     conditions.push(eq(applicationsTable.status, query.data.status));
   }
@@ -74,12 +79,13 @@ router.get("/applications", async (req, res): Promise<void> => {
   const rows = await db
     .select()
     .from(applicationsTable)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .where(and(...conditions))
     .orderBy(applicationsTable.createdAt);
   res.json(ListApplicationsResponse.parse(rows));
 });
 
-router.post("/applications", async (req, res): Promise<void> => {
+router.post("/applications", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const parsed = CreateApplicationBody.safeParse(req.body);
   if (!parsed.success) {
     req.log.warn({ error: parsed.error.message }, "Invalid create application body");
@@ -87,12 +93,38 @@ router.post("/applications", async (req, res): Promise<void> => {
     return;
   }
 
+  const [job] = await db
+    .select({ id: jobsTable.id })
+    .from(jobsTable)
+    .where(and(eq(jobsTable.id, parsed.data.jobId), eq(jobsTable.userId, userId)));
+  if (!job) {
+    res.status(404).json({ error: "Job not found" });
+    return;
+  }
+  if (parsed.data.resumeVersionId != null) {
+    const [resume] = await db.select({ id: resumeVersionsTable.id }).from(resumeVersionsTable)
+      .where(and(eq(resumeVersionsTable.id, parsed.data.resumeVersionId), eq(resumeVersionsTable.userId, userId)));
+    if (!resume) {
+      res.status(404).json({ error: "Resume version not found" });
+      return;
+    }
+  }
+  if (parsed.data.coverLetterVersionId != null) {
+    const [cover] = await db.select({ id: coverLetterVersionsTable.id }).from(coverLetterVersionsTable)
+      .where(and(eq(coverLetterVersionsTable.id, parsed.data.coverLetterVersionId), eq(coverLetterVersionsTable.userId, userId)));
+    if (!cover) {
+      res.status(404).json({ error: "Cover letter version not found" });
+      return;
+    }
+  }
+
   const row = await db.transaction(async (tx) => {
     const [inserted] = await tx
       .insert(applicationsTable)
-      .values(parsed.data)
+      .values({ ...parsed.data, userId })
       .returning();
     await tx.insert(eventLogsTable).values({
+      userId,
       entityType: "application",
       entityId: inserted.id,
       applicationId: inserted.id,
@@ -110,7 +142,8 @@ router.post("/applications", async (req, res): Promise<void> => {
   res.status(201).json(GetApplicationResponse.parse(row));
 });
 
-router.get("/applications/:id", async (req, res): Promise<void> => {
+router.get("/applications/:id", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = GetApplicationParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -119,7 +152,7 @@ router.get("/applications/:id", async (req, res): Promise<void> => {
   const [row] = await db
     .select()
     .from(applicationsTable)
-    .where(eq(applicationsTable.id, params.data.id));
+    .where(and(eq(applicationsTable.id, params.data.id), eq(applicationsTable.userId, userId)));
   if (!row) {
     res.status(404).json({ error: "Application not found" });
     return;
@@ -127,7 +160,8 @@ router.get("/applications/:id", async (req, res): Promise<void> => {
   res.json(GetApplicationResponse.parse(row));
 });
 
-router.patch("/applications/:id", async (req, res): Promise<void> => {
+router.patch("/applications/:id", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = UpdateApplicationParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -143,10 +177,27 @@ router.patch("/applications/:id", async (req, res): Promise<void> => {
   const [existing] = await db
     .select()
     .from(applicationsTable)
-    .where(eq(applicationsTable.id, params.data.id));
+    .where(and(eq(applicationsTable.id, params.data.id), eq(applicationsTable.userId, userId)));
   if (!existing) {
     res.status(404).json({ error: "Application not found" });
     return;
+  }
+
+  if (parsed.data.resumeVersionId != null) {
+    const [resume] = await db.select({ id: resumeVersionsTable.id }).from(resumeVersionsTable)
+      .where(and(eq(resumeVersionsTable.id, parsed.data.resumeVersionId), eq(resumeVersionsTable.userId, userId)));
+    if (!resume) {
+      res.status(404).json({ error: "Resume version not found" });
+      return;
+    }
+  }
+  if (parsed.data.coverLetterVersionId != null) {
+    const [cover] = await db.select({ id: coverLetterVersionsTable.id }).from(coverLetterVersionsTable)
+      .where(and(eq(coverLetterVersionsTable.id, parsed.data.coverLetterVersionId), eq(coverLetterVersionsTable.userId, userId)));
+    if (!cover) {
+      res.status(404).json({ error: "Cover letter version not found" });
+      return;
+    }
   }
 
   const statusChanging =
@@ -156,12 +207,13 @@ router.patch("/applications/:id", async (req, res): Promise<void> => {
     const [updated] = await tx
       .update(applicationsTable)
       .set(parsed.data)
-      .where(eq(applicationsTable.id, params.data.id))
+      .where(and(eq(applicationsTable.id, params.data.id), eq(applicationsTable.userId, userId)))
       .returning();
     if (!updated) return null;
 
     if (statusChanging) {
       await tx.insert(eventLogsTable).values({
+        userId,
         entityType: "application",
         entityId: updated.id,
         applicationId: updated.id,
@@ -191,7 +243,8 @@ router.patch("/applications/:id", async (req, res): Promise<void> => {
   res.json(UpdateApplicationResponse.parse(row));
 });
 
-router.delete("/applications/:id", async (req, res): Promise<void> => {
+router.delete("/applications/:id", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = DeleteApplicationParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -199,7 +252,7 @@ router.delete("/applications/:id", async (req, res): Promise<void> => {
   }
   const [row] = await db
     .delete(applicationsTable)
-    .where(eq(applicationsTable.id, params.data.id))
+    .where(and(eq(applicationsTable.id, params.data.id), eq(applicationsTable.userId, userId)))
     .returning();
   if (!row) {
     res.status(404).json({ error: "Application not found" });

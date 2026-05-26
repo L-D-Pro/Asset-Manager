@@ -18,10 +18,15 @@ import {
   aiLearningConfigTable,
   updateAiLearningConfigSchema,
   feedbackSignalsTable,
+  resumeVersionsTable,
+  coverLetterVersionsTable,
+  proposalVersionsTable,
 } from "@workspace/db";
 
 import { aiMetricsSnapshotRouter } from "./ai-metrics-snapshot";
 import { runRecompute } from "../lib/learning-processor";
+import { requireAdmin } from "../middlewares/admin";
+import { currentUserId, withoutUserId, withoutUserIds } from "../lib/ownership";
 
 const router: IRouter = Router();
 const IdParams = z.object({ id: z.coerce.number().int().positive() });
@@ -32,18 +37,45 @@ const ListQuery = z.object({
 
 router.use(aiMetricsSnapshotRouter);
 
+async function ownsPersonalArtifact(
+  userId: number,
+  entityType: string | null | undefined,
+  entityId: number | null | undefined,
+): Promise<boolean | null> {
+  if (entityId == null) return true;
+
+  if (entityType === "resume_version") {
+    const [row] = await db.select({ id: resumeVersionsTable.id }).from(resumeVersionsTable)
+      .where(and(eq(resumeVersionsTable.id, entityId), eq(resumeVersionsTable.userId, userId)));
+    return Boolean(row);
+  }
+  if (entityType === "cover_letter_version") {
+    const [row] = await db.select({ id: coverLetterVersionsTable.id }).from(coverLetterVersionsTable)
+      .where(and(eq(coverLetterVersionsTable.id, entityId), eq(coverLetterVersionsTable.userId, userId)));
+    return Boolean(row);
+  }
+  if (entityType === "proposal_version") {
+    const [row] = await db.select({ id: proposalVersionsTable.id }).from(proposalVersionsTable)
+      .where(and(eq(proposalVersionsTable.id, entityId), eq(proposalVersionsTable.userId, userId)));
+    return Boolean(row);
+  }
+  return null;
+}
+
 router.get("/ai-review/overview", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const [recentAiEvents, evaluations, promptVersions, trainingExamples] =
     await Promise.all([
       db
         .select()
         .from(eventLogsTable)
-        .where(eq(eventLogsTable.entityType, "ai_call"))
+        .where(and(eq(eventLogsTable.entityType, "ai_call"), eq(eventLogsTable.userId, userId)))
         .orderBy(desc(eventLogsTable.createdAt))
         .limit(25),
       db
         .select()
         .from(aiRunEvaluationsTable)
+        .where(eq(aiRunEvaluationsTable.userId, userId))
         .orderBy(desc(aiRunEvaluationsTable.createdAt))
         .limit(25),
       db
@@ -54,6 +86,7 @@ router.get("/ai-review/overview", async (req: JobOpsRequest, res): Promise<void>
       db
         .select()
         .from(aiTrainingExamplesTable)
+        .where(eq(aiTrainingExamplesTable.userId, userId))
         .orderBy(desc(aiTrainingExamplesTable.createdAt))
         .limit(25),
     ]);
@@ -61,10 +94,10 @@ router.get("/ai-review/overview", async (req: JobOpsRequest, res): Promise<void>
   awardXp(req.session.adminId!, "ai_visit", {}).catch(() => {});
 
   res.json({
-    recentAiEvents,
-    evaluations,
+    recentAiEvents: withoutUserIds(recentAiEvents),
+    evaluations: withoutUserIds(evaluations),
     promptVersions,
-    trainingExamples,
+    trainingExamples: withoutUserIds(trainingExamples),
     stats: {
       recentAiEvents: recentAiEvents.length,
       evaluations: evaluations.length,
@@ -98,7 +131,7 @@ router.get("/ai-prompt-versions", async (req, res): Promise<void> => {
   res.json(rows);
 });
 
-router.post("/ai-prompt-versions", async (req, res): Promise<void> => {
+router.post("/ai-prompt-versions", requireAdmin, async (req, res): Promise<void> => {
   const parsed = insertAiPromptVersionSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -122,7 +155,7 @@ router.post("/ai-prompt-versions", async (req, res): Promise<void> => {
   res.status(201).json(row);
 });
 
-router.patch("/ai-prompt-versions/:id", async (req, res): Promise<void> => {
+router.patch("/ai-prompt-versions/:id", requireAdmin, async (req, res): Promise<void> => {
   const params = IdParams.safeParse(req.params);
   const parsed = insertAiPromptVersionSchema.partial().safeParse(req.body);
   if (!params.success || !parsed.success) {
@@ -161,7 +194,7 @@ router.patch("/ai-prompt-versions/:id", async (req, res): Promise<void> => {
   res.json(row);
 });
 
-router.delete("/ai-prompt-versions/:id", async (req, res): Promise<void> => {
+router.delete("/ai-prompt-versions/:id", requireAdmin, async (req, res): Promise<void> => {
   const params = IdParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -180,7 +213,8 @@ router.delete("/ai-prompt-versions/:id", async (req, res): Promise<void> => {
 
 import { validateLineage, isCanonicalRunId } from "../lib/lineage";
 
-router.get("/ai-run-evaluations", async (req, res): Promise<void> => {
+router.get("/ai-run-evaluations", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const query = z.object({ taskScope: z.string().optional() }).safeParse(req.query);
   if (!query.success) {
     res.status(400).json({ error: query.error.message });
@@ -189,16 +223,16 @@ router.get("/ai-run-evaluations", async (req, res): Promise<void> => {
   const rows = await db
     .select()
     .from(aiRunEvaluationsTable)
-    .where(
-      query.data.taskScope
-        ? eq(aiRunEvaluationsTable.taskScope, query.data.taskScope)
-        : undefined,
-    )
+    .where(and(
+      eq(aiRunEvaluationsTable.userId, userId),
+      ...(query.data.taskScope ? [eq(aiRunEvaluationsTable.taskScope, query.data.taskScope)] : []),
+    ))
     .orderBy(desc(aiRunEvaluationsTable.createdAt));
-  res.json(rows);
+  res.json(withoutUserIds(rows));
 });
 
-router.post("/ai-run-evaluations", async (req, res): Promise<void> => {
+router.post("/ai-run-evaluations", requireAdmin, async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const parsed = insertAiRunEvaluationSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -206,6 +240,24 @@ router.post("/ai-run-evaluations", async (req, res): Promise<void> => {
   }
 
   const { runId, eventLogId, entityType, entityId } = parsed.data;
+
+  if (eventLogId != null) {
+    const [ownedEvent] = await db
+      .select({ id: eventLogsTable.id })
+      .from(eventLogsTable)
+      .where(and(eq(eventLogsTable.id, eventLogId), eq(eventLogsTable.userId, userId)))
+      .limit(1);
+    if (!ownedEvent) {
+      res.status(404).json({ error: "Lineage event not found" });
+      return;
+    }
+  }
+
+  const ownsEntity = await ownsPersonalArtifact(userId, entityType, entityId);
+  if (ownsEntity === false) {
+    res.status(404).json({ error: "Evaluated artifact not found" });
+    return;
+  }
 
   if (!isCanonicalRunId(runId)) {
     res.status(422).json({
@@ -236,17 +288,18 @@ router.post("/ai-run-evaluations", async (req, res): Promise<void> => {
     return;
   }
 
-  const [row] = await db.insert(aiRunEvaluationsTable).values(parsed.data).returning();
-  res.status(201).json(row);
+  const [row] = await db.insert(aiRunEvaluationsTable).values({ ...parsed.data, userId }).returning();
+  res.status(201).json(withoutUserId(row!));
 });
 
-router.get("/ai-training-examples", async (req, res): Promise<void> => {
+router.get("/ai-training-examples", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const query = ListQuery.safeParse(req.query);
   if (!query.success) {
     res.status(400).json({ error: query.error.message });
     return;
   }
-  const conditions = [];
+  const conditions = [eq(aiTrainingExamplesTable.userId, userId)];
   if (query.data.taskScope) {
     conditions.push(eq(aiTrainingExamplesTable.taskScope, query.data.taskScope));
   }
@@ -258,20 +311,43 @@ router.get("/ai-training-examples", async (req, res): Promise<void> => {
     .from(aiTrainingExamplesTable)
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(aiTrainingExamplesTable.createdAt));
-  res.json(rows);
+  res.json(withoutUserIds(rows));
 });
 
-router.post("/ai-training-examples", async (req, res): Promise<void> => {
+router.post("/ai-training-examples", requireAdmin, async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const parsed = insertAiTrainingExampleSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [row] = await db.insert(aiTrainingExamplesTable).values(parsed.data).returning();
-  res.status(201).json(row);
+  if (parsed.data.evaluationId != null) {
+    const [evaluation] = await db
+      .select({ id: aiRunEvaluationsTable.id })
+      .from(aiRunEvaluationsTable)
+      .where(and(eq(aiRunEvaluationsTable.id, parsed.data.evaluationId), eq(aiRunEvaluationsTable.userId, userId)))
+      .limit(1);
+    if (!evaluation) {
+      res.status(404).json({ error: "Evaluation not found" });
+      return;
+    }
+  }
+  if (parsed.data.sourceEntityId != null) {
+    const ownsSource = await ownsPersonalArtifact(userId, parsed.data.sourceEntityType, parsed.data.sourceEntityId);
+    if (ownsSource == null) {
+      res.status(400).json({ error: "Unsupported training example source entity type" });
+      return;
+    }
+    if (!ownsSource) {
+      res.status(404).json({ error: "Training source artifact not found" });
+      return;
+    }
+  }
+  const [row] = await db.insert(aiTrainingExamplesTable).values({ ...parsed.data, userId }).returning();
+  res.status(201).json(withoutUserId(row!));
 });
 
-router.post("/ai-learning/recompute", async (_req, res): Promise<void> => {
+router.post("/ai-learning/recompute", requireAdmin, async (_req, res): Promise<void> => {
   try {
     const result = await runRecompute(db);
     res.json(result);
@@ -464,6 +540,7 @@ async function promoteWinner(
 
 router.post(
   "/ai-learning/comparisons/:id/promote",
+  requireAdmin,
   async (req, res): Promise<void> => {
     const params = IdParams.safeParse(req.params);
     if (!params.success) {
@@ -496,6 +573,7 @@ router.post(
 
 router.post(
   "/ai-learning/comparisons/:id/revert",
+  requireAdmin,
   async (req, res): Promise<void> => {
     const params = IdParams.safeParse(req.params);
     if (!params.success) {
@@ -586,7 +664,7 @@ router.get("/ai-learning/config", async (_req, res): Promise<void> => {
   res.json(config);
 });
 
-router.put("/ai-learning/config", async (req, res): Promise<void> => {
+router.put("/ai-learning/config", requireAdmin, async (req, res): Promise<void> => {
   const parsed = updateAiLearningConfigSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -617,7 +695,8 @@ router.put("/ai-learning/config", async (req, res): Promise<void> => {
   }
 });
 
-router.get("/ai-learning/outcome-stats", async (req, res): Promise<void> => {
+router.get("/ai-learning/outcome-stats", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const query = z.object({ taskScope: z.string().optional() }).safeParse(req.query);
   if (!query.success) {
     res.status(400).json({ error: query.error.message });
@@ -627,11 +706,10 @@ router.get("/ai-learning/outcome-stats", async (req, res): Promise<void> => {
   const rows = await db
     .select()
     .from(aiRunEvaluationsTable)
-    .where(
-      query.data.taskScope
-        ? eq(aiRunEvaluationsTable.taskScope, query.data.taskScope)
-        : undefined,
-    )
+    .where(and(
+      eq(aiRunEvaluationsTable.userId, userId),
+      ...(query.data.taskScope ? [eq(aiRunEvaluationsTable.taskScope, query.data.taskScope)] : []),
+    ))
     .orderBy(desc(aiRunEvaluationsTable.createdAt));
 
   const byScope = new Map<string, { approved: number; rejected: number; pending: number; avgTruthfulness: number; avgRelevance: number; total: number }>();
@@ -652,7 +730,7 @@ router.get("/ai-learning/outcome-stats", async (req, res): Promise<void> => {
   const trainingCounts = await db
     .select()
     .from(aiTrainingExamplesTable)
-    .where(eq(aiTrainingExamplesTable.isActive, true));
+    .where(and(eq(aiTrainingExamplesTable.userId, userId), eq(aiTrainingExamplesTable.isActive, true)));
 
   const trainingByScope = new Map<string, number>();
   for (const ex of trainingCounts) {
@@ -674,13 +752,14 @@ router.get("/ai-learning/outcome-stats", async (req, res): Promise<void> => {
   res.json(result);
 });
 
-router.get("/ai-learning/health", async (_req, res): Promise<void> => {
+router.get("/ai-learning/health", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   try {
     const [config] = await db.select().from(aiLearningConfigTable).limit(1);
     const [signalCount] = await db
       .select({ count: sql`count(*)::int` })
       .from(feedbackSignalsTable)
-      .where(sql`${feedbackSignalsTable.processedAt} IS NULL`);
+      .where(and(eq(feedbackSignalsTable.userId, userId), sql`${feedbackSignalsTable.processedAt} IS NULL`));
     const unprocessedSignalCount = Number(signalCount?.count ?? 0);
     const [statsCount] = await db
       .select({ count: sql`count(*)::int` })

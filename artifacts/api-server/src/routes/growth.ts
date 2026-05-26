@@ -1,5 +1,4 @@
 import { Router, type IRouter } from "express";
-import { desc } from "drizzle-orm";
 import { db, waitlistTable } from "@workspace/db";
 import type { JobOpsRequest } from "../lib/http-types";
 import { resendService } from "../lib/resend-service";
@@ -29,14 +28,6 @@ router.post("/waitlist", async (req: JobOpsRequest, res): Promise<void> => {
   resendService.sendWaitlistConfirmation(email);
   req.log.info({ email }, "Waitlist signup");
   res.status(201).json({ ok: true });
-});
-
-router.get("/waitlist", async (req: JobOpsRequest, res): Promise<void> => {
-  const entries = await db
-    .select()
-    .from(waitlistTable)
-    .orderBy(desc(waitlistTable.createdAt));
-  res.json(entries);
 });
 
 export default router;

@@ -10,8 +10,8 @@ vi.mock("@workspace/db", () => {
   return {
     db: dbMock,
     // minimal table mocks used by validateLineage/ai-learning insert
-    eventLogsTable: { id: "id", runId: "run_id", entityType: "entity_type", createdAt: "created_at" },
-    aiRunEvaluationsTable: { id: "id" },
+    eventLogsTable: { id: "id", userId: "user_id", runId: "run_id", entityType: "entity_type", createdAt: "created_at" },
+    aiRunEvaluationsTable: { id: "id", userId: "user_id" },
     insertAiRunEvaluationSchema: { safeParse: vi.fn() },
     __lineageEnforcementTest: { dbMock },
   };
@@ -54,8 +54,8 @@ describe("lineage enforcement (routes)", () => {
       data: { taskScope: "test", evaluator: "human", score: 1, runId: "bad", eventLogId: null, entityType: null, entityId: null },
     });
 
-    const handler = layer.route.stack[0].handle;
-    const req: any = { body: { taskScope: "test", evaluator: "human", score: 1, runId: "bad" } };
+    const handler = layer.route.stack[layer.route.stack.length - 1].handle;
+    const req: any = { session: { adminId: 27 }, body: { taskScope: "test", evaluator: "human", score: 1, runId: "bad" } };
     const res = makeRes();
 
     await handler(req, res);
@@ -71,6 +71,18 @@ describe("lineage enforcement (routes)", () => {
 
     // validateLineage in ai-learning queries event_logs via the db.select mock.
     (await import("@workspace/db") as any).__lineageEnforcementTest.dbMock.select.mockReturnValueOnce({
+      from() {
+        return {
+          where() {
+            return {
+              limit() {
+                return [{ id: 501 }];
+              },
+            };
+          },
+        };
+      },
+    }).mockReturnValueOnce({
       from() {
         return {
           where() {
@@ -106,9 +118,9 @@ describe("lineage enforcement (routes)", () => {
     const layer = (aiLearningRouter as any).stack.find(
       (l: any) => l.route?.path === "/ai-run-evaluations" && l.route?.methods?.post,
     );
-    const handler = layer.route.stack[0].handle;
+    const handler = layer.route.stack[layer.route.stack.length - 1].handle;
 
-    const req: any = { body: { taskScope: "test", evaluator: "human", score: 1, runId, eventLogId: 501, entityType: "ai_call", entityId: 123 } };
+    const req: any = { session: { adminId: 27 }, body: { taskScope: "test", evaluator: "human", score: 1, runId, eventLogId: 501, entityType: "ai_call", entityId: 123 } };
     const res = makeRes();
 
     await handler(req, res);

@@ -12,6 +12,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { eventLogsTable } from "./event-logs";
 import { aiPromptVersionsTable } from "./ai-prompt-versions";
+import { adminUsersTable } from "./admin-users";
 
 /**
  * Human/system evaluations of AI outputs.
@@ -23,6 +24,9 @@ export const aiRunEvaluationsTable = pgTable(
   "ai_run_evaluations",
   {
     id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => adminUsersTable.id, { onDelete: "cascade" }),
     eventLogId: integer("event_log_id").references(() => eventLogsTable.id, {
       onDelete: "set null",
     }),
@@ -57,6 +61,7 @@ export const aiRunEvaluationsTable = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => [
+    index("ai_run_evaluations_user_created_at_idx").on(table.userId, table.createdAt),
     index("ai_run_evaluations_task_scope_idx").on(table.taskScope),
     index("ai_run_evaluations_event_log_id_idx").on(table.eventLogId),
     index("ai_run_evaluations_run_id_idx").on(table.runId),
@@ -74,6 +79,7 @@ export const insertAiRunEvaluationSchema = createInsertSchema(
   aiRunEvaluationsTable,
 ).omit({
   id: true,
+  userId: true,
   createdAt: true,
   updatedAt: true,
 });

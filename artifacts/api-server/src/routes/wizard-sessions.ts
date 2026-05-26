@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq, desc } from "drizzle-orm";
-import { db, wizardSessionsTable } from "@workspace/db";
+import { and, eq, desc } from "drizzle-orm";
+import { db, jobsTable, wizardSessionsTable } from "@workspace/db";
 import {
   ListWizardSessionsResponse,
   CreateWizardSessionBody,
@@ -16,7 +16,7 @@ const router: IRouter = Router();
 
 router.get("/wizard-sessions", async (req: JobOpsRequest, res): Promise<void> => {
   const userId = req.session.adminId!;
-  await scrubWizardStatesForDeletedEntities();
+  await scrubWizardStatesForDeletedEntities(userId);
 
   const sessions = await db
     .select()
@@ -34,6 +34,14 @@ router.post("/wizard-sessions", async (req: JobOpsRequest, res): Promise<void> =
     req.log.warn({ error: parsed.error.message }, "Invalid create wizard session body");
     res.status(400).json({ error: parsed.error.message });
     return;
+  }
+  if (parsed.data.jobId != null) {
+    const [job] = await db.select({ id: jobsTable.id }).from(jobsTable)
+      .where(and(eq(jobsTable.id, parsed.data.jobId), eq(jobsTable.userId, userId)));
+    if (!job) {
+      res.status(404).json({ error: "Job not found" });
+      return;
+    }
   }
 
   const existing = await db
@@ -79,9 +87,9 @@ router.get("/wizard-sessions/:id", async (req: JobOpsRequest, res): Promise<void
   const [session] = await db
     .select()
     .from(wizardSessionsTable)
-    .where(eq(wizardSessionsTable.id, params.data.id));
+    .where(and(eq(wizardSessionsTable.id, params.data.id), eq(wizardSessionsTable.userId, userId)));
 
-  if (!session || session.userId !== userId) {
+  if (!session) {
     res.status(404).json({ error: "Wizard session not found" });
     return;
   }
@@ -100,14 +108,14 @@ router.delete("/wizard-sessions/:id", async (req: JobOpsRequest, res): Promise<v
   const [session] = await db
     .select({ id: wizardSessionsTable.id, userId: wizardSessionsTable.userId })
     .from(wizardSessionsTable)
-    .where(eq(wizardSessionsTable.id, params.data.id));
+    .where(and(eq(wizardSessionsTable.id, params.data.id), eq(wizardSessionsTable.userId, userId)));
 
-  if (!session || session.userId !== userId) {
+  if (!session) {
     res.status(404).json({ error: "Wizard session not found" });
     return;
   }
 
-  await db.delete(wizardSessionsTable).where(eq(wizardSessionsTable.id, params.data.id));
+  await db.delete(wizardSessionsTable).where(and(eq(wizardSessionsTable.id, params.data.id), eq(wizardSessionsTable.userId, userId)));
 
   req.log.info({ sessionId: params.data.id, userId }, "Wizard session deleted");
   res.status(204).end();

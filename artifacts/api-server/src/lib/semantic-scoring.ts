@@ -236,6 +236,7 @@ function coerceScoringResult(raw: unknown): ScoringResult {
 export async function scoreResumeAgainstJob(
   resumeText: string,
   job: Job,
+  userId?: number,
 ): Promise<ScoringResult> {
   const { systemPrompt, userPrompt } = await buildGapAnalysisPrompt(resumeText, job);
 
@@ -244,6 +245,7 @@ export async function scoreResumeAgainstJob(
     systemPrompt,
     userPrompt,
     jobId: job.id,
+    userId: userId ?? job.userId,
   });
 
   const parsed = parseJsonResponse<ScoringResult>(aiResult.content);

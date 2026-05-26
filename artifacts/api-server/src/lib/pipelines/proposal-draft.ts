@@ -39,6 +39,7 @@ Return ONLY valid JSON:
 export async function draftProposalForProject(
   project: FreelanceProject,
   profile: FreelanceProfile,
+  userId: number,
 ): Promise<typeof proposalVersionsTable.$inferSelect> {
   const result = await callAI({
     taskType: "proposal_drafting",
@@ -47,6 +48,7 @@ export async function draftProposalForProject(
       `Contractor profile:\n${JSON.stringify(profile, null, 2)}\n\n` +
       `Project:\n${JSON.stringify(project, null, 2)}\n\n` +
       "Draft a truthful, specific proposal and bid recommendation.",
+    userId,
   });
 
   const parsed = parseJsonResponse<ProposalAiResult>(result.content);
@@ -62,6 +64,7 @@ export async function draftProposalForProject(
     const [row] = await db
       .insert(proposalVersionsTable)
       .values({
+        userId,
         projectId: project.id,
         profileId: profile.id,
         label: "AI proposal - generation failed",
@@ -78,6 +81,7 @@ export async function draftProposalForProject(
   const [row] = await db
     .insert(proposalVersionsTable)
     .values({
+      userId,
       projectId: project.id,
       profileId: profile.id,
       label: `AI proposal - ${new Date().toLocaleDateString()}`,

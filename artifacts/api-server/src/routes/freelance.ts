@@ -1,4 +1,4 @@
-import { Router, type IRouter, type Request, type Response } from "express";
+import { Router, type IRouter, type Response } from "express";
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import {
@@ -18,11 +18,14 @@ import {
   insertClientMessageTemplateSchema,
 } from "@workspace/db";
 import { draftProposalForProject } from "../lib/pipelines/proposal-draft";
+import type { JobOpsRequest } from "../lib/http-types";
+import { currentUserId, withoutUserId, withoutUserIds } from "../lib/ownership";
 
 const router: IRouter = Router();
 const IdParams = z.object({ id: z.coerce.number().int().positive() });
 
-router.get("/freelance-profiles", async (req, res): Promise<void> => {
+router.get("/freelance-profiles", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const query = z.object({ isActive: z.coerce.boolean().optional() }).safeParse(req.query);
   if (!query.success) {
     res.status(400).json({ error: query.error.message });
@@ -33,24 +36,26 @@ router.get("/freelance-profiles", async (req, res): Promise<void> => {
     .from(freelanceProfilesTable)
     .where(
       query.data.isActive != null
-        ? eq(freelanceProfilesTable.isActive, query.data.isActive)
-        : undefined,
+        ? and(eq(freelanceProfilesTable.userId, userId), eq(freelanceProfilesTable.isActive, query.data.isActive))
+        : eq(freelanceProfilesTable.userId, userId),
     )
     .orderBy(desc(freelanceProfilesTable.createdAt));
-  res.json(rows);
+  res.json(withoutUserIds(rows));
 });
 
-router.post("/freelance-profiles", async (req, res): Promise<void> => {
+router.post("/freelance-profiles", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const parsed = insertFreelanceProfileSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [row] = await db.insert(freelanceProfilesTable).values(parsed.data).returning();
-  res.status(201).json(row);
+  const [row] = await db.insert(freelanceProfilesTable).values({ ...parsed.data, userId }).returning();
+  res.status(201).json(withoutUserId(row!));
 });
 
-router.patch("/freelance-profiles/:id", async (req, res): Promise<void> => {
+router.patch("/freelance-profiles/:id", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = IdParams.safeParse(req.params);
   const parsed = insertFreelanceProfileSchema.partial().safeParse(req.body);
   if (!params.success || !parsed.success) {
@@ -60,34 +65,38 @@ router.patch("/freelance-profiles/:id", async (req, res): Promise<void> => {
   const [row] = await db
     .update(freelanceProfilesTable)
     .set(parsed.data)
-    .where(eq(freelanceProfilesTable.id, params.data.id))
+    .where(and(eq(freelanceProfilesTable.id, params.data.id), eq(freelanceProfilesTable.userId, userId)))
     .returning();
   if (!row) {
     res.status(404).json({ error: "Freelance profile not found" });
     return;
   }
-  res.json(row);
+  res.json(withoutUserId(row));
 });
 
-router.get("/project-sources", async (_req, res): Promise<void> => {
+router.get("/project-sources", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const rows = await db
     .select()
     .from(projectSourcesTable)
+    .where(eq(projectSourcesTable.userId, userId))
     .orderBy(desc(projectSourcesTable.createdAt));
-  res.json(rows);
+  res.json(withoutUserIds(rows));
 });
 
-router.post("/project-sources", async (req, res): Promise<void> => {
+router.post("/project-sources", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const parsed = insertProjectSourceSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [row] = await db.insert(projectSourcesTable).values(parsed.data).returning();
-  res.status(201).json(row);
+  const [row] = await db.insert(projectSourcesTable).values({ ...parsed.data, userId }).returning();
+  res.status(201).json(withoutUserId(row!));
 });
 
-router.get("/freelance-projects", async (req, res): Promise<void> => {
+router.get("/freelance-projects", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const query = z.object({
     profileId: z.coerce.number().int().positive().optional(),
     status: z.string().optional(),
@@ -97,7 +106,7 @@ router.get("/freelance-projects", async (req, res): Promise<void> => {
     res.status(400).json({ error: query.error.message });
     return;
   }
-  const conditions = [];
+  const conditions = [eq(freelanceProjectsTable.userId, userId)];
   if (query.data.profileId != null) {
     conditions.push(eq(freelanceProjectsTable.profileId, query.data.profileId));
   }
@@ -110,22 +119,34 @@ router.get("/freelance-projects", async (req, res): Promise<void> => {
   const rows = await db
     .select()
     .from(freelanceProjectsTable)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .where(and(...conditions))
     .orderBy(desc(freelanceProjectsTable.createdAt));
-  res.json(rows);
+  res.json(withoutUserIds(rows));
 });
 
-router.post("/freelance-projects", async (req, res): Promise<void> => {
+router.post("/freelance-projects", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const parsed = insertFreelanceProjectSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [row] = await db.insert(freelanceProjectsTable).values(parsed.data).returning();
-  res.status(201).json(row);
+  if (parsed.data.profileId != null) {
+    const [profile] = await db.select({ id: freelanceProfilesTable.id }).from(freelanceProfilesTable)
+      .where(and(eq(freelanceProfilesTable.id, parsed.data.profileId), eq(freelanceProfilesTable.userId, userId)));
+    if (!profile) { res.status(404).json({ error: "Freelance profile not found" }); return; }
+  }
+  if (parsed.data.sourceId != null) {
+    const [source] = await db.select({ id: projectSourcesTable.id }).from(projectSourcesTable)
+      .where(and(eq(projectSourcesTable.id, parsed.data.sourceId), eq(projectSourcesTable.userId, userId)));
+    if (!source) { res.status(404).json({ error: "Project source not found" }); return; }
+  }
+  const [row] = await db.insert(freelanceProjectsTable).values({ ...parsed.data, userId }).returning();
+  res.status(201).json(withoutUserId(row!));
 });
 
-router.post("/freelance-projects/:id/score", async (req, res): Promise<void> => {
+router.post("/freelance-projects/:id/score", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = IdParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -134,7 +155,7 @@ router.post("/freelance-projects/:id/score", async (req, res): Promise<void> => 
   const [project] = await db
     .select()
     .from(freelanceProjectsTable)
-    .where(eq(freelanceProjectsTable.id, params.data.id));
+    .where(and(eq(freelanceProjectsTable.id, params.data.id), eq(freelanceProjectsTable.userId, userId)));
   if (!project) {
     res.status(404).json({ error: "Freelance project not found" });
     return;
@@ -143,7 +164,7 @@ router.post("/freelance-projects/:id/score", async (req, res): Promise<void> => 
     ? await db
         .select()
         .from(freelanceProfilesTable)
-        .where(eq(freelanceProfilesTable.id, project.profileId))
+        .where(and(eq(freelanceProfilesTable.id, project.profileId), eq(freelanceProfilesTable.userId, userId)))
     : [];
 
   const profileSkills = new Set((profile?.skills ?? []).map((s) => s.toLowerCase()));
@@ -168,12 +189,13 @@ router.post("/freelance-projects/:id/score", async (req, res): Promise<void> => 
         scoredAt: new Date().toISOString(),
       },
     })
-    .where(eq(freelanceProjectsTable.id, params.data.id))
+    .where(and(eq(freelanceProjectsTable.id, params.data.id), eq(freelanceProjectsTable.userId, userId)))
     .returning();
-  res.json(row);
+  res.json(row ? withoutUserId(row) : row);
 });
 
-router.post("/freelance-projects/:id/draft-proposal", async (req, res): Promise<void> => {
+router.post("/freelance-projects/:id/draft-proposal", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = IdParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -182,7 +204,7 @@ router.post("/freelance-projects/:id/draft-proposal", async (req, res): Promise<
   const [project] = await db
     .select()
     .from(freelanceProjectsTable)
-    .where(eq(freelanceProjectsTable.id, params.data.id));
+    .where(and(eq(freelanceProjectsTable.id, params.data.id), eq(freelanceProjectsTable.userId, userId)));
   if (!project) {
     res.status(404).json({ error: "Freelance project not found" });
     return;
@@ -200,14 +222,15 @@ router.post("/freelance-projects/:id/draft-proposal", async (req, res): Promise<
   const [profile] = await db
     .select()
     .from(freelanceProfilesTable)
-    .where(eq(freelanceProfilesTable.id, resolvedProfileId));
+    .where(and(eq(freelanceProfilesTable.id, resolvedProfileId), eq(freelanceProfilesTable.userId, userId)));
   if (!profile) {
     res.status(404).json({ error: "Freelance profile not found" });
     return;
   }
 
-  const row = await draftProposalForProject(project, profile);
+  const row = await draftProposalForProject(project, profile, userId);
   await db.insert(eventLogsTable).values({
+    userId,
     entityType: "proposal_version",
     entityId: row.id,
     eventType: "proposal_drafted",
@@ -219,10 +242,11 @@ router.post("/freelance-projects/:id/draft-proposal", async (req, res): Promise<
       submissionPolicy: "human_final_submit_required",
     },
   });
-  res.status(201).json(row);
+  res.status(201).json(withoutUserId(row));
 });
 
-router.get("/proposal-versions", async (req, res): Promise<void> => {
+router.get("/proposal-versions", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const query = z.object({
     projectId: z.coerce.number().int().positive().optional(),
     status: z.string().optional(),
@@ -231,7 +255,7 @@ router.get("/proposal-versions", async (req, res): Promise<void> => {
     res.status(400).json({ error: query.error.message });
     return;
   }
-  const conditions = [];
+  const conditions = [eq(proposalVersionsTable.userId, userId)];
   if (query.data.projectId != null) {
     conditions.push(eq(proposalVersionsTable.projectId, query.data.projectId));
   }
@@ -241,56 +265,81 @@ router.get("/proposal-versions", async (req, res): Promise<void> => {
   const rows = await db
     .select()
     .from(proposalVersionsTable)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .where(and(...conditions))
     .orderBy(desc(proposalVersionsTable.createdAt));
-  res.json(rows);
+  res.json(withoutUserIds(rows));
 });
 
-router.post("/proposal-versions", async (req, res): Promise<void> => {
+router.post("/proposal-versions", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const parsed = insertProposalVersionSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [row] = await db.insert(proposalVersionsTable).values(parsed.data).returning();
-  res.status(201).json(row);
+  const [project] = await db.select({ id: freelanceProjectsTable.id }).from(freelanceProjectsTable)
+    .where(and(eq(freelanceProjectsTable.id, parsed.data.projectId), eq(freelanceProjectsTable.userId, userId)));
+  if (!project) { res.status(404).json({ error: "Freelance project not found" }); return; }
+  if (parsed.data.profileId != null) {
+    const [profile] = await db.select({ id: freelanceProfilesTable.id }).from(freelanceProfilesTable)
+      .where(and(eq(freelanceProfilesTable.id, parsed.data.profileId), eq(freelanceProfilesTable.userId, userId)));
+    if (!profile) { res.status(404).json({ error: "Freelance profile not found" }); return; }
+  }
+  const [row] = await db.insert(proposalVersionsTable).values({ ...parsed.data, userId }).returning();
+  res.status(201).json(withoutUserId(row!));
 });
 
-router.post("/proposal-versions/:id/approve", async (req, res): Promise<void> => {
+router.post("/proposal-versions/:id/approve", async (req: JobOpsRequest, res): Promise<void> => {
   await transitionProposal(req, res, "approved");
 });
 
-router.post("/proposal-versions/:id/reject", async (req, res): Promise<void> => {
+router.post("/proposal-versions/:id/reject", async (req: JobOpsRequest, res): Promise<void> => {
   await transitionProposal(req, res, "rejected");
 });
 
-router.get("/proposal-outcomes", async (_req, res): Promise<void> => {
+router.get("/proposal-outcomes", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const rows = await db
     .select()
     .from(proposalOutcomesTable)
+    .where(eq(proposalOutcomesTable.userId, userId))
     .orderBy(desc(proposalOutcomesTable.createdAt));
-  res.json(rows);
+  res.json(withoutUserIds(rows));
 });
 
-router.post("/proposal-outcomes", async (req, res): Promise<void> => {
+router.post("/proposal-outcomes", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const parsed = insertProposalOutcomeSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [row] = await db.insert(proposalOutcomesTable).values(parsed.data).returning();
-  res.status(201).json(row);
+  if (parsed.data.projectId != null) {
+    const [project] = await db.select({ id: freelanceProjectsTable.id }).from(freelanceProjectsTable)
+      .where(and(eq(freelanceProjectsTable.id, parsed.data.projectId), eq(freelanceProjectsTable.userId, userId)));
+    if (!project) { res.status(404).json({ error: "Freelance project not found" }); return; }
+  }
+  if (parsed.data.proposalVersionId != null) {
+    const [proposal] = await db.select({ id: proposalVersionsTable.id }).from(proposalVersionsTable)
+      .where(and(eq(proposalVersionsTable.id, parsed.data.proposalVersionId), eq(proposalVersionsTable.userId, userId)));
+    if (!proposal) { res.status(404).json({ error: "Proposal version not found" }); return; }
+  }
+  const [row] = await db.insert(proposalOutcomesTable).values({ ...parsed.data, userId }).returning();
+  res.status(201).json(withoutUserId(row!));
 });
 
-router.get("/client-message-templates", async (_req, res): Promise<void> => {
+router.get("/client-message-templates", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const rows = await db
     .select()
     .from(clientMessageTemplatesTable)
+    .where(eq(clientMessageTemplatesTable.userId, userId))
     .orderBy(desc(clientMessageTemplatesTable.createdAt));
-  res.json(rows);
+  res.json(withoutUserIds(rows));
 });
 
-router.post("/client-message-templates", async (req, res): Promise<void> => {
+router.post("/client-message-templates", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const parsed = insertClientMessageTemplateSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -298,16 +347,17 @@ router.post("/client-message-templates", async (req, res): Promise<void> => {
   }
   const [row] = await db
     .insert(clientMessageTemplatesTable)
-    .values(parsed.data)
+    .values({ ...parsed.data, userId })
     .returning();
-  res.status(201).json(row);
+  res.status(201).json(withoutUserId(row!));
 });
 
 async function transitionProposal(
-  req: Request,
+  req: JobOpsRequest,
   res: Response,
   status: "approved" | "rejected",
 ): Promise<void> {
+  const userId = currentUserId(req);
   const params = IdParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -316,7 +366,7 @@ async function transitionProposal(
   const [existing] = await db
     .select()
     .from(proposalVersionsTable)
-    .where(eq(proposalVersionsTable.id, params.data.id));
+    .where(and(eq(proposalVersionsTable.id, params.data.id), eq(proposalVersionsTable.userId, userId)));
   if (!existing) {
     res.status(404).json({ error: "Proposal version not found" });
     return;
@@ -330,9 +380,9 @@ async function transitionProposal(
   const [row] = await db
     .update(proposalVersionsTable)
     .set({ status })
-    .where(eq(proposalVersionsTable.id, params.data.id))
+    .where(and(eq(proposalVersionsTable.id, params.data.id), eq(proposalVersionsTable.userId, userId)))
     .returning();
-  res.json(row);
+  res.json(row ? withoutUserId(row) : row);
 }
 
 export default router;

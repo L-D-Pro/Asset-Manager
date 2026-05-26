@@ -17,6 +17,7 @@ import { baseResumeVersionsTable } from "./base-resume-versions";
 import { coverLetterVersionsTable } from "./cover-letter-versions";
 import { aiPromptVersionsTable } from "./ai-prompt-versions";
 import { eventLogsTable } from "./event-logs";
+import { adminUsersTable } from "./admin-users";
 
 /**
  * Feedback signals — outcome data from the application lifecycle.
@@ -44,6 +45,10 @@ export const feedbackSignalsTable = pgTable(
   {
     /** Auto-incrementing primary key. */
     id: serial("id").primaryKey(),
+
+    userId: integer("user_id")
+      .notNull()
+      .references(() => adminUsersTable.id, { onDelete: "cascade" }),
 
     /** The application this signal is associated with. Cascade-deletes if the application is deleted. */
     applicationId: integer("application_id")
@@ -126,6 +131,7 @@ export const feedbackSignalsTable = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => [
+    index("feedback_signals_user_created_at_idx").on(table.userId, table.createdAt),
     index("feedback_signals_application_id_idx").on(table.applicationId),
     index("feedback_signals_job_id_idx").on(table.jobId),
     index("feedback_signals_resume_version_id_idx").on(table.resumeVersionId),
@@ -141,6 +147,7 @@ export const insertFeedbackSignalSchema = createInsertSchema(
   feedbackSignalsTable,
 ).omit({
   id: true,
+  userId: true,
   createdAt: true,
   updatedAt: true,
 });

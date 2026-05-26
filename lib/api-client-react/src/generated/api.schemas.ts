@@ -591,27 +591,6 @@ export interface EventLog {
   updatedAt: string;
 }
 
-export type CreateEventLogBodyMetadata = { [key: string]: unknown };
-
-/**
- * Event logs are append-only audit records. Only create manual entries for user-initiated events not automatically triggered by pipelines.
- */
-export interface CreateEventLogBody {
-  entityType: string;
-  entityId: number;
-  /** @nullable */
-  applicationId?: number | null;
-  /** @nullable */
-  jobId?: number | null;
-  eventType: string;
-  /** @nullable */
-  previousState?: string | null;
-  /** @nullable */
-  nextState?: string | null;
-  metadata?: CreateEventLogBodyMetadata;
-  actorType?: string;
-}
-
 export type FeedbackSignalAttributionData = { [key: string]: unknown };
 
 export interface FeedbackSignal {

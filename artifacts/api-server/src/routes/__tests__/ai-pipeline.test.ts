@@ -23,6 +23,7 @@ vi.mock("@workspace/db", () => {
     },
     aiTrainingExamplesTable: {
       id: "ai_training_examples.id",
+      userId: "ai_training_examples.user_id",
       taskScope: "ai_training_examples.task_scope",
       isActive: "ai_training_examples.is_active",
     },
@@ -69,7 +70,7 @@ async function invokeOverview() {
   );
   expect(layer).toBeTruthy();
   const handler = layer.route.stack[0].handle;
-  const req: any = {};
+  const req: any = { session: { adminId: 27 } };
   const res = makeRes();
   await handler(req, res);
   return { res };

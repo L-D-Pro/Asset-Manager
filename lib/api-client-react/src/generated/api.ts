@@ -61,7 +61,6 @@ import type {
   CreateChatThreadBody,
   CreateClaimBody,
   CreateClientMessageTemplateBody,
-  CreateEventLogBody,
   CreateFeedbackSignalBody,
   CreateFreelanceProfileBody,
   CreateFreelanceProjectBody,
@@ -4471,93 +4470,6 @@ export function useListEventLogs<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
-
-/**
- * Event logs are append-only audit records. Create a manual entry for user-initiated events not triggered by automated pipelines.
- * @summary Create a manual event log entry
- */
-export const getCreateEventLogUrl = () => {
-  return `/api/event-logs`;
-};
-
-export const createEventLog = async (
-  createEventLogBody: CreateEventLogBody,
-  options?: RequestInit,
-): Promise<EventLog> => {
-  return customFetch<EventLog>(getCreateEventLogUrl(), {
-    ...options,
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(createEventLogBody),
-  });
-};
-
-export const getCreateEventLogMutationOptions = <
-  TError = ErrorType<unknown>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof createEventLog>>,
-    TError,
-    { data: BodyType<CreateEventLogBody> },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof createEventLog>>,
-  TError,
-  { data: BodyType<CreateEventLogBody> },
-  TContext
-> => {
-  const mutationKey = ["createEventLog"];
-  const { mutation: mutationOptions, request: requestOptions } = options
-    ? options.mutation &&
-      "mutationKey" in options.mutation &&
-      options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey }, request: undefined };
-
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof createEventLog>>,
-    { data: BodyType<CreateEventLogBody> }
-  > = (props) => {
-    const { data } = props ?? {};
-
-    return createEventLog(data, requestOptions);
-  };
-
-  return { mutationFn, ...mutationOptions };
-};
-
-export type CreateEventLogMutationResult = NonNullable<
-  Awaited<ReturnType<typeof createEventLog>>
->;
-export type CreateEventLogMutationBody = BodyType<CreateEventLogBody>;
-export type CreateEventLogMutationError = ErrorType<unknown>;
-
-/**
- * @summary Create a manual event log entry
- */
-export const useCreateEventLog = <
-  TError = ErrorType<unknown>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof createEventLog>>,
-    TError,
-    { data: BodyType<CreateEventLogBody> },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationResult<
-  Awaited<ReturnType<typeof createEventLog>>,
-  TError,
-  { data: BodyType<CreateEventLogBody> },
-  TContext
-> => {
-  return useMutation(getCreateEventLogMutationOptions(options));
-};
 
 /**
  * @summary Get an event log entry by ID

@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import {
   db,
   aiPromptVersionsTable,
@@ -9,6 +9,7 @@ import {
 } from "@workspace/db";
 import { GetAiPipelineOverviewResponse } from "@workspace/api-zod";
 import type { JobOpsRequest } from "../lib/http-types";
+import { currentUserId } from "../lib/ownership";
 
 /**
  * Canonical AI task scopes exposed by the AI Pipeline Hub. Every entry yields
@@ -70,7 +71,8 @@ function countEnabledItems(row: BestPracticesRow | undefined): number {
 
 const router: IRouter = Router();
 
-router.get("/ai-pipeline/overview", async (_req: JobOpsRequest, res): Promise<void> => {
+router.get("/ai-pipeline/overview", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const [activePrompts, activeModels, bestPractices, trainingCounts] = await Promise.all([
     db
       .select({
@@ -103,7 +105,7 @@ router.get("/ai-pipeline/overview", async (_req: JobOpsRequest, res): Promise<vo
         count: sql<number>`count(*)::int`,
       })
       .from(aiTrainingExamplesTable)
-      .where(eq(aiTrainingExamplesTable.isActive, true))
+      .where(and(eq(aiTrainingExamplesTable.userId, userId), eq(aiTrainingExamplesTable.isActive, true)))
       .groupBy(aiTrainingExamplesTable.taskScope),
   ]);
 

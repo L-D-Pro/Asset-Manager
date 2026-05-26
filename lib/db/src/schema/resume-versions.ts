@@ -11,6 +11,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { jobsTable } from "./jobs";
 import { baseResumeVersionsTable } from "./base-resume-versions";
+import { adminUsersTable } from "./admin-users";
 
 /**
  * Resume versions — AI-tailored resume drafts awaiting human approval.
@@ -31,6 +32,10 @@ export const resumeVersionsTable = pgTable(
   {
     /** Auto-incrementing primary key. */
     id: serial("id").primaryKey(),
+
+    userId: integer("user_id")
+      .notNull()
+      .references(() => adminUsersTable.id, { onDelete: "cascade" }),
 
     /** The job this resume was tailored for. Cascade-deletes the version if the job is deleted. */
     jobId: integer("job_id").references(() => jobsTable.id, {
@@ -115,6 +120,8 @@ export const resumeVersionsTable = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => [
+    index("resume_versions_user_created_at_idx").on(table.userId, table.createdAt),
+    index("resume_versions_user_status_idx").on(table.userId, table.status),
     index("resume_versions_job_id_idx").on(table.jobId),
     index("resume_versions_base_resume_version_id_idx").on(
       table.baseResumeVersionId,
@@ -130,6 +137,7 @@ export const insertResumeVersionSchema = createInsertSchema(
   resumeVersionsTable,
 ).omit({
   id: true,
+  userId: true,
   createdAt: true,
   updatedAt: true,
 });

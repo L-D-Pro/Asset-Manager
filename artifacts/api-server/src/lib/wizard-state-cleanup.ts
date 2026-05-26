@@ -57,11 +57,12 @@ function scrubWizardStateIds(
 }
 
 export async function scrubWizardStateReferences(args: {
+  userId: number;
   jobIds?: number[];
   resumeVersionIds?: number[];
   coverLetterVersionIds?: number[];
 }): Promise<number> {
-  const rows = await db.select().from(wizardSessionsTable);
+  const rows = await db.select().from(wizardSessionsTable).where(eq(wizardSessionsTable.userId, args.userId));
   if (rows.length === 0) return 0;
 
   let scrubbedCount = 0;
@@ -78,14 +79,14 @@ export async function scrubWizardStateReferences(args: {
             ? (nextState.jobId as number)
             : null,
       })
-      .where(eq(wizardSessionsTable.id, row.id));
+      .where(and(eq(wizardSessionsTable.id, row.id), eq(wizardSessionsTable.userId, args.userId)));
     scrubbedCount += 1;
   }
 
   return scrubbedCount;
 }
 
-export async function nukeJobAttemptData(jobId: number): Promise<{
+export async function nukeJobAttemptData(jobId: number, userId: number): Promise<{
   deletedResumeVersions: number;
   deletedCoverLetterVersions: number;
   deletedApplications: number;
@@ -103,22 +104,22 @@ export async function nukeJobAttemptData(jobId: number): Promise<{
         runId: resumeVersionsTable.runId,
       })
       .from(resumeVersionsTable)
-      .where(eq(resumeVersionsTable.jobId, jobId));
+      .where(and(eq(resumeVersionsTable.jobId, jobId), eq(resumeVersionsTable.userId, userId)));
     const coverRows = await tx
       .select({
         id: coverLetterVersionsTable.id,
         runId: coverLetterVersionsTable.runId,
       })
       .from(coverLetterVersionsTable)
-      .where(eq(coverLetterVersionsTable.jobId, jobId));
+      .where(and(eq(coverLetterVersionsTable.jobId, jobId), eq(coverLetterVersionsTable.userId, userId)));
     const appRows = await tx
       .select({ id: applicationsTable.id })
       .from(applicationsTable)
-      .where(eq(applicationsTable.jobId, jobId));
+      .where(and(eq(applicationsTable.jobId, jobId), eq(applicationsTable.userId, userId)));
     const eventRows = await tx
       .select({ id: eventLogsTable.id, runId: eventLogsTable.runId })
       .from(eventLogsTable)
-      .where(eq(eventLogsTable.jobId, jobId));
+      .where(and(eq(eventLogsTable.jobId, jobId), eq(eventLogsTable.userId, userId)));
 
     const resumeIds = resumeRows.map((row) => row.id);
     const coverIds = coverRows.map((row) => row.id);
@@ -158,7 +159,7 @@ export async function nukeJobAttemptData(jobId: number): Promise<{
       ? (
           await tx
             .delete(aiRunEvaluationsTable)
-            .where(or(...evaluationDeleteConditions))
+            .where(and(eq(aiRunEvaluationsTable.userId, userId), or(...evaluationDeleteConditions)))
             .returning({ id: aiRunEvaluationsTable.id })
         ).length
       : 0;
@@ -184,7 +185,7 @@ export async function nukeJobAttemptData(jobId: number): Promise<{
       ? (
           await tx
             .delete(aiTrainingExamplesTable)
-            .where(or(...trainingDeleteConditions))
+            .where(and(eq(aiTrainingExamplesTable.userId, userId), or(...trainingDeleteConditions)))
             .returning({ id: aiTrainingExamplesTable.id })
         ).length
       : 0;
@@ -193,7 +194,7 @@ export async function nukeJobAttemptData(jobId: number): Promise<{
       ? (
           await tx
             .delete(feedbackSignalsTable)
-            .where(inArray(feedbackSignalsTable.applicationId, applicationIds))
+            .where(and(eq(feedbackSignalsTable.userId, userId), inArray(feedbackSignalsTable.applicationId, applicationIds)))
             .returning({ id: feedbackSignalsTable.id })
         ).length
       : 0;
@@ -201,39 +202,40 @@ export async function nukeJobAttemptData(jobId: number): Promise<{
     const deletedApplications = (
       await tx
         .delete(applicationsTable)
-        .where(eq(applicationsTable.jobId, jobId))
+        .where(and(eq(applicationsTable.jobId, jobId), eq(applicationsTable.userId, userId)))
         .returning({ id: applicationsTable.id })
     ).length;
 
     const deletedResumeVersions = (
       await tx
         .delete(resumeVersionsTable)
-        .where(eq(resumeVersionsTable.jobId, jobId))
+        .where(and(eq(resumeVersionsTable.jobId, jobId), eq(resumeVersionsTable.userId, userId)))
         .returning({ id: resumeVersionsTable.id })
     ).length;
 
     const deletedCoverLetterVersions = (
       await tx
         .delete(coverLetterVersionsTable)
-        .where(eq(coverLetterVersionsTable.jobId, jobId))
+        .where(and(eq(coverLetterVersionsTable.jobId, jobId), eq(coverLetterVersionsTable.userId, userId)))
         .returning({ id: coverLetterVersionsTable.id })
     ).length;
 
     const deletedEventLogs = (
       await tx
         .delete(eventLogsTable)
-        .where(eq(eventLogsTable.jobId, jobId))
+        .where(and(eq(eventLogsTable.jobId, jobId), eq(eventLogsTable.userId, userId)))
         .returning({ id: eventLogsTable.id })
     ).length;
 
     const deletedJob = (
       await tx
         .delete(jobsTable)
-        .where(eq(jobsTable.id, jobId))
+        .where(and(eq(jobsTable.id, jobId), eq(jobsTable.userId, userId)))
         .returning({ id: jobsTable.id })
     ).length > 0;
 
     const scrubbedWizardSessions = await scrubWizardStateReferences({
+      userId,
       jobIds: [jobId],
       resumeVersionIds: resumeIds,
       coverLetterVersionIds: coverIds,
@@ -253,24 +255,24 @@ export async function nukeJobAttemptData(jobId: number): Promise<{
   });
 }
 
-export async function scrubWizardStatesForDeletedEntities(): Promise<number> {
+export async function scrubWizardStatesForDeletedEntities(userId: number): Promise<number> {
   const existingJobs = new Set(
     (
-      await db.select({ id: jobsTable.id }).from(jobsTable)
+      await db.select({ id: jobsTable.id }).from(jobsTable).where(eq(jobsTable.userId, userId))
     ).map((row) => row.id),
   );
   const existingResumes = new Set(
     (
-      await db.select({ id: resumeVersionsTable.id }).from(resumeVersionsTable)
+      await db.select({ id: resumeVersionsTable.id }).from(resumeVersionsTable).where(eq(resumeVersionsTable.userId, userId))
     ).map((row) => row.id),
   );
   const existingCovers = new Set(
     (
-      await db.select({ id: coverLetterVersionsTable.id }).from(coverLetterVersionsTable)
+      await db.select({ id: coverLetterVersionsTable.id }).from(coverLetterVersionsTable).where(eq(coverLetterVersionsTable.userId, userId))
     ).map((row) => row.id),
   );
 
-  const sessions = await db.select().from(wizardSessionsTable);
+  const sessions = await db.select().from(wizardSessionsTable).where(eq(wizardSessionsTable.userId, userId));
   let scrubbed = 0;
 
   for (const session of sessions) {
@@ -304,7 +306,7 @@ export async function scrubWizardStatesForDeletedEntities(): Promise<number> {
             ? (nextState.jobId as number)
             : null,
       })
-      .where(eq(wizardSessionsTable.id, session.id));
+      .where(and(eq(wizardSessionsTable.id, session.id), eq(wizardSessionsTable.userId, userId)));
     scrubbed += 1;
   }
 

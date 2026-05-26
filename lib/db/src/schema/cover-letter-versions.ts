@@ -10,6 +10,7 @@ import {
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { jobsTable } from "./jobs";
+import { adminUsersTable } from "./admin-users";
 
 /**
  * Cover letter versions — AI-drafted cover letters awaiting human approval.
@@ -31,6 +32,10 @@ export const coverLetterVersionsTable = pgTable(
   {
     /** Auto-incrementing primary key. */
     id: serial("id").primaryKey(),
+
+    userId: integer("user_id")
+      .notNull()
+      .references(() => adminUsersTable.id, { onDelete: "cascade" }),
 
     /** The job this cover letter was drafted for. Cascade-deletes the version if the job is deleted. */
     jobId: integer("job_id").references(() => jobsTable.id, {
@@ -87,6 +92,8 @@ export const coverLetterVersionsTable = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => [
+    index("cover_letter_versions_user_created_at_idx").on(table.userId, table.createdAt),
+    index("cover_letter_versions_user_status_idx").on(table.userId, table.status),
     index("cover_letter_versions_job_id_idx").on(table.jobId),
     index("cover_letter_versions_run_id_idx").on(table.runId),
     index("cover_letter_versions_event_log_id_idx").on(table.eventLogId),
@@ -99,6 +106,7 @@ export const insertCoverLetterVersionSchema = createInsertSchema(
   coverLetterVersionsTable,
 ).omit({
   id: true,
+  userId: true,
   createdAt: true,
   updatedAt: true,
 });

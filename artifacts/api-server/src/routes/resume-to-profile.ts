@@ -1,11 +1,13 @@
 import { Router, type IRouter } from "express";
 import { runResumeToProfilePipeline, MissingBaseResumeError } from "../lib/pipelines/resume-to-profile";
+import type { JobOpsRequest } from "../lib/http-types";
+import { currentUserId } from "../lib/ownership";
 
 const router: IRouter = Router();
 
-router.post("/resume-to-profile", async (_req, res): Promise<void> => {
+router.post("/resume-to-profile", async (req: JobOpsRequest, res): Promise<void> => {
   try {
-    const profile = await runResumeToProfilePipeline();
+    const profile = await runResumeToProfilePipeline(currentUserId(req));
     res.status(201).json(profile);
   } catch (err) {
     if (err instanceof MissingBaseResumeError) {

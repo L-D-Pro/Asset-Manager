@@ -566,6 +566,7 @@ export async function validateSemanticQuality(
   documentText: string,
   jobContext: string,
   jobId?: number,
+  userId?: number,
 ): Promise<void> {
   let result;
   try {
@@ -574,6 +575,7 @@ export async function validateSemanticQuality(
       systemPrompt: SEMANTIC_QUALITY_SYSTEM_PROMPT,
       userPrompt: `JOB CONTEXT:\n${jobContext.slice(0, 1000)}\n\nDOCUMENT TO REVIEW:\n${documentText.slice(0, 3000)}`,
       jobId,
+      userId,
     });
   } catch (err) {
     logger.warn({ err, jobId }, "Semantic quality check AI call failed — skipping");

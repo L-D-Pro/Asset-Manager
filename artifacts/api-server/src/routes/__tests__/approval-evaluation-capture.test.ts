@@ -76,8 +76,8 @@ vi.mock("@workspace/db", () => {
   };
 
   // Minimal table stubs used by the routes.
-  const resumeVersionsTable = { id: "id", status: "status" };
-  const coverLetterVersionsTable = { id: "id", status: "status" };
+  const resumeVersionsTable = { id: "id", status: "status", userId: "user_id" };
+  const coverLetterVersionsTable = { id: "id", status: "status", userId: "user_id" };
   const eventLogsTable = { id: "id" };
   const aiRunEvaluationsTable = {
     id: "id",
@@ -147,6 +147,7 @@ describe("approval evaluation capture", () => {
         editDistance: 12,
         notes: "LGTM",
       },
+      session: { adminId: 27 },
       log: { info: vi.fn(), warn: vi.fn() },
     };
     const res = makeRes();
@@ -173,6 +174,7 @@ describe("approval evaluation capture", () => {
 
     expect(evaluationInsert).toBeTruthy();
     expect(evaluationInsert.approvalOutcome).toBe("approved");
+    expect(evaluationInsert.userId).toBe(27);
     expect(evaluationInsert.editDistance).toBe(12);
     expect(evaluationInsert.truthfulnessScore).toBe(4);
     expect(evaluationInsert.relevanceScore).toBe(5);
@@ -215,6 +217,7 @@ describe("approval evaluation capture", () => {
     const req: any = {
       params: { id: "123" },
       body: { notes: "Regenerate invalid approved draft" },
+      session: { adminId: 27 },
       log: { info: vi.fn(), warn: vi.fn() },
     };
     const res = makeRes();
@@ -254,6 +257,7 @@ describe("approval evaluation capture", () => {
     const req: any = {
       params: { id: "456" },
       body: { editDistance: 0, notes: "Not usable" },
+      session: { adminId: 27 },
       log: { info: vi.fn(), warn: vi.fn() },
     };
     const res = makeRes();
@@ -274,6 +278,7 @@ describe("approval evaluation capture", () => {
 
     expect(evaluationInsert).toBeTruthy();
     expect(evaluationInsert.approvalOutcome).toBe("rejected");
+    expect(evaluationInsert.userId).toBe(27);
     expect(evaluationInsert.editDistance).toBe(0);
     expect(evaluationInsert.notes).toBe("Not usable");
   });

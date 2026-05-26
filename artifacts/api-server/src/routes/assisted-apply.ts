@@ -8,11 +8,16 @@ import {
   applicationFormFieldsTable,
   applicationActionsTable,
   eventLogsTable,
+  applicationsTable,
+  jobsTable,
   insertSiteAdapterSchema,
   insertApplicationSessionSchema,
   insertApplicationFormFieldSchema,
   insertApplicationActionSchema,
 } from "@workspace/db";
+import type { JobOpsRequest } from "../lib/http-types";
+import { currentUserId, withoutUserId, withoutUserIds } from "../lib/ownership";
+import { requireAdmin } from "../middlewares/admin";
 
 const router: IRouter = Router();
 const IdParams = z.object({ id: z.coerce.number().int().positive() });
@@ -41,7 +46,7 @@ router.get("/site-adapters", async (req, res): Promise<void> => {
   res.json(rows);
 });
 
-router.post("/site-adapters", async (req, res): Promise<void> => {
+router.post("/site-adapters", requireAdmin, async (req, res): Promise<void> => {
   const parsed = insertSiteAdapterSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -51,7 +56,8 @@ router.post("/site-adapters", async (req, res): Promise<void> => {
   res.status(201).json(row);
 });
 
-router.get("/application-sessions", async (req, res): Promise<void> => {
+router.get("/application-sessions", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const query = z.object({
     applicationId: z.coerce.number().int().positive().optional(),
     jobId: z.coerce.number().int().positive().optional(),
@@ -61,7 +67,7 @@ router.get("/application-sessions", async (req, res): Promise<void> => {
     res.status(400).json({ error: query.error.message });
     return;
   }
-  const conditions = [];
+  const conditions = [eq(applicationSessionsTable.userId, userId)];
   if (query.data.applicationId != null) {
     conditions.push(eq(applicationSessionsTable.applicationId, query.data.applicationId));
   }
@@ -74,23 +80,41 @@ router.get("/application-sessions", async (req, res): Promise<void> => {
   const rows = await db
     .select()
     .from(applicationSessionsTable)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .where(and(...conditions))
     .orderBy(desc(applicationSessionsTable.createdAt));
-  res.json(rows);
+  res.json(withoutUserIds(rows));
 });
 
-router.post("/application-sessions", async (req, res): Promise<void> => {
+router.post("/application-sessions", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const parsed = insertApplicationSessionSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  if (parsed.data.applicationId != null) {
+    const [application] = await db.select({ id: applicationsTable.id }).from(applicationsTable)
+      .where(and(eq(applicationsTable.id, parsed.data.applicationId), eq(applicationsTable.userId, userId)));
+    if (!application) {
+      res.status(404).json({ error: "Application not found" });
+      return;
+    }
+  }
+  if (parsed.data.jobId != null) {
+    const [job] = await db.select({ id: jobsTable.id }).from(jobsTable)
+      .where(and(eq(jobsTable.id, parsed.data.jobId), eq(jobsTable.userId, userId)));
+    if (!job) {
+      res.status(404).json({ error: "Job not found" });
+      return;
+    }
+  }
   const [row] = await db.transaction(async (tx) => {
     const [inserted] = await tx
       .insert(applicationSessionsTable)
-      .values(parsed.data)
+      .values({ ...parsed.data, userId })
       .returning();
     await tx.insert(eventLogsTable).values({
+      userId,
       entityType: "application_session",
       entityId: inserted!.id,
       applicationId: inserted!.applicationId ?? null,
@@ -105,10 +129,11 @@ router.post("/application-sessions", async (req, res): Promise<void> => {
     });
     return [inserted];
   });
-  res.status(201).json(row);
+  res.status(201).json(withoutUserId(row!));
 });
 
-router.get("/application-sessions/:id", async (req, res): Promise<void> => {
+router.get("/application-sessions/:id", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = IdParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -117,7 +142,7 @@ router.get("/application-sessions/:id", async (req, res): Promise<void> => {
   const [session] = await db
     .select()
     .from(applicationSessionsTable)
-    .where(eq(applicationSessionsTable.id, params.data.id));
+    .where(and(eq(applicationSessionsTable.id, params.data.id), eq(applicationSessionsTable.userId, userId)));
   if (!session) {
     res.status(404).json({ error: "Application session not found" });
     return;
@@ -134,10 +159,11 @@ router.get("/application-sessions/:id", async (req, res): Promise<void> => {
       .where(eq(applicationActionsTable.sessionId, params.data.id))
       .orderBy(applicationActionsTable.createdAt),
   ]);
-  res.json({ session, fields, actions });
+  res.json({ session: withoutUserId(session), fields, actions });
 });
 
-router.delete("/application-sessions/:id", async (req, res): Promise<void> => {
+router.delete("/application-sessions/:id", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = IdParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -146,21 +172,28 @@ router.delete("/application-sessions/:id", async (req, res): Promise<void> => {
   const [session] = await db
     .select()
     .from(applicationSessionsTable)
-    .where(eq(applicationSessionsTable.id, params.data.id));
+    .where(and(eq(applicationSessionsTable.id, params.data.id), eq(applicationSessionsTable.userId, userId)));
   if (!session) {
     res.status(404).json({ error: "Application session not found" });
     return;
   }
   await db
     .delete(applicationSessionsTable)
-    .where(eq(applicationSessionsTable.id, params.data.id));
+    .where(and(eq(applicationSessionsTable.id, params.data.id), eq(applicationSessionsTable.userId, userId)));
   res.status(204).send();
 });
 
-router.post("/application-sessions/:id/fields", async (req, res): Promise<void> => {
+router.post("/application-sessions/:id/fields", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = IdParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const [session] = await db.select({ id: applicationSessionsTable.id }).from(applicationSessionsTable)
+    .where(and(eq(applicationSessionsTable.id, params.data.id), eq(applicationSessionsTable.userId, userId)));
+  if (!session) {
+    res.status(404).json({ error: "Application session not found" });
     return;
   }
   const parsed = insertApplicationFormFieldSchema.safeParse({
@@ -178,10 +211,17 @@ router.post("/application-sessions/:id/fields", async (req, res): Promise<void> 
   res.status(201).json(row);
 });
 
-router.post("/application-sessions/:id/actions", async (req, res): Promise<void> => {
+router.post("/application-sessions/:id/actions", async (req: JobOpsRequest, res): Promise<void> => {
+  const userId = currentUserId(req);
   const params = IdParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const [session] = await db.select({ id: applicationSessionsTable.id }).from(applicationSessionsTable)
+    .where(and(eq(applicationSessionsTable.id, params.data.id), eq(applicationSessionsTable.userId, userId)));
+  if (!session) {
+    res.status(404).json({ error: "Application session not found" });
     return;
   }
   const parsed = insertApplicationActionSchema.safeParse({
@@ -198,6 +238,7 @@ router.post("/application-sessions/:id/actions", async (req, res): Promise<void>
       .values(parsed.data)
       .returning();
     await tx.insert(eventLogsTable).values({
+      userId,
       entityType: "application_session",
       entityId: params.data.id,
       eventType: "assisted_apply_action_logged",

@@ -28,7 +28,8 @@ export async function runJobResearchPipeline(
   title: string,
   company: string,
   rawJdText: string,
-  jobId: number
+  jobId: number,
+  userId: number,
 ): Promise<JobResearchResult> {
   // Step 1: Search the web
   const query = `${company} company recent news engineering culture "${title}"`;
@@ -57,6 +58,7 @@ Based on the above, provide the strategic analysis in JSON format.
     systemPrompt: SYSTEM_PROMPT,
     userPrompt,
     jobId,
+    userId,
   });
 
   const parsed = parseJsonResponse<JobResearchResult>(aiResult.content);

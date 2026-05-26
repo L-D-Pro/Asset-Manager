@@ -281,6 +281,14 @@ router.post("/chat/messages/:id/feedback", async (req, res): Promise<void> => {
     .limit(1);
 
   if (!message) { res.status(404).json({ error: "Message not found" }); return; }
+
+  const [thread] = await db
+    .select({ id: conversations.id })
+    .from(conversations)
+    .where(and(eq(conversations.id, message.conversationId), eq(conversations.userId, userId)))
+    .limit(1);
+  if (!thread) { res.status(404).json({ error: "Conversation not found" }); return; }
+
   if (message.role !== "assistant") {
     res.status(400).json({ error: "Only assistant messages can be rated" });
     return;
@@ -290,18 +298,15 @@ router.post("/chat/messages/:id/feedback", async (req, res): Promise<void> => {
     return;
   }
 
-  const [thread] = await db
-    .select({ id: conversations.id })
-    .from(conversations)
-    .where(and(eq(conversations.id, message.conversationId), eq(conversations.userId, userId)))
-    .limit(1);
-  if (!thread) { res.status(404).json({ error: "Conversation not found" }); return; }
-
   // Find the root event_log row for this runId.
   const [rootEvent] = await db
     .select({ id: eventLogsTable.id })
     .from(eventLogsTable)
-    .where(and(eq(eventLogsTable.runId, message.runId), eq(eventLogsTable.entityType, "ai_call")))
+    .where(and(
+      eq(eventLogsTable.runId, message.runId),
+      eq(eventLogsTable.userId, userId),
+      eq(eventLogsTable.entityType, "ai_call"),
+    ))
     .orderBy(asc(eventLogsTable.createdAt))
     .limit(1);
 
@@ -314,6 +319,7 @@ router.post("/chat/messages/:id/feedback", async (req, res): Promise<void> => {
     const [row] = await db
       .insert(aiRunEvaluationsTable)
       .values({
+        userId,
         runId: message.runId,
         eventLogId: rootEvent.id,
         promptVersionId: message.promptVersionId,

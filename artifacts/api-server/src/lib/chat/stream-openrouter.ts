@@ -185,7 +185,7 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
   let parsedJd: ParsedJd | null = null;
   if (opts.jdParseEnabled) {
     sseSend(res, "jd-parsing", {});
-    parsedJd = await parseJdText(userMessage.content);
+    parsedJd = await parseJdText(userMessage.content, userId);
     if (parsedJd) {
       sseSend(res, "jd-parsed", { requiredSkills: parsedJd.requiredSkills, senioritySignal: parsedJd.senioritySignal });
     } else {
@@ -200,6 +200,7 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
       userMessage: userMessage.content,
       attachments: userMessage.attachments,
       explicitSlugs: opts.explicitSkillSlugs,
+      userId,
     });
 
   sseSend(res, "skill-routing", {
@@ -285,6 +286,7 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
         logger.error({ conversationId, runId }, errMsg);
         sseSend(res, "error", { message: errMsg });
         await db.insert(eventLogsTable).values({
+          userId,
           entityType: "ai_call", entityId: userTurn!.id, runId,
           eventType: "ai_call_failed", actorType: "system",
           metadata: { taskScope: thread.modelScope, modelName: fallbackModel.modelName, finalError: errMsg, succeeded: false, runId },
@@ -297,6 +299,7 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
       logger.error({ err: errMsg, runId, conversationId }, "Chat stream failed");
       sseSend(res, "error", { message: errMsg });
       await db.insert(eventLogsTable).values({
+        userId,
         entityType: "ai_call", entityId: userTurn!.id, runId,
         eventType: "ai_call_failed", actorType: "system",
         metadata: { taskScope: thread.modelScope, modelName: model.modelName, finalError: errMsg, succeeded: false, runId },
@@ -361,6 +364,7 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
   const [chatEvent] = await db
     .insert(eventLogsTable)
     .values({
+      userId,
       entityType: "ai_call",
       entityId: assistantTurn!.id,
       runId,

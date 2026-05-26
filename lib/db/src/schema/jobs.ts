@@ -10,6 +10,7 @@ import {
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { roleProfilesTable } from "./role-profiles";
+import { adminUsersTable } from "./admin-users";
 
 /**
  * Jobs — ingested job postings.
@@ -28,6 +29,10 @@ export const jobsTable = pgTable(
   {
     /** Auto-incrementing primary key. */
     id: serial("id").primaryKey(),
+
+    userId: integer("user_id")
+      .notNull()
+      .references(() => adminUsersTable.id, { onDelete: "cascade" }),
 
     /**
      * The role profile this job was ingested against. Used as the default scoring profile
@@ -113,6 +118,8 @@ export const jobsTable = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => [
+    index("jobs_user_created_at_idx").on(table.userId, table.createdAt),
+    index("jobs_user_status_idx").on(table.userId, table.status),
     index("jobs_role_profile_status_idx").on(table.roleProfileId, table.status),
     index("jobs_dedup_hash_idx").on(table.deduplicationHash),
     index("jobs_status_idx").on(table.status),
@@ -122,6 +129,7 @@ export const jobsTable = pgTable(
 /** Zod schema for inserting a job (omits server-managed fields). */
 export const insertJobSchema = createInsertSchema(jobsTable).omit({
   id: true,
+  userId: true,
   createdAt: true,
   updatedAt: true,
 });

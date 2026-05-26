@@ -12,6 +12,7 @@ import {
   UpdateAiModelConfigResponse,
   DeleteAiModelConfigParams,
 } from "@workspace/api-zod";
+import { requireAdmin } from "../middlewares/admin";
 
 const router: IRouter = Router();
 
@@ -131,7 +132,7 @@ router.get("/ai-model-configs", async (req, res): Promise<void> => {
   res.json(ListAiModelConfigsResponse.parse(rows));
 });
 
-router.post("/ai-model-configs", async (req, res): Promise<void> => {
+router.post("/ai-model-configs", requireAdmin, async (req, res): Promise<void> => {
   const parsed = CreateAiModelConfigBody.safeParse(req.body);
   if (!parsed.success) {
     req.log.warn({ error: parsed.error.message }, "Invalid create AI model config body");
@@ -162,7 +163,7 @@ router.get("/ai-model-configs/:id", async (req, res): Promise<void> => {
   res.json(GetAiModelConfigResponse.parse(row));
 });
 
-router.patch("/ai-model-configs/:id", async (req, res): Promise<void> => {
+router.patch("/ai-model-configs/:id", requireAdmin, async (req, res): Promise<void> => {
   const params = UpdateAiModelConfigParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -186,7 +187,7 @@ router.patch("/ai-model-configs/:id", async (req, res): Promise<void> => {
   res.json(UpdateAiModelConfigResponse.parse(row));
 });
 
-router.delete("/ai-model-configs/:id", async (req, res): Promise<void> => {
+router.delete("/ai-model-configs/:id", requireAdmin, async (req, res): Promise<void> => {
   const params = DeleteAiModelConfigParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
