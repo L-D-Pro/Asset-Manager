@@ -13,11 +13,17 @@ export interface BudgetableSkill {
 }
 
 /**
- * Rough token estimator — 1 token ≈ 4 characters of markdown text.
- * This is intentionally conservative; skill bodies are instructions, not prose.
+ * Rough chars-to-token ratio for markdown/instruction text.
+ * Conservative estimate — skill bodies are instructions, not prose.
+ * Named constant so tooling can grep for it if the ratio is ever revisited.
+ */
+export const CHARS_PER_TOKEN = 4;
+
+/**
+ * Rough token estimator — 1 token ≈ CHARS_PER_TOKEN characters.
  */
 export function estimateTokens(body: string): number {
-  return Math.ceil(body.length / 4);
+  return Math.ceil(body.length / CHARS_PER_TOKEN);
 }
 
 /** Sum estimated tokens across a list of skill bodies. */

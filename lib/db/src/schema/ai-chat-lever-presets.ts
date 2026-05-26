@@ -12,22 +12,35 @@ import { z } from "zod/v4";
  * Shape of a captured lever-state snapshot stored in `ai_chat_lever_presets`.
  * Applying a preset writes these fields back into `ai_chat_lever_config` and
  * flips `ai_prompt_versions.isActive` to match `activePromptVersionIds`.
+ *
+ * All routing weight fields are optional for backward compatibility with presets
+ * saved before routing config was tunable — missing fields fall back to the
+ * current live config value when applied.
  */
 export interface ChatLeverSnapshot {
   identityText: string;
   skillsEnabled: boolean;
   bestPracticesEnabled: boolean;
   skillRoutingMode: string;
-  /**
-   * Max tokens of injected skill bodies in `auto`/`explicit` modes.
-   */
+  /** Max tokens of injected skill bodies in `auto`/`explicit` modes. */
   skillTokenBudget: number;
-  /**
-   * Hard cap on selected skills (unless `debug_all`). Default 1, max enforced is 2.
-   */
+  /** Hard cap on selected skills (unless `debug_all`). Default 1. */
   maxSelectedSkills: number;
   /** Prompt-version row ids that should be active when this preset applies. */
   activePromptVersionIds: number[];
+
+  // ── Tunable routing weights (optional — backward compat) ─────────────────
+  autoThreshold?: number;
+  triggerWeight?: number;
+  negativeTriggerWeight?: number;
+  ambiguousGap?: number;
+  llmConfidenceThreshold?: number;
+  coverBoost?: number;
+  boostTailorPlusJob?: number;
+  boostResumePlusJob?: number;
+  boostAuditTailoredJob?: number;
+  boostAuditTailoredOnly?: number;
+  historyTurnLimit?: number;
 }
 
 /**
