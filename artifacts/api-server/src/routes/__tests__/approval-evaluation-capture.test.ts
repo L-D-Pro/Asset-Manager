@@ -54,7 +54,7 @@ vi.mock("@workspace/db", () => {
               tailoredDocumentText: null,
               tailoredBullets: [{ text: "Supported", claimIds: [1] }],
               diffData: {
-                templateValidation: { templateId: "software_developer" },
+                templateValidation: { passed: true, templateId: "software_developer" },
                 sourceValidation: { passed: true, validItemCount: 1 },
                 semanticValidation: { passed: true, sectionCounts: { summary: 1, experience: 4, education: 2, skills: 3 } },
               },
@@ -138,12 +138,12 @@ describe("approval evaluation capture", () => {
                 runId: "run_20250101t000000z_aaaaaaaaaaaa",
                 eventLogId: 501,
                 templateId: "software_developer",
-                tailoredBullets: [{ text: "Supported", claimIds: [1] }],
-                diffData: {
-                  templateValidation: { templateId: "software_developer" },
-                  sourceValidation: { passed: true, validItemCount: 1 },
-                  semanticValidation: { passed: true, sectionCounts: { summary: 1, experience: 4, education: 2, skills: 3 } },
-                },
+              tailoredBullets: [{ text: "Supported", claimIds: [1] }],
+              diffData: {
+                templateValidation: { passed: true, templateId: "software_developer" },
+                sourceValidation: { passed: true, validItemCount: 1 },
+                semanticValidation: { passed: true, sectionCounts: { summary: 1, experience: 4, education: 2, skills: 3 } },
+              },
               },
             ];
           },
@@ -230,7 +230,7 @@ describe("approval evaluation capture", () => {
                 ],
                 diffData: {
                   modelContract: "resume_tailoring_v2_simple",
-                  templateValidation: { templateId: "software_developer", templateLabel: "Software Developer" },
+                  templateValidation: { passed: true, templateId: "software_developer", templateLabel: "Software Developer" },
                   sourceValidation: { passed: true, validItemCount: 2, claimBackedCount: 1, baseBackedCount: 1 },
                   semanticValidation: { passed: true, sectionCounts: { experience: 2 } },
                 },
@@ -277,7 +277,7 @@ describe("approval evaluation capture", () => {
                 tailoredBullets: [],
                 diffData: {
                   modelContract: "resume_tailoring_v2_simple",
-                  templateValidation: { templateId: "software_developer", templateLabel: "Software Developer" },
+                  templateValidation: { passed: false, templateId: "software_developer", templateLabel: "Software Developer" },
                   sourceValidation: { passed: true, validItemCount: 1 },
                   semanticValidation: { passed: true, sectionCounts: { experience: 1 } },
                 },
@@ -295,6 +295,61 @@ describe("approval evaluation capture", () => {
     const handler = layer.route.stack[0].handle;
     const req: any = {
       params: { id: "125" },
+      body: {},
+      session: { adminId: 27 },
+      log: { info: vi.fn(), warn: vi.fn() },
+    };
+    const res = makeRes();
+
+    await handler(req, res);
+
+    expect(res.statusCode).toBe(422);
+    expect(res.payload).toMatchObject({
+      error: "Resume must be regenerated before approval",
+    });
+  });
+
+  it("blocks approval when template validation did not pass", async () => {
+    const { default: resumeRouter } = await import("../resume-versions");
+
+    (await import("@workspace/db") as any).__approvalEvalCaptureTest.dbMock.select.mockReturnValueOnce({
+      from() {
+        return {
+          where() {
+            return [
+              {
+                id: 126,
+                status: "pending_approval",
+                jobId: 77,
+                runId: "run_20250101t000000z_templateinvalid",
+                eventLogId: 603,
+                templateId: "software_developer",
+                tailoredBullets: [{ text: "Supported", claimIds: [1], section: "experience" }],
+                diffData: {
+                  modelContract: "resume_tailoring_v2_simple",
+                  templateValidation: {
+                    passed: false,
+                    templateId: "software_developer",
+                    templateLabel: "Software Developer",
+                    omittedSections: ["coursework"],
+                  },
+                  sourceValidation: { passed: true, validItemCount: 1 },
+                  semanticValidation: { passed: true, sectionCounts: { experience: 1 } },
+                },
+                notes: "Template validation failed. Omitted or disallowed sections: coursework. Regenerate the resume.",
+              },
+            ];
+          },
+        };
+      },
+    });
+
+    const layer = (resumeRouter as any).stack.find(
+      (l: any) => l.route?.path === "/resume-versions/:id/approve" && l.route?.methods?.post,
+    );
+    const handler = layer.route.stack[0].handle;
+    const req: any = {
+      params: { id: "126" },
       body: {},
       session: { adminId: 27 },
       log: { info: vi.fn(), warn: vi.fn() },

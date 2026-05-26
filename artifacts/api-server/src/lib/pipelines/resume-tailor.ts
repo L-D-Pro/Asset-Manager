@@ -322,8 +322,10 @@ export async function runResumeTailorPipeline(
   }
 
   const usedClaimIds = [...new Set(parsedDraft.items.flatMap((item) => item.claimIds))];
+  const hasTemplateValidationFailure = rendered.validation.passed !== true;
   const hasTruthReviewFailure = truthReview.seriousViolationCount > 0;
   const hasBlockingDiagnostics =
+    hasTemplateValidationFailure ||
     !parsedDraft.validation.passed ||
     qualityViolation != null ||
     hasTruthReviewFailure;
@@ -341,7 +343,9 @@ export async function runResumeTailorPipeline(
     eventLogId: aiResult.eventLogId,
     tailoredBullets: parsedDraft.items,
     notes: hasBlockingDiagnostics
-      ? !parsedDraft.validation.passed
+      ? hasTemplateValidationFailure
+        ? `Template validation failed. Omitted or disallowed sections: ${rendered.validation.omittedSections.join(", ") || "unknown"}. Regenerate the resume.`
+        : !parsedDraft.validation.passed
         ? "Source validation failed. Regenerate the resume to restore structured source-backed bullets."
         : qualityViolation
           ? `Semantic template validation failed:\n${qualityViolation.violations.join("\n")}`

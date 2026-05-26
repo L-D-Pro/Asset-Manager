@@ -37,6 +37,7 @@ describe("resume template rendering", () => {
     expect(rendered.text).toContain("EXPERIENCE");
     expect(rendered.text).toContain("PROJECT");
     expect(rendered.text.indexOf("EXPERIENCE")).toBeLessThan(rendered.text.indexOf("PROJECT"));
+    expect(rendered.validation.passed).toBe(true);
     expect(rendered.validation.templateId).toBe("software_developer");
     expect(rendered.validation.markdownArtifactsRemoved).toContain("bold markers");
   });
@@ -53,6 +54,7 @@ describe("resume template rendering", () => {
 
     expect(rendered.text).toContain("EXPERIENCE");
     expect(rendered.text).not.toContain("COURSEWORK");
+    expect(rendered.validation.passed).toBe(false);
     expect(rendered.validation.omittedSections).toContain("coursework");
   });
 

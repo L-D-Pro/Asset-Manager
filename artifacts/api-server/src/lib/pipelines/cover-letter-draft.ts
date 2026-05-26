@@ -27,6 +27,19 @@ interface CoverLetterResult {
   fullText?: string;
 }
 
+function buildResearchPromptContext(researchData: unknown): string {
+  if (
+    !researchData ||
+    typeof researchData !== "object" ||
+    !("status" in researchData) ||
+    (researchData as { status?: unknown }).status !== "verified"
+  ) {
+    return "";
+  }
+
+  return JSON.stringify(researchData).slice(0, 3000);
+}
+
 function extractAttemptSummary(error: unknown): string {
   if (!error || typeof error !== "object" || !("attemptErrors" in error)) {
     return "No model-attempt details were recorded.";
@@ -212,8 +225,7 @@ export async function runCoverLetterPipeline(
     ? `\n\nCandidate's Resume (for context — do NOT repeat verbatim, use to complement):\n${baseResumeVersion.contentText.slice(0, 2000)}`
     : "";
 
-  const researchContext =
-    job.researchData != null ? JSON.stringify(job.researchData).slice(0, 3000) : "";
+  const researchContext = buildResearchPromptContext(job.researchData);
 
   const profileContext = roleProfile
     ? `Applying via role profile: ${roleProfile.name}. `
@@ -234,6 +246,7 @@ Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed
   const augmentedSystemPrompt = SYSTEM_PROMPT + practicesText + `\n\nTRUTH-LOCK SOURCE POLICY:
 - Treat the provided claims, candidate resume context, job description fields, and stored job research as the ONLY factual sources.
 - Do not use model memory for company news, mission, products, people, or recent events.
+- If stored job research is unavailable or unverified, treat it as absent and do not cite company-specific research claims.
 - You may write in a natural human voice, but you may not invent motivations, relationships, metrics, credentials, dates, titles, tools, company facts, or experience.
 - Body and hook paragraphs must cite claimIds. Opening and closing may be uncited only if they contain no factual claims.`;
 

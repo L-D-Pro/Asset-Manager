@@ -36,6 +36,7 @@ export interface TemplateBullet {
 }
 
 export interface ResumeTemplateValidation {
+  passed: boolean;
   templateId: ResumeTemplateId;
   templateLabel: string;
   allowedSections: ResumeSectionKey[];
@@ -347,6 +348,8 @@ export function renderResumePlainText(args: {
     template,
     bullets: args.bullets ?? [],
   });
+  const disallowedExtractedSections = (Object.keys(extracted.sections) as ResumeSectionKey[])
+    .filter((section) => !template.sectionOrder.includes(section));
 
   const bySection: Partial<Record<ResumeSectionKey, string[]>> = {};
   for (const bullet of chosen.bullets) {
@@ -385,10 +388,20 @@ export function renderResumePlainText(args: {
   return {
     text,
     validation: {
+      passed:
+        chosen.bullets.length > 0 &&
+        chosen.omittedSections.length === 0 &&
+        disallowedExtractedSections.length === 0,
       templateId: template.id,
       templateLabel: template.label,
       allowedSections: template.sectionOrder,
-      omittedSections: Array.from(new Set([...chosen.omittedSections, ...extracted.unknownSections])),
+      omittedSections: Array.from(
+        new Set([
+          ...chosen.omittedSections,
+          ...disallowedExtractedSections,
+          ...extracted.unknownSections,
+        ]),
+      ),
       markdownArtifactsRemoved: stripped.removed,
       trimmedBulletCount: chosen.trimmedBulletCount,
       renderedBulletCount: chosen.bullets.length,

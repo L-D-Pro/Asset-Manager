@@ -3,11 +3,11 @@
  * Bootstrap script: create the initial admin user.
  *
  * Run once on first deployment:
- *   node artifacts/api-server/scripts/create-admin.js
+ *   corepack pnpm exec tsx artifacts/api-server/scripts/create-admin.ts
  *
  * Or set environment variables and run:
  *   ADMIN_USERNAME=admin ADMIN_PASSWORD=yourpassword ADMIN_EMAIL=you@example.com \
- *   node artifacts/api-server/scripts/create-admin.js
+ *   corepack pnpm exec tsx artifacts/api-server/scripts/create-admin.ts
  *
  * If the admin user already exists, the script exits cleanly.
  *
@@ -52,9 +52,19 @@ async function main() {
   const hash = await bcrypt.hash(password, 12);
 
   await pool.query(
-    `INSERT INTO admin_users (username, email, password_hash, totp_enabled, created_at, updated_at)
-     VALUES ($1, $2, $3, false, NOW(), NOW())`,
-    [username, email, hash]
+    `INSERT INTO admin_users (
+       username,
+       email,
+       role,
+       password_hash,
+       totp_enabled,
+       email_verified,
+       is_active,
+       created_at,
+       updated_at
+     )
+     VALUES ($1, $2, 'admin', $3, false, true, true, NOW(), NOW())`,
+    [username, email, hash],
   );
 
   console.log(`✓ Admin user '${username}' created successfully.`);

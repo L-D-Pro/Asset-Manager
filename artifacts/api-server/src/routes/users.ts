@@ -95,6 +95,8 @@ usersRouter.post("/users", requireAuth, requireAdmin, async (req: JobOpsRequest,
       lastName: lastName?.trim() || null,
       email: email.trim(),
       role: role === "admin" ? "admin" : "user",
+      emailVerified: true,
+      isActive: true,
       passwordHash,
     })
     .returning({

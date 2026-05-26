@@ -531,4 +531,76 @@ describe("runCoverLetterPipeline", () => {
     expect(callArgs.userPrompt).toContain("Senior Frontend");
     expect(result).toBeDefined();
   });
+
+  it("does not pass unavailable research state as factual grounding to the cover-letter prompt", async () => {
+    const unavailableResearchJob = makeJob({
+      researchData: {
+        status: "unavailable",
+        reason: "missing_api_key",
+        message: "Verified company research is currently unavailable.",
+        sources: [],
+      },
+    });
+
+    callAIMock.mockResolvedValue({
+      content: makeValidAiResponse(10),
+      runId: "run_cl_unavailable_research",
+      eventLogId: 11,
+      modelName: "test/model",
+      provider: "openrouter",
+      priorFailures: [],
+    });
+
+    const { runCoverLetterPipeline } = await import(
+      "../pipelines/cover-letter-draft"
+    );
+
+    await runCoverLetterPipeline(unavailableResearchJob, null, claims, [10, 11]);
+
+    const callArgs = callAIMock.mock.calls[0][0] as { userPrompt: string };
+    expect(callArgs.userPrompt).toContain("No stored research available.");
+    expect(callArgs.userPrompt).not.toContain("Verified company research is currently unavailable.");
+    expect(callArgs.userPrompt).not.toContain('"status":"unavailable"');
+  });
+
+  it("passes verified sourced research through when it is present", async () => {
+    const researchedJob = makeJob({
+      researchData: {
+        status: "verified",
+        companyOverview: "StreamTech builds observability software.",
+        recentNewsOrProjects: "Launched a new tracing platform.",
+        cultureAndValues: "Values reliability and developer velocity.",
+        interviewStrategy: "Discuss platform ownership.",
+        roleSpecificAdvice: "Highlight TypeScript APIs.",
+        sources: [
+          {
+            title: "StreamTech launches tracing platform",
+            url: "https://example.com/tracing",
+            content: "StreamTech launched a tracing platform for enterprise teams.",
+            score: 0.92,
+          },
+        ],
+      },
+    });
+
+    callAIMock.mockResolvedValue({
+      content: makeValidAiResponse(10),
+      runId: "run_cl_verified_research",
+      eventLogId: 12,
+      modelName: "test/model",
+      provider: "openrouter",
+      priorFailures: [],
+    });
+
+    const { runCoverLetterPipeline } = await import(
+      "../pipelines/cover-letter-draft"
+    );
+
+    await runCoverLetterPipeline(researchedJob, null, claims, [10, 11]);
+
+    const callArgs = callAIMock.mock.calls[0][0] as { userPrompt: string };
+    expect(callArgs.userPrompt).toContain('"status":"verified"');
+    expect(callArgs.userPrompt).toContain("StreamTech launches tracing platform");
+    expect(callArgs.userPrompt).toContain("Launched a new tracing platform.");
+  });
 });

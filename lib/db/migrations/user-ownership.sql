@@ -1,5 +1,16 @@
 -- Phase 2: user-owned private business data.
 --
+-- IMPORTANT:
+--   This file is for future production-style preservation/backfill work only.
+--   It is NOT the normal path for a fresh dev/test database.
+--
+-- For local development or CI reset flows:
+--   1. Point DATABASE_URL at a disposable local Postgres database.
+--   2. Recreate the database from scratch.
+--   3. Run `corepack pnpm --filter @workspace/db run push`.
+--
+-- See DEV_DB_RESET.md at the repo root for the current testing-stage reset path.
+--
 -- Required invocation pattern:
 --   BEGIN;
 --   SET LOCAL jobops.legacy_owner_user_id = '123';

@@ -45,15 +45,20 @@ function getResumeApprovalBlocker(resumeVersion: typeof resumeVersionsTable.$inf
       ? (diffData.semanticValidation as Record<string, unknown>)
       : null;
   const hasPassingSemanticValidation = semanticValidation?.passed === true;
+  const templateValidation =
+    diffData.templateValidation && typeof diffData.templateValidation === "object" && !Array.isArray(diffData.templateValidation)
+      ? (diffData.templateValidation as Record<string, unknown>)
+      : null;
+  const hasPassingTemplateValidation = templateValidation?.passed === true;
   const hasBlockingDiagnostic =
     typeof resumeVersion.notes === "string" &&
-    /could not be repaired|truth lock failure|quality check failed|truth review failed|generation failed|source validation failed|semantic template validation failed|base resume parse failed|needs review/i.test(resumeVersion.notes);
+    /could not be repaired|truth lock failure|quality check failed|truth review failed|generation failed|source validation failed|template validation failed|semantic template validation failed|base resume parse failed|needs review/i.test(resumeVersion.notes);
   const modelContract = typeof diffData.modelContract === "string" ? diffData.modelContract : null;
   const isDeterministicFallbackContract = modelContract === "deterministic_base_resume_fallback_v1";
 
   if (
     !resumeVersion.templateId ||
-    !diffData.templateValidation ||
+    !hasPassingTemplateValidation ||
     !hasStructuredBullets ||
     !hasPassingSourceValidation ||
     !hasPassingSemanticValidation ||

@@ -247,6 +247,7 @@ describe("job lineage pipelines", () => {
     expect(inserted.templateId).toBe("software_developer");
     expect(inserted.diffData.modelContract).toBe("resume_tailoring_v2_simple");
     expect(inserted.diffData.templateValidation).toMatchObject({
+      passed: true,
       templateId: "software_developer",
       templateLabel: "Software Developer",
     });
@@ -297,6 +298,60 @@ describe("job lineage pipelines", () => {
     expect(inserted.diffData.semanticValidation).toMatchObject({
       passed: false,
     });
+  });
+
+  it("stores a diagnostic pending review draft when template validation fails", async () => {
+    callAIMock.mockResolvedValue({
+      content: [
+        "SUMMARY",
+        "Senior Instructional Designer with 13+ years delivering enterprise learning systems. [src:claim:1]",
+        "EXPERIENCE",
+        "Senior Instructional Designer | Acme Health | San Diego, CA | Jan 2021 - Present [src:base:experience:b001]",
+        "Led project delivery across learning deployments and stakeholder reviews. [src:claim:1]",
+        "COURSEWORK",
+        "Completed algorithms coursework. [src:base:education:b001]",
+      ].join("\n"),
+      modelName: "test/model",
+      provider: "openrouter",
+      taskScope: "resume_tailoring",
+      promptTokens: 10,
+      completionTokens: 20,
+      promptVersionId: 12,
+      runId: "run_resume_template_fail_1234567890",
+      eventLogId: 322,
+    });
+    parseJsonResponseMock.mockReturnValue(null);
+    validateBulletMock.mockImplementation((bullet) => bullet);
+    assertMinimumContentMock.mockImplementation(() => undefined);
+    validateResumeQualityMock.mockImplementation(() => undefined);
+    validateSemanticQualityMock.mockResolvedValue(undefined);
+    reviewGeneratedTruthMock.mockReturnValue({
+      supportStatus: "supported",
+      items: [{ supportStatus: "supported" }],
+      unsupportedCount: 0,
+      partialCount: 0,
+      supportedCount: 1,
+      seriousViolationCount: 0,
+      sourcePolicy: "test",
+    });
+
+    const { runResumeTailorPipeline } = await import("../resume-tailor");
+
+    await runResumeTailorPipeline(
+      { id: 11, title: "Engineer", company: "Acme" } as never,
+      [{ id: 1, summary: "Built feature", evidence: null } as never],
+      [1],
+    );
+
+    const inserted = resumeInsertValuesMock.mock.calls.at(-1)?.[0];
+    expect(inserted.status).toBe("pending_approval");
+    expect(inserted.diffData.templateValidation).toMatchObject({
+      passed: false,
+    });
+    expect(inserted.diffData.sourceValidation).toMatchObject({
+      passed: true,
+    });
+    expect(inserted.notes).toContain("Template validation failed");
   });
 
   it("propagates AI call failures without saving a fallback", async () => {

@@ -1,13 +1,33 @@
 import { callAI, parseJsonResponse } from "../ai-client.js";
 import { searchWeb } from "../tavily-client.js";
 
-export interface JobResearchResult {
+interface JobResearchSynthesis {
   companyOverview: string;
   recentNewsOrProjects: string;
   cultureAndValues: string;
   interviewStrategy: string;
   roleSpecificAdvice: string;
 }
+
+interface JobResearchSource {
+  title: string;
+  url: string;
+  content: string;
+  score: number;
+}
+
+export type JobResearchResult =
+  | ({
+      status: "verified";
+      sources: JobResearchSource[];
+    } & JobResearchSynthesis)
+  | {
+      status: "unavailable";
+      reason: "missing_api_key" | "request_failed" | "network_error" | "invalid_ai_output";
+      query: string;
+      message: string;
+      sources: [];
+    };
 
 const SYSTEM_PROMPT = `You are an expert technical recruiter and career strategist.
 Your task is to analyze real-world research about a company and a specific job posting, and provide actionable, data-driven advice for a candidate.
@@ -31,15 +51,24 @@ export async function runJobResearchPipeline(
   jobId: number,
   userId: number,
 ): Promise<JobResearchResult> {
-  // Step 1: Search the web
   const query = `${company} company recent news engineering culture "${title}"`;
   const searchResults = await searchWeb(query);
+
+  if (searchResults.status !== "ok" || searchResults.results.length === 0) {
+    return {
+      status: "unavailable",
+      reason: searchResults.reason ?? "request_failed",
+      query,
+      message:
+        "Verified company research is currently unavailable. No company facts were inferred or synthesized.",
+      sources: [],
+    };
+  }
 
   const searchContext = searchResults.results
     .map((r) => `[Source: ${r.title}]\n${r.content}`)
     .join("\n\n");
 
-  // Step 2: Call AI to synthesize
   const userPrompt = `
 COMPANY: ${company}
 ROLE: ${title}
@@ -61,11 +90,27 @@ Based on the above, provide the strategic analysis in JSON format.
     userId,
   });
 
-  const parsed = parseJsonResponse<JobResearchResult>(aiResult.content);
+  const parsed = parseJsonResponse<JobResearchSynthesis>(aiResult.content);
 
   if (!parsed) {
-    throw new Error("AI failed to return valid JSON for job research.");
+    return {
+      status: "unavailable",
+      reason: "invalid_ai_output",
+      query,
+      message:
+        "Verified company research could not be synthesized into a trusted summary. No company facts were inferred or synthesized.",
+      sources: [],
+    };
   }
 
-  return parsed;
+  return {
+    status: "verified",
+    ...parsed,
+    sources: searchResults.results.map((result) => ({
+      title: result.title,
+      url: result.url,
+      content: result.content,
+      score: result.score,
+    })),
+  };
 }
