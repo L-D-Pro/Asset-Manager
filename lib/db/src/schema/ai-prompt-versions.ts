@@ -8,6 +8,7 @@ import {
   jsonb,
   boolean,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -46,6 +47,15 @@ export const aiPromptVersionsTable = pgTable(
   (table) => [
     index("ai_prompt_versions_task_scope_idx").on(table.taskScope),
     index("ai_prompt_versions_active_idx").on(table.taskScope, table.isActive),
+    // One row per (task_scope, label, version) — allows v1, v2, v3 history for the
+    // same label, while preventing duplicate seeds of the same version.
+    // Replaces the old (task_scope, version) index which broke multi-skill chat scopes
+    // (all chat skills share task_scope='chat' but differ by label).
+    uniqueIndex("ai_prompt_versions_task_scope_label_version_uidx").on(
+      table.taskScope,
+      table.label,
+      table.version,
+    ),
   ],
 );
 

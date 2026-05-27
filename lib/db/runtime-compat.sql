@@ -704,9 +704,19 @@ CREATE INDEX IF NOT EXISTS best_practices_domain_idx ON best_practices(domain);
 
 -- Seed agent role prompt versions (Wave 2 task 2.1)
 -- Extracted from pipeline SYSTEM_PROMPT constants (2026-05-10)
--- Idempotent: ON CONFLICT (task_scope, version) DO NOTHING
+-- Idempotent: ON CONFLICT (task_scope, label, version) DO NOTHING
 
-CREATE UNIQUE INDEX IF NOT EXISTS ai_prompt_versions_task_scope_version_uidx ON ai_prompt_versions(task_scope, version);
+-- Drop the old (task_scope, version) unique index — it breaks seedChatRuntime()
+-- because chat skills all share task_scope='chat' at version=1 with different labels.
+-- The TS schema never defined this constraint.
+DROP INDEX IF EXISTS ai_prompt_versions_task_scope_version_uidx;
+
+-- One row per (task_scope, label, version): allows v1/v2/v3 history for the
+-- same label, while preventing duplicate seeds of the same version.
+-- Works for pipeline scopes (unique task_scope) and chat skills (all share
+-- task_scope='chat' but differ by label).
+CREATE UNIQUE INDEX IF NOT EXISTS ai_prompt_versions_task_scope_label_version_uidx
+  ON ai_prompt_versions(task_scope, label, version);
 
 INSERT INTO ai_prompt_versions (task_scope, version, label, system_prompt, user_prompt_template, notes, is_active)
 VALUES
@@ -894,7 +904,7 @@ Guidelines:
 - Include 3-6 certifications.
 - Salary ranges should be realistic USD annual figures.
 - Do not include markdown outside the JSON block.', '{{userPrompt}}', 'Seeded from market-research.ts SYSTEM_PROMPT', true)
-ON CONFLICT (task_scope, version) DO NOTHING;
+ON CONFLICT (task_scope, label, version) DO NOTHING;
 
 -- Task 2.3: Agent role metadata columns
 ALTER TABLE ai_prompt_versions ADD COLUMN IF NOT EXISTS personality TEXT;
@@ -962,9 +972,9 @@ INSERT INTO ai_prompt_versions (task_scope, version, label, system_prompt, user_
 VALUES
   ('gap_analysis', 1, 'Gap Analyst v1', 'You are a gap analysis specialist. Identify missing claims and skill gaps.', '{{userPrompt}}', true, 'Gap Analyst', 'You are a systematic gap analyst who identifies mismatches between a candidate''s profile and job requirements.', 'Identify the most critical skill and experience gaps between the candidate and job description. Prioritize gaps by impact on application success.', ARRAY['gap-identification','skill-mapping','priority-ranking']),
   ('job_research', 1, 'Job Researcher v1', 'You are a job market researcher. Analyze job descriptions and provide strategic context about the role, company, and market.', '{{userPrompt}}', true, 'Job Researcher', 'You are a strategic job market researcher who contextualizes job descriptions within industry trends.', 'Provide actionable job research insights including company context, role trajectory, required skills analysis, and market positioning.', ARRAY['job-analysis','company-research','market-context','skills-mapping'])
-ON CONFLICT (task_scope, version) DO UPDATE SET
-  role_label = EXCLUDED.role_label,
+ON CONFLICT (task_scope, label, version) DO UPDATE SET
+  role_label  = EXCLUDED.role_label,
   personality = EXCLUDED.personality,
-  goals = EXCLUDED.goals,
-  skill_tags = EXCLUDED.skill_tags
+  goals       = EXCLUDED.goals,
+  skill_tags  = EXCLUDED.skill_tags
 WHERE ai_prompt_versions.role_label IS NULL;
