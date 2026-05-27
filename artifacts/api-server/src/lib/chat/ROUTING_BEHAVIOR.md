@@ -29,41 +29,63 @@ it is downgraded to `auto` and a warning is logged.
 
 ```
 1. Explicit selection (mode === "explicit" with valid slugs) → wins immediately
-2. Deterministic scoring (triggers + attachment boosts) → single clear winner ≥ threshold → wins
-3. Ambiguous deterministic (≥2 candidates within gap of top) → LLM disambiguates
+2. Deterministic scoring (triggers + attachment boosts) → single clear winner ≥ autoThreshold → wins
+3. Ambiguous deterministic (≥2 candidates within ambiguousGap of top) → LLM disambiguates
 4. Zero deterministic matches + strong attachment context → LLM routing attempt
 5. Zero deterministic matches + no strong context → no skill selected
 ```
 
 ---
 
-## Thresholds and Constants
+## Control-Plane-Tunable Values
 
-| Constant | Value | Meaning |
+The following routing values are stored in `ai_chat_lever_config` and editable
+via the Control Plane **Advanced Routing Tuning** section. Changes take effect
+on the next chat turn with no restart.
+
+| Field | Default | Range | Controls |
+|---|---|---|---|
+| `autoThreshold` | 0.3 | [0.0, 1.0] | Min score for a deterministic match |
+| `triggerWeight` | 0.3 | [0.0, 2.0] | Score added per matching trigger example |
+| `negativeTriggerWeight` | 0.5 | [0.0, 2.0] | Score subtracted per negative trigger |
+| `ambiguousGap` | 0.15 | [0.0, 0.5] | Gap within which candidates are "tied" → LLM called |
+| `llmConfidenceThreshold` | 0.5 | [0.0, 1.0] | Min LLM confidence to accept a selection |
+| `coverBoost` | 0.3 | [0.0, 2.0] | Boost when cover signal detected |
+| `boostTailorPlusJob` | 0.4 | [0.0, 2.0] | Boost for tailor-slugs with base_resume+job |
+| `boostResumePlusJob` | 0.2 | [0.0, 2.0] | Boost for resume-slugs with base_resume+job |
+| `boostAuditTailoredJob` | 0.4 | [0.0, 2.0] | Boost for audit-slugs with tailored_resume+job |
+| `boostAuditTailoredOnly` | 0.2 | [0.0, 2.0] | Boost for audit-slugs with tailored_resume (no job) |
+| `historyTurnLimit` | 20 | [1, 100] | Conversation history turns fed to model per turn |
+| `skillTokenBudget` | 1500 | [0, ∞) | Max tokens of injected skill bodies |
+| `maxSelectedSkills` | 1 | [1, 2] | Max skills injected (UI/schema validated) |
+
+---
+
+## Structural Safety Constants (code-only, non-tunable)
+
+| Constant | Value | Purpose |
 |---|---|---|
-| `AUTO_THRESHOLD` | `0.3` | Minimum score for a skill to be considered a deterministic match |
-| `TRIGGER_WEIGHT` | `0.3` | Score added per matching trigger example |
-| `NEGATIVE_WEIGHT` | `0.5` | Score subtracted per matching negative trigger |
-| `AMBIGUOUS_GAP` | `0.15` | Two candidates within this gap of each other are "tied" → LLM called |
-| `HARD_MAX_SKILLS` | `2` | Absolute ceiling on injected skills (even in `explicit` mode) |
+| `HARD_MAX_SKILLS_CEILING` | 2 | Absolute ceiling — cannot be exceeded via config; exported from `skill-router.ts` so UI validation can reference it |
+| `CHARS_PER_TOKEN` | 4 | Token estimation denominator for skill budget; in `token-budget.ts` |
+| `DEFAULT_MODEL_MAX_TOKENS` | 4096 | Fallback max_tokens when a model config row has null maxTokens; in `stream-openrouter.ts` |
 
 ---
 
 ## Deterministic Scoring
 
-`scoreSkills(message, attachmentKinds, skills)` returns a score per skill:
+`scoreSkills(message, attachmentKinds, skills, config)` returns a score per skill:
 
 ```
-score = Σ TRIGGER_WEIGHT for each triggerExample present in message (case-insensitive substring)
-      − Σ NEGATIVE_WEIGHT for each negativeTrigger present in message
-      + attachmentBoost (see below)
+score = Σ triggerWeight for each triggerExample present in message (case-insensitive substring)
+      − Σ negativeTriggerWeight for each negativeTrigger present in message
+      + attachmentBoost (see Attachment Boosts table)
 ```
 
 **Winner logic:**
-- Filter candidates where `score >= AUTO_THRESHOLD`
+- Filter candidates where `score >= autoThreshold`
 - If 0 candidates → see attachment-context path below
 - If 1 candidate above threshold → select it (no LLM)
-- If ≥2 candidates within `AMBIGUOUS_GAP` of the top → LLM disambiguates
+- If ≥2 candidates within `ambiguousGap` of the top → LLM disambiguates
 - Otherwise top candidate wins
 
 ---
@@ -71,26 +93,16 @@ score = Σ TRIGGER_WEIGHT for each triggerExample present in message (case-insen
 ## Attachment Boosts
 
 Applied deterministically before the threshold check. Boosts are based on
-attachment kinds present in the current turn:
+attachment kinds present in the current turn. All boost amounts are tunable
+via the Control Plane.
 
-| Attachment combo | Slug condition | Boost |
+| Attachment combo | Slug condition | Boost field |
 |---|---|---|
-| `base_resume` + `job` | slug contains `"tailor"` or `"tailored-resume"` | +0.4 |
-| `base_resume` + `job` | slug contains `"resume"` | +0.2 |
-| `tailored_resume` + `job` | slug contains `"audit"` or `"resume-audit"` | +0.4 |
-| `tailored_resume` only | slug contains `"audit"` | +0.2 |
-| "cover" in message text | slug contains `"cover"` | +0.3 |
-
-**Boost threshold interaction:**
-
-- `base_resume` + `job` → `resume-tailoring` slug gets +0.4 (≥ threshold). Vague
-  messages like "make this fit better" select deterministically without LLM.
-- `tailored_resume` + `job` → `resume-audit` slug gets +0.4 (≥ threshold).
-  "Is this good?" selects resume-audit deterministically.
-- `tailored_resume` alone → `resume-audit` slug gets +0.2 (< threshold = 0.3).
-  Vague messages do NOT auto-select; LLM is attempted instead if classify is wired.
-- `base_resume` alone → no boost (needs JD to exceed threshold for tailoring).
-  Vague messages → LLM attempted if classify is wired; no-skill otherwise.
+| `base_resume` + `job` | slug contains `"tailor"` or `"tailored-resume"` | `boostTailorPlusJob` (default 0.4) |
+| `base_resume` + `job` | slug contains `"resume"` | `boostResumePlusJob` (default 0.2) |
+| `tailored_resume` + `job` | slug contains `"audit"` or `"resume-audit"` | `boostAuditTailoredJob` (default 0.4) |
+| `tailored_resume` only | slug contains `"audit"` | `boostAuditTailoredOnly` (default 0.2) |
+| "cover" in message text or attachments | slug contains `"cover"` | `coverBoost` (default 0.3) |
 
 ---
 
@@ -98,23 +110,37 @@ attachment kinds present in the current turn:
 
 The cheap LLM router (`classifyWithLLM`) is called when:
 
-1. Deterministic candidates are ambiguous (≥2 within `AMBIGUOUS_GAP` of top score)
+1. Deterministic candidates are ambiguous (≥2 within `ambiguousGap` of top score)
 2. Zero deterministic matches **and** strong attachment context exists:
    `attachmentKinds` includes `base_resume`, `tailored_resume`, or `job`
 
 **Strong attachment** = any of `["base_resume", "tailored_resume", "job"]` present.
 `claims` and `document` attachments do **not** qualify as strong context.
 
-If `classify` is not provided (e.g., tests), or returns `null`/empty → no skill selected.
+**Fail-closed confidence handling:**
+- If the LLM returns a confidence value that is missing, non-numeric, `NaN`, `Infinity`,
+  negative, or > 1.0, `classifyWithLLM` returns `null` (no skill selected).
+- If `classifyWithLLM` returns results, `routeSkills` additionally filters by
+  `llmConfidenceThreshold`: any result with score below the threshold is dropped.
+- In the **ambiguous path**: if all LLM results are below threshold, falls back to
+  top deterministic match (not no-skill).
+- In the **zero-match attachment path**: if all LLM results are below threshold,
+  returns no-skill (no fallback).
 
-The LLM response is not filtered by confidence threshold in code — it is expected
-to return an empty array when not confident (governed by the router system prompt).
+**Unknown slugs**: LLM results with slugs not in the active skill set are silently
+filtered both in `classifyWithLLM` (server-side) and in `routeSkills` (defense-in-depth).
+
+**Router system prompt (`ROUTER_SYSTEM_PROMPT`):**
+Currently hardcoded in `resolve-system-prompt.ts`. It governs what the LLM returns.
+_Follow-up:_ Seed into `ai_prompt_versions` under `taskScope=skill_routing` so it is
+editable via the Control Plane. `classifyWithLLM` already tries `skill_routing` scope
+first, so the migration path is low-risk.
 
 ---
 
 ## No-Fallback-to-All Rule
 
-This is a hard invariant. No code path in `auto`, `explicit`, or `none` mode
+**This is a hard invariant.** No code path in `auto`, `explicit`, or `none` mode
 can inject all active skills. The only path that injects all skills is `debug_all`,
 and that is blocked in production.
 
@@ -124,77 +150,20 @@ If you see all skills injected in a non-debug run, that is a bug.
 
 ## Max Selected Skills
 
-- Config: `maxSelectedSkills` (DB lever, default 1)
-- Hard cap: `HARD_MAX_SKILLS = 2` (code constant, cannot be overridden via config)
+- Config: `maxSelectedSkills` (DB lever, default 1, range [1, 2])
+- Structural ceiling: `HARD_MAX_SKILLS_CEILING = 2` (code constant, exported from `skill-router.ts`)
+- Schema validation (`openapi.yaml`): `maximum: 2` on `UpdateChatLeverConfigBody.maxSelectedSkills`
+- UI validation: `max={2}` on the Control Plane input
 - `debug_all` bypasses both limits
 
 ---
 
-## Routing Examples
+## Skill Catalog in Prompt
 
-### Resume tailoring (base_resume + job attachments)
-
-```
-User: "make this better"
-Attachments: [base_resume, job]
-
-Scores:
-  resume-tailoring: 0 (no trigger match) + 0.4 (tailor boost) + 0.2 (resume boost) = 0.6 ✓
-  cover-letter:     0
-  resume-audit:     0
-
-Decision: resume-tailoring (deterministic, confidence = 0.6)
-```
-
-### Resume audit (tailored_resume + job)
-
-```
-User: "is this any good?"
-Attachments: [tailored_resume, job]
-
-Scores:
-  resume-audit:    0 (no trigger match) + 0.4 (audit boost) = 0.4 ✓
-  resume-tailoring: 0
-
-Decision: resume-audit (deterministic, confidence = 0.4)
-```
-
-### Cover letter
-
-```
-User: "write my cover letter"
-Attachments: []
-
-Scores:
-  cover-letter: 0.3 (trigger match) + 0.3 (cover in message) = 0.6 ✓
-  others: 0 or negative (negative trigger for "cover letter")
-
-Decision: cover-letter (deterministic, confidence = 0.6)
-```
-
-### General chat (no attachments, no triggers)
-
-```
-User: "what's a good way to network?"
-Attachments: []
-
-Scores: all 0
-
-Decision: no skill selected ("No skill matched the message — catalog only.")
-```
-
-### Vague message + resume only (no JD)
-
-```
-User: "can you help me improve this?"
-Attachments: [base_resume]
-
-Scores: all 0 (no trigger match, no boost — JD required for tailor boost)
-strongAttachment = true (base_resume present)
-
-→ LLM router called if classify is wired
-→ If LLM not confident or unavailable: no skill selected
-```
+**No catalog is injected.** When routing returns no skill match, the model sees identity
++ best practices + attachment context only — no skill body. The router accesses skill
+metadata internally, but the main model never sees a skill catalog listing.
+`catalog = []` always in `resolveChatPrompt`.
 
 ---
 
@@ -205,4 +174,7 @@ strongAttachment = true (base_resume present)
 | `debug_all` in dev | All skill bodies injected, cap/budget bypassed |
 | `debug_all` in prod (`NODE_ENV=production`) | Downgraded to `auto`, warning logged |
 | Unknown routing mode string in DB | `asMode()` maps to `auto` |
-| Skill catalog in prompt | Never — `catalog = []` always; router has metadata, model sees only selected bodies |
+| LLM returns invalid/missing confidence | `classifyWithLLM` returns `null` → no skill (fail closed) |
+| LLM returns slug not in active skill set | Filtered out at both `classifyWithLLM` and `routeSkills` |
+| LLM confidence below `llmConfidenceThreshold` | Filtered: ambiguous path falls back to deterministic; attachment path → no skill |
+| Skill catalog in prompt | Never — `catalog = []` always; router sees metadata, model sees only selected bodies |

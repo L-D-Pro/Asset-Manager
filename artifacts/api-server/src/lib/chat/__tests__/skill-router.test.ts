@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { ChatSkillMetadata } from "@workspace/db";
-import { routeSkills, type RouterSkill } from "../skill-router.js";
+import { routeSkills, type RouterSkill, DEFAULT_ROUTING_CONFIG } from "../skill-router.js";
 
 const defaultMeta = (partial: Partial<ChatSkillMetadata>): ChatSkillMetadata => ({
   routerDescription: "",
@@ -456,5 +456,268 @@ describe("routeSkills — attachment-aware routing (additional edge cases)", () 
     });
     expect(llmCalled).toBe(true);
     expect(decision.selectedSlugs).toEqual([]); // LLM returned null → no skill
+  });
+});
+
+describe("routeSkills — routing config (tunable behavior)", () => {
+  it("lower autoThreshold selects a marginal skill; higher rejects it", async () => {
+    // "marginal topic" matches one trigger → score = triggerWeight (0.3 by default)
+    // Threshold 0.3 → selected; threshold 0.5 → not selected.
+    const skill: RouterSkill = {
+      slug: "marginal",
+      body: "Marginal skill",
+      meta: defaultMeta({ triggerExamples: ["marginal topic"], priority: 1 }),
+    };
+
+    const selected = await routeSkills({
+      ...baseParams([skill]),
+      userMessage: "marginal topic",
+      mode: "auto",
+      routingConfig: { ...DEFAULT_ROUTING_CONFIG, autoThreshold: 0.3, triggerWeight: 0.3 },
+    });
+    expect(selected.selectedSlugs).toContain("marginal");
+
+    const notSelected = await routeSkills({
+      ...baseParams([skill]),
+      userMessage: "marginal topic",
+      mode: "auto",
+      routingConfig: { ...DEFAULT_ROUTING_CONFIG, autoThreshold: 0.5, triggerWeight: 0.3 },
+    });
+    expect(notSelected.selectedSlugs).toEqual([]);
+  });
+
+  it("lower triggerWeight keeps score below threshold", async () => {
+    const skill: RouterSkill = {
+      slug: "test-skill",
+      body: "Test skill",
+      meta: defaultMeta({ triggerExamples: ["keyword"], priority: 1 }),
+    };
+    // triggerWeight=0.1, autoThreshold=0.3 → score 0.1 < 0.3 → not selected
+    const decision = await routeSkills({
+      ...baseParams([skill]),
+      userMessage: "keyword",
+      mode: "auto",
+      routingConfig: { ...DEFAULT_ROUTING_CONFIG, triggerWeight: 0.1, autoThreshold: 0.3 },
+    });
+    expect(decision.selectedSlugs).toEqual([]);
+    expect(decision.candidates[0]?.score).toBeCloseTo(0.1, 5);
+  });
+
+  it("higher negativeTriggerWeight suppresses a skill that has a matching trigger", async () => {
+    // score = triggerWeight(0.3) - negativeTriggerWeight(1.0) = -0.7 → below threshold
+    const skill: RouterSkill = {
+      slug: "mixed-skill",
+      body: "Mixed skill",
+      meta: defaultMeta({
+        triggerExamples: ["good phrase"],
+        negativeTriggers: ["bad phrase"],
+        priority: 1,
+      }),
+    };
+    const decision = await routeSkills({
+      ...baseParams([skill]),
+      userMessage: "good phrase bad phrase",
+      mode: "auto",
+      routingConfig: {
+        ...DEFAULT_ROUTING_CONFIG,
+        triggerWeight: 0.3,
+        negativeTriggerWeight: 1.0,
+        autoThreshold: 0.3,
+      },
+    });
+    expect(decision.selectedSlugs).toEqual([]);
+    expect(decision.candidates[0]?.score).toBeCloseTo(0.3 - 1.0, 5);
+  });
+
+  it("larger ambiguousGap causes LLM to be called for non-equal scores", async () => {
+    // x has 2 triggers (score 0.6), y has 1 (score 0.3). Gap = 0.3.
+    // ambiguousGap=0.4 → y is within gap (topScore - gap = 0.2, y=0.3 > 0.2) → tied → LLM called.
+    const skills: RouterSkill[] = [
+      { slug: "x", body: "X", meta: defaultMeta({ triggerExamples: ["alpha", "beta"], priority: 1 }) },
+      { slug: "y", body: "Y", meta: defaultMeta({ triggerExamples: ["alpha"], priority: 2 }) },
+    ];
+    let llmCalled = false;
+    await routeSkills({
+      ...baseParams(skills),
+      userMessage: "alpha beta",
+      mode: "auto",
+      routingConfig: { ...DEFAULT_ROUTING_CONFIG, ambiguousGap: 0.4 },
+      classify: async () => { llmCalled = true; return [{ slug: "x", score: 0.9 }]; },
+    });
+    expect(llmCalled).toBe(true);
+  });
+
+  it("smaller ambiguousGap prevents LLM from being called for non-equal scores", async () => {
+    // Same setup: x=0.6, y=0.3, gap=0.1.
+    // ambiguousGap=0.1 → topScore - gap = 0.5, y=0.3 < 0.5 → not tied → no LLM.
+    const skills: RouterSkill[] = [
+      { slug: "x", body: "X", meta: defaultMeta({ triggerExamples: ["alpha", "beta"], priority: 1 }) },
+      { slug: "y", body: "Y", meta: defaultMeta({ triggerExamples: ["alpha"], priority: 2 }) },
+    ];
+    let llmCalled = false;
+    await routeSkills({
+      ...baseParams(skills),
+      userMessage: "alpha beta",
+      mode: "auto",
+      routingConfig: { ...DEFAULT_ROUTING_CONFIG, ambiguousGap: 0.1 },
+      classify: async () => { llmCalled = true; return [{ slug: "x", score: 0.9 }]; },
+    });
+    expect(llmCalled).toBe(false);
+  });
+
+  it("zeroing boostTailorPlusJob prevents attachment routing for tailor slug", async () => {
+    const skill: RouterSkill = {
+      slug: "tailor-resume",
+      body: "Tailor",
+      meta: defaultMeta({ triggerExamples: [], priority: 1 }),
+    };
+    // With boost=0: score 0 < threshold → not selected
+    const notSelected = await routeSkills({
+      ...baseParams([skill]),
+      userMessage: "help me out",
+      attachmentKinds: ["base_resume", "job"],
+      mode: "auto",
+      routingConfig: {
+        ...DEFAULT_ROUTING_CONFIG,
+        boostTailorPlusJob: 0.0,
+        boostResumePlusJob: 0.0,
+        autoThreshold: 0.3,
+      },
+    });
+    expect(notSelected.selectedSlugs).toEqual([]);
+  });
+
+  it("raising boostTailorPlusJob above threshold selects tailor skill for vague message", async () => {
+    const skill: RouterSkill = {
+      slug: "tailor-resume",
+      body: "Tailor",
+      meta: defaultMeta({ triggerExamples: [], priority: 1 }),
+    };
+    // With boost=0.5 >= threshold 0.3 → selected
+    const selected = await routeSkills({
+      ...baseParams([skill]),
+      userMessage: "help me out",
+      attachmentKinds: ["base_resume", "job"],
+      mode: "auto",
+      routingConfig: {
+        ...DEFAULT_ROUTING_CONFIG,
+        boostTailorPlusJob: 0.5,
+        boostResumePlusJob: 0.0,
+        autoThreshold: 0.3,
+      },
+    });
+    expect(selected.selectedSlugs).toContain("tailor-resume");
+  });
+
+  it("LLM confidence above threshold selects skill (ambiguous path)", async () => {
+    const ambiguous: RouterSkill[] = [
+      { slug: "x", body: "X", meta: defaultMeta({ triggerExamples: ["report"], priority: 1 }) },
+      { slug: "y", body: "Y", meta: defaultMeta({ triggerExamples: ["report"], priority: 2 }) },
+    ];
+    const decision = await routeSkills({
+      ...baseParams(ambiguous),
+      userMessage: "draft a report",
+      mode: "auto",
+      routingConfig: { ...DEFAULT_ROUTING_CONFIG, llmConfidenceThreshold: 0.5 },
+      classify: async () => [{ slug: "x", score: 0.8 }],
+    });
+    expect(decision.selectedSlugs).toContain("x");
+    expect(decision.llmUsed).toBe(true);
+  });
+
+  it("LLM confidence below threshold falls back to top deterministic (ambiguous path)", async () => {
+    const ambiguous: RouterSkill[] = [
+      { slug: "x", body: "X", meta: defaultMeta({ triggerExamples: ["report"], priority: 1 }) },
+      { slug: "y", body: "Y", meta: defaultMeta({ triggerExamples: ["report"], priority: 2 }) },
+    ];
+    const decision = await routeSkills({
+      ...baseParams(ambiguous),
+      userMessage: "draft a report",
+      mode: "auto",
+      routingConfig: { ...DEFAULT_ROUTING_CONFIG, llmConfidenceThreshold: 0.9 },
+      classify: async () => [{ slug: "x", score: 0.3 }], // below 0.9 threshold
+    });
+    // Falls back to top deterministic — still selects one skill, doesn't select nothing
+    expect(decision.selectedSlugs).toHaveLength(1);
+    expect(decision.reason).toContain("below confidence threshold");
+    expect(decision.llmUsed).toBe(true);
+  });
+
+  it("LLM confidence below threshold selects no skill (zero-match attachment path)", async () => {
+    const neutralSkill: RouterSkill[] = [
+      {
+        slug: "neutral",
+        body: "Neutral",
+        meta: defaultMeta({ triggerExamples: ["very specific phrase"], priority: 1 }),
+      },
+    ];
+    // Zero deterministic matches → attachment LLM path → LLM score below threshold → no skill
+    const decision = await routeSkills({
+      ...baseParams(neutralSkill),
+      userMessage: "help me out",
+      attachmentKinds: ["base_resume", "job"],
+      mode: "auto",
+      routingConfig: { ...DEFAULT_ROUTING_CONFIG, llmConfidenceThreshold: 0.9 },
+      classify: async () => [{ slug: "neutral", score: 0.3 }], // below 0.9
+    });
+    expect(decision.selectedSlugs).toEqual([]);
+  });
+
+  it("NaN score from classify fails closed — no skill selected", async () => {
+    const neutralSkill: RouterSkill[] = [
+      {
+        slug: "neutral",
+        body: "Neutral",
+        meta: defaultMeta({ triggerExamples: ["very specific phrase"], priority: 1 }),
+      },
+    ];
+    const decision = await routeSkills({
+      ...baseParams(neutralSkill),
+      userMessage: "help me out",
+      attachmentKinds: ["base_resume"],
+      mode: "auto",
+      classify: async () => [{ slug: "neutral", score: NaN }],
+    });
+    expect(decision.selectedSlugs).toEqual([]);
+  });
+
+  it("unknown LLM slug is filtered out and falls back to deterministic top", async () => {
+    const realSkills: RouterSkill[] = [
+      { slug: "real-a", body: "A", meta: defaultMeta({ triggerExamples: ["report"], priority: 1 }) },
+      { slug: "real-b", body: "B", meta: defaultMeta({ triggerExamples: ["report"], priority: 2 }) },
+    ];
+    const decision = await routeSkills({
+      ...baseParams(realSkills),
+      userMessage: "draft a report",
+      mode: "auto",
+      classify: async () => [{ slug: "phantom-unknown-slug", score: 0.99 }],
+    });
+    // Unknown slug filtered → no confident results → falls back to top deterministic
+    expect(decision.selectedSlugs).not.toContain("phantom-unknown-slug");
+    expect(decision.selectedSlugs).toHaveLength(1);
+  });
+
+  it("existing default behavior is preserved (no regression)", async () => {
+    // All existing tests continue to pass with DEFAULT_ROUTING_CONFIG as the implicit config.
+    // This test uses defaults explicitly to document the contract.
+    const decision = await routeSkills({
+      ...baseParams(mockSkills),
+      userMessage: "tailor my resume for this job",
+      mode: "auto",
+      routingConfig: DEFAULT_ROUTING_CONFIG,
+    });
+    expect(decision.selectedSlugs).toEqual(["tailored-resume"]);
+    expect(decision.reason).toContain("Deterministic match");
+  });
+
+  it("no fallback-to-all in auto mode regardless of config", async () => {
+    const decision = await routeSkills({
+      ...baseParams(mockSkills),
+      userMessage: "what is the meaning of life",
+      attachmentKinds: [],
+      mode: "auto",
+      routingConfig: DEFAULT_ROUTING_CONFIG,
+    });
+    expect(decision.selectedSlugs.length).toBeLessThan(mockSkills.length);
   });
 });
