@@ -3150,6 +3150,38 @@ export const PostChatMessageFeedbackBody = zod.object({
 /**
  * @summary Get the Chat Control Plane lever config
  */
+export const getChatLeverConfigResponseAutoThresholdMin = 0;
+export const getChatLeverConfigResponseAutoThresholdMax = 1;
+
+export const getChatLeverConfigResponseTriggerWeightMin = 0;
+export const getChatLeverConfigResponseTriggerWeightMax = 2;
+
+export const getChatLeverConfigResponseNegativeTriggerWeightMin = 0;
+export const getChatLeverConfigResponseNegativeTriggerWeightMax = 2;
+
+export const getChatLeverConfigResponseAmbiguousGapMin = 0;
+export const getChatLeverConfigResponseAmbiguousGapMax = 0.5;
+
+export const getChatLeverConfigResponseLlmConfidenceThresholdMin = 0;
+export const getChatLeverConfigResponseLlmConfidenceThresholdMax = 1;
+
+export const getChatLeverConfigResponseCoverBoostMin = 0;
+export const getChatLeverConfigResponseCoverBoostMax = 2;
+
+export const getChatLeverConfigResponseBoostTailorPlusJobMin = 0;
+export const getChatLeverConfigResponseBoostTailorPlusJobMax = 2;
+
+export const getChatLeverConfigResponseBoostResumePlusJobMin = 0;
+export const getChatLeverConfigResponseBoostResumePlusJobMax = 2;
+
+export const getChatLeverConfigResponseBoostAuditTailoredJobMin = 0;
+export const getChatLeverConfigResponseBoostAuditTailoredJobMax = 2;
+
+export const getChatLeverConfigResponseBoostAuditTailoredOnlyMin = 0;
+export const getChatLeverConfigResponseBoostAuditTailoredOnlyMax = 2;
+
+export const getChatLeverConfigResponseHistoryTurnLimitMax = 100;
+
 export const GetChatLeverConfigResponse = zod.object({
   id: zod.number(),
   identityText: zod.string(),
@@ -3158,6 +3190,50 @@ export const GetChatLeverConfigResponse = zod.object({
   skillRoutingMode: zod.enum(["none", "auto", "explicit", "debug_all"]),
   skillTokenBudget: zod.number(),
   maxSelectedSkills: zod.number(),
+  autoThreshold: zod
+    .number()
+    .min(getChatLeverConfigResponseAutoThresholdMin)
+    .max(getChatLeverConfigResponseAutoThresholdMax),
+  triggerWeight: zod
+    .number()
+    .min(getChatLeverConfigResponseTriggerWeightMin)
+    .max(getChatLeverConfigResponseTriggerWeightMax),
+  negativeTriggerWeight: zod
+    .number()
+    .min(getChatLeverConfigResponseNegativeTriggerWeightMin)
+    .max(getChatLeverConfigResponseNegativeTriggerWeightMax),
+  ambiguousGap: zod
+    .number()
+    .min(getChatLeverConfigResponseAmbiguousGapMin)
+    .max(getChatLeverConfigResponseAmbiguousGapMax),
+  llmConfidenceThreshold: zod
+    .number()
+    .min(getChatLeverConfigResponseLlmConfidenceThresholdMin)
+    .max(getChatLeverConfigResponseLlmConfidenceThresholdMax),
+  coverBoost: zod
+    .number()
+    .min(getChatLeverConfigResponseCoverBoostMin)
+    .max(getChatLeverConfigResponseCoverBoostMax),
+  boostTailorPlusJob: zod
+    .number()
+    .min(getChatLeverConfigResponseBoostTailorPlusJobMin)
+    .max(getChatLeverConfigResponseBoostTailorPlusJobMax),
+  boostResumePlusJob: zod
+    .number()
+    .min(getChatLeverConfigResponseBoostResumePlusJobMin)
+    .max(getChatLeverConfigResponseBoostResumePlusJobMax),
+  boostAuditTailoredJob: zod
+    .number()
+    .min(getChatLeverConfigResponseBoostAuditTailoredJobMin)
+    .max(getChatLeverConfigResponseBoostAuditTailoredJobMax),
+  boostAuditTailoredOnly: zod
+    .number()
+    .min(getChatLeverConfigResponseBoostAuditTailoredOnlyMin)
+    .max(getChatLeverConfigResponseBoostAuditTailoredOnlyMax),
+  historyTurnLimit: zod
+    .number()
+    .min(1)
+    .max(getChatLeverConfigResponseHistoryTurnLimitMax),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -3169,6 +3245,38 @@ export const GetChatLeverConfigResponse = zod.object({
 export const updateChatLeverConfigBodySkillTokenBudgetMin = 0;
 
 export const updateChatLeverConfigBodyMaxSelectedSkillsMax = 2;
+
+export const updateChatLeverConfigBodyAutoThresholdMin = 0;
+export const updateChatLeverConfigBodyAutoThresholdMax = 1;
+
+export const updateChatLeverConfigBodyTriggerWeightMin = 0;
+export const updateChatLeverConfigBodyTriggerWeightMax = 2;
+
+export const updateChatLeverConfigBodyNegativeTriggerWeightMin = 0;
+export const updateChatLeverConfigBodyNegativeTriggerWeightMax = 2;
+
+export const updateChatLeverConfigBodyAmbiguousGapMin = 0;
+export const updateChatLeverConfigBodyAmbiguousGapMax = 0.5;
+
+export const updateChatLeverConfigBodyLlmConfidenceThresholdMin = 0;
+export const updateChatLeverConfigBodyLlmConfidenceThresholdMax = 1;
+
+export const updateChatLeverConfigBodyCoverBoostMin = 0;
+export const updateChatLeverConfigBodyCoverBoostMax = 2;
+
+export const updateChatLeverConfigBodyBoostTailorPlusJobMin = 0;
+export const updateChatLeverConfigBodyBoostTailorPlusJobMax = 2;
+
+export const updateChatLeverConfigBodyBoostResumePlusJobMin = 0;
+export const updateChatLeverConfigBodyBoostResumePlusJobMax = 2;
+
+export const updateChatLeverConfigBodyBoostAuditTailoredJobMin = 0;
+export const updateChatLeverConfigBodyBoostAuditTailoredJobMax = 2;
+
+export const updateChatLeverConfigBodyBoostAuditTailoredOnlyMin = 0;
+export const updateChatLeverConfigBodyBoostAuditTailoredOnlyMax = 2;
+
+export const updateChatLeverConfigBodyHistoryTurnLimitMax = 100;
 
 export const UpdateChatLeverConfigBody = zod.object({
   identityText: zod.string().min(1).optional(),
@@ -3186,7 +3294,94 @@ export const UpdateChatLeverConfigBody = zod.object({
     .min(1)
     .max(updateChatLeverConfigBodyMaxSelectedSkillsMax)
     .optional(),
+  autoThreshold: zod
+    .number()
+    .min(updateChatLeverConfigBodyAutoThresholdMin)
+    .max(updateChatLeverConfigBodyAutoThresholdMax)
+    .optional(),
+  triggerWeight: zod
+    .number()
+    .min(updateChatLeverConfigBodyTriggerWeightMin)
+    .max(updateChatLeverConfigBodyTriggerWeightMax)
+    .optional(),
+  negativeTriggerWeight: zod
+    .number()
+    .min(updateChatLeverConfigBodyNegativeTriggerWeightMin)
+    .max(updateChatLeverConfigBodyNegativeTriggerWeightMax)
+    .optional(),
+  ambiguousGap: zod
+    .number()
+    .min(updateChatLeverConfigBodyAmbiguousGapMin)
+    .max(updateChatLeverConfigBodyAmbiguousGapMax)
+    .optional(),
+  llmConfidenceThreshold: zod
+    .number()
+    .min(updateChatLeverConfigBodyLlmConfidenceThresholdMin)
+    .max(updateChatLeverConfigBodyLlmConfidenceThresholdMax)
+    .optional(),
+  coverBoost: zod
+    .number()
+    .min(updateChatLeverConfigBodyCoverBoostMin)
+    .max(updateChatLeverConfigBodyCoverBoostMax)
+    .optional(),
+  boostTailorPlusJob: zod
+    .number()
+    .min(updateChatLeverConfigBodyBoostTailorPlusJobMin)
+    .max(updateChatLeverConfigBodyBoostTailorPlusJobMax)
+    .optional(),
+  boostResumePlusJob: zod
+    .number()
+    .min(updateChatLeverConfigBodyBoostResumePlusJobMin)
+    .max(updateChatLeverConfigBodyBoostResumePlusJobMax)
+    .optional(),
+  boostAuditTailoredJob: zod
+    .number()
+    .min(updateChatLeverConfigBodyBoostAuditTailoredJobMin)
+    .max(updateChatLeverConfigBodyBoostAuditTailoredJobMax)
+    .optional(),
+  boostAuditTailoredOnly: zod
+    .number()
+    .min(updateChatLeverConfigBodyBoostAuditTailoredOnlyMin)
+    .max(updateChatLeverConfigBodyBoostAuditTailoredOnlyMax)
+    .optional(),
+  historyTurnLimit: zod
+    .number()
+    .min(1)
+    .max(updateChatLeverConfigBodyHistoryTurnLimitMax)
+    .optional(),
 });
+
+export const updateChatLeverConfigResponseAutoThresholdMin = 0;
+export const updateChatLeverConfigResponseAutoThresholdMax = 1;
+
+export const updateChatLeverConfigResponseTriggerWeightMin = 0;
+export const updateChatLeverConfigResponseTriggerWeightMax = 2;
+
+export const updateChatLeverConfigResponseNegativeTriggerWeightMin = 0;
+export const updateChatLeverConfigResponseNegativeTriggerWeightMax = 2;
+
+export const updateChatLeverConfigResponseAmbiguousGapMin = 0;
+export const updateChatLeverConfigResponseAmbiguousGapMax = 0.5;
+
+export const updateChatLeverConfigResponseLlmConfidenceThresholdMin = 0;
+export const updateChatLeverConfigResponseLlmConfidenceThresholdMax = 1;
+
+export const updateChatLeverConfigResponseCoverBoostMin = 0;
+export const updateChatLeverConfigResponseCoverBoostMax = 2;
+
+export const updateChatLeverConfigResponseBoostTailorPlusJobMin = 0;
+export const updateChatLeverConfigResponseBoostTailorPlusJobMax = 2;
+
+export const updateChatLeverConfigResponseBoostResumePlusJobMin = 0;
+export const updateChatLeverConfigResponseBoostResumePlusJobMax = 2;
+
+export const updateChatLeverConfigResponseBoostAuditTailoredJobMin = 0;
+export const updateChatLeverConfigResponseBoostAuditTailoredJobMax = 2;
+
+export const updateChatLeverConfigResponseBoostAuditTailoredOnlyMin = 0;
+export const updateChatLeverConfigResponseBoostAuditTailoredOnlyMax = 2;
+
+export const updateChatLeverConfigResponseHistoryTurnLimitMax = 100;
 
 export const UpdateChatLeverConfigResponse = zod.object({
   id: zod.number(),
@@ -3196,6 +3391,50 @@ export const UpdateChatLeverConfigResponse = zod.object({
   skillRoutingMode: zod.enum(["none", "auto", "explicit", "debug_all"]),
   skillTokenBudget: zod.number(),
   maxSelectedSkills: zod.number(),
+  autoThreshold: zod
+    .number()
+    .min(updateChatLeverConfigResponseAutoThresholdMin)
+    .max(updateChatLeverConfigResponseAutoThresholdMax),
+  triggerWeight: zod
+    .number()
+    .min(updateChatLeverConfigResponseTriggerWeightMin)
+    .max(updateChatLeverConfigResponseTriggerWeightMax),
+  negativeTriggerWeight: zod
+    .number()
+    .min(updateChatLeverConfigResponseNegativeTriggerWeightMin)
+    .max(updateChatLeverConfigResponseNegativeTriggerWeightMax),
+  ambiguousGap: zod
+    .number()
+    .min(updateChatLeverConfigResponseAmbiguousGapMin)
+    .max(updateChatLeverConfigResponseAmbiguousGapMax),
+  llmConfidenceThreshold: zod
+    .number()
+    .min(updateChatLeverConfigResponseLlmConfidenceThresholdMin)
+    .max(updateChatLeverConfigResponseLlmConfidenceThresholdMax),
+  coverBoost: zod
+    .number()
+    .min(updateChatLeverConfigResponseCoverBoostMin)
+    .max(updateChatLeverConfigResponseCoverBoostMax),
+  boostTailorPlusJob: zod
+    .number()
+    .min(updateChatLeverConfigResponseBoostTailorPlusJobMin)
+    .max(updateChatLeverConfigResponseBoostTailorPlusJobMax),
+  boostResumePlusJob: zod
+    .number()
+    .min(updateChatLeverConfigResponseBoostResumePlusJobMin)
+    .max(updateChatLeverConfigResponseBoostResumePlusJobMax),
+  boostAuditTailoredJob: zod
+    .number()
+    .min(updateChatLeverConfigResponseBoostAuditTailoredJobMin)
+    .max(updateChatLeverConfigResponseBoostAuditTailoredJobMax),
+  boostAuditTailoredOnly: zod
+    .number()
+    .min(updateChatLeverConfigResponseBoostAuditTailoredOnlyMin)
+    .max(updateChatLeverConfigResponseBoostAuditTailoredOnlyMax),
+  historyTurnLimit: zod
+    .number()
+    .min(1)
+    .max(updateChatLeverConfigResponseHistoryTurnLimitMax),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -3436,6 +3675,17 @@ export const ListChatLeverPresetsResponseItem = zod.object({
     skillRoutingMode: zod.string(),
     skillTokenBudget: zod.number(),
     maxSelectedSkills: zod.number(),
+    autoThreshold: zod.number().optional(),
+    triggerWeight: zod.number().optional(),
+    negativeTriggerWeight: zod.number().optional(),
+    ambiguousGap: zod.number().optional(),
+    llmConfidenceThreshold: zod.number().optional(),
+    coverBoost: zod.number().optional(),
+    boostTailorPlusJob: zod.number().optional(),
+    boostResumePlusJob: zod.number().optional(),
+    boostAuditTailoredJob: zod.number().optional(),
+    boostAuditTailoredOnly: zod.number().optional(),
+    historyTurnLimit: zod.number().optional(),
     activePromptVersionIds: zod.array(zod.number()),
   }),
   createdAt: zod.coerce.date(),
@@ -3467,6 +3717,38 @@ export const ApplyChatLeverPresetParams = zod.object({
   id: zod.coerce.number(),
 });
 
+export const applyChatLeverPresetResponseAutoThresholdMin = 0;
+export const applyChatLeverPresetResponseAutoThresholdMax = 1;
+
+export const applyChatLeverPresetResponseTriggerWeightMin = 0;
+export const applyChatLeverPresetResponseTriggerWeightMax = 2;
+
+export const applyChatLeverPresetResponseNegativeTriggerWeightMin = 0;
+export const applyChatLeverPresetResponseNegativeTriggerWeightMax = 2;
+
+export const applyChatLeverPresetResponseAmbiguousGapMin = 0;
+export const applyChatLeverPresetResponseAmbiguousGapMax = 0.5;
+
+export const applyChatLeverPresetResponseLlmConfidenceThresholdMin = 0;
+export const applyChatLeverPresetResponseLlmConfidenceThresholdMax = 1;
+
+export const applyChatLeverPresetResponseCoverBoostMin = 0;
+export const applyChatLeverPresetResponseCoverBoostMax = 2;
+
+export const applyChatLeverPresetResponseBoostTailorPlusJobMin = 0;
+export const applyChatLeverPresetResponseBoostTailorPlusJobMax = 2;
+
+export const applyChatLeverPresetResponseBoostResumePlusJobMin = 0;
+export const applyChatLeverPresetResponseBoostResumePlusJobMax = 2;
+
+export const applyChatLeverPresetResponseBoostAuditTailoredJobMin = 0;
+export const applyChatLeverPresetResponseBoostAuditTailoredJobMax = 2;
+
+export const applyChatLeverPresetResponseBoostAuditTailoredOnlyMin = 0;
+export const applyChatLeverPresetResponseBoostAuditTailoredOnlyMax = 2;
+
+export const applyChatLeverPresetResponseHistoryTurnLimitMax = 100;
+
 export const ApplyChatLeverPresetResponse = zod.object({
   id: zod.number(),
   identityText: zod.string(),
@@ -3475,6 +3757,50 @@ export const ApplyChatLeverPresetResponse = zod.object({
   skillRoutingMode: zod.enum(["none", "auto", "explicit", "debug_all"]),
   skillTokenBudget: zod.number(),
   maxSelectedSkills: zod.number(),
+  autoThreshold: zod
+    .number()
+    .min(applyChatLeverPresetResponseAutoThresholdMin)
+    .max(applyChatLeverPresetResponseAutoThresholdMax),
+  triggerWeight: zod
+    .number()
+    .min(applyChatLeverPresetResponseTriggerWeightMin)
+    .max(applyChatLeverPresetResponseTriggerWeightMax),
+  negativeTriggerWeight: zod
+    .number()
+    .min(applyChatLeverPresetResponseNegativeTriggerWeightMin)
+    .max(applyChatLeverPresetResponseNegativeTriggerWeightMax),
+  ambiguousGap: zod
+    .number()
+    .min(applyChatLeverPresetResponseAmbiguousGapMin)
+    .max(applyChatLeverPresetResponseAmbiguousGapMax),
+  llmConfidenceThreshold: zod
+    .number()
+    .min(applyChatLeverPresetResponseLlmConfidenceThresholdMin)
+    .max(applyChatLeverPresetResponseLlmConfidenceThresholdMax),
+  coverBoost: zod
+    .number()
+    .min(applyChatLeverPresetResponseCoverBoostMin)
+    .max(applyChatLeverPresetResponseCoverBoostMax),
+  boostTailorPlusJob: zod
+    .number()
+    .min(applyChatLeverPresetResponseBoostTailorPlusJobMin)
+    .max(applyChatLeverPresetResponseBoostTailorPlusJobMax),
+  boostResumePlusJob: zod
+    .number()
+    .min(applyChatLeverPresetResponseBoostResumePlusJobMin)
+    .max(applyChatLeverPresetResponseBoostResumePlusJobMax),
+  boostAuditTailoredJob: zod
+    .number()
+    .min(applyChatLeverPresetResponseBoostAuditTailoredJobMin)
+    .max(applyChatLeverPresetResponseBoostAuditTailoredJobMax),
+  boostAuditTailoredOnly: zod
+    .number()
+    .min(applyChatLeverPresetResponseBoostAuditTailoredOnlyMin)
+    .max(applyChatLeverPresetResponseBoostAuditTailoredOnlyMax),
+  historyTurnLimit: zod
+    .number()
+    .min(1)
+    .max(applyChatLeverPresetResponseHistoryTurnLimitMax),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });

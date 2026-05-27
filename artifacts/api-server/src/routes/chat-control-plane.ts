@@ -168,6 +168,17 @@ router.post("/chat/lever-presets", requireAdmin, async (req, res): Promise<void>
     skillTokenBudget: config.skillTokenBudget,
     maxSelectedSkills: config.maxSelectedSkills,
     activePromptVersionIds: activeRows.map((r) => r.id),
+    autoThreshold: config.autoThreshold,
+    triggerWeight: config.triggerWeight,
+    negativeTriggerWeight: config.negativeTriggerWeight,
+    ambiguousGap: config.ambiguousGap,
+    llmConfidenceThreshold: config.llmConfidenceThreshold,
+    coverBoost: config.coverBoost,
+    boostTailorPlusJob: config.boostTailorPlusJob,
+    boostResumePlusJob: config.boostResumePlusJob,
+    boostAuditTailoredJob: config.boostAuditTailoredJob,
+    boostAuditTailoredOnly: config.boostAuditTailoredOnly,
+    historyTurnLimit: config.historyTurnLimit,
   };
 
   const [created] = await db
@@ -209,6 +220,17 @@ router.patch("/chat/lever-presets/:id", requireAdmin, async (req, res): Promise<
     skillTokenBudget: config.skillTokenBudget,
     maxSelectedSkills: config.maxSelectedSkills,
     activePromptVersionIds: activeRows.map((r) => r.id),
+    autoThreshold: config.autoThreshold,
+    triggerWeight: config.triggerWeight,
+    negativeTriggerWeight: config.negativeTriggerWeight,
+    ambiguousGap: config.ambiguousGap,
+    llmConfidenceThreshold: config.llmConfidenceThreshold,
+    coverBoost: config.coverBoost,
+    boostTailorPlusJob: config.boostTailorPlusJob,
+    boostResumePlusJob: config.boostResumePlusJob,
+    boostAuditTailoredJob: config.boostAuditTailoredJob,
+    boostAuditTailoredOnly: config.boostAuditTailoredOnly,
+    historyTurnLimit: config.historyTurnLimit,
   };
 
   const [updated] = await db
@@ -269,6 +291,18 @@ router.post(
         skillRoutingMode: snapshot.skillRoutingMode,
         skillTokenBudget: snapshot.skillTokenBudget,
         maxSelectedSkills: snapshot.maxSelectedSkills,
+        // Routing config — fall back to current live value for old presets missing these fields.
+        autoThreshold: snapshot.autoThreshold ?? config.autoThreshold,
+        triggerWeight: snapshot.triggerWeight ?? config.triggerWeight,
+        negativeTriggerWeight: snapshot.negativeTriggerWeight ?? config.negativeTriggerWeight,
+        ambiguousGap: snapshot.ambiguousGap ?? config.ambiguousGap,
+        llmConfidenceThreshold: snapshot.llmConfidenceThreshold ?? config.llmConfidenceThreshold,
+        coverBoost: snapshot.coverBoost ?? config.coverBoost,
+        boostTailorPlusJob: snapshot.boostTailorPlusJob ?? config.boostTailorPlusJob,
+        boostResumePlusJob: snapshot.boostResumePlusJob ?? config.boostResumePlusJob,
+        boostAuditTailoredJob: snapshot.boostAuditTailoredJob ?? config.boostAuditTailoredJob,
+        boostAuditTailoredOnly: snapshot.boostAuditTailoredOnly ?? config.boostAuditTailoredOnly,
+        historyTurnLimit: snapshot.historyTurnLimit ?? config.historyTurnLimit,
       })
       .where(eq(aiChatLeverConfigTable.id, config.id))
       .returning();

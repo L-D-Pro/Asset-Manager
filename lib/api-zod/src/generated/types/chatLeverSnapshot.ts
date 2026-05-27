@@ -13,5 +13,16 @@ export interface ChatLeverSnapshot {
   skillRoutingMode: string;
   skillTokenBudget: number;
   maxSelectedSkills: number;
+  autoThreshold?: number;
+  triggerWeight?: number;
+  negativeTriggerWeight?: number;
+  ambiguousGap?: number;
+  llmConfidenceThreshold?: number;
+  coverBoost?: number;
+  boostTailorPlusJob?: number;
+  boostResumePlusJob?: number;
+  boostAuditTailoredJob?: number;
+  boostAuditTailoredOnly?: number;
+  historyTurnLimit?: number;
   activePromptVersionIds: number[];
 }

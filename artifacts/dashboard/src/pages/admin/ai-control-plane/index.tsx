@@ -123,6 +123,17 @@ export default function AiControlPlanePage() {
       skillRoutingMode: previewPreset.snapshot.skillRoutingMode,
       skillTokenBudget: previewPreset.snapshot.skillTokenBudget ?? config.skillTokenBudget,
       maxSelectedSkills: previewPreset.snapshot.maxSelectedSkills ?? config.maxSelectedSkills,
+      autoThreshold: previewPreset.snapshot.autoThreshold ?? config.autoThreshold,
+      triggerWeight: previewPreset.snapshot.triggerWeight ?? config.triggerWeight,
+      negativeTriggerWeight: previewPreset.snapshot.negativeTriggerWeight ?? config.negativeTriggerWeight,
+      ambiguousGap: previewPreset.snapshot.ambiguousGap ?? config.ambiguousGap,
+      llmConfidenceThreshold: previewPreset.snapshot.llmConfidenceThreshold ?? config.llmConfidenceThreshold,
+      coverBoost: previewPreset.snapshot.coverBoost ?? config.coverBoost,
+      boostTailorPlusJob: previewPreset.snapshot.boostTailorPlusJob ?? config.boostTailorPlusJob,
+      boostResumePlusJob: previewPreset.snapshot.boostResumePlusJob ?? config.boostResumePlusJob,
+      boostAuditTailoredJob: previewPreset.snapshot.boostAuditTailoredJob ?? config.boostAuditTailoredJob,
+      boostAuditTailoredOnly: previewPreset.snapshot.boostAuditTailoredOnly ?? config.boostAuditTailoredOnly,
+      historyTurnLimit: previewPreset.snapshot.historyTurnLimit ?? config.historyTurnLimit,
     };
   }, [config, previewPreset]);
 
@@ -188,6 +199,17 @@ export default function AiControlPlanePage() {
             skillRoutingMode={displayed.skillRoutingMode}
             skillTokenBudget={displayed.skillTokenBudget}
             maxSelectedSkills={displayed.maxSelectedSkills}
+            autoThreshold={displayed.autoThreshold}
+            triggerWeight={displayed.triggerWeight}
+            negativeTriggerWeight={displayed.negativeTriggerWeight}
+            ambiguousGap={displayed.ambiguousGap}
+            llmConfidenceThreshold={displayed.llmConfidenceThreshold}
+            coverBoost={displayed.coverBoost}
+            boostTailorPlusJob={displayed.boostTailorPlusJob}
+            boostResumePlusJob={displayed.boostResumePlusJob}
+            boostAuditTailoredJob={displayed.boostAuditTailoredJob}
+            boostAuditTailoredOnly={displayed.boostAuditTailoredOnly}
+            historyTurnLimit={displayed.historyTurnLimit}
             isPreview={!!previewPreset}
             onChanged={() => { invalidateAll(); }}
           />
@@ -1073,19 +1095,70 @@ const ROUTING_MODES = [
   ["debug_all", "⚠ Debug only", "Development only — injects ALL skill bodies and bypasses normal routing, cap, and token-budget controls. Blocked in production. Do not use in normal operation."],
 ] as const;
 
-function RoutingCard({ skillRoutingMode, skillTokenBudget, maxSelectedSkills, isPreview, onChanged }: {
+function RoutingCard({
+  skillRoutingMode,
+  skillTokenBudget,
+  maxSelectedSkills,
+  autoThreshold,
+  triggerWeight,
+  negativeTriggerWeight,
+  ambiguousGap,
+  llmConfidenceThreshold,
+  coverBoost,
+  boostTailorPlusJob,
+  boostResumePlusJob,
+  boostAuditTailoredJob,
+  boostAuditTailoredOnly,
+  historyTurnLimit,
+  isPreview,
+  onChanged,
+}: {
   skillRoutingMode: string;
   skillTokenBudget: number;
   maxSelectedSkills: number;
+  autoThreshold: number;
+  triggerWeight: number;
+  negativeTriggerWeight: number;
+  ambiguousGap: number;
+  llmConfidenceThreshold: number;
+  coverBoost: number;
+  boostTailorPlusJob: number;
+  boostResumePlusJob: number;
+  boostAuditTailoredJob: number;
+  boostAuditTailoredOnly: number;
+  historyTurnLimit: number;
   isPreview?: boolean;
   onChanged: () => void;
 }) {
   const update = useUpdateChatLeverConfig();
   const [budget, setBudget] = useState(skillTokenBudget);
   const [maxSkills, setMaxSkills] = useState(maxSelectedSkills);
+  const [threshold, setThreshold] = useState(autoThreshold);
+  const [trigW, setTrigW] = useState(triggerWeight);
+  const [negW, setNegW] = useState(negativeTriggerWeight);
+  const [gap, setGap] = useState(ambiguousGap);
+  const [llmConf, setLlmConf] = useState(llmConfidenceThreshold);
+  const [cover, setCover] = useState(coverBoost);
+  const [bTailorJob, setBTailorJob] = useState(boostTailorPlusJob);
+  const [bResumeJob, setBResumeJob] = useState(boostResumePlusJob);
+  const [bAuditTailoredJob, setBauditTailoredJob] = useState(boostAuditTailoredJob);
+  const [bAuditTailoredOnly, setBauditTailoredOnly] = useState(boostAuditTailoredOnly);
+  const [historyLimit, setHistoryLimit] = useState(historyTurnLimit);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   useEffect(() => { setBudget(skillTokenBudget); }, [skillTokenBudget]);
   useEffect(() => { setMaxSkills(maxSelectedSkills); }, [maxSelectedSkills]);
+  useEffect(() => { setThreshold(autoThreshold); }, [autoThreshold]);
+  useEffect(() => { setTrigW(triggerWeight); }, [triggerWeight]);
+  useEffect(() => { setNegW(negativeTriggerWeight); }, [negativeTriggerWeight]);
+  useEffect(() => { setGap(ambiguousGap); }, [ambiguousGap]);
+  useEffect(() => { setLlmConf(llmConfidenceThreshold); }, [llmConfidenceThreshold]);
+  useEffect(() => { setCover(coverBoost); }, [coverBoost]);
+  useEffect(() => { setBTailorJob(boostTailorPlusJob); }, [boostTailorPlusJob]);
+  useEffect(() => { setBResumeJob(boostResumePlusJob); }, [boostResumePlusJob]);
+  useEffect(() => { setBauditTailoredJob(boostAuditTailoredJob); }, [boostAuditTailoredJob]);
+  useEffect(() => { setBauditTailoredOnly(boostAuditTailoredOnly); }, [boostAuditTailoredOnly]);
+  useEffect(() => { setHistoryLimit(historyTurnLimit); }, [historyTurnLimit]);
 
   const activeDesc = ROUTING_MODES.find(([m]) => m === skillRoutingMode)?.[2];
 
@@ -1107,6 +1180,44 @@ function RoutingCard({ skillRoutingMode, skillTokenBudget, maxSelectedSkills, is
   }
 
   const numbersDirty = budget !== skillTokenBudget || maxSkills !== maxSelectedSkills;
+
+  const advancedDirty =
+    threshold !== autoThreshold ||
+    trigW !== triggerWeight ||
+    negW !== negativeTriggerWeight ||
+    gap !== ambiguousGap ||
+    llmConf !== llmConfidenceThreshold ||
+    cover !== coverBoost ||
+    bTailorJob !== boostTailorPlusJob ||
+    bResumeJob !== boostResumePlusJob ||
+    bAuditTailoredJob !== boostAuditTailoredJob ||
+    bAuditTailoredOnly !== boostAuditTailoredOnly ||
+    historyLimit !== historyTurnLimit;
+
+  async function saveAdvanced() {
+    if (isPreview) return;
+    try {
+      await update.mutateAsync({
+        data: {
+          autoThreshold: threshold,
+          triggerWeight: trigW,
+          negativeTriggerWeight: negW,
+          ambiguousGap: gap,
+          llmConfidenceThreshold: llmConf,
+          coverBoost: cover,
+          boostTailorPlusJob: bTailorJob,
+          boostResumePlusJob: bResumeJob,
+          boostAuditTailoredJob: bAuditTailoredJob,
+          boostAuditTailoredOnly: bAuditTailoredOnly,
+          historyTurnLimit: historyLimit,
+        },
+      });
+      onChanged();
+      toast({ title: "Advanced routing tuning saved" });
+    } catch (err) {
+      toast({ title: "Update failed", description: (err as Error).message, variant: "destructive" });
+    }
+  }
 
   return (
     <LeverCard
@@ -1153,6 +1264,116 @@ function RoutingCard({ skillRoutingMode, skillTokenBudget, maxSelectedSkills, is
             <button type="button" className="btn primary sm" disabled={!numbersDirty || update.isPending} onClick={saveNumbers}>
               <Save size={12} strokeWidth={1.8} /> Save limits
             </button>
+          )}
+        </div>
+
+        {/* ── Advanced Routing Tuning ─────────────────────────────────────── */}
+        <div style={{ borderTop: "1px solid var(--line)", marginTop: 4, paddingTop: 10 }}>
+          <button
+            type="button"
+            className="btn ghost sm"
+            style={{ fontSize: 11 }}
+            onClick={() => setAdvancedOpen((v) => !v)}
+          >
+            {advancedOpen ? "▲" : "▼"} Advanced Routing Tuning
+          </button>
+          {advancedOpen && (
+            <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 14 }}>
+              <div className="dim" style={{ fontSize: 11, maxWidth: 560 }}>
+                These weights control how the deterministic scorer and LLM fallback behave.
+                Changes take effect immediately on the next chat turn.
+                See <code>ROUTING_BEHAVIOR.md</code> for what each value controls.
+              </div>
+
+              {/* Scoring thresholds */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 10 }}>
+                {([
+                  ["Auto threshold", threshold, setThreshold, 0, 1, 0.05] as const,
+                  ["Trigger weight", trigW, setTrigW, 0, 2, 0.05] as const,
+                  ["Neg. trigger weight", negW, setNegW, 0, 2, 0.05] as const,
+                  ["Ambiguous gap", gap, setGap, 0, 0.5, 0.05] as const,
+                  ["LLM confidence min.", llmConf, setLlmConf, 0, 1, 0.05] as const,
+                  ["Cover boost", cover, setCover, 0, 2, 0.05] as const,
+                ]).map(([label, val, setter, min, max, step]) => (
+                  <label key={label} style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                    <span className="label" style={{ fontSize: 10 }}>{label}</span>
+                    <input
+                      type="number"
+                      className="input"
+                      min={min}
+                      max={max}
+                      step={step}
+                      value={val}
+                      disabled={isPreview}
+                      onChange={(e) => {
+                        const v = parseFloat(e.target.value);
+                        if (!isNaN(v) && v >= min && v <= max) setter(v as never);
+                      }}
+                      style={{ width: "100%", fontSize: 12 }}
+                    />
+                  </label>
+                ))}
+              </div>
+
+              <div style={{ fontSize: 11, fontWeight: 600, color: "var(--ink-3)", marginTop: 2 }}>
+                Attachment boosts
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 10 }}>
+                {([
+                  ["Tailor+job boost", bTailorJob, setBTailorJob] as const,
+                  ["Resume+job boost", bResumeJob, setBResumeJob] as const,
+                  ["Audit+tailored+job", bAuditTailoredJob, setBauditTailoredJob] as const,
+                  ["Audit+tailored only", bAuditTailoredOnly, setBauditTailoredOnly] as const,
+                ]).map(([label, val, setter]) => (
+                  <label key={label} style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                    <span className="label" style={{ fontSize: 10 }}>{label}</span>
+                    <input
+                      type="number"
+                      className="input"
+                      min={0}
+                      max={2}
+                      step={0.05}
+                      value={val}
+                      disabled={isPreview}
+                      onChange={(e) => {
+                        const v = parseFloat(e.target.value);
+                        if (!isNaN(v) && v >= 0 && v <= 2) setter(v as never);
+                      }}
+                      style={{ width: "100%", fontSize: 12 }}
+                    />
+                  </label>
+                ))}
+                <label style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                  <span className="label" style={{ fontSize: 10 }}>History turns</span>
+                  <input
+                    type="number"
+                    className="input"
+                    min={1}
+                    max={100}
+                    step={1}
+                    value={historyLimit}
+                    disabled={isPreview}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value, 10);
+                      if (!isNaN(v) && v >= 1 && v <= 100) setHistoryLimit(v);
+                    }}
+                    style={{ width: "100%", fontSize: 12 }}
+                  />
+                </label>
+              </div>
+
+              {!isPreview && (
+                <button
+                  type="button"
+                  className="btn primary sm"
+                  style={{ alignSelf: "flex-start" }}
+                  disabled={!advancedDirty || update.isPending}
+                  onClick={saveAdvanced}
+                >
+                  <Save size={12} strokeWidth={1.8} /> Save routing tuning
+                </button>
+              )}
+            </div>
           )}
         </div>
       </div>

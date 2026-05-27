@@ -5939,6 +5939,60 @@ components:
           type: integer
         maxSelectedSkills:
           type: integer
+        autoThreshold:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+        triggerWeight:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 2
+        negativeTriggerWeight:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 2
+        ambiguousGap:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 0.5
+        llmConfidenceThreshold:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+        coverBoost:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 2
+        boostTailorPlusJob:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 2
+        boostResumePlusJob:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 2
+        boostAuditTailoredJob:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 2
+        boostAuditTailoredOnly:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 2
+        historyTurnLimit:
+          type: integer
+          minimum: 1
+          maximum: 100
         createdAt:
           type: string
           format: date-time
@@ -5953,6 +6007,17 @@ components:
         - skillRoutingMode
         - skillTokenBudget
         - maxSelectedSkills
+        - autoThreshold
+        - triggerWeight
+        - negativeTriggerWeight
+        - ambiguousGap
+        - llmConfidenceThreshold
+        - coverBoost
+        - boostTailorPlusJob
+        - boostResumePlusJob
+        - boostAuditTailoredJob
+        - boostAuditTailoredOnly
+        - historyTurnLimit
         - createdAt
         - updatedAt
 
@@ -5976,6 +6041,60 @@ components:
           type: integer
           minimum: 1
           maximum: 2
+        autoThreshold:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+        triggerWeight:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 2
+        negativeTriggerWeight:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 2
+        ambiguousGap:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 0.5
+        llmConfidenceThreshold:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+        coverBoost:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 2
+        boostTailorPlusJob:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 2
+        boostResumePlusJob:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 2
+        boostAuditTailoredJob:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 2
+        boostAuditTailoredOnly:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 2
+        historyTurnLimit:
+          type: integer
+          minimum: 1
+          maximum: 100
 
     PromptSection:
       type: object
@@ -6077,6 +6196,38 @@ components:
         skillTokenBudget:
           type: integer
         maxSelectedSkills:
+          type: integer
+        autoThreshold:
+          type: number
+          format: float
+        triggerWeight:
+          type: number
+          format: float
+        negativeTriggerWeight:
+          type: number
+          format: float
+        ambiguousGap:
+          type: number
+          format: float
+        llmConfidenceThreshold:
+          type: number
+          format: float
+        coverBoost:
+          type: number
+          format: float
+        boostTailorPlusJob:
+          type: number
+          format: float
+        boostResumePlusJob:
+          type: number
+          format: float
+        boostAuditTailoredJob:
+          type: number
+          format: float
+        boostAuditTailoredOnly:
+          type: number
+          format: float
+        historyTurnLimit:
           type: integer
         activePromptVersionIds:
           type: array

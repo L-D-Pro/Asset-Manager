@@ -15,6 +15,61 @@ export interface ChatLeverConfig {
   skillRoutingMode: ChatLeverConfigSkillRoutingMode;
   skillTokenBudget: number;
   maxSelectedSkills: number;
+  /**
+   * @minimum 0
+   * @maximum 1
+   */
+  autoThreshold: number;
+  /**
+   * @minimum 0
+   * @maximum 2
+   */
+  triggerWeight: number;
+  /**
+   * @minimum 0
+   * @maximum 2
+   */
+  negativeTriggerWeight: number;
+  /**
+   * @minimum 0
+   * @maximum 0.5
+   */
+  ambiguousGap: number;
+  /**
+   * @minimum 0
+   * @maximum 1
+   */
+  llmConfidenceThreshold: number;
+  /**
+   * @minimum 0
+   * @maximum 2
+   */
+  coverBoost: number;
+  /**
+   * @minimum 0
+   * @maximum 2
+   */
+  boostTailorPlusJob: number;
+  /**
+   * @minimum 0
+   * @maximum 2
+   */
+  boostResumePlusJob: number;
+  /**
+   * @minimum 0
+   * @maximum 2
+   */
+  boostAuditTailoredJob: number;
+  /**
+   * @minimum 0
+   * @maximum 2
+   */
+  boostAuditTailoredOnly: number;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  historyTurnLimit: number;
   createdAt: Date;
   updatedAt: Date;
 }
