@@ -718,6 +718,6 @@ describe("routeSkills — routing config (tunable behavior)", () => {
       mode: "auto",
       routingConfig: DEFAULT_ROUTING_CONFIG,
     });
-    expect(decision.selectedSlugs.length).toBeLessThan(mockSkills.length);
+    expect(decision.selectedSlugs).toEqual([]); // no skill selected — not "less than all", but zero
   });
 });
