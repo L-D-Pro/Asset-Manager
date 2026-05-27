@@ -14,14 +14,19 @@ import { openrouter } from "@workspace/integrations-openrouter-ai";
 import { logger } from "../logger";
 import { mintRunId } from "../lineage";
 import { selectModelForTask, type SelectedModel } from "../model-router";
-import { resolveChatPrompt } from "./resolve-system-prompt";
+import { getChatLeverConfig, resolveChatPrompt } from "./resolve-system-prompt";
 import { resolveChatPromptVersionId } from "./prompt-versions";
 import { buildParsedJdBlock, type ParsedJd } from "./context-builder";
 import { parseJdText } from "./jd-parse-preprocess";
 import { validateChatOutput } from "./output-validator";
 import type { RoutingDecision } from "./skill-router";
 
-const HISTORY_TURN_LIMIT = 20;
+/**
+ * Fallback max_tokens for model configs where maxTokens is null in the DB.
+ * Model-level override always wins. This constant exists so the fallback is
+ * visible and grep-able, not buried in an inline `?? 4096`.
+ */
+const DEFAULT_MODEL_MAX_TOKENS = 4096;
 
 export interface StreamChatCompletionOptions {
   conversationId: number;
@@ -151,6 +156,9 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
     return;
   }
 
+  // ── Lever config for history turn limit ─────────────────────────────────
+  const leverConfig = await getChatLeverConfig();
+
   // ── Prompt version + primary skill slug resolved from routing decision ──
   // Attribution deferred until after routing (see below).
   let promptVersionId: number | null = null;
@@ -161,7 +169,7 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
     .from(messages)
     .where(eq(messages.conversationId, conversationId))
     .orderBy(desc(messages.createdAt))
-    .limit(HISTORY_TURN_LIMIT);
+    .limit(leverConfig.historyTurnLimit);
 
   const history = historyRows
     .reverse()
@@ -238,7 +246,7 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
       const response = await client.chat.completions.create({
         model: m.modelName,
         stream: true,
-        max_tokens: m.maxTokens ?? 4096,
+        max_tokens: m.maxTokens ?? DEFAULT_MODEL_MAX_TOKENS,
         messages: chatMessages,
       } as never);
 
