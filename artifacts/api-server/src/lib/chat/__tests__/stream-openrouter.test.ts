@@ -119,6 +119,12 @@ vi.mock("@workspace/integrations-openrouter-ai", () => ({
   openrouter: { chat: { completions: { create: vi.fn() } } },
 }));
 
+// ── context-requirements mock (controllable per-test) ────────────────────────
+const mockInspectContextRequirements = vi.fn();
+vi.mock("../context-requirements", () => ({
+  inspectContextRequirements: (...args: unknown[]) => mockInspectContextRequirements(...args),
+}));
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function makeRes() {
@@ -209,6 +215,14 @@ beforeEach(() => {
   dbUpdate.mockClear();
   warnMock.mockClear();
   errorMock.mockClear();
+  // Default: context requirements not blocking (pass-through for existing tests).
+  mockInspectContextRequirements.mockReturnValue({
+    hasBaseResume: true,
+    hasJobContext: true,
+    hasClaims: false,
+    warnings: [],
+    blocking: false,
+  });
 });
 
 // ── Tests ────────────────────────────────────────────────────────────────────
@@ -540,5 +554,122 @@ describe("streamChatCompletion — event log metadata includes chatTimings", () 
     expect(chatTimings).toHaveProperty("ownershipMs");
     expect(typeof chatTimings.totalMs).toBe("number");
     expect(chatTimings.totalMs as number).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe("streamChatCompletion — context requirements guard", () => {
+  it("blocks and sends context-warning SSE when tailor slug selected but no base_resume attached", async () => {
+    queueStandardSelects();
+
+    // Override context requirements to simulate a blocking condition.
+    mockInspectContextRequirements.mockReturnValue({
+      hasBaseResume: false,
+      hasJobContext: true,
+      hasClaims: false,
+      warnings: ["Base resume is required for resume tailoring. Please attach or select your base resume."],
+      blocking: true,
+    });
+
+    // The mock client should NOT be called — we block before any AI call.
+    const mockClient = {
+      chat: {
+        completions: {
+          create: vi.fn(),
+        },
+      },
+    };
+
+    const { streamChatCompletion } = await import("../stream-openrouter");
+    const res = makeRes();
+
+    await streamChatCompletion({
+      conversationId: 42,
+      userId: 1,
+      userMessage: { content: "Tailor my resume for this job.", attachments: [] },
+      res: res as never,
+      modelConfigId: 10,
+      client: mockClient as never,
+      runIdOverride: "run_test_fixed",
+    });
+
+    // AI client must NOT be called.
+    expect(mockClient.chat.completions.create).not.toHaveBeenCalled();
+
+    const allWritten = res.writes.join("");
+
+    // A context-warning SSE event must be emitted.
+    expect(allWritten).toMatch(/event: context-warning/);
+    expect(allWritten).toMatch(/blocking.*true|true.*blocking/);
+
+    // A done event must be emitted after the context-warning.
+    expect(allWritten).toMatch(/event: done/);
+
+    // The stream must end.
+    expect(res.end).toHaveBeenCalled();
+
+    // An assistant message must be persisted with the warning content.
+    const messageInserts = insertCaptures.filter((c) => c.table === messagesTable);
+    // user turn + blocked assistant turn = 2
+    expect(messageInserts).toHaveLength(2);
+    const assistantInsert = messageInserts[1]!.values as { role: string; content: string };
+    expect(assistantInsert.role).toBe("assistant");
+    expect(assistantInsert.content).toMatch(/[Bb]ase resume/);
+
+    // An event log with ai_call_skipped must be inserted.
+    const eventLogCapture = insertCaptures.find((c) => c.table === eventLogsTableSym);
+    expect(eventLogCapture).toBeDefined();
+    const eventLogValues = eventLogCapture!.values as { eventType: string; metadata: Record<string, unknown> };
+    expect(eventLogValues.eventType).toBe("ai_call_skipped");
+    expect(eventLogValues.metadata.reason).toBe("context_requirements_not_met");
+  });
+
+  it("does NOT block when tailor slug selected and base_resume + job both attached", async () => {
+    queueStandardSelects();
+
+    // Default mock is non-blocking (set in beforeEach).
+    // Explicitly confirm it for clarity.
+    mockInspectContextRequirements.mockReturnValue({
+      hasBaseResume: true,
+      hasJobContext: true,
+      hasClaims: false,
+      warnings: [],
+      blocking: false,
+    });
+
+    const mockClient = {
+      chat: {
+        completions: {
+          create: vi.fn().mockResolvedValue(tokenStream(["Great tailored resume!"])),
+        },
+      },
+    };
+
+    const { streamChatCompletion } = await import("../stream-openrouter");
+    const res = makeRes();
+
+    await streamChatCompletion({
+      conversationId: 42,
+      userId: 1,
+      userMessage: {
+        content: "Tailor my resume for this job.",
+        attachments: [
+          { kind: "base_resume", snapshot: { content: "My resume" } },
+          { kind: "job", refId: 1, snapshot: { title: "Software Engineer" } },
+        ],
+      },
+      res: res as never,
+      modelConfigId: 10,
+      client: mockClient as never,
+      runIdOverride: "run_test_fixed",
+    });
+
+    // AI client SHOULD be called — context requirements are satisfied.
+    expect(mockClient.chat.completions.create).toHaveBeenCalledTimes(1);
+
+    const allWritten = res.writes.join("");
+    // No context-warning event should appear.
+    expect(allWritten).not.toMatch(/event: context-warning/);
+    // Normal done event should appear.
+    expect(allWritten).toMatch(/event: done/);
   });
 });

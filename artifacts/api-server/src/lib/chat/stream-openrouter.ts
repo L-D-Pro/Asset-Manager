@@ -19,6 +19,7 @@ import { resolveChatPromptVersionId } from "./prompt-versions";
 import { buildParsedJdBlock, type ParsedJd } from "./context-builder";
 import { parseJdText } from "./jd-parse-preprocess";
 import { validateChatOutput } from "./output-validator";
+import { inspectContextRequirements } from "./context-requirements";
 import type { RoutingDecision } from "./skill-router";
 
 /**
@@ -237,6 +238,61 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
     reason: routingDecision.reason,
     llmUsed: routingDecision.llmUsed,
   });
+
+  // ── Context requirements check (resume-tailoring guard) ─────────────────
+  const contextReqs = inspectContextRequirements({
+    selectedSlugs: routingDecision.selectedSlugs,
+    attachments: userMessage.attachments,
+    userMessage: userMessage.content,
+  });
+
+  if (contextReqs.blocking) {
+    // Join with double newline so stored conversation history renders each instruction separately.
+    const warningMsg = contextReqs.warnings.join("\n\n");
+    sseSend(res, "context-warning", { warnings: contextReqs.warnings, blocking: true });
+    const [blockedAssistantTurn] = await db
+      .insert(messages)
+      .values({
+        conversationId,
+        role: "assistant",
+        content: warningMsg,
+        attachments: [],
+        runId,
+        promptVersionId: null,
+        modelName: null,
+        promptTokens: null,
+        completionTokens: null,
+      })
+      .returning();
+    await db.update(conversations).set({ updatedAt: new Date() }).where(eq(conversations.id, conversationId));
+    timings.totalMs = Math.round(performance.now() - t0);
+    await db.insert(eventLogsTable).values({
+      userId,
+      entityType: "ai_call",
+      entityId: blockedAssistantTurn!.id,
+      runId,
+      eventType: "ai_call_skipped",
+      actorType: "system",
+      metadata: {
+        taskScope: thread.modelScope,
+        runId,
+        reason: "context_requirements_not_met",
+        contextRequirements: contextReqs,
+        chatTimings: { ...timings },
+        selectedSlugs: routingDecision.selectedSlugs,
+      },
+    });
+    // eventLogId is null on blocked turns — no LLM call was made so there is no ai_call event log to link.
+    sseSend(res, "done", {
+      messageId: blockedAssistantTurn!.id,
+      runId,
+      promptVersionId: null,
+      eventLogId: null,
+      primarySkill: null,
+    });
+    res.end();
+    return;
+  }
 
   // ── Resolve prompt version attribution from routing decision ────────────
   // Use the first selected skill slug (if any); null means no skill was selected.
