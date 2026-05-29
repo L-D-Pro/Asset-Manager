@@ -1,0 +1,441 @@
+/**
+ * Tests for streamChatCompletion — focused on fallback behavior correctness.
+ *
+ * Key behaviors under test:
+ * 1. When primary fails mid-stream (partial tokens emitted), the fallback starts
+ *    with a clean slate — the DB record contains only fallback tokens.
+ * 2. A non-retryable 4xx from the primary does not trigger a fallback attempt.
+ * 3. Stream errors are logged (not silently swallowed).
+ */
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+// ── Table identity stubs ─────────────────────────────────────────────────────
+const conversationsTable = Symbol("conversations");
+const messagesTable = Symbol("messages");
+const eventLogsTableSym = Symbol("eventLogsTable");
+const chatRoutingDecisionsSym = Symbol("chatRoutingDecisions");
+const aiModelConfigsSym = Symbol("aiModelConfigs");
+
+// ── DB mock ──────────────────────────────────────────────────────────────────
+const selectQueue: unknown[][] = [];
+function queueSelect(rows: unknown[]) {
+  selectQueue.push(rows);
+}
+
+function makeSelectChain(rows: unknown[]) {
+  const limit = vi.fn().mockResolvedValue(rows);
+  const orderBy = vi.fn().mockReturnValue({ limit });
+  const where = vi.fn().mockReturnValue({ limit, orderBy });
+  const from = vi.fn().mockReturnValue({ where });
+  return { from };
+}
+
+const dbSelect = vi.fn().mockImplementation(() => {
+  const rows = selectQueue.shift() ?? [];
+  return makeSelectChain(rows);
+});
+
+type InsertCapture = { table: unknown; values: unknown };
+const insertCaptures: InsertCapture[] = [];
+let nextInsertId = 1;
+
+const dbInsert = vi.fn().mockImplementation((table: unknown) => ({
+  values: vi.fn().mockImplementation((vals: unknown) => {
+    const id = nextInsertId++;
+    insertCaptures.push({ table, values: vals });
+    const row = { id, ...(vals as Record<string, unknown>) };
+    const returning = vi.fn().mockResolvedValue([row]);
+    // Make the values() result directly awaitable (for inserts without .returning())
+    return Object.assign(Promise.resolve([row]), { returning });
+  }),
+}));
+
+const dbUpdate = vi.fn().mockReturnValue({
+  set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
+});
+
+vi.mock("@workspace/db", () => ({
+  db: { select: dbSelect, insert: dbInsert, update: dbUpdate },
+  conversations: conversationsTable,
+  messages: messagesTable,
+  eventLogsTable: eventLogsTableSym,
+  chatRoutingDecisionsTable: chatRoutingDecisionsSym,
+  aiModelConfigsTable: aiModelConfigsSym,
+  // type-only re-exports — not used at runtime in these tests
+}));
+
+// ── Logger mock ──────────────────────────────────────────────────────────────
+const warnMock = vi.fn();
+const errorMock = vi.fn();
+vi.mock("../../logger", () => ({
+  logger: { info: vi.fn(), warn: warnMock, error: errorMock },
+}));
+
+// ── Lineage mock ─────────────────────────────────────────────────────────────
+vi.mock("../../lineage", () => ({
+  mintRunId: () => "run_test_fixed",
+}));
+
+// ── Model router mock ────────────────────────────────────────────────────────
+vi.mock("../../model-router", () => ({
+  selectModelForTask: vi.fn().mockResolvedValue(null),
+}));
+
+// ── resolve-system-prompt mock ───────────────────────────────────────────────
+vi.mock("../resolve-system-prompt", () => ({
+  getChatLeverConfig: vi.fn().mockResolvedValue({ historyTurnLimit: 20 }),
+  resolveChatPrompt: vi.fn().mockResolvedValue({
+    systemPrompt: "You are a helpful assistant.",
+    decision: {
+      selectedSlugs: [],
+      confidence: 0,
+      reason: "No skill matched.",
+      candidates: [],
+      llmUsed: false,
+      budgetTrimmed: false,
+      skillPromptTokens: 0,
+    },
+    mode: "none",
+    historyTurnLimit: 20,
+  }),
+}));
+
+// ── prompt-versions mock ─────────────────────────────────────────────────────
+vi.mock("../prompt-versions", () => ({
+  resolveChatPromptVersionId: vi.fn().mockResolvedValue(null),
+}));
+
+// ── jd-parse + context-builder mocks ────────────────────────────────────────
+vi.mock("../jd-parse-preprocess", () => ({
+  parseJdText: vi.fn().mockResolvedValue(null),
+}));
+vi.mock("../context-builder", () => ({
+  buildParsedJdBlock: vi.fn().mockReturnValue(""),
+}));
+
+// ── openrouter mock (unused — tests inject their own client) ─────────────────
+vi.mock("@workspace/integrations-openrouter-ai", () => ({
+  openrouter: { chat: { completions: { create: vi.fn() } } },
+}));
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function makeRes() {
+  const writes: string[] = [];
+  return {
+    writes,
+    status: vi.fn().mockReturnThis(),
+    json: vi.fn(),
+    setHeader: vi.fn(),
+    flushHeaders: vi.fn(),
+    write: vi.fn().mockImplementation((s: string) => writes.push(s)),
+    end: vi.fn(),
+  };
+}
+
+/** Returns an async iterable that yields token chunks, then finishes. */
+function tokenStream(tokens: string[]): AsyncIterable<unknown> {
+  return {
+    [Symbol.asyncIterator]: async function* () {
+      for (const t of tokens) {
+        yield { choices: [{ delta: { content: t }, finish_reason: null }] };
+      }
+      yield { choices: [{ delta: {}, finish_reason: "stop" }], usage: { prompt_tokens: 10, completion_tokens: tokens.length } };
+    },
+  };
+}
+
+/** Returns an async iterable that yields `emitCount` tokens then throws. */
+function failingStream(tokens: string[], emitCount: number, error: unknown = new Error("stream interrupted")): AsyncIterable<unknown> {
+  return {
+    [Symbol.asyncIterator]: async function* () {
+      for (let i = 0; i < tokens.length; i++) {
+        if (i >= emitCount) throw error;
+        yield { choices: [{ delta: { content: tokens[i] }, finish_reason: null }] };
+      }
+    },
+  };
+}
+
+/** An HTTP-like error with a status code (mimics openai-sdk errors). */
+function httpError(status: number): Error & { status: number } {
+  const err = new Error(`HTTP ${status}`) as Error & { status: number };
+  err.status = status;
+  return err;
+}
+
+const mockThread = { id: 42, userId: 1, modelScope: "chat", updatedAt: new Date() };
+const mockPrimaryModelConfig = {
+  id: 10,
+  modelName: "primary/model",
+  provider: "openrouter",
+  taskScope: "chat",
+  maxTokens: 2048,
+  costPerInputToken: "0.000001",
+  costPerOutputToken: "0.000002",
+  extraConfig: {},
+  fallbackModelId: 20,
+};
+const mockFallbackModelConfig = {
+  id: 20,
+  modelName: "fallback/model",
+  provider: "openrouter",
+  taskScope: "chat",
+  maxTokens: 2048,
+  costPerInputToken: "0.000001",
+  costPerOutputToken: "0.000002",
+  extraConfig: {},
+  fallbackModelId: null,
+};
+
+function queueStandardSelects() {
+  queueSelect([mockThread]);       // ownership check
+  queueSelect([mockPrimaryModelConfig]); // resolveModel (modelConfigId provided)
+  queueSelect([]);                 // history (empty)
+}
+
+function queueFallbackSelects() {
+  queueSelect([mockPrimaryModelConfig]); // primary config (to get fallbackModelId)
+  queueSelect([mockFallbackModelConfig]); // fallback model row
+}
+
+beforeEach(() => {
+  selectQueue.length = 0;
+  insertCaptures.length = 0;
+  nextInsertId = 1;
+  dbSelect.mockClear();
+  dbInsert.mockClear();
+  dbUpdate.mockClear();
+  warnMock.mockClear();
+  errorMock.mockClear();
+});
+
+// ── Tests ────────────────────────────────────────────────────────────────────
+
+describe("streamChatCompletion — fallback state isolation", () => {
+  it("DB assistant message contains ONLY fallback tokens when primary fails mid-stream", async () => {
+    queueStandardSelects();
+    queueFallbackSelects();
+
+    const primaryTokens = ["Hello", " world"];
+    const fallbackTokens = ["Fallback", " response"];
+
+    let callCount = 0;
+    const mockClient = {
+      chat: {
+        completions: {
+          create: vi.fn().mockImplementation(async () => {
+            callCount++;
+            if (callCount === 1) return failingStream(primaryTokens, 1); // emits "Hello" then throws
+            return tokenStream(fallbackTokens);
+          }),
+        },
+      },
+    };
+
+    const { streamChatCompletion } = await import("../stream-openrouter");
+    const res = makeRes();
+
+    await streamChatCompletion({
+      conversationId: 42,
+      userId: 1,
+      userMessage: { content: "test message", attachments: [] },
+      res: res as never,
+      modelConfigId: 10,
+      client: mockClient as never,
+      runIdOverride: "run_test_fixed",
+    });
+
+    // The assistant DB insert is the second messages insert (first is user turn).
+    const messageInserts = insertCaptures.filter((c) => c.table === messagesTable);
+    expect(messageInserts).toHaveLength(2);
+    const assistantInsert = messageInserts[1]!.values as { role: string; content: string };
+
+    expect(assistantInsert.role).toBe("assistant");
+    // MUST be only fallback tokens — not "HelloFallback response"
+    expect(assistantInsert.content).toBe("Fallback response");
+  });
+
+  it("emits stream-reset SSE event when primary fails after emitting tokens", async () => {
+    queueStandardSelects();
+    queueFallbackSelects();
+
+    let callCount = 0;
+    const mockClient = {
+      chat: {
+        completions: {
+          create: vi.fn().mockImplementation(async () => {
+            callCount++;
+            if (callCount === 1) return failingStream(["A", "B"], 1);
+            return tokenStream(["ok"]);
+          }),
+        },
+      },
+    };
+
+    const { streamChatCompletion } = await import("../stream-openrouter");
+    const res = makeRes();
+
+    await streamChatCompletion({
+      conversationId: 42,
+      userId: 1,
+      userMessage: { content: "hi", attachments: [] },
+      res: res as never,
+      modelConfigId: 10,
+      client: mockClient as never,
+      runIdOverride: "run_test_fixed",
+    });
+
+    const allWritten = res.writes.join("");
+    expect(allWritten).toMatch(/stream-reset/);
+  });
+
+  it("logs a warning that includes the error object when primary stream throws", async () => {
+    queueStandardSelects();
+    queueFallbackSelects();
+
+    const streamError = new Error("network interrupted");
+    let callCount = 0;
+    const mockClient = {
+      chat: {
+        completions: {
+          create: vi.fn().mockImplementation(async () => {
+            callCount++;
+            if (callCount === 1) return failingStream(["X"], 0, streamError);
+            return tokenStream(["ok"]);
+          }),
+        },
+      },
+    };
+
+    const { streamChatCompletion } = await import("../stream-openrouter");
+    const res = makeRes();
+
+    await streamChatCompletion({
+      conversationId: 42,
+      userId: 1,
+      userMessage: { content: "hi", attachments: [] },
+      res: res as never,
+      modelConfigId: 10,
+      client: mockClient as never,
+      runIdOverride: "run_test_fixed",
+    });
+
+    // logger.warn must include the actual error — not silently swallowed in bare catch {}
+    const warnCalls = warnMock.mock.calls;
+    const hasErrField = warnCalls.some(
+      (args) => args[0] && typeof args[0] === "object" && "err" in args[0],
+    );
+    expect(hasErrField).toBe(true);
+  });
+});
+
+describe("streamChatCompletion — 4xx non-retryable skips fallback", () => {
+  it("does NOT attempt the fallback when primary returns a non-retryable 4xx (400)", async () => {
+    // Queue fallback selects so the fallback IS available — without 4xx detection
+    // the current code would attempt the fallback (calling create twice).
+    queueStandardSelects();
+    queueFallbackSelects();
+
+    let callCount = 0;
+    const mockClient = {
+      chat: {
+        completions: {
+          create: vi.fn().mockImplementation(async () => {
+            callCount++;
+            if (callCount === 1) throw httpError(400);
+            // Fallback would succeed if it were attempted
+            return tokenStream(["fallback ok"]);
+          }),
+        },
+      },
+    };
+
+    const { streamChatCompletion } = await import("../stream-openrouter");
+    const res = makeRes();
+
+    await streamChatCompletion({
+      conversationId: 42,
+      userId: 1,
+      userMessage: { content: "hi", attachments: [] },
+      res: res as never,
+      modelConfigId: 10,
+      client: mockClient as never,
+      runIdOverride: "run_test_fixed",
+    });
+
+    // Client create should be called exactly once — 400 must skip fallback
+    expect(mockClient.chat.completions.create).toHaveBeenCalledTimes(1);
+    // An error SSE event must be emitted
+    const allWritten = res.writes.join("");
+    expect(allWritten).toMatch(/event: error/);
+    expect(res.end).toHaveBeenCalled();
+  });
+
+  it("DOES attempt fallback for 429 (rate limit — retryable)", async () => {
+    queueStandardSelects();
+    queueFallbackSelects();
+
+    let callCount = 0;
+    const mockClient = {
+      chat: {
+        completions: {
+          create: vi.fn().mockImplementation(async () => {
+            callCount++;
+            if (callCount === 1) throw httpError(429);
+            return tokenStream(["ok"]);
+          }),
+        },
+      },
+    };
+
+    const { streamChatCompletion } = await import("../stream-openrouter");
+    const res = makeRes();
+
+    await streamChatCompletion({
+      conversationId: 42,
+      userId: 1,
+      userMessage: { content: "hi", attachments: [] },
+      res: res as never,
+      modelConfigId: 10,
+      client: mockClient as never,
+      runIdOverride: "run_test_fixed",
+    });
+
+    // Two calls: primary (429) + fallback (success)
+    expect(mockClient.chat.completions.create).toHaveBeenCalledTimes(2);
+  });
+
+  it("DOES attempt fallback for 408 (timeout — retryable)", async () => {
+    queueStandardSelects();
+    queueFallbackSelects();
+
+    let callCount = 0;
+    const mockClient = {
+      chat: {
+        completions: {
+          create: vi.fn().mockImplementation(async () => {
+            callCount++;
+            if (callCount === 1) throw httpError(408);
+            return tokenStream(["ok"]);
+          }),
+        },
+      },
+    };
+
+    const { streamChatCompletion } = await import("../stream-openrouter");
+    const res = makeRes();
+
+    await streamChatCompletion({
+      conversationId: 42,
+      userId: 1,
+      userMessage: { content: "hi", attachments: [] },
+      res: res as never,
+      modelConfigId: 10,
+      client: mockClient as never,
+      runIdOverride: "run_test_fixed",
+    });
+
+    expect(mockClient.chat.completions.create).toHaveBeenCalledTimes(2);
+  });
+});

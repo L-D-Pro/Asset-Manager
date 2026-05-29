@@ -10,6 +10,9 @@
 /** Hard ceiling — outputs longer than this are flagged (not truncated). */
 const MAX_OUTPUT_CHARS = 32_000;
 
+/** Slugs that activate resume-specific output checks. Must match seed.ts / DB slugs. */
+export const RESUME_SKILL_SLUGS = ["tailored-resume-generator", "resume-ats-optimizer"] as const;
+
 export interface OutputValidation {
   /** Output is non-empty and within the length ceiling. */
   lengthOk: boolean;
@@ -51,9 +54,9 @@ export function validateChatOutput(
     warnings.push("Output appears to leak system-prompt scaffolding.");
   }
 
-  // Resume-specific checks for resume-tailoring or resume-audit skills.
-  const isResumeTurn = (options?.selectedSlugs ?? []).some(
-    (s) => s === "resume-tailoring" || s === "resume-audit",
+  // Resume-specific checks for resume generation / ATS skills.
+  const isResumeTurn = (options?.selectedSlugs ?? []).some((s) =>
+    (RESUME_SKILL_SLUGS as readonly string[]).includes(s),
   );
 
   if (isResumeTurn) {

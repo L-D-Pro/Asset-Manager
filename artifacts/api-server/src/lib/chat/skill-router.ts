@@ -271,12 +271,13 @@ export async function routeSkills(params: RouteParams): Promise<RoutingDecision>
   if (mode === "explicit" && explicitSlugs && explicitSlugs.length > 0) {
     // 3. explicit → exactly the user's picks that exist among active skills.
     rawSlugs = skills.filter((s) => explicitSlugs.includes(s.slug)).map((s) => s.slug);
-    confidence = 1;
+    // confidence=0 when no active skill matched (e.g. slug was deleted from DB).
+    confidence = rawSlugs.length > 0 ? 1 : 0;
     reason = rawSlugs.length > 0
       ? `Explicit selection: ${rawSlugs.join(", ")}`
       : "Explicit selection matched no active skill.";
   } else {
-    // 4. auto (also: explicit with no valid picks falls through to auto).
+    // 4. auto (explicit with empty explicitSlugs also runs auto).
     const above = candidates.filter((c) => c.score >= config.autoThreshold);
 
     if (above.length === 0) {

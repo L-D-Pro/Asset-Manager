@@ -106,6 +106,17 @@ describe("routeSkills — mode: explicit", () => {
     expect(decision.selectedSlugs).toEqual([]);
   });
 
+  it("sets confidence to 0 (not 1) when explicit slugs match nothing", async () => {
+    const decision = await routeSkills({
+      ...baseParams(mockSkills),
+      userMessage: "hi",
+      mode: "explicit",
+      explicitSlugs: ["deleted-skill-slug"],
+    });
+    expect(decision.selectedSlugs).toEqual([]);
+    expect(decision.confidence).toBe(0);
+  });
+
   it("falls through to auto when explicit slugs are empty", async () => {
     const decision = await routeSkills({
       ...baseParams(mockSkills),

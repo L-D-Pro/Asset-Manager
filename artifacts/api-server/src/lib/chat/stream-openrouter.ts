@@ -241,6 +241,18 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
     ...history,
   ];
 
+  /** True when the error is a permanent client error that should not trigger a fallback retry. */
+  function isNonRetryable(err: unknown): boolean {
+    const status =
+      (err as { status?: number })?.status ??
+      (err as { statusCode?: number })?.statusCode;
+    if (typeof status !== "number") return false;
+    // 4xx errors are permanent except 408 (timeout), 409 (conflict/transient), 429 (rate-limit).
+    return status >= 400 && status < 500 && ![408, 409, 429].includes(status);
+  }
+
+  let primaryFailedPermanently = false;
+
   async function attemptStream(m: SelectedModel): Promise<boolean> {
     try {
       const response = await client.chat.completions.create({
@@ -265,7 +277,9 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
         if (fr) finishReason = fr;
       }
       return true;
-    } catch {
+    } catch (err) {
+      logger.warn({ conversationId, modelName: m.modelName, err }, "Chat stream attempt failed");
+      if (isNonRetryable(err)) primaryFailedPermanently = true;
       return false;
     }
   }
@@ -273,6 +287,31 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
   const primaryOk = await attemptStream(model);
 
   if (!primaryOk) {
+    // If partial tokens reached the client, tell it to discard them.
+    if (assistantText.length > 0) {
+      sseSend(res, "stream-reset", { reason: "Primary model failed mid-stream; retrying with fallback." });
+    }
+    // Reset accumulated state so the fallback starts clean.
+    assistantText = "";
+    promptTokens = undefined;
+    completionTokens = undefined;
+    finishReason = null;
+
+    // Non-retryable 4xx from OpenRouter — fallback would also fail; skip it.
+    if (primaryFailedPermanently) {
+      const errMsg = `Chat model ${model.modelName} failed with a non-retryable error.`;
+      logger.error({ conversationId, runId }, errMsg);
+      sseSend(res, "error", { message: errMsg });
+      await db.insert(eventLogsTable).values({
+        userId,
+        entityType: "ai_call", entityId: userTurn!.id, runId,
+        eventType: "ai_call_failed", actorType: "system",
+        metadata: { taskScope: thread.modelScope, modelName: model.modelName, finalError: errMsg, succeeded: false, runId },
+      });
+      res.end();
+      return;
+    }
+
     // Try fallback model if configured
     let fallbackModel: SelectedModel | null = null;
     if (model.id) {

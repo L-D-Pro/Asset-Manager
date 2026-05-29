@@ -40,8 +40,8 @@ describe("validateChatOutput", () => {
   });
 });
 
-describe("validateChatOutput — resume-specific checks (resume-tailoring slug)", () => {
-  const resumeOpts = { selectedSlugs: ["resume-tailoring"] };
+describe("validateChatOutput — resume-specific checks (tailored-resume-generator slug)", () => {
+  const resumeOpts = { selectedSlugs: ["tailored-resume-generator"] };
 
   it("passes a normal concise resume output", () => {
     const r = validateChatOutput("Here is your tailored resume:\n\n- Built X\n- Led Y", resumeOpts);
@@ -102,5 +102,54 @@ describe("validateChatOutput — resume checks do NOT apply for non-resume slugs
   it("does not flag process leakage for cover-letter slug", () => {
     const r = validateChatOutput("STEP 1: Let me write your cover letter.", { selectedSlugs: ["cover-letter"] });
     expect(r.warnings.some((w) => /process leakage/i.test(w))).toBe(false);
+  });
+});
+
+describe("validateChatOutput — resume checks apply for tailored-resume-generator (current routing slug)", () => {
+  const resumeOpts = { selectedSlugs: ["tailored-resume-generator"] };
+
+  it("flags process leakage — STEP 1", () => {
+    const r = validateChatOutput("STEP 1: Extract keywords from the JD.", resumeOpts);
+    expect(r.formatOk).toBe(false);
+    expect(r.warnings.some((w) => /process leakage/i.test(w))).toBe(true);
+  });
+
+  it("flags process leakage — JD KEYWORD EXTRACTION", () => {
+    const r = validateChatOutput("JD KEYWORD EXTRACTION\n...", resumeOpts);
+    expect(r.formatOk).toBe(false);
+    expect(r.warnings.some((w) => /process leakage/i.test(w))).toBe(true);
+  });
+
+  it("flags process leakage — MAPPING CANDIDATE EXPERIENCE", () => {
+    const r = validateChatOutput("MAPPING CANDIDATE EXPERIENCE to role...", resumeOpts);
+    expect(r.formatOk).toBe(false);
+    expect(r.warnings.some((w) => /process leakage/i.test(w))).toBe(true);
+  });
+
+  it("flags over-budget bullet count", () => {
+    const manyBullets = Array.from({ length: 26 }, (_, i) => `- bullet ${i + 1}`).join("\n");
+    const r = validateChatOutput(manyBullets, resumeOpts);
+    expect(r.warnings.some((w) => /bullet count/i.test(w))).toBe(true);
+  });
+
+  it("passes clean resume output", () => {
+    const r = validateChatOutput("Here is your tailored resume:\n\n- Built X\n- Led Y", resumeOpts);
+    expect(r.warnings.filter((w) => /process leakage/i.test(w))).toEqual([]);
+  });
+});
+
+describe("validateChatOutput — resume checks apply for resume-ats-optimizer (current routing slug)", () => {
+  const resumeOpts = { selectedSlugs: ["resume-ats-optimizer"] };
+
+  it("flags process leakage — STEP 1", () => {
+    const r = validateChatOutput("STEP 1: Run ATS keyword scan.", resumeOpts);
+    expect(r.formatOk).toBe(false);
+    expect(r.warnings.some((w) => /process leakage/i.test(w))).toBe(true);
+  });
+
+  it("flags process leakage — internal audit", () => {
+    const r = validateChatOutput("Running internal audit of your resume.", resumeOpts);
+    expect(r.formatOk).toBe(false);
+    expect(r.warnings.some((w) => /process leakage/i.test(w))).toBe(true);
   });
 });

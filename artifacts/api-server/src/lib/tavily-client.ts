@@ -63,6 +63,7 @@ export async function searchWeb(query: string): Promise<TavilySearchResponse> {
 
   return {
     status: "ok",
+    query, // pinned before spread so it's always defined if Tavily omits the field
     ...(await response.json() as Omit<TavilySearchResponse, "status">),
   };
 }

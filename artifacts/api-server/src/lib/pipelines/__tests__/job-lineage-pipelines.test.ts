@@ -298,6 +298,14 @@ describe("job lineage pipelines", () => {
     expect(inserted.diffData.semanticValidation).toMatchObject({
       passed: false,
     });
+    // tailoredDocumentText must contain the raw AI output so the failure is
+    // diagnosable — NOT a near-empty rendered shell from empty parsedDraft.items.
+    expect(inserted.tailoredDocumentText).toContain("EXPERIENCE");
+    expect(inserted.tailoredDocumentText).toContain("Bad unsupported line");
+    // Must carry a DO NOT SUBMIT banner so the UI can block approval.
+    expect(inserted.tailoredDocumentText).toMatch(/DO NOT SUBMIT/i);
+    // rawContent must also be preserved.
+    expect(inserted.rawContent).toContain("Bad unsupported line");
   });
 
   it("stores a diagnostic pending review draft when template validation fails", async () => {

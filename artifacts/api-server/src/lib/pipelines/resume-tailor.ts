@@ -256,7 +256,9 @@ export async function runResumeTailorPipeline(
         templateId: template.id,
         claimIds: [],
         label: "AI tailored resume - truth lock failure",
-        tailoredDocumentText: rendered.text,
+        // Store raw model output so the failure is diagnosable, not the
+        // header-only rendered shell produced from empty parsedDraft.items.
+        tailoredDocumentText: `⚠️ DO NOT SUBMIT — validation failed. Raw AI output below.\n\n${aiResult.content}`,
         rawContent: aiResult.content,
         runId: aiResult.runId,
         eventLogId: aiResult.eventLogId,
