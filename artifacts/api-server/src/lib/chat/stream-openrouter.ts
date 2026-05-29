@@ -17,7 +17,7 @@ import { selectModelForTask, type SelectedModel } from "../model-router";
 import { getChatLeverConfig, resolveChatPrompt } from "./resolve-system-prompt";
 import { resolveChatPromptVersionId } from "./prompt-versions";
 import { buildParsedJdBlock, type ParsedJd } from "./context-builder";
-import { parseJdText } from "./jd-parse-preprocess";
+import { extractJdParseSource, getCachedJdParse, type JdParseSource } from "./jd-source";
 import { validateChatOutput } from "./output-validator";
 import { inspectContextRequirements } from "./context-requirements";
 import type { RoutingDecision } from "./skill-router";
@@ -206,17 +206,32 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
   // The SSE connection is alive here, so the frontend sees activity.
   // The main model will not start until this await resolves.
   let parsedJd: ParsedJd | null = null;
+  let jdParseSource: JdParseSource["source"] = "none";
+  let jdParseCacheHit = false;
+
   if (opts.jdParseEnabled) {
-    sseSend(res, "jd-parsing", {});
-    const _t_jdParse0 = performance.now();
-    parsedJd = await parseJdText(userMessage.content, userId);
-    timings.jdParseMs = Math.round(performance.now() - _t_jdParse0);
-    if (parsedJd) {
-      sseSend(res, "jd-parsed", { requiredSkills: parsedJd.requiredSkills, senioritySignal: parsedJd.senioritySignal });
-    } else {
-      logger.warn({ conversationId }, "jdParseEnabled but parseJdText returned null — proceeding without parsed JD");
-      sseSend(res, "jd-parse-failed", {});
+    const jdSource = extractJdParseSource({
+      userMessage: userMessage.content,
+      attachments: userMessage.attachments,
+    });
+    jdParseSource = jdSource.source;
+
+    if (jdSource.text) {
+      sseSend(res, "jd-parsing", {});
+      const _t_jdParse0 = performance.now();
+      const result = await getCachedJdParse(jdSource.text, userId);
+      timings.jdParseMs = Math.round(performance.now() - _t_jdParse0);
+      parsedJd = result.parsedJd;
+      jdParseCacheHit = result.cacheHit;
+
+      if (parsedJd) {
+        sseSend(res, "jd-parsed", { requiredSkills: parsedJd.requiredSkills, senioritySignal: parsedJd.senioritySignal });
+      } else {
+        logger.warn({ conversationId }, "jdParseEnabled but parse returned null — proceeding without parsed JD");
+        sseSend(res, "jd-parse-failed", {});
+      }
     }
+    // jdSource.source === "none" → skip parse silently, no SSE events emitted
   } else {
     timings.jdParseMs = 0;
   }
@@ -543,6 +558,8 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
         usedFallback: activeModel.id !== model.id,
         primarySkill: primarySkillSlug,
         jdParsed: parsedJd != null,
+        jdParseSource,
+        jdParseCacheHit,
         routing: {
           mode: routingMode,
           selectedSlugs: routingDecision.selectedSlugs,

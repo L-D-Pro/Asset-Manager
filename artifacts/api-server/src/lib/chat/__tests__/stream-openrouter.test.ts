@@ -106,10 +106,15 @@ vi.mock("../prompt-versions", () => ({
   resolveChatPromptVersionId: vi.fn().mockResolvedValue(null),
 }));
 
-// ── jd-parse + context-builder mocks ────────────────────────────────────────
-vi.mock("../jd-parse-preprocess", () => ({
-  parseJdText: vi.fn().mockResolvedValue(null),
+// ── jd-source mock (controllable per-test; default: source=none, cacheHit=false) ─
+const mockExtractJdParseSource = vi.fn().mockReturnValue({ text: null, source: "none" });
+const mockGetCachedJdParse = vi.fn().mockResolvedValue({ parsedJd: null, cacheHit: false });
+vi.mock("../jd-source", () => ({
+  extractJdParseSource: (...args: unknown[]) => mockExtractJdParseSource(...args),
+  getCachedJdParse: (...args: unknown[]) => mockGetCachedJdParse(...args),
 }));
+
+// ── context-builder mock ─────────────────────────────────────────────────────
 vi.mock("../context-builder", () => ({
   buildParsedJdBlock: vi.fn().mockReturnValue(""),
 }));
@@ -223,6 +228,9 @@ beforeEach(() => {
     warnings: [],
     blocking: false,
   });
+  // Default: no JD source found (existing tests don't pass jdParseEnabled).
+  mockExtractJdParseSource.mockReturnValue({ text: null, source: "none" });
+  mockGetCachedJdParse.mockResolvedValue({ parsedJd: null, cacheHit: false });
 });
 
 // ── Tests ────────────────────────────────────────────────────────────────────
@@ -670,6 +678,37 @@ describe("streamChatCompletion — context requirements guard", () => {
     // No context-warning event should appear.
     expect(allWritten).not.toMatch(/event: context-warning/);
     // Normal done event should appear.
+    expect(allWritten).toMatch(/event: done/);
+  });
+});
+
+describe("streamChatCompletion — jdParseEnabled=false skips JD source extraction", () => {
+  it("does not call extractJdParseSource or getCachedJdParse when jdParseEnabled is false", async () => {
+    queueStandardSelects();
+
+    const mockClient = {
+      chat: { completions: { create: vi.fn().mockResolvedValue(tokenStream(["ok"])) } },
+    };
+
+    const { streamChatCompletion } = await import("../stream-openrouter");
+    const res = makeRes();
+
+    await streamChatCompletion({
+      conversationId: 42,
+      userId: 1,
+      userMessage: { content: "tailor my resume", attachments: [] },
+      res: res as never,
+      modelConfigId: 10,
+      jdParseEnabled: false,
+      client: mockClient as never,
+      runIdOverride: "run_test_fixed",
+    });
+
+    expect(mockExtractJdParseSource).not.toHaveBeenCalled();
+    expect(mockGetCachedJdParse).not.toHaveBeenCalled();
+
+    const allWritten = res.writes.join("");
+    expect(allWritten).not.toMatch(/event: jd-parsing/);
     expect(allWritten).toMatch(/event: done/);
   });
 });
