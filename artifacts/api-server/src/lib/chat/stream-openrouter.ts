@@ -124,12 +124,18 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
   const { conversationId, userId, userMessage, res } = opts;
   const client = opts.client ?? openrouter;
 
+  // ── Timing instrumentation ──────────────────────────────────────────────
+  const t0 = performance.now();
+  const timings: Record<string, number> = {};
+
   // ── Ownership check ─────────────────────────────────────────────────────
+  const _t_ownership0 = performance.now();
   const [thread] = await db
     .select()
     .from(conversations)
     .where(and(eq(conversations.id, conversationId), eq(conversations.userId, userId)))
     .limit(1);
+  timings.ownershipMs = Math.round(performance.now() - _t_ownership0);
 
   if (!thread) {
     res.status(404).json({ error: "Conversation not found" });
@@ -137,6 +143,7 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
   }
 
   // ── Persist the user turn ───────────────────────────────────────────────
+  const _t_persistUser0 = performance.now();
   const [userTurn] = await db
     .insert(messages)
     .values({
@@ -146,9 +153,12 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
       attachments: userMessage.attachments,
     })
     .returning();
+  timings.persistUserTurnMs = Math.round(performance.now() - _t_persistUser0);
 
   // ── Resolve model (explicit config ID overrides scope-based selection) ──
+  const _t_resolveModel0 = performance.now();
   const model = await resolveModel(thread, opts.modelConfigId);
+  timings.resolveModelMs = Math.round(performance.now() - _t_resolveModel0);
   if (!model) {
     res.status(503).json({
       error: `No active AI model configured for task scope '${thread.modelScope}'. Seed one via the AI Config page or run the chat seed script.`,
@@ -157,19 +167,23 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
   }
 
   // ── Lever config for history turn limit ─────────────────────────────────
+  const _t_leverConfig0 = performance.now();
   const leverConfig = await getChatLeverConfig();
+  timings.loadLeverConfigMs = Math.round(performance.now() - _t_leverConfig0);
 
   // ── Prompt version + primary skill slug resolved from routing decision ──
   // Attribution deferred until after routing (see below).
   let promptVersionId: number | null = null;
   let primarySkillSlug: string | null = null;
 
+  const _t_history0 = performance.now();
   const historyRows = await db
     .select({ role: messages.role, content: messages.content })
     .from(messages)
     .where(eq(messages.conversationId, conversationId))
     .orderBy(desc(messages.createdAt))
     .limit(leverConfig.historyTurnLimit);
+  timings.loadHistoryMs = Math.round(performance.now() - _t_history0);
 
   const history = historyRows
     .reverse()
@@ -193,16 +207,21 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
   let parsedJd: ParsedJd | null = null;
   if (opts.jdParseEnabled) {
     sseSend(res, "jd-parsing", {});
+    const _t_jdParse0 = performance.now();
     parsedJd = await parseJdText(userMessage.content, userId);
+    timings.jdParseMs = Math.round(performance.now() - _t_jdParse0);
     if (parsedJd) {
       sseSend(res, "jd-parsed", { requiredSkills: parsedJd.requiredSkills, senioritySignal: parsedJd.senioritySignal });
     } else {
       logger.warn({ conversationId }, "jdParseEnabled but parseJdText returned null — proceeding without parsed JD");
       sseSend(res, "jd-parse-failed", {});
     }
+  } else {
+    timings.jdParseMs = 0;
   }
 
   // ── Route skills + build system prompt (after JD parse) ─────────────────
+  const _t_resolvePrompt0 = performance.now();
   const { systemPrompt, decision: routingDecision, mode: routingMode } =
     await resolveChatPrompt({
       userMessage: userMessage.content,
@@ -210,6 +229,7 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
       explicitSlugs: opts.explicitSkillSlugs,
       userId,
     });
+  timings.resolvePromptMs = Math.round(performance.now() - _t_resolvePrompt0);
 
   sseSend(res, "skill-routing", {
     selectedSlugs: routingDecision.selectedSlugs,
@@ -222,7 +242,11 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
   // Use the first selected skill slug (if any); null means no skill was selected.
   primarySkillSlug = routingDecision.selectedSlugs[0] ?? null;
   if (primarySkillSlug) {
+    const _t_promptVersion0 = performance.now();
     promptVersionId = await resolveChatPromptVersionId(primarySkillSlug);
+    timings.resolvePromptVersionMs = Math.round(performance.now() - _t_promptVersion0);
+  } else {
+    timings.resolvePromptVersionMs = 0;
   }
 
   const fullSystemPrompt = parsedJd
@@ -252,8 +276,13 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
   }
 
   let primaryFailedPermanently = false;
+  // Populated after the winning stream completes.
+  let streamDurationMs = 0;
+  let timeToFirstTokenMs = 0;
 
   async function attemptStream(m: SelectedModel): Promise<boolean> {
+    const _t_stream0 = performance.now();
+    let firstToken = true;
     try {
       const response = await client.chat.completions.create({
         model: m.modelName,
@@ -265,6 +294,10 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
       for await (const chunk of response as unknown as AsyncIterable<unknown>) {
         const delta = extractDeltaText(chunk);
         if (delta.length > 0) {
+          if (firstToken) {
+            timeToFirstTokenMs = Math.round(performance.now() - _t_stream0);
+            firstToken = false;
+          }
           assistantText += delta;
           sseSend(res, null, { token: delta });
         }
@@ -276,6 +309,7 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
         const fr = (chunk as { choices?: Array<{ finish_reason?: string | null }> }).choices?.[0]?.finish_reason;
         if (fr) finishReason = fr;
       }
+      streamDurationMs = Math.round(performance.now() - _t_stream0);
       return true;
     } catch (err) {
       logger.warn({ conversationId, modelName: m.modelName, err }, "Chat stream attempt failed");
@@ -302,11 +336,12 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
       const errMsg = `Chat model ${model.modelName} failed with a non-retryable error.`;
       logger.error({ conversationId, runId }, errMsg);
       sseSend(res, "error", { message: errMsg });
+      timings.totalMs = Math.round(performance.now() - t0);
       await db.insert(eventLogsTable).values({
         userId,
         entityType: "ai_call", entityId: userTurn!.id, runId,
         eventType: "ai_call_failed", actorType: "system",
-        metadata: { taskScope: thread.modelScope, modelName: model.modelName, finalError: errMsg, succeeded: false, runId },
+        metadata: { taskScope: thread.modelScope, modelName: model.modelName, finalError: errMsg, succeeded: false, runId, chatTimings: timings },
       });
       res.end();
       return;
@@ -339,11 +374,12 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
         const errMsg = `Both primary (${model.modelName}) and fallback (${fallbackModel.modelName}) models failed.`;
         logger.error({ conversationId, runId }, errMsg);
         sseSend(res, "error", { message: errMsg });
+        timings.totalMs = Math.round(performance.now() - t0);
         await db.insert(eventLogsTable).values({
           userId,
           entityType: "ai_call", entityId: userTurn!.id, runId,
           eventType: "ai_call_failed", actorType: "system",
-          metadata: { taskScope: thread.modelScope, modelName: fallbackModel.modelName, finalError: errMsg, succeeded: false, runId },
+          metadata: { taskScope: thread.modelScope, modelName: fallbackModel.modelName, finalError: errMsg, succeeded: false, runId, chatTimings: timings },
         });
         res.end();
         return;
@@ -352,11 +388,12 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
       const errMsg = `Chat model ${model.modelName} failed and no fallback is configured.`;
       logger.error({ err: errMsg, runId, conversationId }, "Chat stream failed");
       sseSend(res, "error", { message: errMsg });
+      timings.totalMs = Math.round(performance.now() - t0);
       await db.insert(eventLogsTable).values({
         userId,
         entityType: "ai_call", entityId: userTurn!.id, runId,
         eventType: "ai_call_failed", actorType: "system",
-        metadata: { taskScope: thread.modelScope, modelName: model.modelName, finalError: errMsg, succeeded: false, runId },
+        metadata: { taskScope: thread.modelScope, modelName: model.modelName, finalError: errMsg, succeeded: false, runId, chatTimings: timings },
       });
       res.end();
       return;
@@ -364,6 +401,7 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
   }
 
   // ── Persist assistant turn + canonical lineage event ────────────────────
+  const _t_persistAssistant0 = performance.now();
   const [assistantTurn] = await db
     .insert(messages)
     .values({
@@ -378,6 +416,7 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
       completionTokens: completionTokens ?? null,
     })
     .returning();
+  timings.persistAssistantMs = Math.round(performance.now() - _t_persistAssistant0);
 
   // Refresh conversation updatedAt for thread ordering.
   await db
@@ -386,6 +425,7 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
     .where(eq(conversations.id, conversationId));
 
   // ── Persist the routing decision (observability + evals) ────────────────
+  const _t_persistRouting0 = performance.now();
   await db.insert(chatRoutingDecisionsTable).values({
     runId,
     conversationId,
@@ -400,6 +440,7 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
     skillPromptTokens: routingDecision.skillPromptTokens,
     budgetTrimmed: routingDecision.budgetTrimmed,
   });
+  timings.persistRoutingDecisionMs = Math.round(performance.now() - _t_persistRouting0);
 
   // ── Light output validation (non-blocking — output already streamed) ────
   const validation = validateChatOutput(assistantText, { selectedSlugs: routingDecision.selectedSlugs });
@@ -415,6 +456,16 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
     : null;
   const estimatedCostUsd = costIn != null && costOut != null ? costIn + costOut : null;
 
+  timings.streamDurationMs = streamDurationMs;
+  timings.timeToFirstTokenMs = timeToFirstTokenMs;
+  // persistEventLogMs is 0 here because we can't know the insert duration before it happens.
+  // The field is a sentinel: its presence confirms instrumentation ran; totalMs captures the full wall time.
+  timings.persistEventLogMs = 0;
+  timings.totalMs = Math.round(performance.now() - t0);
+  // Freeze a snapshot so the stored chatTimings reflects values at insert time, not later mutations.
+  const chatTimingsSnapshot = { ...timings };
+
+  const _t_persistEventLog0 = performance.now();
   const [chatEvent] = await db
     .insert(eventLogsTable)
     .values({
@@ -454,9 +505,17 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
         succeeded: true,
         contentLength: assistantText.length,
         runId,
+        chatTimings: chatTimingsSnapshot,
+        selectedSlugs: routingDecision.selectedSlugs,
+        llmUsed: routingDecision.llmUsed,
+        jdParseEnabled: opts.jdParseEnabled ?? false,
+        promptLengthEstimate: Math.ceil(fullSystemPrompt.length / 4),
+        attachmentCount: userMessage.attachments.length,
+        historyTurnCount: history.length,
       },
     })
     .returning({ id: eventLogsTable.id });
+  timings.persistEventLogMs = Math.round(performance.now() - _t_persistEventLog0);
 
   sseSend(res, "done", {
     messageId: assistantTurn!.id,

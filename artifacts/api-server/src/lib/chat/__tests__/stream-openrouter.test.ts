@@ -42,7 +42,8 @@ let nextInsertId = 1;
 const dbInsert = vi.fn().mockImplementation((table: unknown) => ({
   values: vi.fn().mockImplementation((vals: unknown) => {
     const id = nextInsertId++;
-    insertCaptures.push({ table, values: vals });
+    // Deep-clone via JSON so captured values reflect state at call time, not later mutations.
+    insertCaptures.push({ table, values: JSON.parse(JSON.stringify(vals)) });
     const row = { id, ...(vals as Record<string, unknown>) };
     const returning = vi.fn().mockResolvedValue([row]);
     // Make the values() result directly awaitable (for inserts without .returning())
@@ -437,5 +438,107 @@ describe("streamChatCompletion — 4xx non-retryable skips fallback", () => {
     });
 
     expect(mockClient.chat.completions.create).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("streamChatCompletion — event log metadata includes chatTimings", () => {
+  it("successful chat event log includes metadata.chatTimings with expected fields", async () => {
+    queueStandardSelects();
+
+    const mockClient = {
+      chat: {
+        completions: {
+          create: vi.fn().mockResolvedValue(tokenStream(["hi"])),
+        },
+      },
+    };
+
+    const { streamChatCompletion } = await import("../stream-openrouter");
+    const res = makeRes();
+
+    await streamChatCompletion({
+      conversationId: 42,
+      userId: 1,
+      userMessage: { content: "hello", attachments: [] },
+      res: res as never,
+      modelConfigId: 10,
+      client: mockClient as never,
+      runIdOverride: "run_test_fixed",
+    });
+
+    const eventLogCapture = insertCaptures.find((c) => c.table === eventLogsTableSym);
+    expect(eventLogCapture).toBeDefined();
+
+    const metadata = (eventLogCapture!.values as { metadata: Record<string, unknown> }).metadata;
+    const chatTimings = metadata.chatTimings as Record<string, unknown>;
+
+    expect(chatTimings).toBeDefined();
+    expect(typeof chatTimings).toBe("object");
+
+    const expectedKeys = [
+      "ownershipMs",
+      "persistUserTurnMs",
+      "resolveModelMs",
+      "loadLeverConfigMs",
+      "loadHistoryMs",
+      "jdParseMs",
+      "resolvePromptMs",
+      "resolvePromptVersionMs",
+      "timeToFirstTokenMs",
+      "streamDurationMs",
+      "persistAssistantMs",
+      "persistRoutingDecisionMs",
+      "persistEventLogMs",
+      "totalMs",
+    ];
+
+    for (const key of expectedKeys) {
+      expect(chatTimings).toHaveProperty(key);
+      expect(typeof chatTimings[key]).toBe("number");
+      expect(chatTimings[key] as number).toBeGreaterThanOrEqual(0);
+    }
+
+    expect(metadata.attachmentCount).toBe(0);
+    expect(typeof metadata.historyTurnCount).toBe("number");
+  });
+
+  it("failed chat event log (non-retryable 4xx) includes partial chatTimings", async () => {
+    queueStandardSelects();
+    queueFallbackSelects();
+
+    const mockClient = {
+      chat: {
+        completions: {
+          create: vi.fn().mockImplementation(async () => {
+            throw httpError(400);
+          }),
+        },
+      },
+    };
+
+    const { streamChatCompletion } = await import("../stream-openrouter");
+    const res = makeRes();
+
+    await streamChatCompletion({
+      conversationId: 42,
+      userId: 1,
+      userMessage: { content: "hi", attachments: [] },
+      res: res as never,
+      modelConfigId: 10,
+      client: mockClient as never,
+      runIdOverride: "run_test_fixed",
+    });
+
+    const eventLogCapture = insertCaptures.find((c) => c.table === eventLogsTableSym);
+    expect(eventLogCapture).toBeDefined();
+
+    const metadata = (eventLogCapture!.values as { metadata: Record<string, unknown> }).metadata;
+    const chatTimings = metadata.chatTimings as Record<string, unknown>;
+
+    expect(chatTimings).toBeDefined();
+    expect(typeof chatTimings).toBe("object");
+    expect(chatTimings).toHaveProperty("ownershipMs");
+    expect(typeof chatTimings.totalMs).toBe("number");
+    expect(chatTimings.totalMs as number).toBeGreaterThanOrEqual(0);
   });
 });
