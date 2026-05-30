@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useLayoutEffect, useCallback } from "react";
+import { useAuth } from "../../context/auth";
+import { useNavigate } from "react-router-dom";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -215,6 +217,8 @@ function ProfileView({ profile, status, level, xp, xpNext, xpPct }: {
   status: typeof STATUS_OPTIONS[0];
   level: number; xp: number; xpNext: number; xpPct: number;
 }) {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
   return (
     <div className="profile-body">
       <div className="profile-id">
@@ -284,7 +288,14 @@ function ProfileView({ profile, status, level, xp, xpNext, xpPct }: {
       )}
 
       <div className="profile-foot">
-        <button className="btn ghost sm" style={{ flex: 1 }}>Sign out</button>
+        <button
+          className="btn ghost sm"
+          style={{ flex: 1 }}
+          onClick={async () => {
+            await logout();
+            navigate("/");
+          }}
+        >Sign out</button>
       </div>
     </div>
   );
