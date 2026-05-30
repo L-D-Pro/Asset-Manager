@@ -93,3 +93,72 @@ describe("ai metrics snapshot route", () => {
     expect(payload.degradedReasons).toContain("row_missing_root_ai_event");
   });
 });
+
+describe("ai metrics snapshot route — window guard", () => {
+  function getHandler() {
+    const layer: any = aiMetricsSnapshotRouter;
+    const route = layer.stack.find((l: any) => l.route?.path === "/ai-metrics-snapshot");
+    return route.route.stack[0].handle;
+  }
+
+  function makeReq(windowStart: string, windowEnd: string) {
+    return {
+      session: { adminId: 27 },
+      query: { metricsVersion: "v1", windowStart, windowEnd },
+    };
+  }
+
+  it("7-day window succeeds (no 400)", async () => {
+    const selectMock = (db.select as unknown as ReturnType<typeof vi.fn>);
+    selectMock.mockReturnValue({ from: () => ({ where: () => [] }) });
+
+    const handler = getHandler();
+    const res = makeMockResponse();
+    await handler(makeReq("2026-01-01T00:00:00.000Z", "2026-01-08T00:00:00.000Z"), res);
+
+    expect(res.status).not.toHaveBeenCalledWith(400);
+  });
+
+  it("31-day window succeeds (boundary)", async () => {
+    const selectMock = (db.select as unknown as ReturnType<typeof vi.fn>);
+    selectMock.mockReturnValue({ from: () => ({ where: () => [] }) });
+
+    const handler = getHandler();
+    const res = makeMockResponse();
+    await handler(makeReq("2026-01-01T00:00:00.000Z", "2026-02-01T00:00:00.000Z"), res);
+
+    expect(res.status).not.toHaveBeenCalledWith(400);
+  });
+
+  it("32-day window returns 400 with maxWindowDays", async () => {
+    const handler = getHandler();
+    const res = makeMockResponse();
+    await handler(makeReq("2026-01-01T00:00:00.000Z", "2026-02-02T00:00:00.000Z"), res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    const payload = (res.json as any).mock.calls[0][0];
+    expect(payload.error).toMatch(/window too large/i);
+    expect(payload.maxWindowDays).toBe(31);
+  });
+
+  it("windowEnd before windowStart returns 400", async () => {
+    const handler = getHandler();
+    const res = makeMockResponse();
+    await handler(makeReq("2026-01-08T00:00:00.000Z", "2026-01-01T00:00:00.000Z"), res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    const payload = (res.json as any).mock.calls[0][0];
+    expect(payload.error).toMatch(/after/i);
+  });
+
+  it("invalid date still returns 400 (schema validation)", async () => {
+    const handler = getHandler();
+    const res = makeMockResponse();
+    await handler(
+      { session: { adminId: 27 }, query: { metricsVersion: "v1", windowStart: "not-a-date", windowEnd: "2026-01-08T00:00:00.000Z" } },
+      res,
+    );
+
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+});

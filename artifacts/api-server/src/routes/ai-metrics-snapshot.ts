@@ -17,6 +17,9 @@ const QuerySchema = z.object({
   taskScope: z.string().optional(),
 });
 
+/** Server-side guard: prevents unbounded date-range scans. */
+const MAX_WINDOW_DAYS = 31;
+
 export const aiMetricsSnapshotRouter: IRouter = Router();
 
 aiMetricsSnapshotRouter.get("/ai-metrics-snapshot", async (req: JobOpsRequest, res): Promise<void> => {
@@ -29,6 +32,17 @@ aiMetricsSnapshotRouter.get("/ai-metrics-snapshot", async (req: JobOpsRequest, r
 
   const windowStart = new Date(parsed.data.windowStart);
   const windowEnd = new Date(parsed.data.windowEnd);
+
+  if (windowEnd <= windowStart) {
+    res.status(400).json({ error: "windowEnd must be after windowStart" });
+    return;
+  }
+
+  const windowDays = (windowEnd.getTime() - windowStart.getTime()) / (1000 * 60 * 60 * 24);
+  if (windowDays > MAX_WINDOW_DAYS) {
+    res.status(400).json({ error: "Metrics window too large", maxWindowDays: MAX_WINDOW_DAYS });
+    return;
+  }
 
   const window = defineSnapshotWindow({ start: windowStart, end: windowEnd });
 
