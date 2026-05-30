@@ -66,7 +66,7 @@ export default function BestPracticesAdminPage() {
       const res = await fetch("/api/best-practices", { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch best practices");
       const data = (await res.json()) as BestPracticesConfig;
-      const mapped = { ...data, items: data.items.map((item) => ({ ...item, enabled: true })) };
+      const mapped = { ...data, items: data.items.map((item) => ({ ...item, enabled: item.active !== false })) };
       setConfig(mapped);
       setOriginalConfig(cloneConfig(mapped));
     } catch {
@@ -83,20 +83,19 @@ export default function BestPracticesAdminPage() {
   async function doSave(nextConfig: BestPracticesConfig) {
     setSaving(true);
     try {
-      const activeItems = nextConfig.items
-        .filter((i) => i.enabled !== false)
-        .map(({ enabled: _e, ...rest }) => rest);
+      const itemsToSave = nextConfig.items
+        .map(({ enabled, ...rest }) => ({ ...rest, active: enabled !== false }));
       const res = await fetch("/api/best-practices", {
         method: "PUT", credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ domain: nextConfig.domain, items: activeItems }),
+        body: JSON.stringify({ domain: nextConfig.domain, items: itemsToSave }),
       });
       if (!res.ok) {
         const e = (await res.json()) as { error: string };
         throw new Error(e.error ?? "Save failed");
       }
       const data = (await res.json()) as BestPracticesConfig;
-      const mapped = { ...data, items: data.items.map((item) => ({ ...item, enabled: true })) };
+      const mapped = { ...data, items: data.items.map((item) => ({ ...item, enabled: item.active !== false })) };
       setConfig(mapped);
       setOriginalConfig(cloneConfig(mapped));
       setEditingIndex(null);
@@ -114,7 +113,7 @@ export default function BestPracticesAdminPage() {
       const res = await fetch("/api/best-practices/refresh", { method: "POST", credentials: "include" });
       if (!res.ok) throw new Error("Failed to refresh");
       const data = (await res.json()) as BestPracticesConfig;
-      const mapped = { ...data, items: data.items.map((item) => ({ ...item, enabled: true })) };
+      const mapped = { ...data, items: data.items.map((item) => ({ ...item, enabled: item.active !== false })) };
       setConfig(mapped);
       setOriginalConfig(cloneConfig(mapped));
       toast({ title: "Best practices refreshed from AI" });

@@ -11,6 +11,7 @@ export interface BestPracticeItem {
   taskScopes?: string[];
   severity?: "guidance" | "guardrail" | "blocking";
   guardKey?: string;
+  active?: boolean; // undefined means active; false means deactivated (persisted, not deleted)
 }
 
 export interface BestPracticesConfig {
@@ -28,6 +29,8 @@ export function formatBestPracticesForPrompt(config: BestPracticesConfig): strin
   if (!config.items || config.items.length === 0) return "";
   
   const activeItems = config.items.filter((item) => {
+    // Skip deactivated items (active: false means user toggled it off)
+    if (item.active === false) return false;
     // Skip if explicitly disabled by hardcoded guard
     const guardKey = item.description.slice(0, 30).toLowerCase().replace(/[^a-z0-9]/g, "_");
     if (config.hardcodedGuards[guardKey] === false) return false;

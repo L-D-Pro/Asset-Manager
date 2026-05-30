@@ -17,6 +17,7 @@ const UpdateBody = z.object({
       source: z.enum(["ai", "hardcoded", "hybrid"]),
       rationale: z.string().optional(),
       frequency: z.number().int().min(0).optional(),
+      active: z.boolean().optional(),
     }),
   ),
 });
