@@ -1718,3 +1718,11 @@ kbd, .kbd {
   outline-offset: 2px;
   border-radius: 2px;
 }
+
+.public-nav-link {
+  color: #6E7494;
+  text-decoration: none;
+  font-size: 13px;
+  transition: color 0.1s;
+}
+.public-nav-link:hover { color: #14152B; }

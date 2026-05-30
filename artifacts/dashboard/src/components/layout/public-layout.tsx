@@ -1,8 +1,9 @@
+import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 
 interface PublicLayoutProps {
   showGetAccess?: boolean;
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 function PublicLayout({ showGetAccess = false, children }: PublicLayoutProps) {
@@ -22,14 +23,13 @@ function PublicLayout({ showGetAccess = false, children }: PublicLayoutProps) {
           job<em style={{ color: "#6FAA10", fontStyle: "normal" }}>ops</em>
         </Link>
         <nav>
-          <Link
-            to="/login"
-            style={{ color: "#6E7494", textDecoration: "none", fontSize: "13px" }}
-          >
+          <Link to="/login" className="public-nav-link">
             Sign in
           </Link>
           {showGetAccess && (
-            <button className="btn primary sm">Get Access</button>
+            <Link to="/register" className="btn primary sm">
+              Get Access
+            </Link>
           )}
         </nav>
       </header>
