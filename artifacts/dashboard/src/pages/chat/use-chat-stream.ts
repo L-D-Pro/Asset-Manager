@@ -38,10 +38,38 @@ export function useChatStream(opts: { onDone?: () => void } = {}): {
 } {
   const [state, setState] = useState<StreamingTurn>(INITIAL);
   const abortRef = useRef<AbortController | null>(null);
+  const tokenBufferRef = useRef("");
+  const flushScheduledRef = useRef(false);
 
-  const reset = useCallback(() => setState(INITIAL), []);
+  function enqueueToken(token: string) {
+    tokenBufferRef.current += token;
+    if (flushScheduledRef.current) return;
+    flushScheduledRef.current = true;
+    // The RAF closure reads refs at callback time — safe to call clearStreamBuffer()
+    // concurrently (e.g. on stream-reset): by the time the RAF fires, the buffer is
+    // empty and the if-chunk guard skips the setState.
+    requestAnimationFrame(() => {
+      const chunk = tokenBufferRef.current;
+      tokenBufferRef.current = "";
+      flushScheduledRef.current = false;
+      if (chunk) {
+        setState((s) => ({ ...s, text: s.text + chunk }));
+      }
+    });
+  }
+
+  function clearStreamBuffer() {
+    tokenBufferRef.current = "";
+    flushScheduledRef.current = false;
+  }
+
+  const reset = useCallback(() => {
+    clearStreamBuffer();
+    setState(INITIAL);
+  }, []);
 
   const stop = useCallback(() => {
+    clearStreamBuffer();
     abortRef.current?.abort();
     abortRef.current = null;
     setState((s) => ({ ...s, active: false }));
@@ -52,6 +80,7 @@ export function useChatStream(opts: { onDone?: () => void } = {}): {
       const controller = new AbortController();
       abortRef.current = controller;
       setState({ text: "", messageId: null, active: true, error: null, fallbackModel: null, jdParsing: false, jdParsed: false, skillRouting: null });
+      clearStreamBuffer();
 
       let response: Response;
       try {
@@ -126,12 +155,24 @@ export function useChatStream(opts: { onDone?: () => void } = {}): {
           return;
         }
         if (event === "done") {
+          // Read remaining buffer BEFORE zeroing it — clearStreamBuffer() would destroy the
+          // value before we can merge it into the final state, so we inline the clear here.
+          const remaining = tokenBufferRef.current;
+          tokenBufferRef.current = "";
+          flushScheduledRef.current = false;
+          // Any pending RAF will now read an empty buffer and skip its setState — safe.
           setState((s) => ({
             ...s,
             active: false,
+            text: remaining ? s.text + remaining : s.text,
             messageId: typeof data.messageId === "number" ? data.messageId : s.messageId,
           }));
           opts.onDone?.();
+          return;
+        }
+        if (event === "stream-reset") {
+          clearStreamBuffer();
+          setState((s) => ({ ...s, text: "" }));
           return;
         }
         if (event === "fallback") {
@@ -159,11 +200,12 @@ export function useChatStream(opts: { onDone?: () => void } = {}): {
         }
         // default "message" event = token
         if (typeof data.token === "string") {
-          setState((s) => ({ ...s, text: s.text + data.token }));
+          enqueueToken(data.token);
         }
       }
     },
-    [opts],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [opts.onDone],
   );
 
   return { state, send, stop, reset };
