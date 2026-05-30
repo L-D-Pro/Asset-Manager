@@ -1,12 +1,21 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertCircle, CheckCircle, UserPlus } from "lucide-react";
+import { PublicLayout } from "../../components/layout/public-layout";
+
+const inputStyle = {
+  marginTop: "4px",
+  background: "#F7F8FE",
+  border: "1px solid #D8DCEC",
+  borderRadius: "6px",
+  color: "#14152B",
+  fontSize: "13px",
+} as const;
+
+const labelStyle = { fontSize: "11px", fontWeight: 700, color: "#3A3E5C" } as const;
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -30,12 +39,7 @@ export default function RegisterPage() {
   const [waitlistSubmitting, setWaitlistSubmitting] = useState(false);
 
   async function validateCode(code: string) {
-    if (!code.trim()) {
-      setCodeValid(null);
-      setCodeMessage("");
-      setShowWaitlist(false);
-      return;
-    }
+    if (!code.trim()) { setCodeValid(null); setCodeMessage(""); setShowWaitlist(false); return; }
     try {
       const res = await fetch("/api/invite-codes/validate", {
         method: "POST",
@@ -45,11 +49,7 @@ export default function RegisterPage() {
       const data = await res.json() as { valid: boolean; message?: string };
       setCodeValid(data.valid);
       setCodeMessage(data.message ?? "");
-      if (!data.valid && data.message?.includes("limit")) {
-        setShowWaitlist(true);
-      } else {
-        setShowWaitlist(false);
-      }
+      setShowWaitlist(!data.valid && (data.message?.includes("limit") ?? false));
     } catch {
       setCodeValid(false);
       setCodeMessage("Could not validate code");
@@ -75,9 +75,7 @@ export default function RegisterPage() {
         }),
       });
       setWaitlistSent(true);
-    } catch {
-      // ignore
-    } finally {
+    } catch { /* ignore */ } finally {
       setWaitlistSubmitting(false);
     }
   }
@@ -85,16 +83,8 @@ export default function RegisterPage() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
-
-    if (password !== confirmPassword) {
-      setError("Passwords do not match");
-      return;
-    }
-    if (!agreed) {
-      setError("You must agree to the Pilot Terms");
-      return;
-    }
-
+    if (password !== confirmPassword) { setError("Passwords do not match"); return; }
+    if (!agreed) { setError("You must agree to the Pilot Terms"); return; }
     setLoading(true);
     try {
       const utmRaw = localStorage.getItem("jobops_utm");
@@ -103,21 +93,17 @@ export default function RegisterPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          username,
-          email,
-          password,
+          username, email, password,
           inviteCode: inviteCode.trim(),
           utmSource: utm.source ?? undefined,
           utmMedium: utm.medium ?? undefined,
           utmCampaign: utm.campaign ?? undefined,
         }),
       });
-
       if (!res.ok) {
         const err = await res.json() as { error: string };
         throw new Error(err.error ?? "Registration failed");
       }
-
       localStorage.removeItem("jobops_utm");
       setRegistered(true);
     } catch (err) {
@@ -129,221 +115,140 @@ export default function RegisterPage() {
 
   if (registered) {
     return (
-      <div>
-        <div>
-          <div>
-            <div>
-              <h1>Job Ops</h1>
-              <p>Create Account</p>
-            </div>
-            <div>
-              <CheckCircle />
-              <h3>Check your email</h3>
-              <p>
-                We sent a verification link to <strong>{email}</strong>. Click it to activate your account, then sign in.
-              </p>
-              <p>
-                Didn't get it? Check spam or try signing in — you can request a new verification email.
-              </p>
-              <Button variant="outline" onClick={() => navigate("/login")}>
-                Go to Sign In
-              </Button>
-            </div>
+      <PublicLayout>
+        <div className="public-hero">
+          <div className="public-card" style={{ textAlign: "center" }}>
+            <CheckCircle size={32} style={{ color: "#6FAA10", margin: "0 auto 12px" }} />
+            <h3 style={{ fontSize: "16px", fontWeight: 900, color: "#14152B", margin: "0 0 8px 0" }}>Check your email</h3>
+            <p style={{ fontSize: "13px", color: "#6E7494", margin: "0 0 16px 0" }}>
+              We sent a verification link to <strong style={{ color: "#14152B" }}>{email}</strong>. Click it to activate your account, then sign in.
+            </p>
+            <p style={{ fontSize: "12px", color: "#9CA0B8", margin: "0 0 20px 0" }}>
+              Didn't get it? Check spam or try signing in — you can request a new verification email.
+            </p>
+            <button className="btn ghost" onClick={() => navigate("/login")} style={{ width: "100%" }}>
+              Go to Sign In
+            </button>
           </div>
         </div>
-      </div>
+      </PublicLayout>
     );
   }
 
   return (
-    <div>
-      <div>
-        <div>
-          <div>
-            <h1>Job Ops</h1>
-            <p>Get started with Job Ops</p>
-          </div>
-
-          <CardHeader>
-            <CardTitle>
-              <UserPlus />
+    <PublicLayout>
+      <div className="public-hero">
+        <div className="public-card">
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+            <UserPlus size={16} style={{ color: "#6FAA10" }} />
+            <h2 style={{ fontSize: "16px", fontWeight: 900, letterSpacing: "-0.02em", color: "#14152B", margin: 0 }}>
               Join the Pilot
-            </CardTitle>
-            <CardDescription>
-              Create your account with an invite code to get early access.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit}>
-              {error && (
-                <Alert variant="destructive">
-                  <AlertCircle />
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
+            </h2>
+          </div>
+          <p style={{ fontSize: "12px", color: "#6E7494", margin: "0 0 20px 0" }}>
+            Create your account with an invite code to get early access.
+          </p>
+
+          {error && (
+            <div style={{ background: "rgba(255,60,95,0.08)", border: "1px solid rgba(255,60,95,0.25)", borderRadius: "8px", padding: "10px 12px", marginBottom: "14px", fontSize: "12px", color: "#c0223a", display: "flex", gap: "8px", alignItems: "center" }}>
+              <AlertCircle size={14} />
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            <div>
+              <Label htmlFor="inviteCode" style={labelStyle}>Invite Code</Label>
+              <Input id="inviteCode" type="text" placeholder="JOBOPS-XXXXXX" value={inviteCode}
+                onChange={(e) => { setInviteCode(e.target.value); if (e.target.value.length >= 8) validateCode(e.target.value); }}
+                onBlur={(e) => validateCode(e.target.value)}
+                required disabled={loading} style={inputStyle}
+              />
+              {codeValid !== null && (
+                <p style={{ fontSize: "11px", marginTop: "4px", color: codeValid ? "#6FAA10" : "#c0223a" }}>
+                  {codeValid ? "✓ Code valid" : codeMessage}
+                </p>
               )}
 
-              <div>
-                <Label htmlFor="inviteCode">Invite Code</Label>
-                <Input
-                  id="inviteCode"
-                  type="text"
-                  placeholder="JOBOPS-XXXXXX"
-                  value={inviteCode}
-                  onChange={(e) => {
-                    setInviteCode(e.target.value);
-                    if (e.target.value.length >= 8) validateCode(e.target.value);
-                  }}
-                  onBlur={(e) => validateCode(e.target.value)}
-                  required
-                  disabled={loading}
-                />
-                {codeValid !== null && (
-                  <p>
-                    {codeValid ? "Code valid" : codeMessage}
-                  </p>
-                )}
-
-                {waitlistSent ? (
-                  <div>
-                    <CheckCircle />
-                    You're on the waitlist! We'll email you when spots open.
-                  </div>
-                ) : showWaitlist ? (
-                  <div>
-                    <p>Join the Waitlist</p>
-                    <Input
-                      placeholder="Your name"
-                      value={waitlistName}
-                      onChange={(e) => setWaitlistName(e.target.value)}
-                      disabled={waitlistSubmitting}
-                    />
-                    <Input
-                      type="email"
-                      placeholder="Email"
-                      value={waitlistEmail}
-                      onChange={(e) => setWaitlistEmail(e.target.value)}
-                      required
-                      disabled={waitlistSubmitting}
-                    />
-                    <Input
-                      placeholder="LinkedIn URL (optional)"
-                      value={waitlistLinkedin}
-                      onChange={(e) => setWaitlistLinkedin(e.target.value)}
-                      disabled={waitlistSubmitting}
-                    />
-                    <Button variant="outline" size="sm" onClick={handleWaitlistSubmit} disabled={waitlistSubmitting || !waitlistEmail}>
-                      {waitlistSubmitting ? "Submitting..." : "Join Waitlist"}
-                    </Button>
-                  </div>
-                ) : null}
-              </div>
-
-              <div>
-                <Label htmlFor="username">Username</Label>
-                <Input
-                  id="username"
-                  type="text"
-                  placeholder="yourname"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  required
-                  disabled={loading}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  disabled={loading}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Min 12 characters"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  disabled={loading}
-                  minLength={12}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  disabled={loading}
-                  minLength={12}
-                />
-              </div>
-
-              <div>
-                <Checkbox
-                  id="terms"
-                  checked={agreed}
-                  onCheckedChange={(v) => setAgreed(v === true)}
-                  disabled={loading}
-                />
-                <div>
-                  <label htmlFor="terms">
-                    I agree to the{" "}
-                    <span
-                      onClick={(e) => { e.preventDefault(); setShowTerms((s) => !s); }}
-                    >
-                      Pilot Terms
-                    </span>{" "}
-                    and understand this is beta software. See{" "}
-                    <Link to="/terms-of-service" target="_blank">
-                      Terms
-                    </Link>{" "}
-                    and{" "}
-                    <Link to="/privacy-policy" target="_blank">
-                      Privacy
-                    </Link>
-                    .
-                  </label>
+              {waitlistSent ? (
+                <div style={{ marginTop: "8px", display: "flex", gap: "6px", alignItems: "center", fontSize: "12px", color: "#6FAA10" }}>
+                  <CheckCircle size={14} />
+                  You're on the waitlist! We'll email you when spots open.
                 </div>
-              </div>
-
-              {showTerms && (
-                <div>
-                  <p>Job Ops Pilot Program Terms</p>
-                  <p><strong>Beta Software:</strong> This is pre-release software. Bugs and downtime may occur.</p>
-                  <p><strong>Data &amp; Privacy:</strong> We collect job application data to improve AI suggestions.</p>
-                  <p><strong>Feedback:</strong> Pilot participants agree to provide periodic feedback.</p>
-                  <p><strong>Usage Limits:</strong> AI requests are limited per week.</p>
-                  <p><strong>Termination:</strong> We reserve the right to terminate access at any time.</p>
+              ) : showWaitlist ? (
+                <div style={{ marginTop: "10px", padding: "12px", background: "#F7F8FE", border: "1px solid #D8DCEC", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "8px" }}>
+                  <p style={{ fontSize: "12px", fontWeight: 700, color: "#14152B", margin: 0 }}>Join the Waitlist</p>
+                  <Input placeholder="Your name" value={waitlistName} onChange={(e) => setWaitlistName(e.target.value)} disabled={waitlistSubmitting} style={inputStyle} />
+                  <Input type="email" placeholder="Email" value={waitlistEmail} onChange={(e) => setWaitlistEmail(e.target.value)} required disabled={waitlistSubmitting} style={inputStyle} />
+                  <Input placeholder="LinkedIn URL (optional)" value={waitlistLinkedin} onChange={(e) => setWaitlistLinkedin(e.target.value)} disabled={waitlistSubmitting} style={inputStyle} />
+                  <button type="button" className="btn ghost sm" onClick={handleWaitlistSubmit} disabled={waitlistSubmitting || !waitlistEmail}>
+                    {waitlistSubmitting ? "Submitting..." : "Join Waitlist"}
+                  </button>
                 </div>
-              )}
+              ) : null}
+            </div>
 
-              <Button type="submit" disabled={loading || codeValid !== true}>
-                {loading ? "Creating Account..." : "Agree and Continue"}
-              </Button>
-            </form>
-          </CardContent>
+            <div>
+              <Label htmlFor="username" style={labelStyle}>Username</Label>
+              <Input id="username" type="text" placeholder="yourname" value={username}
+                onChange={(e) => setUsername(e.target.value)} required disabled={loading} style={inputStyle} />
+            </div>
+
+            <div>
+              <Label htmlFor="email" style={labelStyle}>Email</Label>
+              <Input id="email" type="email" placeholder="you@example.com" value={email}
+                onChange={(e) => setEmail(e.target.value)} required disabled={loading} style={inputStyle} />
+            </div>
+
+            <div>
+              <Label htmlFor="password" style={labelStyle}>Password</Label>
+              <Input id="password" type="password" placeholder="Min 12 characters" value={password}
+                onChange={(e) => setPassword(e.target.value)} required disabled={loading} minLength={12} style={inputStyle} />
+            </div>
+
+            <div>
+              <Label htmlFor="confirmPassword" style={labelStyle}>Confirm Password</Label>
+              <Input id="confirmPassword" type="password" value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)} required disabled={loading} minLength={12} style={inputStyle} />
+            </div>
+
+            <div style={{ display: "flex", gap: "8px", alignItems: "flex-start" }}>
+              <Checkbox id="terms" checked={agreed} onCheckedChange={(v) => setAgreed(v === true)} disabled={loading} style={{ marginTop: "2px" }} />
+              <label htmlFor="terms" style={{ fontSize: "12px", color: "#6E7494", lineHeight: 1.5, cursor: "pointer" }}>
+                I agree to the{" "}
+                <button type="button" onClick={(e) => { e.preventDefault(); setShowTerms((s) => !s); }}
+                  style={{ color: "#6FAA10", fontWeight: 700, background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: "inherit" }}>
+                  Pilot Terms
+                </button>{" "}
+                and understand this is beta software. See{" "}
+                <Link to="/terms" target="_blank" style={{ color: "#6FAA10", fontWeight: 700 }}>Terms</Link>{" "}
+                and{" "}
+                <Link to="/privacy" target="_blank" style={{ color: "#6FAA10", fontWeight: 700 }}>Privacy</Link>.
+              </label>
+            </div>
+
+            {showTerms && (
+              <div style={{ padding: "12px", background: "#F7F8FE", border: "1px solid #D8DCEC", borderRadius: "8px", fontSize: "12px", color: "#6E7494", lineHeight: 1.6 }}>
+                <p style={{ fontWeight: 700, color: "#14152B", margin: "0 0 6px 0" }}>Job Ops Pilot Program Terms</p>
+                <p style={{ margin: "0 0 4px 0" }}><strong style={{ color: "#3A3E5C" }}>Beta Software:</strong> This is pre-release software. Bugs and downtime may occur.</p>
+                <p style={{ margin: "0 0 4px 0" }}><strong style={{ color: "#3A3E5C" }}>Data & Privacy:</strong> We collect job application data to improve AI suggestions.</p>
+                <p style={{ margin: "0 0 4px 0" }}><strong style={{ color: "#3A3E5C" }}>Feedback:</strong> Pilot participants agree to provide periodic feedback.</p>
+                <p style={{ margin: "0 0 4px 0" }}><strong style={{ color: "#3A3E5C" }}>Usage Limits:</strong> AI requests are limited per week.</p>
+                <p style={{ margin: 0 }}><strong style={{ color: "#3A3E5C" }}>Termination:</strong> We reserve the right to terminate access at any time.</p>
+              </div>
+            )}
+
+            <button type="submit" className="btn primary" disabled={loading || codeValid !== true} style={{ width: "100%", marginTop: "4px" }}>
+              {loading ? "Creating Account..." : "Agree and Continue"}
+            </button>
+          </form>
+
+          <p style={{ textAlign: "center", marginTop: "16px", fontSize: "11px", color: "#9CA0B8" }}>
+            Already have an account?{" "}
+            <Link to="/login" style={{ color: "#6FAA10", fontWeight: 700, textDecoration: "none" }}>Sign in</Link>
+          </p>
         </div>
-
-        <p>
-          Already have an account?{" "}
-          <Link to="/login">
-            Sign in
-          </Link>
-        </p>
       </div>
-    </div>
+    </PublicLayout>
   );
 }

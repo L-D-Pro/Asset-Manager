@@ -8,7 +8,7 @@ interface PublicLayoutProps {
 
 function PublicLayout({ showGetAccess = false, children }: PublicLayoutProps) {
   return (
-    <div className="public-page">
+    <div className="public-page" data-theme="light">
       <header className="public-header">
         <Link
           to="/"
