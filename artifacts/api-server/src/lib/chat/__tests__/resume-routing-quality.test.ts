@@ -185,7 +185,8 @@ describe("resume-routing quality — scenario 2: vague 'make this fit better' + 
 
     expect(selectedSlugs).toEqual(["resume-tailoring"]);
     expect(llmUsed).toBe(false);
-    expect(reason).toContain("Deterministic match");
+    // Obvious-path short-circuit fires for base_resume + job (Phase 5): reason reflects that.
+    expect(reason).toMatch(/deterministic/i);
   });
 
   it("prompt contains resume-tailoring body", async () => {

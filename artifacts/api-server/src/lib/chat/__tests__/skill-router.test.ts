@@ -732,3 +732,166 @@ describe("routeSkills — routing config (tunable behavior)", () => {
     expect(decision.selectedSlugs).toEqual([]); // no skill selected — not "less than all", but zero
   });
 });
+
+describe("routeSkills — obvious resume-tailoring deterministic path", () => {
+  // Shared skill set with a tailor slug and a generic skill.
+  const tailorSkill: RouterSkill = {
+    slug: "resume-tailoring",
+    body: "Tailors resume to a job description.",
+    meta: defaultMeta({ triggerExamples: ["tailor"], priority: 1 }),
+  };
+  const genericSkill: RouterSkill = {
+    slug: "general-advice",
+    body: "General career advice.",
+    meta: defaultMeta({ triggerExamples: ["help"], priority: 2 }),
+  };
+
+  it("base_resume + job attachment → deterministic tailor selection, llmUsed: false", async () => {
+    // boostTailorPlusJob=0.4, autoThreshold=0.3 → resume-tailoring score = 0.4 >= 0.3 → above threshold.
+    // isObviousTailoringRequest detects base_resume+job → short-circuit, no LLM.
+    let llmCalled = false;
+    const decision = await routeSkills({
+      ...baseParams([tailorSkill, genericSkill]),
+      userMessage: "Tailor my resume",
+      attachmentKinds: ["base_resume", "job"],
+      mode: "auto",
+      routingConfig: {
+        ...DEFAULT_ROUTING_CONFIG,
+        boostTailorPlusJob: 0.4,
+        boostResumePlusJob: 0.0,
+        autoThreshold: 0.3,
+        ambiguousGap: 0.15,
+      },
+      classify: async () => {
+        llmCalled = true;
+        return [{ slug: "general-advice", score: 0.9 }];
+      },
+    });
+    expect(decision.selectedSlugs).toEqual(["resume-tailoring"]);
+    expect(decision.llmUsed).toBe(false);
+    expect(decision.reason).toContain("deterministic");
+    expect(llmCalled).toBe(false);
+  });
+
+  it("base_resume + tailor language → deterministic, llmUsed: false", async () => {
+    // No job attachment, but "tailor" verb present with base_resume.
+    // boostResumePlusJob=0 (no job), triggerWeight=0.3 → trigger "tailor" matches → score=0.3 >= threshold.
+    let llmCalled = false;
+    const decision = await routeSkills({
+      ...baseParams([tailorSkill, genericSkill]),
+      userMessage: "Please tailor my resume for this role",
+      attachmentKinds: ["base_resume"],
+      mode: "auto",
+      routingConfig: {
+        ...DEFAULT_ROUTING_CONFIG,
+        triggerWeight: 0.3,
+        autoThreshold: 0.3,
+        ambiguousGap: 0.15,
+      },
+      classify: async () => {
+        llmCalled = true;
+        return [{ slug: "general-advice", score: 0.9 }];
+      },
+    });
+    expect(decision.llmUsed).toBe(false);
+    expect(decision.selectedSlugs).toEqual(["resume-tailoring"]);
+    expect(llmCalled).toBe(false);
+  });
+
+  it("tied non-obvious request with matching triggers calls LLM classifier", async () => {
+    // Two non-tailoring skills tied on the same trigger → LLM should break the tie.
+    const skillA: RouterSkill = {
+      slug: "x-skill",
+      body: "Skill X",
+      meta: defaultMeta({ triggerExamples: ["report"], priority: 1 }),
+    };
+    const skillB: RouterSkill = {
+      slug: "y-skill",
+      body: "Skill Y",
+      meta: defaultMeta({ triggerExamples: ["report"], priority: 2 }),
+    };
+    let classifyCalled = false;
+    const decision = await routeSkills({
+      ...baseParams([skillA, skillB]),
+      userMessage: "can you give me a report on this",
+      attachmentKinds: [],
+      mode: "auto",
+      routingConfig: {
+        ...DEFAULT_ROUTING_CONFIG,
+        triggerWeight: 0.4,
+        autoThreshold: 0.3,
+        ambiguousGap: 0.5,
+      },
+      classify: async () => {
+        classifyCalled = true;
+        return [{ slug: "x-skill", score: 0.8 }];
+      },
+    });
+    // Both match "report" → score 0.4 each → tied → LLM resolves tie.
+    expect(classifyCalled).toBe(true);
+    expect(decision.llmUsed).toBe(true);
+  });
+
+  it("non-obvious request with both attachments but unrelated message does NOT trigger obvious path", async () => {
+    // base_resume + job attached but message has no application-intent words.
+    const decision = await routeSkills({
+      ...baseParams([tailorSkill, genericSkill]),
+      userMessage: "what are the visa requirements here?",
+      attachmentKinds: ["base_resume", "job"],
+      mode: "auto",
+      routingConfig: {
+        ...DEFAULT_ROUTING_CONFIG,
+        boostTailorPlusJob: 0.4,
+        autoThreshold: 0.3,
+      },
+    });
+    // isObviousTailoringRequest returns false (no application-intent words).
+    // The boost still applies so tailor skill gets 0.4 score — but normal routing.
+    expect(decision.llmUsed).toBe(false); // still deterministic (clear winner)
+    expect(decision.reason).not.toMatch(/obvious/i); // did NOT take the obvious path
+  });
+
+  it("job attachment + 'resume' in message → obvious path (Pattern 3)", async () => {
+    // Spec requirement: job attachment + "resume" in message counts as obvious.
+    const decision = await routeSkills({
+      ...baseParams([tailorSkill, genericSkill]),
+      userMessage: "can you tailor my resume to match this job?",
+      attachmentKinds: ["job"],
+      mode: "auto",
+      routingConfig: {
+        ...DEFAULT_ROUTING_CONFIG,
+        boostTailorPlusJob: 0.0,
+        boostResumePlusJob: 0.4,
+        autoThreshold: 0.3,
+      },
+    });
+    expect(decision.llmUsed).toBe(false);
+    expect(decision.selectedSlugs).toEqual(["resume-tailoring"]);
+    expect(decision.reason).toMatch(/deterministic/i);
+  });
+
+  it("explicit mode is unaffected — obvious path does NOT run in explicit mode", async () => {
+    // Even with base_resume + job, explicit mode should just use explicitSlugs.
+    const decision = await routeSkills({
+      ...baseParams([tailorSkill, genericSkill]),
+      userMessage: "do something",
+      attachmentKinds: ["base_resume", "job"],
+      mode: "explicit",
+      explicitSlugs: ["general-advice"],
+    });
+    expect(decision.selectedSlugs).toEqual(["general-advice"]);
+  });
+
+  it("debug_all mode is unaffected — all skills selected regardless of obvious-path", async () => {
+    // debug_all bypasses all routing logic including the obvious-path short-circuit.
+    const decision = await routeSkills({
+      ...baseParams([tailorSkill, genericSkill]),
+      userMessage: "do something",
+      attachmentKinds: ["base_resume", "job"],
+      mode: "debug_all",
+    });
+    expect(decision.selectedSlugs).toEqual(["resume-tailoring", "general-advice"]);
+    expect(decision.llmUsed).toBe(false);
+    expect(decision.reason).toContain("Debug mode");
+  });
+});

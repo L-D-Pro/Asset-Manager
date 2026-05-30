@@ -192,6 +192,82 @@ function scoreSkills(
   });
 }
 
+/**
+ * Returns true when attachment context + message language make resume tailoring
+ * unambiguously the right skill — no LLM disambiguation needed.
+ *
+ * Patterns:
+ *   - base_resume + job attachment (strong context signal)
+ *   - base_resume + explicit tailor-language in message
+ *   - Explicit tailor-phrase + JD reference in message
+ */
+function isObviousTailoringRequest(
+  message: string,
+  attachmentKinds: string[],
+): boolean {
+  const text = message.toLowerCase();
+  const hasBaseResume = attachmentKinds.includes("base_resume");
+  const hasJob = attachmentKinds.includes("job");
+
+  // Tailor-verb: explicit intent words. Parens on each compound clause prevent
+  // maintainer errors from operator-precedence assumptions.
+  const hasTailorVerb =
+    text.includes("tailor") ||
+    (text.includes("rewrite") && text.includes("resume")) ||
+    (text.includes("align") && (text.includes("resume") || text.includes("jd"))) ||
+    (text.includes("customize") && text.includes("resume")) ||
+    text.includes("make my resume fit") ||
+    text.includes("fit this job") ||
+    text.includes("fit this posting") ||
+    text.includes("fit this role");
+
+  // Broad job-application intent: user is talking about their job search, not
+  // an unrelated topic. Prevents "visa requirements?" from routing to tailoring.
+  const hasApplicationIntent =
+    text.includes("resume") ||
+    text.includes("tailor") ||
+    text.includes("rewrite") ||
+    text.includes("application") ||
+    text.includes("job description") ||
+    text.includes(" jd") ||
+    text.includes("jd,") ||
+    text.includes("qualifications") ||
+    text.includes("cover letter");
+
+  // Pattern 1: base_resume + job + application-intent message (all three required).
+  // Pure attachment presence without any job-application language could be an
+  // unrelated question asked with both contexts attached — require at least a
+  // weak topical signal.
+  if (hasBaseResume && hasJob && hasApplicationIntent) return true;
+
+  // Pattern 2: base_resume + explicit tailor language
+  if (hasBaseResume && hasTailorVerb) return true;
+
+  // Pattern 3: job attachment + "resume" in message (spec requirement)
+  if (hasJob && text.includes("resume")) return true;
+
+  // Pattern 4: explicit tailor phrase + explicit JD reference
+  if (hasTailorVerb && (text.includes("job description") || text.includes(" jd") || text.includes("jd,") || text.includes("jd."))) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Given scored candidates, return the highest-scoring skill whose slug
+ * contains "tailor" (case-insensitive), or null if none qualify.
+ */
+function pickBestTailoringSkill(
+  candidates: Array<{ slug: string; score: number }>,
+  autoThreshold: number,
+): { slug: string; score: number } | null {
+  const tailoring = candidates
+    .filter((c) => c.slug.toLowerCase().includes("tailor") && c.score >= autoThreshold)
+    .sort((a, b) => b.score - a.score);
+  return tailoring[0] ?? null;
+}
+
 /** Apply the maxSkills cap then the token budget; compute final token count. */
 function finalizeSelection(
   selectedSlugs: string[],
@@ -330,6 +406,31 @@ export async function routeSkills(params: RouteParams): Promise<RoutingDecision>
 
     const topScore = Math.max(...above.map((c) => c.score));
     const tied = above.filter((c) => c.score >= topScore - config.ambiguousGap);
+
+    // ── Obvious resume-tailoring: skip ambiguity check → deterministic ──────
+    if (isObviousTailoringRequest(userMessage, attachmentKinds)) {
+      const best = pickBestTailoringSkill(candidates, config.autoThreshold);
+      // If no tailor skill is at/above threshold (e.g. boostTailorPlusJob=0 in config),
+      // best is null and we fall through to normal tied/LLM logic — config is respected.
+      if (best) {
+        const { slugs, budgetTrimmed, skillPromptTokens } = finalizeSelection(
+          [best.slug],
+          skills,
+          maxSkills,
+          tokenBudget,
+        );
+        return {
+          selectedSlugs: slugs,
+          confidence: Math.min(1, best.score + 0.2),
+          reason: `Obvious resume-tailoring context (deterministic): ${best.slug}`,
+          candidates,
+          llmUsed: false,
+          budgetTrimmed,
+          skillPromptTokens,
+        };
+      }
+    }
+    // ── END obvious resume-tailoring ─────────────────────────────────────────
 
     if (tied.length >= 2 && classify) {
       const llm = await classify(skills, userMessage);
