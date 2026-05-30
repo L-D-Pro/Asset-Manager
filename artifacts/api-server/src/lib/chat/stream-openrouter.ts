@@ -29,6 +29,17 @@ import type { RoutingDecision } from "./skill-router";
  */
 const DEFAULT_MODEL_MAX_TOKENS = 4096;
 
+/**
+ * Controls how the chat stream handles a primary model failure.
+ * - reset_and_fallback: emit stream-reset, clear accumulated text, try fallback (current behavior)
+ * - fallback_before_first_token_only: only fallback if primary failed before any tokens
+ * - no_fallback_after_partial: treat any primary failure as terminal (no fallback)
+ */
+export type StreamingFallbackPolicy =
+  | "reset_and_fallback"
+  | "fallback_before_first_token_only"
+  | "no_fallback_after_partial";
+
 export interface StreamChatCompletionOptions {
   conversationId: number;
   userId: number;
@@ -44,6 +55,8 @@ export interface StreamChatCompletionOptions {
   client?: { chat: { completions: { create: typeof openrouter.chat.completions.create } } };
   /** Allows tests to provide a stable runId / clock. */
   runIdOverride?: string;
+  /** Controls fallback behavior when primary model fails. Defaults to "reset_and_fallback". */
+  streamingFallbackPolicy?: StreamingFallbackPolicy;
 }
 
 function toSelectedModel(row: AiModelConfig): SelectedModel {
@@ -325,6 +338,10 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
     : systemPrompt;
 
   // ── Stream the assistant turn ───────────────────────────────────────────
+  const policy: StreamingFallbackPolicy = opts.streamingFallbackPolicy ?? "reset_and_fallback";
+  let partialTokensBeforeReset = 0;
+  let primaryFailed = false;
+
   let assistantText = "";
   let promptTokens: number | undefined;
   let completionTokens: number | undefined;
@@ -392,6 +409,9 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
   const primaryOk = await attemptStream(model);
 
   if (!primaryOk) {
+    primaryFailed = true;
+    partialTokensBeforeReset = assistantText.length; // chars accumulated before reset
+
     // If partial tokens reached the client, tell it to discard them.
     if (assistantText.length > 0) {
       sseSend(res, "stream-reset", { reason: "Primary model failed mid-stream; retrying with fallback." });
@@ -401,6 +421,56 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
     promptTokens = undefined;
     completionTokens = undefined;
     finishReason = null;
+
+    // Apply fallback policy
+    if (policy === "fallback_before_first_token_only" && partialTokensBeforeReset > 0) {
+      // Primary emitted tokens then failed — policy says no fallback in this case.
+      const errMsg = `Primary model emitted ${partialTokensBeforeReset} chars then failed. Policy '${policy}' prevents fallback after partial output.`;
+      logger.error({ conversationId, runId }, errMsg);
+      sseSend(res, "error", { message: `Stream error: primary model failed after partial output.` });
+      timings.totalMs = Math.round(performance.now() - t0);
+      await db.insert(eventLogsTable).values({
+        userId,
+        entityType: "ai_call", entityId: userTurn!.id, runId,
+        eventType: "ai_call_failed", actorType: "system",
+        metadata: {
+          taskScope: thread.modelScope, modelName: model.modelName,
+          finalError: errMsg, succeeded: false, runId,
+          chatTimings: { ...timings },
+          streamingFallbackPolicy: policy,
+          primaryFailed: true,
+          partialTokensBeforeReset,
+          usedFallback: false,
+          fallbackModel: null,
+        },
+      });
+      res.end();
+      return;
+    }
+    if (policy === "no_fallback_after_partial" && partialTokensBeforeReset > 0) {
+      // No fallback when partial output was already emitted.
+      const errMsg = `Primary model failed after ${partialTokensBeforeReset} chars. Policy '${policy}' prevents fallback.`;
+      logger.error({ conversationId, runId }, errMsg);
+      sseSend(res, "error", { message: `Stream error: primary model failed after partial output.` });
+      timings.totalMs = Math.round(performance.now() - t0);
+      await db.insert(eventLogsTable).values({
+        userId,
+        entityType: "ai_call", entityId: userTurn!.id, runId,
+        eventType: "ai_call_failed", actorType: "system",
+        metadata: {
+          taskScope: thread.modelScope, modelName: model.modelName,
+          finalError: errMsg, succeeded: false, runId,
+          chatTimings: { ...timings },
+          streamingFallbackPolicy: policy,
+          primaryFailed: true,
+          partialTokensBeforeReset,
+          usedFallback: false,
+          fallbackModel: null,
+        },
+      });
+      res.end();
+      return;
+    }
 
     // Non-retryable 4xx from OpenRouter — fallback would also fail; skip it.
     if (primaryFailedPermanently) {
@@ -412,7 +482,16 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
         userId,
         entityType: "ai_call", entityId: userTurn!.id, runId,
         eventType: "ai_call_failed", actorType: "system",
-        metadata: { taskScope: thread.modelScope, modelName: model.modelName, finalError: errMsg, succeeded: false, runId, chatTimings: timings },
+        metadata: {
+          taskScope: thread.modelScope, modelName: model.modelName,
+          finalError: errMsg, succeeded: false, runId,
+          chatTimings: timings,
+          streamingFallbackPolicy: policy,
+          primaryFailed: true,
+          partialTokensBeforeReset,
+          usedFallback: false,
+          fallbackModel: null,
+        },
       });
       res.end();
       return;
@@ -450,7 +529,16 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
           userId,
           entityType: "ai_call", entityId: userTurn!.id, runId,
           eventType: "ai_call_failed", actorType: "system",
-          metadata: { taskScope: thread.modelScope, modelName: fallbackModel.modelName, finalError: errMsg, succeeded: false, runId, chatTimings: timings },
+          metadata: {
+            taskScope: thread.modelScope, modelName: fallbackModel.modelName,
+            finalError: errMsg, succeeded: false, runId,
+            chatTimings: timings,
+            streamingFallbackPolicy: policy,
+            primaryFailed: true,
+            partialTokensBeforeReset,
+            usedFallback: true,
+            fallbackModel: fallbackModel.modelName,
+          },
         });
         res.end();
         return;
@@ -464,7 +552,16 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
         userId,
         entityType: "ai_call", entityId: userTurn!.id, runId,
         eventType: "ai_call_failed", actorType: "system",
-        metadata: { taskScope: thread.modelScope, modelName: model.modelName, finalError: errMsg, succeeded: false, runId, chatTimings: timings },
+        metadata: {
+          taskScope: thread.modelScope, modelName: model.modelName,
+          finalError: errMsg, succeeded: false, runId,
+          chatTimings: timings,
+          streamingFallbackPolicy: policy,
+          primaryFailed: true,
+          partialTokensBeforeReset,
+          usedFallback: false,
+          fallbackModel: null,
+        },
       });
       res.end();
       return;
@@ -556,6 +653,10 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
         modelConfigId: activeModel.id,
         primaryModelName: model.modelName,
         usedFallback: activeModel.id !== model.id,
+        fallbackModel: activeModel.id !== model.id ? activeModel.modelName : null,
+        streamingFallbackPolicy: policy,
+        primaryFailed,
+        partialTokensBeforeReset,
         primarySkill: primarySkillSlug,
         jdParsed: parsedJd != null,
         jdParseSource,

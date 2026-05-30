@@ -682,6 +682,266 @@ describe("streamChatCompletion — context requirements guard", () => {
   });
 });
 
+describe("streamChatCompletion — StreamingFallbackPolicy", () => {
+  it("reset_and_fallback (default): primary fails after partial tokens → stream-reset + fallback succeeds, event log has policy metadata", async () => {
+    queueStandardSelects();
+    queueFallbackSelects();
+
+    let callCount = 0;
+    const mockClient = {
+      chat: {
+        completions: {
+          create: vi.fn().mockImplementation(async () => {
+            callCount++;
+            if (callCount === 1) return failingStream(["Hello", " world"], 1); // emits "Hello" then throws
+            return tokenStream(["Fallback"]);
+          }),
+        },
+      },
+    };
+
+    const { streamChatCompletion } = await import("../stream-openrouter");
+    const res = makeRes();
+
+    await streamChatCompletion({
+      conversationId: 42,
+      userId: 1,
+      userMessage: { content: "hi", attachments: [] },
+      res: res as never,
+      modelConfigId: 10,
+      client: mockClient as never,
+      runIdOverride: "run_test_fixed",
+      streamingFallbackPolicy: "reset_and_fallback",
+    });
+
+    // Fallback was called
+    expect(mockClient.chat.completions.create).toHaveBeenCalledTimes(2);
+
+    // stream-reset was emitted
+    const allWritten = res.writes.join("");
+    expect(allWritten).toMatch(/stream-reset/);
+
+    // Success event log has policy metadata
+    const eventLogCapture = insertCaptures.find((c) => c.table === eventLogsTableSym);
+    expect(eventLogCapture).toBeDefined();
+    const metadata = (eventLogCapture!.values as { metadata: Record<string, unknown> }).metadata;
+    expect(metadata.streamingFallbackPolicy).toBe("reset_and_fallback");
+    expect(metadata.primaryFailed).toBe(true);
+    expect(metadata.partialTokensBeforeReset).toBeGreaterThan(0);
+    expect(metadata.usedFallback).toBe(true);
+    expect(metadata.fallbackModel).toBe("fallback/model");
+  });
+
+  it("fallback_before_first_token_only: primary fails BEFORE tokens → fallback succeeds", async () => {
+    queueStandardSelects();
+    queueFallbackSelects();
+
+    let callCount = 0;
+    const mockClient = {
+      chat: {
+        completions: {
+          create: vi.fn().mockImplementation(async () => {
+            callCount++;
+            if (callCount === 1) return failingStream(["X"], 0); // throws immediately, 0 tokens emitted
+            return tokenStream(["ok"]);
+          }),
+        },
+      },
+    };
+
+    const { streamChatCompletion } = await import("../stream-openrouter");
+    const res = makeRes();
+
+    await streamChatCompletion({
+      conversationId: 42,
+      userId: 1,
+      userMessage: { content: "hi", attachments: [] },
+      res: res as never,
+      modelConfigId: 10,
+      client: mockClient as never,
+      runIdOverride: "run_test_fixed",
+      streamingFallbackPolicy: "fallback_before_first_token_only",
+    });
+
+    // Fallback is called (primary failed before any tokens)
+    expect(mockClient.chat.completions.create).toHaveBeenCalledTimes(2);
+
+    const allWritten = res.writes.join("");
+    expect(allWritten).toMatch(/event: done/);
+    expect(allWritten).not.toMatch(/event: error/);
+  });
+
+  it("fallback_before_first_token_only: primary fails AFTER tokens → NO fallback, error SSE emitted", async () => {
+    queueStandardSelects();
+    queueFallbackSelects();
+
+    let callCount = 0;
+    const mockClient = {
+      chat: {
+        completions: {
+          create: vi.fn().mockImplementation(async () => {
+            callCount++;
+            if (callCount === 1) return failingStream(["Hello", " world"], 1); // emits "Hello" then throws
+            return tokenStream(["should not be called"]);
+          }),
+        },
+      },
+    };
+
+    const { streamChatCompletion } = await import("../stream-openrouter");
+    const res = makeRes();
+
+    await streamChatCompletion({
+      conversationId: 42,
+      userId: 1,
+      userMessage: { content: "hi", attachments: [] },
+      res: res as never,
+      modelConfigId: 10,
+      client: mockClient as never,
+      runIdOverride: "run_test_fixed",
+      streamingFallbackPolicy: "fallback_before_first_token_only",
+    });
+
+    // Only primary is called — no fallback attempt
+    expect(mockClient.chat.completions.create).toHaveBeenCalledTimes(1);
+
+    const allWritten = res.writes.join("");
+    expect(allWritten).toMatch(/event: error/);
+    expect(allWritten).not.toMatch(/event: done/);
+
+    // Event log must be ai_call_failed with policy metadata
+    const eventLogCapture = insertCaptures.find((c) => c.table === eventLogsTableSym);
+    expect(eventLogCapture).toBeDefined();
+    const evtValues = eventLogCapture!.values as { eventType: string; metadata: Record<string, unknown> };
+    expect(evtValues.eventType).toBe("ai_call_failed");
+    expect(evtValues.metadata.streamingFallbackPolicy).toBe("fallback_before_first_token_only");
+    expect(evtValues.metadata.primaryFailed).toBe(true);
+    expect(evtValues.metadata.partialTokensBeforeReset).toBeGreaterThan(0);
+    expect(evtValues.metadata.usedFallback).toBe(false);
+  });
+
+  it("no_fallback_after_partial: primary fails AFTER tokens → NO fallback, error SSE emitted", async () => {
+    queueStandardSelects();
+    queueFallbackSelects();
+
+    let callCount = 0;
+    const mockClient = {
+      chat: {
+        completions: {
+          create: vi.fn().mockImplementation(async () => {
+            callCount++;
+            if (callCount === 1) return failingStream(["Partial", " output"], 1); // emits "Partial" then throws
+            return tokenStream(["should not be called"]);
+          }),
+        },
+      },
+    };
+
+    const { streamChatCompletion } = await import("../stream-openrouter");
+    const res = makeRes();
+
+    await streamChatCompletion({
+      conversationId: 42,
+      userId: 1,
+      userMessage: { content: "hi", attachments: [] },
+      res: res as never,
+      modelConfigId: 10,
+      client: mockClient as never,
+      runIdOverride: "run_test_fixed",
+      streamingFallbackPolicy: "no_fallback_after_partial",
+    });
+
+    // Only primary is called — no fallback attempt
+    expect(mockClient.chat.completions.create).toHaveBeenCalledTimes(1);
+
+    const allWritten = res.writes.join("");
+    expect(allWritten).toMatch(/event: error/);
+    expect(allWritten).not.toMatch(/event: done/);
+
+    const eventLogCapture = insertCaptures.find((c) => c.table === eventLogsTableSym);
+    expect(eventLogCapture).toBeDefined();
+    const evtValues = eventLogCapture!.values as { eventType: string; metadata: Record<string, unknown> };
+    expect(evtValues.eventType).toBe("ai_call_failed");
+    expect(evtValues.metadata.streamingFallbackPolicy).toBe("no_fallback_after_partial");
+    expect(evtValues.metadata.primaryFailed).toBe(true);
+    expect(evtValues.metadata.partialTokensBeforeReset).toBeGreaterThan(0);
+    expect(evtValues.metadata.usedFallback).toBe(false);
+  });
+
+  it("no_fallback_after_partial: primary fails BEFORE any tokens → fallback still attempted", async () => {
+    queueStandardSelects();
+    queueFallbackSelects();
+
+    let callCount = 0;
+    const mockClient = {
+      chat: {
+        completions: {
+          create: vi.fn().mockImplementation(async () => {
+            callCount++;
+            if (callCount === 1) return failingStream(["X"], 0); // throws before any tokens
+            return tokenStream(["ok"]);
+          }),
+        },
+      },
+    };
+
+    const { streamChatCompletion } = await import("../stream-openrouter");
+    const res = makeRes();
+
+    await streamChatCompletion({
+      conversationId: 42,
+      userId: 1,
+      userMessage: { content: "hi", attachments: [] },
+      res: res as never,
+      modelConfigId: 10,
+      client: mockClient as never,
+      runIdOverride: "run_test_fixed",
+      streamingFallbackPolicy: "no_fallback_after_partial",
+    });
+
+    // Fallback is attempted because partialTokensBeforeReset === 0
+    expect(mockClient.chat.completions.create).toHaveBeenCalledTimes(2);
+
+    const allWritten = res.writes.join("");
+    expect(allWritten).toMatch(/event: done/);
+    expect(allWritten).not.toMatch(/event: error/);
+  });
+
+  it("success path event log includes streamingFallbackPolicy, primaryFailed: false, usedFallback: false when no failure", async () => {
+    queueStandardSelects();
+
+    const mockClient = {
+      chat: {
+        completions: {
+          create: vi.fn().mockResolvedValue(tokenStream(["hello"])),
+        },
+      },
+    };
+
+    const { streamChatCompletion } = await import("../stream-openrouter");
+    const res = makeRes();
+
+    await streamChatCompletion({
+      conversationId: 42,
+      userId: 1,
+      userMessage: { content: "hi", attachments: [] },
+      res: res as never,
+      modelConfigId: 10,
+      client: mockClient as never,
+      runIdOverride: "run_test_fixed",
+    });
+
+    const eventLogCapture = insertCaptures.find((c) => c.table === eventLogsTableSym);
+    expect(eventLogCapture).toBeDefined();
+    const metadata = (eventLogCapture!.values as { metadata: Record<string, unknown> }).metadata;
+    expect(metadata.streamingFallbackPolicy).toBe("reset_and_fallback");
+    expect(metadata.primaryFailed).toBe(false);
+    expect(metadata.partialTokensBeforeReset).toBe(0);
+    expect(metadata.usedFallback).toBe(false);
+    expect(metadata.fallbackModel).toBeNull();
+  });
+});
+
 describe("streamChatCompletion — jdParseEnabled=false skips JD source extraction", () => {
   it("does not call extractJdParseSource or getCachedJdParse when jdParseEnabled is false", async () => {
     queueStandardSelects();
