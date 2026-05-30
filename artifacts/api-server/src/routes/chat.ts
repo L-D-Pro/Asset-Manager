@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, asc, desc, eq, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, lt, or } from "drizzle-orm";
 import { z } from "zod/v4";
 
 import {
@@ -89,6 +89,33 @@ const feedbackSchema = z.object({
   notes: z.string().max(2000).optional(),
 });
 
+const threadListQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).optional().default(30),
+  cursor: z.string().optional(),
+  include_archived: z.string().optional(),
+});
+
+const messageListQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(200).optional().default(50),
+  beforeMessageId: z.coerce.number().int().positive().optional(),
+});
+
+// ── Cursor helpers ────────────────────────────────────────────────────────
+
+export function decodeThreadCursor(cursor: string): { updatedAt: string; id: number } | null {
+  try {
+    const parsed = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8"));
+    if (typeof parsed.updatedAt === "string" && typeof parsed.id === "number") return parsed;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export function encodeThreadCursor(updatedAt: Date, id: number): string {
+  return Buffer.from(JSON.stringify({ updatedAt: updatedAt.toISOString(), id })).toString("base64url");
+}
+
 // ── Threads CRUD ──────────────────────────────────────────────────────────
 
 router.get("/chat/threads", async (req, res): Promise<void> => {
@@ -96,19 +123,51 @@ router.get("/chat/threads", async (req, res): Promise<void> => {
   const userId = r.session.adminId;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
-  const includeArchived = req.query.include_archived === "1" || req.query.include_archived === "true";
+  const query = threadListQuerySchema.safeParse(req.query);
+  if (!query.success) { res.status(400).json({ error: query.error.message }); return; }
 
-  const rows = await db
+  const { limit, cursor, include_archived } = query.data;
+  const includeArchived = include_archived === "1" || include_archived === "true";
+
+  // Build base WHERE condition (user + optional archive filter)
+  const baseWhere = includeArchived
+    ? eq(conversations.userId, userId)
+    : and(eq(conversations.userId, userId), isNull(conversations.archivedAt));
+
+  // Build cursor condition if provided
+  let whereClause;
+  if (cursor) {
+    const decoded = decodeThreadCursor(cursor);
+    if (!decoded) { res.status(400).json({ error: "Invalid cursor" }); return; }
+    const cursorUpdatedAt = new Date(decoded.updatedAt);
+    const cursorCondition = or(
+      lt(conversations.updatedAt, cursorUpdatedAt),
+      and(eq(conversations.updatedAt, cursorUpdatedAt), lt(conversations.id, decoded.id)),
+    );
+    whereClause = and(baseWhere, cursorCondition);
+  } else {
+    whereClause = baseWhere;
+  }
+
+  // Fetch limit+1 rows to detect next page
+  const fetched = await db
     .select()
     .from(conversations)
-    .where(
-      includeArchived
-        ? eq(conversations.userId, userId)
-        : and(eq(conversations.userId, userId), isNull(conversations.archivedAt)),
-    )
-    .orderBy(desc(conversations.updatedAt));
+    .where(whereClause)
+    .orderBy(desc(conversations.updatedAt), desc(conversations.id))
+    .limit(limit + 1);
 
-  res.json(rows);
+  const hasMore = fetched.length > limit;
+  const rows = hasMore ? fetched.slice(0, limit) : fetched;
+
+  // Encode the next cursor from the last row we're returning (if there are more)
+  let nextCursor: string | null = null;
+  if (hasMore && rows.length > 0) {
+    const last = rows[rows.length - 1];
+    nextCursor = encodeThreadCursor(last.updatedAt, last.id);
+  }
+
+  res.json({ rows, nextCursor });
 });
 
 router.post("/chat/threads", async (req, res): Promise<void> => {
@@ -184,6 +243,9 @@ router.get("/chat/threads/:id/messages", async (req, res): Promise<void> => {
   const params = idParamSchema.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
 
+  const query = messageListQuerySchema.safeParse(req.query);
+  if (!query.success) { res.status(400).json({ error: query.error.message }); return; }
+
   const [thread] = await db
     .select({ id: conversations.id })
     .from(conversations)
@@ -191,8 +253,36 @@ router.get("/chat/threads/:id/messages", async (req, res): Promise<void> => {
     .limit(1);
   if (!thread) { res.status(404).json({ error: "Conversation not found" }); return; }
 
-  const rows = await loadConversationMessages(thread.id);
-  res.json(rows);
+  const { limit, beforeMessageId } = query.data;
+
+  // Build WHERE clause: conversationId + optional beforeMessageId cursor
+  const whereClause = beforeMessageId
+    ? and(eq(messages.conversationId, thread.id), lt(messages.id, beforeMessageId))
+    : eq(messages.conversationId, thread.id);
+
+  // Fetch limit+1 rows in DESC order (newest first) to detect older pages
+  const fetched = await db
+    .select()
+    .from(messages)
+    .where(whereClause)
+    .orderBy(desc(messages.createdAt), desc(messages.id))
+    .limit(limit + 1);
+
+  const hasMore = fetched.length > limit;
+  const pageRows = hasMore ? fetched.slice(0, limit) : fetched;
+
+  // Reverse to chronological (ASC) order for display
+  const rows = [...pageRows].reverse();
+
+  // nextCursor is the ID of the oldest message in the batch (first after reversing = last before reversing)
+  // This is used as beforeMessageId on the next call to load older messages
+  let nextCursor: string | null = null;
+  if (hasMore && pageRows.length > 0) {
+    // pageRows is DESC, so last element is the oldest — its ID is the cursor for older messages
+    nextCursor = String(pageRows[pageRows.length - 1].id);
+  }
+
+  res.json({ rows, nextCursor });
 });
 
 router.post("/chat/threads/:id/messages", async (req, res): Promise<void> => {

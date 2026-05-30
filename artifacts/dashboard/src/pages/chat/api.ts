@@ -1,5 +1,10 @@
 import { smartApi } from "@/lib/smart-ai-api";
 
+export interface PaginatedResponse<T> {
+  rows: T[];
+  nextCursor: string | null;
+}
+
 export interface ChatAttachment {
   kind: "base_resume" | "job" | "claims" | "document";
   refId?: number;
@@ -31,7 +36,10 @@ export interface ChatMessage {
 }
 
 export const chatApi = {
-  listThreads: () => smartApi<ChatThread[]>("/chat/threads"),
+  listThreads: (cursor?: string, limit = 30) =>
+    smartApi<PaginatedResponse<ChatThread>>(
+      `/chat/threads?limit=${limit}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`,
+    ),
   createThread: (body: { title?: string } = {}) =>
     smartApi<ChatThread>("/chat/threads", {
       method: "POST",
@@ -44,7 +52,10 @@ export const chatApi = {
     }),
   deleteThread: (id: number) =>
     smartApi<void>(`/chat/threads/${id}`, { method: "DELETE" }),
-  listMessages: (id: number) => smartApi<ChatMessage[]>(`/chat/threads/${id}/messages`),
+  listMessages: (id: number, beforeMessageId?: number, limit = 50) =>
+    smartApi<PaginatedResponse<ChatMessage>>(
+      `/chat/threads/${id}/messages?limit=${limit}${beforeMessageId ? `&beforeMessageId=${beforeMessageId}` : ""}`,
+    ),
   postFeedback: (messageId: number, outcome: "approved" | "rejected", notes?: string) =>
     smartApi(`/chat/messages/${messageId}/feedback`, {
       method: "POST",

@@ -19,6 +19,7 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [messageNextCursor, setMessageNextCursor] = useState<string | null>(null);
   const [attachBaseResume, setAttachBaseResume] = useState(false);
   const [attachedJobs, setAttachedJobs] = useState<Job[]>([]);
   const [attachedClaims, setAttachedClaims] = useState<Claim[]>([]);
@@ -47,9 +48,9 @@ export default function ChatPage() {
   }, [activeSkills]);
 
   const refreshThreads = useCallback(async () => {
-    const list = await chatApi.listThreads();
-    setThreads(list);
-    return list;
+    const result = await chatApi.listThreads();
+    setThreads(result.rows);
+    return result.rows;
   }, []);
 
   useEffect(() => {
@@ -62,8 +63,9 @@ export default function ChatPage() {
     setActiveThread(thread);
     setLoadingMessages(true);
     try {
-      const msgs = await chatApi.listMessages(thread.id);
-      setMessages(msgs);
+      const result = await chatApi.listMessages(thread.id);
+      setMessages(result.rows);
+      setMessageNextCursor(result.nextCursor);
     } catch (err) {
       toast({ title: "Couldn't load messages", description: (err as Error).message, variant: "destructive" });
     } finally {
@@ -74,8 +76,9 @@ export default function ChatPage() {
   const stream = useChatStream({
     onDone: async () => {
       if (activeThread) {
-        const msgs = await chatApi.listMessages(activeThread.id);
-        setMessages(msgs);
+        const result = await chatApi.listMessages(activeThread.id);
+        setMessages(result.rows);
+        setMessageNextCursor(result.nextCursor);
       }
       refreshThreads();
     },
