@@ -16,6 +16,8 @@ import { currentUserId } from "../lib/ownership";
  * one row in the overview response, even when no DB rows exist for that scope.
  */
 const KNOWN_TASK_SCOPES = [
+  "chat",
+  "skill_routing",
   "jd_parsing",
   "claim_generation",
   "gap_analysis",

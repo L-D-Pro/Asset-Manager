@@ -13,7 +13,7 @@ import {
 } from "@workspace/api-client-react";
 import { Plus, Shield, X, Pencil, Trash2 } from "lucide-react";
 
-const COMMON_SCOPES = ["chat", "default", "jd_parsing", "resume_tailoring", "cover_letter", "claim_generation"] as const;
+const COMMON_SCOPES = ["chat", "skill_routing", "jd_parsing", "resume_tailoring", "cover_letter", "claim_generation"] as const;
 
 export default function ModelsPage() {
   const queryClient = useQueryClient();

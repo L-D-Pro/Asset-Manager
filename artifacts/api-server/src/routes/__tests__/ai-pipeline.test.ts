@@ -52,6 +52,8 @@ function makeRes() {
 }
 
 const KNOWN_TASK_SCOPES = [
+  "chat",
+  "skill_routing",
   "jd_parsing",
   "claim_generation",
   "gap_analysis",
