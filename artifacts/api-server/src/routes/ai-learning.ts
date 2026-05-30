@@ -703,50 +703,56 @@ router.get("/ai-learning/outcome-stats", async (req: JobOpsRequest, res): Promis
     return;
   }
 
-  const rows = await db
-    .select()
+  const taskScope = query.data.taskScope ?? null;
+
+  const evalQuery = db
+    .select({
+      taskScope: aiRunEvaluationsTable.taskScope,
+      total: sql<number>`count(*)::int`,
+      approved: sql<number>`count(*) filter (where ${aiRunEvaluationsTable.approvalOutcome} = 'approved')::int`,
+      rejected: sql<number>`count(*) filter (where ${aiRunEvaluationsTable.approvalOutcome} = 'rejected')::int`,
+      pending: sql<number>`count(*) filter (where ${aiRunEvaluationsTable.approvalOutcome} is null or ${aiRunEvaluationsTable.approvalOutcome} not in ('approved', 'rejected'))::int`,
+      // SQL AVG() excludes NULL rows from both numerator and denominator.
+      // The previous Node-side code summed non-null scores but divided by total
+      // (including null-score rows), artificially diluting the average.
+      // Using AVG() here is the correct behavior and a deliberate correction.
+      avgTruthfulness: sql<number | null>`avg(${aiRunEvaluationsTable.truthfulnessScore})`,
+      avgRelevance: sql<number | null>`avg(${aiRunEvaluationsTable.relevanceScore})`,
+    })
     .from(aiRunEvaluationsTable)
     .where(and(
       eq(aiRunEvaluationsTable.userId, userId),
-      ...(query.data.taskScope ? [eq(aiRunEvaluationsTable.taskScope, query.data.taskScope)] : []),
+      ...(taskScope ? [eq(aiRunEvaluationsTable.taskScope, taskScope)] : []),
     ))
-    .orderBy(desc(aiRunEvaluationsTable.createdAt));
+    .groupBy(aiRunEvaluationsTable.taskScope);
 
-  const byScope = new Map<string, { approved: number; rejected: number; pending: number; avgTruthfulness: number; avgRelevance: number; total: number }>();
-
-  for (const row of rows) {
-    if (!byScope.has(row.taskScope)) {
-      byScope.set(row.taskScope, { approved: 0, rejected: 0, pending: 0, avgTruthfulness: 0, avgRelevance: 0, total: 0 });
-    }
-    const stat = byScope.get(row.taskScope)!;
-    stat.total++;
-    if (row.approvalOutcome === "approved") stat.approved++;
-    else if (row.approvalOutcome === "rejected") stat.rejected++;
-    else stat.pending++;
-    if (row.truthfulnessScore != null) stat.avgTruthfulness += row.truthfulnessScore;
-    if (row.relevanceScore != null) stat.avgRelevance += row.relevanceScore;
-  }
-
-  const trainingCounts = await db
-    .select()
+  const trainingQuery = db
+    .select({
+      taskScope: aiTrainingExamplesTable.taskScope,
+      activeCount: sql<number>`count(*)::int`,
+    })
     .from(aiTrainingExamplesTable)
-    .where(and(eq(aiTrainingExamplesTable.userId, userId), eq(aiTrainingExamplesTable.isActive, true)));
+    .where(and(
+      eq(aiTrainingExamplesTable.userId, userId),
+      eq(aiTrainingExamplesTable.isActive, true),
+      ...(taskScope ? [eq(aiTrainingExamplesTable.taskScope, taskScope)] : []),
+    ))
+    .groupBy(aiTrainingExamplesTable.taskScope);
 
-  const trainingByScope = new Map<string, number>();
-  for (const ex of trainingCounts) {
-    trainingByScope.set(ex.taskScope, (trainingByScope.get(ex.taskScope) ?? 0) + 1);
-  }
+  const [evalStats, trainingStats] = await Promise.all([evalQuery, trainingQuery]);
 
-  const result = Array.from(byScope.entries()).map(([scope, stat]) => ({
-    taskScope: scope,
+  const trainingByScope = new Map(trainingStats.map(t => [t.taskScope, t.activeCount]));
+
+  const result = evalStats.map(stat => ({
+    taskScope: stat.taskScope,
     totalEvaluations: stat.total,
     approved: stat.approved,
     rejected: stat.rejected,
     pending: stat.pending,
     approvalRate: stat.total > 0 ? Math.round((stat.approved / stat.total) * 100) : 0,
-    avgTruthfulnessScore: stat.total > 0 ? Math.round(stat.avgTruthfulness / stat.total) : null,
-    avgRelevanceScore: stat.total > 0 ? Math.round(stat.avgRelevance / stat.total) : null,
-    activeTrainingExamples: trainingByScope.get(scope) ?? 0,
+    avgTruthfulnessScore: stat.avgTruthfulness != null ? Math.round(Number(stat.avgTruthfulness)) : null,
+    avgRelevanceScore: stat.avgRelevance != null ? Math.round(Number(stat.avgRelevance)) : null,
+    activeTrainingExamples: trainingByScope.get(stat.taskScope) ?? 0,
   }));
 
   res.json(result);
