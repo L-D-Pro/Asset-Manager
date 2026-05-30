@@ -53,9 +53,9 @@ export default function Dashboard() {
     queryFn: () => smartApi<Job[]>("/jobs"),
   });
 
-  const { data: events } = useQuery({
+  const { data: eventsResult } = useQuery({
     queryKey: ["event-logs", "limit-10"],
-    queryFn: () => smartApi<EventLog[]>("/event-logs?limit=10"),
+    queryFn: () => smartApi<{ rows: EventLog[]; nextCursor: string | null }>("/event-logs?limit=10"),
   });
 
   const greetName = user?.firstName ?? user?.username ?? "operator";
@@ -258,10 +258,10 @@ export default function Dashboard() {
               <span className="dim mono" style={{ fontSize: 11 }}>last 10 events</span>
             </div>
             <div className="card-body" style={{ paddingTop: 8, paddingBottom: 14 }}>
-              {(events ?? []).length === 0 && (
+              {(eventsResult?.rows ?? []).length === 0 && (
                 <div className="dim" style={{ padding: "8px 0", fontSize: 13 }}>No recent activity.</div>
               )}
-              {(events ?? []).map((t, i, arr) => {
+              {(eventsResult?.rows ?? []).map((t, i, arr) => {
                 const isAi = t.eventType.startsWith("ai");
                 return (
                   <div key={t.id} style={{ display: "grid", gridTemplateColumns: "92px 16px 1fr auto", gap: 12, padding: "9px 0", borderBottom: i === arr.length - 1 ? "none" : "1px dashed var(--line-soft)", alignItems: "center" }}>
