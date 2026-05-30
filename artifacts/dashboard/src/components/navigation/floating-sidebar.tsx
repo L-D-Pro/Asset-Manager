@@ -178,6 +178,11 @@ export function FloatingSidebar() {
           xp={xp}
           xpNext={xpNext}
         />
+
+        <div className="sidebar-footer-links">
+          <Link to="/terms">Terms</Link>
+          <Link to="/privacy">Privacy</Link>
+        </div>
       </div>
     </div>
   );
