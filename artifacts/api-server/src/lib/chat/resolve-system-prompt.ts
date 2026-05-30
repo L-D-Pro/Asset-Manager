@@ -22,13 +22,9 @@ import {
   routeSkills,
   type RouterSkill,
   type RoutingDecision,
-  type RoutingConfig,
 } from "./skill-router";
-import {
-  loadOrCreateBestPractices,
-  formatBestPracticesForPrompt,
-} from "../best-practices";
 import { callAI, parseJsonResponse } from "../ai-client";
+import { getCachedPromptBundle } from "./chat-prompt-cache";
 import { logger } from "../logger";
 
 type RoutingMode = "none" | "auto" | "explicit" | "debug_all";
@@ -207,13 +203,12 @@ export async function resolveChatPrompt(
 ): Promise<ResolvedChatPrompt> {
   const o = params.overrides ?? {};
 
-  // These three reads are independent — fetch them concurrently. Skills are
-  // always loaded (cheap query) and gated below, so this stays a single round.
-  const [config, allSkillsRaw, bestPractices] = await Promise.all([
-    getChatLeverConfig(),
-    loadActiveChatSkills(),
-    loadOrCreateBestPractices(),
-  ]);
+  // Load the prompt bundle from the version-aware cache (3 parallel DB reads,
+  // skipped on cache hit). Any Control Plane edit changes the version key and
+  // causes a cache miss — so the VERY NEXT turn sees the latest config.
+  const bundle = await getCachedPromptBundle();
+  const config = bundle.config;
+  const allSkillsRaw = bundle.allSkills;
 
   const identityText = o.identityText ?? config.identityText;
   const skillsEnabled = o.skillsEnabled ?? config.skillsEnabled;
@@ -224,18 +219,7 @@ export async function resolveChatPrompt(
   const tokenBudget = o.skillTokenBudget ?? config.skillTokenBudget;
   const maxSkills = o.maxSelectedSkills ?? config.maxSelectedSkills;
 
-  const routingConfig: RoutingConfig = {
-    autoThreshold: config.autoThreshold,
-    triggerWeight: config.triggerWeight,
-    negativeTriggerWeight: config.negativeTriggerWeight,
-    ambiguousGap: config.ambiguousGap,
-    llmConfidenceThreshold: config.llmConfidenceThreshold,
-    coverBoost: config.coverBoost,
-    boostTailorPlusJob: config.boostTailorPlusJob,
-    boostResumePlusJob: config.boostResumePlusJob,
-    boostAuditTailoredJob: config.boostAuditTailoredJob,
-    boostAuditTailoredOnly: config.boostAuditTailoredOnly,
-  };
+  const routingConfig = bundle.routingConfig;
 
   const allSkills = skillsEnabled ? allSkillsRaw : [];
 
@@ -260,9 +244,7 @@ export async function resolveChatPrompt(
   // An empty catalog array causes buildSystemPromptSections to skip that section.
   const catalog: CatalogEntry[] = [];
 
-  const bestPracticesText = bestPracticesEnabled
-    ? formatBestPracticesForPrompt(bestPractices)
-    : "";
+  const bestPracticesText = bestPracticesEnabled ? bundle.bestPracticesText : "";
 
   const inputs: SystemPromptInputs = {
     identityText,
