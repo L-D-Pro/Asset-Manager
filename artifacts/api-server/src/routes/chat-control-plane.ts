@@ -21,6 +21,11 @@ import {
   resolveChatPrompt,
 } from "../lib/chat/resolve-system-prompt";
 import { buildFinalChatPayload } from "../lib/chat/final-payload-builder";
+import {
+  asPreviewRebuild,
+  loadStoredPayloadSnapshotForAssistant,
+  PREVIEW_REBUILD_WARNING,
+} from "../lib/chat/payload-snapshot";
 import { requireAdmin } from "../middlewares/admin";
 import { currentUserId } from "../lib/ownership";
 
@@ -71,10 +76,22 @@ router.post("/chat/preview-prompt", async (req, res): Promise<void> => {
   }
 
   const userId = currentUserId(req as JobOpsRequest);
+  const assistantMessageId = parsed.data.assistantMessageId ?? null;
+
+  const conversationId =
+    parsed.data.conversationId ?? null;
+
+  const storedSnapshot = await loadStoredPayloadSnapshotForAssistant({
+    userId,
+    assistantMessageId,
+    conversationId,
+  });
+  if (storedSnapshot) {
+    res.json(storedSnapshot);
+    return;
+  }
 
   // Load real conversation history if conversationId provided in the request body.
-  const conversationId =
-    typeof req.body.conversationId === "number" ? (req.body.conversationId as number) : null;
   let history: Array<{ role: "user" | "assistant"; content: string }> = [];
 
   if (conversationId != null) {
@@ -102,7 +119,7 @@ router.post("/chat/preview-prompt", async (req, res): Promise<void> => {
     overrides: parsed.data.overrides,
   });
 
-  res.json(payload);
+  res.json(asPreviewRebuild(payload, PREVIEW_REBUILD_WARNING));
 });
 
 // ── Router simulator ─────────────────────────────────────────────────────────

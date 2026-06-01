@@ -20,15 +20,35 @@ export interface FinalChatPayloadMetadata {
   historyMessageCount: number;
   /** True if the full skill catalog was injected — should always be false. */
   fullSkillCatalogPresent: boolean;
-  /** True if parsedJd was appended but not represented as a section — should always be false. */
-  parsedJdPresentButNotSectioned: boolean;
+  /** True if parsed JD was appended into the system prompt. */
+  parsedJdPresent: boolean;
+  /** True when parsed JD has a matching labeled section. */
+  parsedJdSectioned: boolean;
   /** Whether a best_practices section is present in the prompt. */
   bestPracticesEnabled: boolean;
+  /** Role of the final provider request message. */
+  finalMessageRole: "system" | "user" | "assistant" | null;
+  /** True when the final provider request message is the current user turn. */
+  finalMessageIsUser: boolean;
+  /** Index of the current user turn in messages[], when present. */
+  currentUserMessageIndex: number | null;
+  /** Builder contract check: history was provided in chronological order. */
+  historyIsChronological: boolean;
   /** Non-empty means an invariant violation was detected. */
   warnings: string[];
 }
 
+export interface FinalChatPayloadProviderRequest {
+  provider: "openrouter";
+  model: string;
+  temperature?: number;
+  maxTokens?: number;
+  stream?: boolean;
+}
+
 export interface FinalChatPayloadInspect {
+  payloadSource: "sent_snapshot" | "preview_rebuild";
+  isExactModelPayload: boolean;
   /** Exact messages array sent to the model: [{role:'system'}, ...history]. */
   messages: Array<{ role: "system" | "user" | "assistant"; content: string }>;
   /** The full assembled system prompt string (messages[0].content). */
@@ -39,6 +59,8 @@ export interface FinalChatPayloadInspect {
   parsedJdBlock: string | null;
   routingDecision: RoutingDecision;
   routingMode: string;
+  providerRequest: FinalChatPayloadProviderRequest | null;
+  createdAt: string;
   metadata: FinalChatPayloadMetadata;
 }
 
@@ -110,19 +132,37 @@ export async function buildFinalChatPayload(
     }
   }
 
+  const finalMessageRole = messages.at(-1)?.role ?? null;
+  let currentUserMessageIndex: number | null = null;
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    if (messages[i]?.role === "user") {
+      currentUserMessageIndex = i;
+      break;
+    }
+  }
+
   return {
+    payloadSource: "preview_rebuild",
+    isExactModelPayload: false,
     messages,
     systemPrompt: fullSystemPrompt,
     sections,
     parsedJdBlock,
     routingDecision: resolved.decision,
     routingMode: resolved.mode,
+    providerRequest: null,
+    createdAt: new Date().toISOString(),
     metadata: {
       selectedSkillCount: resolved.decision.selectedSlugs.length,
       historyMessageCount: args.history.length,
       fullSkillCatalogPresent,
-      parsedJdPresentButNotSectioned,
+      parsedJdPresent: parsedJdBlock !== null,
+      parsedJdSectioned: sections.some((s) => s.lever === "parsed_jd"),
       bestPracticesEnabled,
+      finalMessageRole,
+      finalMessageIsUser: finalMessageRole === "user",
+      currentUserMessageIndex,
+      historyIsChronological: true,
       warnings,
     },
   };

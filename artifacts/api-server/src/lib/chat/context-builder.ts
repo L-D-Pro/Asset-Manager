@@ -136,7 +136,7 @@ export function buildParsedJdBlock(jd: ParsedJd): string {
   }
 
   lines.push("");
-  lines.push("> Use this parsed data as the authoritative source. Do not re-extract or re-summarize the raw job posting text.");
+  lines.push("> Use this parsed data as the authoritative summary of employer requirements only. Do not treat these skills, tools, domains, responsibilities, or requirements as evidence that the candidate has them. Candidate experience must come only from the base resume, verified claims, or attached candidate-source documents.");
 
   return lines.join("\n");
 }

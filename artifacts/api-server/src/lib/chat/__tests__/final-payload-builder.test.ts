@@ -101,16 +101,18 @@ describe("buildFinalChatPayload", () => {
     expect(result.systemPrompt).toContain("TypeScript");
     expect(result.parsedJdBlock).not.toBeNull();
     expect(result.sections.some((s) => s.lever === "parsed_jd")).toBe(true);
-    expect(result.metadata.parsedJdPresentButNotSectioned).toBe(false);
+    expect(result.metadata.parsedJdPresent).toBe(true);
+    expect(result.metadata.parsedJdSectioned).toBe(true);
   });
 
-  it("parsedJdPresentButNotSectioned is false when no parsedJd", async () => {
+  it("parsed JD metadata is false when no parsedJd", async () => {
     mockResolveChatPrompt.mockResolvedValue(makeResolvedPrompt());
 
     const result = await buildFinalChatPayload({ ...baseArgs });
 
     expect(result.parsedJdBlock).toBeNull();
-    expect(result.metadata.parsedJdPresentButNotSectioned).toBe(false);
+    expect(result.metadata.parsedJdPresent).toBe(false);
+    expect(result.metadata.parsedJdSectioned).toBe(false);
   });
 
   it("best practices disabled — bestPracticesEnabled is false and no warning", async () => {
@@ -195,6 +197,35 @@ describe("buildFinalChatPayload", () => {
     const result = await buildFinalChatPayload({ ...baseArgs });
 
     expect(result.systemPrompt).toBe(result.messages[0].content);
+  });
+
+  it("returns preview rebuild metadata by default", async () => {
+    mockResolveChatPrompt.mockResolvedValue(makeResolvedPrompt({ systemPrompt: "Test prompt." }));
+
+    const result = await buildFinalChatPayload({ ...baseArgs });
+
+    expect(result.payloadSource).toBe("preview_rebuild");
+    expect(result.isExactModelPayload).toBe(false);
+    expect(result.providerRequest).toBeNull();
+    expect(result.metadata.finalMessageRole).toBe("system");
+    expect(result.metadata.finalMessageIsUser).toBe(false);
+    expect(result.metadata.currentUserMessageIndex).toBeNull();
+    expect(result.metadata.historyIsChronological).toBe(true);
+  });
+
+  it("marks the final user turn position when history ends with the current user message", async () => {
+    mockResolveChatPrompt.mockResolvedValue(makeResolvedPrompt({ systemPrompt: "Identity." }));
+
+    const history = [
+      { role: "user" as const, content: "prior user" },
+      { role: "assistant" as const, content: "prior assistant" },
+      { role: "user" as const, content: "current user" },
+    ];
+    const result = await buildFinalChatPayload({ ...baseArgs, history });
+
+    expect(result.metadata.finalMessageRole).toBe("user");
+    expect(result.metadata.finalMessageIsUser).toBe(true);
+    expect(result.metadata.currentUserMessageIndex).toBe(3);
   });
 
   it("produces identical messages for same args (inspect ≡ stream invariant)", async () => {

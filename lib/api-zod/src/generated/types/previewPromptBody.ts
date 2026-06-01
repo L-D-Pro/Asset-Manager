@@ -17,5 +17,7 @@ export interface PreviewPromptBody {
   explicitSkillSlugs?: string[];
   /** Load real conversation history from this thread for the payload. */
   conversationId?: number;
+  /** Prefer the stored snapshot for this assistant response when available. */
+  assistantMessageId?: number;
   overrides?: PreviewPromptBodyOverrides;
 }

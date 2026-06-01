@@ -116,7 +116,14 @@ vi.mock("../jd-source", () => ({
 
 // ── context-builder mock ─────────────────────────────────────────────────────
 vi.mock("../context-builder", () => ({
-  buildParsedJdBlock: vi.fn().mockReturnValue(""),
+  buildParsedJdBlock: vi.fn().mockImplementation((jd: { requiredSkills?: string[] }) =>
+    [
+      "## Job Description (pre-parsed — do not re-extract)",
+      `**Required:** ${(jd.requiredSkills ?? []).join(", ")}`,
+      "",
+      "> Use this parsed data as the authoritative summary of employer requirements only. Do not treat these skills, tools, domains, responsibilities, or requirements as evidence that the candidate has them. Candidate experience must come only from the base resume, verified claims, or attached candidate-source documents.",
+    ].join("\n"),
+  ),
 }));
 
 // ── openrouter mock (unused — tests inject their own client) ─────────────────
@@ -229,6 +236,8 @@ beforeEach(() => {
     blocking: false,
   });
   // Default: no JD source found (existing tests don't pass jdParseEnabled).
+  mockExtractJdParseSource.mockClear();
+  mockGetCachedJdParse.mockClear();
   mockExtractJdParseSource.mockReturnValue({ text: null, source: "none" });
   mockGetCachedJdParse.mockResolvedValue({ parsedJd: null, cacheHit: false });
 });
@@ -465,7 +474,9 @@ describe("streamChatCompletion — 4xx non-retryable skips fallback", () => {
 
 describe("streamChatCompletion — event log metadata includes chatTimings", () => {
   it("successful chat event log includes metadata.chatTimings with expected fields", async () => {
-    queueStandardSelects();
+    queueSelect([mockThread]);
+    queueSelect([mockPrimaryModelConfig]);
+    queueSelect([{ role: "user", content: "hi" }]);
 
     const mockClient = {
       chat: {
@@ -522,6 +533,89 @@ describe("streamChatCompletion — event log metadata includes chatTimings", () 
 
     expect(metadata.attachmentCount).toBe(0);
     expect(typeof metadata.historyTurnCount).toBe("number");
+    expect(metadata.finalPayloadSnapshot).toBeDefined();
+
+    const snapshot = metadata.finalPayloadSnapshot as {
+      payloadSource: string;
+      isExactModelPayload: boolean;
+      messages: Array<{ role: string; content: string }>;
+      providerRequest: { provider: string; model: string; stream: boolean; maxTokens: number };
+      metadata: { finalMessageIsUser: boolean; parsedJdPresent: boolean; parsedJdSectioned: boolean };
+    };
+    expect(snapshot.payloadSource).toBe("sent_snapshot");
+    expect(snapshot.isExactModelPayload).toBe(true);
+    expect(snapshot.messages.map((m) => m.role)).toEqual(["system", "user"]);
+    expect(snapshot.messages.at(-1)?.role).toBe("user");
+    expect(snapshot.messages.some((m) => m.content.includes("Great tailored resume!"))).toBe(false);
+    expect(snapshot.providerRequest).toEqual({
+      provider: "openrouter",
+      model: "primary/model",
+      stream: true,
+      maxTokens: 2048,
+    });
+    expect(snapshot.metadata.finalMessageIsUser).toBe(true);
+    expect(snapshot.metadata.parsedJdPresent).toBe(false);
+    expect(snapshot.metadata.parsedJdSectioned).toBe(false);
+  });
+
+  it("stores parsed JD inside the sent snapshot when live generation used it", async () => {
+    queueSelect([mockThread]);
+    queueSelect([mockPrimaryModelConfig]);
+    queueSelect([{ role: "user", content: "Tailor my resume for this role" }]);
+
+    mockExtractJdParseSource.mockReturnValue({
+      text: "JD text",
+      source: "job_attachment",
+    });
+    mockGetCachedJdParse.mockResolvedValue({
+      parsedJd: {
+        requiredSkills: ["TypeScript", "React"],
+        niceToHaveSkills: [],
+        keywords: [],
+        senioritySignal: null,
+        location: null,
+        remoteType: null,
+      },
+      cacheHit: false,
+    });
+
+    const mockClient = {
+      chat: {
+        completions: {
+          create: vi.fn().mockResolvedValue(tokenStream(["tailored output"])),
+        },
+      },
+    };
+
+    const { streamChatCompletion } = await import("../stream-openrouter");
+    const res = makeRes();
+
+    await streamChatCompletion({
+      conversationId: 42,
+      userId: 1,
+      userMessage: {
+        content: "Tailor my resume for this role",
+        attachments: [{ kind: "job", snapshot: { title: "SE", jdText: "JD text" } }],
+      },
+      res: res as never,
+      modelConfigId: 10,
+      client: mockClient as never,
+      runIdOverride: "run_test_fixed",
+      jdParseEnabled: true,
+    });
+
+    const eventLogCapture = insertCaptures.find((c) => c.table === eventLogsTableSym);
+    const metadata = (eventLogCapture!.values as { metadata: Record<string, unknown> }).metadata;
+    const snapshot = metadata.finalPayloadSnapshot as {
+      systemPrompt: string;
+      sections: Array<{ lever: string; content: string }>;
+      metadata: { parsedJdPresent: boolean; parsedJdSectioned: boolean };
+    };
+
+    expect(snapshot.systemPrompt).toContain("authoritative summary of employer requirements only");
+    expect(snapshot.sections.some((section) => section.lever === "parsed_jd")).toBe(true);
+    expect(snapshot.metadata.parsedJdPresent).toBe(true);
+    expect(snapshot.metadata.parsedJdSectioned).toBe(true);
   });
 
   it("failed chat event log (non-retryable 4xx) includes partial chatTimings", async () => {

@@ -3520,6 +3520,12 @@ export const PreviewChatPromptBody = zod.object({
     .describe(
       "Load real conversation history from this thread for the payload.",
     ),
+  assistantMessageId: zod
+    .number()
+    .optional()
+    .describe(
+      "Prefer the stored snapshot for this assistant response when available.",
+    ),
   overrides: zod
     .object({
       identityText: zod.string().optional(),
@@ -3535,6 +3541,8 @@ export const PreviewChatPromptBody = zod.object({
 });
 
 export const PreviewChatPromptResponse = zod.object({
+  payloadSource: zod.enum(["sent_snapshot", "preview_rebuild"]),
+  isExactModelPayload: zod.boolean(),
   messages: zod
     .array(
       zod.object({
@@ -3583,12 +3591,35 @@ export const PreviewChatPromptResponse = zod.object({
     skillPromptTokens: zod.number(),
   }),
   routingMode: zod.string(),
+  providerRequest: zod.union([
+    zod.object({
+      provider: zod.enum(["openrouter"]),
+      model: zod.string(),
+      temperature: zod.number().optional(),
+      maxTokens: zod.number().optional(),
+      stream: zod.boolean().optional(),
+    }),
+    zod.null(),
+  ]),
+  createdAt: zod.coerce.date(),
   metadata: zod.object({
     selectedSkillCount: zod.number(),
     historyMessageCount: zod.number(),
     fullSkillCatalogPresent: zod.boolean(),
-    parsedJdPresentButNotSectioned: zod.boolean(),
+    parsedJdPresent: zod.boolean(),
+    parsedJdSectioned: zod.boolean(),
     bestPracticesEnabled: zod.boolean(),
+    finalMessageRole: zod
+      .union([
+        zod.literal("system"),
+        zod.literal("user"),
+        zod.literal("assistant"),
+        zod.literal(null),
+      ])
+      .nullable(),
+    finalMessageIsUser: zod.boolean(),
+    currentUserMessageIndex: zod.number().nullable(),
+    historyIsChronological: zod.boolean(),
     warnings: zod.array(zod.string()),
   }),
 });
@@ -3673,6 +3704,12 @@ export const PreviewChatRouteBody = zod.object({
     .optional()
     .describe(
       "Load real conversation history from this thread for the payload.",
+    ),
+  assistantMessageId: zod
+    .number()
+    .optional()
+    .describe(
+      "Prefer the stored snapshot for this assistant response when available.",
     ),
   overrides: zod
     .object({

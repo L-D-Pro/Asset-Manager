@@ -503,8 +503,10 @@ function ThreadInspector({ messages, conversationId }: { messages: ChatMessage[]
   const preview = usePreviewChatPrompt();
   const [payload, setPayload] = useState<FinalChatPayload | null>(null);
   const [activeTab, setActiveTab] = useState<"sections" | "raw">("sections");
+  const [copied, setCopied] = useState(false);
 
   const lastUser = [...messages].reverse().find((m) => m.role === "user");
+  const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
 
   useEffect(() => {
     const sampleMessage = lastUser?.content?.trim() || "Hello";
@@ -514,24 +516,36 @@ function ThreadInspector({ messages, conversationId }: { messages: ChatMessage[]
           sampleMessage,
           attachments: (lastUser?.attachments ?? []) as never,
           conversationId,
+          assistantMessageId: lastAssistant?.id,
         },
       })
       .then((res) => setPayload(res))
       .catch((err) =>
         toast({ title: "Inspector failed", description: (err as Error).message, variant: "destructive" }),
       );
-    // Re-run when the latest user message or conversation changes.
+    // Re-run when the latest user/assistant message or conversation changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lastUser?.id, conversationId]);
+  }, [lastUser?.id, lastAssistant?.id, conversationId]);
 
   const sections = payload?.sections ?? null;
-  const rawPayload = payload
-    ? {
-        messages: payload.messages,
-        routing: { mode: payload.routingMode, selectedSlugs: payload.routingDecision.selectedSlugs },
-        metadata: payload.metadata,
-      }
-    : null;
+  const rawPayload = payload ?? null;
+
+  function handleCopy() {
+    const copyText = activeTab === "raw"
+      ? rawPayload && JSON.stringify(rawPayload, null, 2)
+      : sections?.map((section) => `[${section.lever}] ${section.label}\n${section.content}`).join("\n\n");
+
+    if (!copyText) return;
+
+    navigator.clipboard.writeText(copyText)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      })
+      .catch((err: unknown) => {
+        toast({ title: "Copy failed", description: (err as Error).message, variant: "destructive" });
+      });
+  }
 
   return (
     <div style={{ borderBottom: "1px solid var(--line)", background: "var(--paper-2)", maxHeight: 380, overflowY: "auto" }}>
@@ -540,11 +554,31 @@ function ThreadInspector({ messages, conversationId }: { messages: ChatMessage[]
         <div className="label" style={{ flex: 1 }}>
           Inspect · model payload {preview.isPending && <span className="dim">— rebuilding…</span>}
         </div>
+        {payload && (
+          <div
+            className="mono"
+            style={{
+              marginRight: 8,
+              padding: "2px 8px",
+              borderRadius: 999,
+              fontSize: 10.5,
+              background: payload.isExactModelPayload ? "var(--paper)" : "var(--warn-bg, #fef3c7)",
+              color: payload.isExactModelPayload ? "var(--success, #166534)" : "var(--warn-text, #92400e)",
+              border: "1px solid var(--line-soft)",
+            }}
+            title={payload.isExactModelPayload ? "Stored provider request snapshot" : "Rebuilt preview, not the original send-time payload"}
+          >
+            {payload.isExactModelPayload ? "Exact sent snapshot" : "Preview rebuild"}
+          </div>
+        )}
         {(["sections", "raw"] as const).map((tab) => (
           <button
             key={tab}
             type="button"
-            onClick={() => setActiveTab(tab)}
+            onClick={() => {
+              setActiveTab(tab);
+              setCopied(false);
+            }}
             style={{
               padding: "3px 10px",
               fontSize: 11,
@@ -559,6 +593,17 @@ function ThreadInspector({ messages, conversationId }: { messages: ChatMessage[]
             {tab === "sections" ? "Sections" : "Raw Payload"}
           </button>
         ))}
+        <button
+          type="button"
+          className="btn ghost"
+          style={{ marginLeft: 4, padding: "3px 6px", fontSize: 11, alignSelf: "flex-start" }}
+          title={copied ? "Copied!" : `Copy ${activeTab === "sections" ? "sections" : "raw payload"}`}
+          aria-label={copied ? "Copied" : `Copy ${activeTab === "sections" ? "sections" : "raw payload"}`}
+          disabled={!payload}
+          onClick={handleCopy}
+        >
+          {copied ? <Check size={12} strokeWidth={2} /> : <Copy size={12} strokeWidth={1.8} />}
+        </button>
       </div>
 
       <div style={{ padding: "10px 16px" }}>
@@ -593,6 +638,7 @@ function ThreadInspector({ messages, conversationId }: { messages: ChatMessage[]
                 <span>{payload.metadata.selectedSkillCount} skill(s)</span>
                 <span>{payload.metadata.historyMessageCount} history msg(s)</span>
                 <span>routing: {payload.routingMode}</span>
+                {payload.providerRequest?.model && <span>model: {payload.providerRequest.model}</span>}
                 {payload.metadata.fullSkillCatalogPresent && <span style={{ color: "var(--error)" }}>⚠ catalog leaked</span>}
               </div>
             )}

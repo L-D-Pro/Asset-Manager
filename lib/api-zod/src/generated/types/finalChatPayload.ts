@@ -7,10 +7,14 @@
  */
 import type { FinalChatPayloadMessagesItem } from "./finalChatPayloadMessagesItem";
 import type { FinalChatPayloadMetadata } from "./finalChatPayloadMetadata";
+import type { FinalChatPayloadPayloadSource } from "./finalChatPayloadPayloadSource";
+import type { FinalChatPayloadProviderRequest } from "./finalChatPayloadProviderRequest";
 import type { PromptSection } from "./promptSection";
 import type { RoutingDecision } from "./routingDecision";
 
 export interface FinalChatPayload {
+  payloadSource: FinalChatPayloadPayloadSource;
+  isExactModelPayload: boolean;
   /** Exact messages array sent to the model. */
   messages: FinalChatPayloadMessagesItem[];
   /** The full assembled system prompt string. */
@@ -21,5 +25,7 @@ export interface FinalChatPayload {
   parsedJdBlock?: string | null;
   routingDecision: RoutingDecision;
   routingMode: string;
+  providerRequest: FinalChatPayloadProviderRequest | null;
+  createdAt: Date;
   metadata: FinalChatPayloadMetadata;
 }

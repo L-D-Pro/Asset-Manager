@@ -5,12 +5,20 @@
  * Job Application Operations Platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { FinalChatPayloadMetadataFinalMessageRole } from "./finalChatPayloadMetadataFinalMessageRole";
 
 export interface FinalChatPayloadMetadata {
   selectedSkillCount: number;
   historyMessageCount: number;
   fullSkillCatalogPresent: boolean;
-  parsedJdPresentButNotSectioned: boolean;
+  parsedJdPresent: boolean;
+  parsedJdSectioned: boolean;
   bestPracticesEnabled: boolean;
+  /** @nullable */
+  finalMessageRole: FinalChatPayloadMetadataFinalMessageRole;
+  finalMessageIsUser: boolean;
+  /** @nullable */
+  currentUserMessageIndex: number | null;
+  historyIsChronological: boolean;
   warnings: string[];
 }

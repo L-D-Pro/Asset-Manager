@@ -22,6 +22,7 @@ import { extractJdParseSource, getCachedJdParse, type JdParseSource } from "./jd
 import { validateChatOutput } from "./output-validator";
 import { inspectContextRequirements } from "./context-requirements";
 import type { RoutingDecision } from "./skill-router";
+import { asSentSnapshot } from "./payload-snapshot";
 
 /**
  * Fallback max_tokens for model configs where maxTokens is null in the DB.
@@ -629,6 +630,15 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
   const chatTimingsSnapshot = { ...timings };
 
   const _t_persistEventLog0 = performance.now();
+  const finalPayloadSnapshot = asSentSnapshot({
+    payload,
+    providerRequest: {
+      provider: "openrouter",
+      model: activeModel.modelName,
+      maxTokens: activeModel.maxTokens ?? DEFAULT_MODEL_MAX_TOKENS,
+      stream: true,
+    },
+  });
   const [chatEvent] = await db
     .insert(eventLogsTable)
     .values({
@@ -681,6 +691,7 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
         promptLengthEstimate: Math.ceil(fullSystemPrompt.length / 4),
         attachmentCount: userMessage.attachments.length,
         historyTurnCount: history.length,
+        finalPayloadSnapshot,
       },
     })
     .returning({ id: eventLogsTable.id });

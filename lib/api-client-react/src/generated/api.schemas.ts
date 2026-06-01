@@ -2330,14 +2330,57 @@ export interface PromptSection {
   content: string;
 }
 
+/**
+ * @nullable
+ */
+export type FinalChatPayloadMetadataFinalMessageRole =
+  | (typeof FinalChatPayloadMetadataFinalMessageRole)[keyof typeof FinalChatPayloadMetadataFinalMessageRole]
+  | null;
+
+export const FinalChatPayloadMetadataFinalMessageRole = {
+  system: "system",
+  user: "user",
+  assistant: "assistant",
+} as const;
+
 export interface FinalChatPayloadMetadata {
   selectedSkillCount: number;
   historyMessageCount: number;
   fullSkillCatalogPresent: boolean;
-  parsedJdPresentButNotSectioned: boolean;
+  parsedJdPresent: boolean;
+  parsedJdSectioned: boolean;
   bestPracticesEnabled: boolean;
+  /** @nullable */
+  finalMessageRole: FinalChatPayloadMetadataFinalMessageRole;
+  finalMessageIsUser: boolean;
+  /** @nullable */
+  currentUserMessageIndex: number | null;
+  historyIsChronological: boolean;
   warnings: string[];
 }
+
+export type FinalChatPayloadProviderRequestProvider =
+  (typeof FinalChatPayloadProviderRequestProvider)[keyof typeof FinalChatPayloadProviderRequestProvider];
+
+export const FinalChatPayloadProviderRequestProvider = {
+  openrouter: "openrouter",
+} as const;
+
+export interface FinalChatPayloadProviderRequest {
+  provider: FinalChatPayloadProviderRequestProvider;
+  model: string;
+  temperature?: number;
+  maxTokens?: number;
+  stream?: boolean;
+}
+
+export type FinalChatPayloadPayloadSource =
+  (typeof FinalChatPayloadPayloadSource)[keyof typeof FinalChatPayloadPayloadSource];
+
+export const FinalChatPayloadPayloadSource = {
+  sent_snapshot: "sent_snapshot",
+  preview_rebuild: "preview_rebuild",
+} as const;
 
 export type FinalChatPayloadMessagesItemRole =
   (typeof FinalChatPayloadMessagesItemRole)[keyof typeof FinalChatPayloadMessagesItemRole];
@@ -2369,6 +2412,8 @@ export interface RoutingDecision {
 }
 
 export interface FinalChatPayload {
+  payloadSource: FinalChatPayloadPayloadSource;
+  isExactModelPayload: boolean;
   /** Exact messages array sent to the model. */
   messages: FinalChatPayloadMessagesItem[];
   /** The full assembled system prompt string. */
@@ -2379,6 +2424,8 @@ export interface FinalChatPayload {
   parsedJdBlock?: string | null;
   routingDecision: RoutingDecision;
   routingMode: string;
+  providerRequest: FinalChatPayloadProviderRequest | null;
+  createdAt: string;
   metadata: FinalChatPayloadMetadata;
 }
 
@@ -2410,6 +2457,8 @@ export interface PreviewPromptBody {
   explicitSkillSlugs?: string[];
   /** Load real conversation history from this thread for the payload. */
   conversationId?: number;
+  /** Prefer the stored snapshot for this assistant response when available. */
+  assistantMessageId?: number;
   overrides?: PreviewPromptBodyOverrides;
 }
 
