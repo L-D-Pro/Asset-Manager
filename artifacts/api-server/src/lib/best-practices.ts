@@ -32,8 +32,7 @@ export function formatBestPracticesForPrompt(config: BestPracticesConfig): strin
     // Skip deactivated items (active: false means user toggled it off)
     if (item.active === false) return false;
     // Skip if explicitly disabled by hardcoded guard
-    const guardKey = item.description.slice(0, 30).toLowerCase().replace(/[^a-z0-9]/g, "_");
-    if (config.hardcodedGuards[guardKey] === false) return false;
+    if (item.guardKey && config.hardcodedGuards[item.guardKey] === false) return false;
     return true;
   });
 
@@ -66,6 +65,7 @@ const DEFAULT_BEST_PRACTICES: BestPracticesConfig = {
       rationale:
         "Applicant Tracking Systems (ATS) may strip markdown, and plain text reads cleaner to hiring managers.",
       frequency: 0,
+      guardKey: "noMarkdown",
     },
     {
       description:
@@ -74,6 +74,7 @@ const DEFAULT_BEST_PRACTICES: BestPracticesConfig = {
       rationale:
         "Generic resumes perform poorly. Customization for the target role is the strongest predictor of interview invitations.",
       frequency: 0,
+      guardKey: "mustTailorToJob",
     },
     {
       description:
@@ -90,6 +91,7 @@ const DEFAULT_BEST_PRACTICES: BestPracticesConfig = {
       rationale:
         "These phrases are so common they add zero signal. Replace with specific accomplishments.",
       frequency: 0,
+      guardKey: "noGenericFiller",
     },
     {
       description:
@@ -98,6 +100,7 @@ const DEFAULT_BEST_PRACTICES: BestPracticesConfig = {
       rationale:
         "Cover letters are read for personality and motivation, not as a resume repeat. Long letters are skimmed or skipped.",
       frequency: 0,
+      guardKey: "coverLetterLengthCheck",
     },
     {
       description:
@@ -106,6 +109,7 @@ const DEFAULT_BEST_PRACTICES: BestPracticesConfig = {
       rationale:
         "Generic cover letters send 0 signal. Company-specific problem + solution framing shows deep research.",
       frequency: 0,
+      guardKey: "coverLetterMustAddressBusinessProblem",
     },
   ],
   hardcodedGuards: {
@@ -129,7 +133,7 @@ const RESUME_TAILORING_BEST_PRACTICES: BestPracticesConfig = {
       sourcePost: "A practical guide for tailoring your resume",
       taskScopes: ["resume_tailoring"],
       severity: "guardrail",
-      guardKey: "use_base_resume",
+      guardKey: "useBaseResume",
     },
     {
       description:
@@ -139,7 +143,7 @@ const RESUME_TAILORING_BEST_PRACTICES: BestPracticesConfig = {
       sourcePost: "A practical guide for tailoring your resume",
       taskScopes: ["resume_tailoring"],
       severity: "guidance",
-      guardKey: "jd_decomposition",
+      guardKey: "jdDecomposition",
     },
     {
       description:
@@ -149,7 +153,7 @@ const RESUME_TAILORING_BEST_PRACTICES: BestPracticesConfig = {
       sourcePost: "A practical guide for tailoring your resume",
       taskScopes: ["resume_tailoring"],
       severity: "blocking",
-      guardKey: "truthful_keyword_mirroring",
+      guardKey: "truthfulKeywordMirroring",
     },
     {
       description:
@@ -159,7 +163,7 @@ const RESUME_TAILORING_BEST_PRACTICES: BestPracticesConfig = {
       sourcePost: "A practical guide for tailoring your resume",
       taskScopes: ["resume_tailoring"],
       severity: "blocking",
-      guardKey: "keywords_need_proof",
+      guardKey: "keywordsNeedProof",
     },
     {
       description:
@@ -169,7 +173,7 @@ const RESUME_TAILORING_BEST_PRACTICES: BestPracticesConfig = {
       sourcePost: "A practical guide for tailoring your resume",
       taskScopes: ["resume_tailoring"],
       severity: "blocking",
-      guardKey: "no_exaggeration",
+      guardKey: "noExaggeration",
     },
     {
       description:
@@ -179,7 +183,7 @@ const RESUME_TAILORING_BEST_PRACTICES: BestPracticesConfig = {
       sourcePost: "A practical guide for tailoring your resume",
       taskScopes: ["resume_tailoring"],
       severity: "blocking",
-      guardKey: "gaps_not_fiction",
+      guardKey: "gapsNotFiction",
     },
   ],
   hardcodedGuards: {
@@ -204,7 +208,7 @@ const COVER_LETTER_BEST_PRACTICES: BestPracticesConfig = {
       sourcePost: "After 10 years of helping people write cover letters",
       taskScopes: ["cover_letter"],
       severity: "guidance",
-      guardKey: "connect_not_repeat",
+      guardKey: "connectNotRepeat",
     },
     {
       description:
@@ -214,7 +218,7 @@ const COVER_LETTER_BEST_PRACTICES: BestPracticesConfig = {
       sourcePost: "After 10 years of helping people write cover letters",
       taskScopes: ["cover_letter"],
       severity: "guardrail",
-      guardKey: "natural_specific_voice",
+      guardKey: "naturalSpecificVoice",
     },
     {
       description:
@@ -224,7 +228,7 @@ const COVER_LETTER_BEST_PRACTICES: BestPracticesConfig = {
       sourcePost: "After 10 years of helping people write cover letters",
       taskScopes: ["cover_letter"],
       severity: "blocking",
-      guardKey: "paragraph_truth_lock",
+      guardKey: "paragraphTruthLock",
     },
     {
       description:
@@ -234,7 +238,7 @@ const COVER_LETTER_BEST_PRACTICES: BestPracticesConfig = {
       sourcePost: "After 10 years of helping people write cover letters",
       taskScopes: ["cover_letter"],
       severity: "blocking",
-      guardKey: "source_company_research",
+      guardKey: "sourceCompanyResearch",
     },
     {
       description:
@@ -244,7 +248,7 @@ const COVER_LETTER_BEST_PRACTICES: BestPracticesConfig = {
       sourcePost: "After 10 years of helping people write cover letters",
       taskScopes: ["cover_letter"],
       severity: "guidance",
-      guardKey: "concise_problem_fit",
+      guardKey: "conciseProblemFit",
     },
     {
       description:
@@ -254,7 +258,7 @@ const COVER_LETTER_BEST_PRACTICES: BestPracticesConfig = {
       sourcePost: "After 10 years of helping people write cover letters",
       taskScopes: ["cover_letter"],
       severity: "blocking",
-      guardKey: "no_cover_letter_fiction",
+      guardKey: "noCoverLetterFiction",
     },
   ],
   hardcodedGuards: {

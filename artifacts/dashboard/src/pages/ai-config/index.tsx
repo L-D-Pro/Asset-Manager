@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { Portal } from "@/components/ui/portal";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -15,7 +15,15 @@ import { Plus, Pencil, Trash2, X } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
 
-const TASK_SCOPES = ["chat", "default", "jd_parsing", "resume_tailoring", "cover_letter", "claim_generation"] as const;
+const TASK_SCOPES = [
+  "chat",
+  "default",
+  "jd_parsing",
+  "resume_tailoring",
+  "cover_letter",
+  "claim_generation",
+  "quality_check",
+] as const;
 
 export default function PromptsPage() {
   const queryClient = useQueryClient();

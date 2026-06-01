@@ -27,6 +27,7 @@ export const TASK_SCOPES = [
   "job_research",
   "market_research",
   "proposal_drafting",
+  "quality_check",
 ] as const;
 
 export type TaskScope = (typeof TASK_SCOPES)[number];
@@ -39,5 +40,6 @@ export type TaskScope = (typeof TASK_SCOPES)[number];
 export function bestPracticesDomainForTask(taskScope: string): string {
   if (taskScope === "resume_tailoring") return "resume_tailoring";
   if (taskScope === "cover_letter") return "cover_letter";
+  if (taskScope === "quality_check") return "quality_check";
   return "general";
 }

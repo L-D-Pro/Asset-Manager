@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 import { formatBestPracticesForPrompt } from "../best-practices";
 import type { BestPracticesConfig } from "../best-practices";
 
-function makeConfig(items: BestPracticesConfig["items"]): BestPracticesConfig {
-  return { domain: "general", title: "Test", hardcodedGuards: {}, items };
+function makeConfig(
+  items: BestPracticesConfig["items"],
+  hardcodedGuards: Record<string, boolean> = {},
+): BestPracticesConfig {
+  return { domain: "general", title: "Test", hardcodedGuards, items };
 }
 
 describe("formatBestPracticesForPrompt", () => {
@@ -56,5 +59,29 @@ describe("formatBestPracticesForPrompt", () => {
     ]);
     const result = formatBestPracticesForPrompt(config);
     expect(result).not.toContain("Should not appear");
+  });
+
+  it("excludes item when its guardKey is set to false in hardcodedGuards", () => {
+    const config = makeConfig(
+      [
+        { description: "Rule A — gated by guard", source: "hardcoded", guardKey: "myGuard" },
+        { description: "Rule B — normal rule", source: "hardcoded" },
+      ],
+      { myGuard: false },
+    );
+    const result = formatBestPracticesForPrompt(config);
+    expect(result).not.toContain("Rule A — gated by guard");
+    expect(result).toContain("Rule B — normal rule");
+  });
+
+  it("includes item when its guardKey is missing from hardcodedGuards", () => {
+    const config = makeConfig(
+      [
+        { description: "Rule A — gated by guard", source: "hardcoded", guardKey: "myGuard" },
+      ],
+      {},
+    );
+    const result = formatBestPracticesForPrompt(config);
+    expect(result).toContain("Rule A — gated by guard");
   });
 });

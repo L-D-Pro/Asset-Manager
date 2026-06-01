@@ -29,6 +29,7 @@ import {
   TruthLockViolation,
   validateResumeQuality,
   validateSemanticQuality,
+  validateSemanticTemplateContract,
 } from "./validation";
 import type { Job, Claim } from "@workspace/db";
 
@@ -288,6 +289,50 @@ export async function runResumeTailorPipeline(
     throw error;
   }
 
+  const structuralCheck = validateSemanticTemplateContract({
+    items: parsedDraft.items,
+    templateSections: template.sectionOrder,
+  });
+  if (!structuralCheck.passed) {
+    logger.warn(
+      { jobId: job.id, issues: structuralCheck.issues },
+      "Resume structural template validation failed — returning diagnostic draft",
+    );
+    return insertDiagnosticResumeVersion({
+      userId,
+      jobId: job.id,
+      baseResumeVersionId: baseResumeVersion.id,
+      templateId: template.id,
+      claimIds: [],
+      label: "AI tailored resume - structural validation failed",
+      tailoredDocumentText: `⚠️ DO NOT SUBMIT — structural validation failed. Raw AI output below.\n\n${aiResult.content}`,
+      rawContent: aiResult.content,
+      runId: aiResult.runId,
+      eventLogId: aiResult.eventLogId,
+      notes: `Structural validation failed: ${structuralCheck.issues.join("; ")}`,
+      diffData: {
+        modelContract: "resume_tailoring_v2_simple",
+        modelName: aiResult.modelName,
+        provider: aiResult.provider,
+        finishReason: aiResult.finishReason,
+        promptTokens: aiResult.promptTokens,
+        completionTokens: aiResult.completionTokens,
+        factReview,
+        templateValidation: rendered.validation,
+        sourceValidation: parsedDraft.validation,
+        semanticValidation: {
+          passed: false,
+          violations: structuralCheck.issues,
+          sectionCounts: structuralCheck.sectionCounts,
+        },
+        plainTextParseDiagnostics: parsedDraft.diagnostics,
+        templateId: template.id,
+        templateLabel: template.label,
+        aiAttemptErrors: aiResult.priorFailures,
+      },
+    });
+  }
+
   const truthReview = reviewGeneratedTruth(
     parsedDraft.items.map((item) => ({
       text: item.text,
@@ -309,8 +354,10 @@ export async function runResumeTailorPipeline(
 
   let qualityViolation: QualityViolation | null = null;
   try {
-    validateResumeQuality(rendered.text, parsedDraft.items);
-    await validateSemanticQuality(rendered.text, jobContext, job.id, userId);
+    validateResumeQuality(rendered.text, parsedDraft.items, bestPractices.hardcodedGuards);
+    if (bestPractices.hardcodedGuards.mustTailorToJob !== false) {
+      await validateSemanticQuality(rendered.text, jobContext, job.id, userId);
+    }
   } catch (error) {
     if (error instanceof QualityViolation) {
       qualityViolation = error;

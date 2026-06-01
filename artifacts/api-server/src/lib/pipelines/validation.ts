@@ -527,11 +527,12 @@ export function checkQuantifiedImpact(bullets: { text: string }[]): string[] {
 export function validateResumeQuality(
   documentText: string,
   bullets: { text: string }[],
+  guards: Record<string, boolean> = {},
 ): void {
   const violations: string[] = [
-    ...checkNoMarkdown(documentText),
-    ...checkNoGenericFiller(documentText),
-    ...checkQuantifiedImpact(bullets),
+    ...(guards.noMarkdown !== false ? checkNoMarkdown(documentText) : []),
+    ...(guards.noGenericFiller !== false ? checkNoGenericFiller(documentText) : []),
+    ...(guards.quantifiedImpact !== false ? checkQuantifiedImpact(bullets) : []),
   ];
 
   if (violations.length > 0) {
@@ -604,11 +605,12 @@ export async function validateSemanticQuality(
  */
 export function validateCoverLetterQuality(
   fullText: string,
+  guards: Record<string, boolean> = {},
 ): void {
   const violations: string[] = [
-    ...checkNoMarkdown(fullText),
-    ...checkNoGenericFiller(fullText),
-    ...checkCoverLetterLength(fullText),
+    ...(guards.noMarkdown !== false ? checkNoMarkdown(fullText) : []),
+    ...(guards.noGenericFiller !== false ? checkNoGenericFiller(fullText) : []),
+    ...(guards.coverLetterLengthCheck !== false ? checkCoverLetterLength(fullText) : []),
   ];
 
   if (violations.length > 0) {
@@ -619,4 +621,73 @@ export function validateCoverLetterQuality(
       fullText,
     );
   }
+}
+
+// ─── Structural template contract ────────────────────────────────────────────
+
+function looksLikeDirectiveText(text: string): boolean {
+  const normalized = text.trim().toLowerCase();
+  return /^(highlight|emphasize|include|list|showcase|stress|demonstrate|detail|note|mention|add|outline)\b/.test(normalized);
+}
+
+function hasDateSignal(text: string): boolean {
+  return /\b(19|20)\d{2}\b/.test(text) || /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)\b/i.test(text);
+}
+
+export interface SemanticTemplateValidation {
+  passed: boolean;
+  issues: string[];
+  sectionCounts: Record<string, number>;
+  hasDatedExperience: boolean;
+  hasExperienceHeaderLikeLine: boolean;
+}
+
+/**
+ * Validates the structural shape of a parsed resume draft: required sections
+ * present, minimum item counts, date signals in experience, no directive text.
+ * Returns a result object rather than throwing so callers can decide severity.
+ */
+export function validateSemanticTemplateContract(args: {
+  items: Array<{ text: string; section: string }>;
+  templateSections: string[];
+}): SemanticTemplateValidation {
+  const issues: string[] = [];
+  const sectionCounts: Record<string, number> = {};
+  for (const section of args.templateSections) {
+    sectionCounts[section] = args.items.filter((item) => item.section === section).length;
+  }
+
+  for (const item of args.items) {
+    if (looksLikeDirectiveText(item.text)) {
+      issues.push(`Directive language found in ${item.section}: "${item.text.slice(0, 70)}"`);
+    }
+  }
+
+  const summaryCount = sectionCounts["summary"] ?? 0;
+  if (summaryCount < 1) issues.push("Summary section is missing.");
+
+  const experienceItems = args.items.filter((item) => item.section === "experience");
+  const hasDatedExperience = experienceItems.some((item) => hasDateSignal(item.text));
+  const hasExperienceHeaderLikeLine = experienceItems.some(
+    (item) =>
+      hasDateSignal(item.text) &&
+      (/\|/.test(item.text) || / - /.test(item.text) || / at /i.test(item.text)),
+  );
+
+  if (experienceItems.length < 2) issues.push("Experience section too short; expected at least 2 items.");
+  if (!hasDatedExperience) issues.push("Experience section is missing date signals (years/month names).");
+
+  const educationCount = sectionCounts["education"] ?? 0;
+  if (educationCount < 1) issues.push("Education section is missing.");
+
+  const skillsCount = sectionCounts["skills"] ?? 0;
+  if (skillsCount < 2) issues.push("Skills section is too short.");
+
+  return {
+    passed: issues.length === 0,
+    issues,
+    sectionCounts,
+    hasDatedExperience,
+    hasExperienceHeaderLikeLine,
+  };
 }

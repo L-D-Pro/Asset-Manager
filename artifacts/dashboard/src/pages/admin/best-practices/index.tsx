@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Portal } from "@/components/ui/portal";
 import { useAuth } from "@/context/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -10,6 +10,8 @@ interface BestPracticeItem {
   rationale?: string;
   frequency?: number;
   enabled?: boolean;
+  active?: boolean;
+  guardKey?: string;
 }
 
 interface BestPracticesConfig {

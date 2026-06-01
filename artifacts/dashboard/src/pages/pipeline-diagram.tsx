@@ -22,6 +22,7 @@ const TASK_LABELS: Record<string, string> = {
   job_research:     "Job Research",
   market_research:  "Market Research",
   proposal_drafting:"Proposal Drafting",
+  quality_check:    "Quality Check",
 };
 
 const SCOPE_STEP: Record<string, number> = {
@@ -33,6 +34,7 @@ const SCOPE_STEP: Record<string, number> = {
   job_research:     1,
   market_research:  1,
   proposal_drafting:4,
+  quality_check:    4,
 };
 
 function emptySummariesFromScopes(): AiPipelineTaskSummary[] {
@@ -70,6 +72,10 @@ export default function PipelineDiagram() {
           </h1>
           <div className="dim" style={{ fontSize: 13, marginTop: 6, maxWidth: 600 }}>
             One surface for every lever that shapes an AI call: prompts, roles, models, best practices, and training examples.
+            <br />
+            <span className="mono" style={{ fontSize: 11, color: "var(--ink-3)" }}>
+              Tailoring Pipeline: Resume Tailoring / Cover Letter &rarr; Quality Check &rarr; ATS Score &rarr; Approval Gate
+            </span>
           </div>
         </div>
         {overview.isLoading && (

@@ -359,8 +359,10 @@ Responsibilities: ${(job.parsedResponsibilities ?? []).join("; ") || "Not parsed
 
   let qualityViolation: QualityViolation | null = null;
   try {
-    validateCoverLetterQuality(fullText);
-    await validateSemanticQuality(fullText, jobContext, job.id, userId);
+    validateCoverLetterQuality(fullText, bestPractices.hardcodedGuards);
+    if (bestPractices.hardcodedGuards.coverLetterMustAddressBusinessProblem !== false) {
+      await validateSemanticQuality(fullText, jobContext, job.id, userId);
+    }
   } catch (err) {
     if (err instanceof QualityViolation) {
       qualityViolation = err;

@@ -13,6 +13,9 @@ import {
   checkCoverLetterLength,
   checkQuantifiedImpact,
   stripClaimIdRefs,
+  validateResumeQuality,
+  validateCoverLetterQuality,
+  validateSemanticTemplateContract,
 } from "../pipelines/validation";
 
 function makeClaim(overrides: Partial<Claim> = {}): Claim {
@@ -414,5 +417,147 @@ describe("stripClaimIdRefs", () => {
   it("collapses double spaces after removal", () => {
     const result = stripClaimIdRefs("Built  (ID:1)  a system.");
     expect(result).not.toContain("  ");
+  });
+});
+
+describe("validateResumeQuality and validateCoverLetterQuality with guards", () => {
+  it("validateResumeQuality skips markdown check when noMarkdown guard is false", () => {
+    expect(() =>
+      validateResumeQuality("This is **bold** text.", [{ text: "Reduced ramp time by 20%." }], {
+        noMarkdown: false,
+      })
+    ).not.toThrow();
+  });
+
+  it("validateResumeQuality skips filler check when noGenericFiller guard is false", () => {
+    expect(() =>
+      validateResumeQuality("I am a team player.", [{ text: "Reduced ramp time by 20%." }], {
+        noGenericFiller: false,
+      })
+    ).not.toThrow();
+  });
+
+  it("validateResumeQuality skips quantifiedImpact check when guard is false", () => {
+    const bullets = [
+      { text: "Worked on projects" },
+      { text: "Helped the team" },
+      { text: "Did various tasks" },
+    ];
+    expect(() =>
+      validateResumeQuality("Worked on projects.", bullets, { quantifiedImpact: false })
+    ).not.toThrow();
+  });
+
+  it("validateCoverLetterQuality skips length check when coverLetterLengthCheck guard is false", () => {
+    expect(() =>
+      validateCoverLetterQuality("Short cover letter.", {
+        coverLetterLengthCheck: false,
+      })
+    ).not.toThrow();
+  });
+});
+
+// ─── validateSemanticTemplateContract ────────────────────────────────────────
+
+function makeItem(section: string, text: string) {
+  return { section, text };
+}
+
+describe("validateSemanticTemplateContract", () => {
+  const sampleSections = ["summary", "experience", "education", "skills"];
+
+  it("passes when all required sections are present with sufficient items", () => {
+    const items = [
+      makeItem("summary", "Senior instructional designer with 13 years of experience."),
+      makeItem("experience", "Software Developer | Acme Corp | San Diego, CA | Jan 2021 - Present"),
+      makeItem("experience", "Built React workflows for 40 users."),
+      makeItem("education", "B.A. Computer Science — UC San Diego, 2019"),
+      makeItem("skills", "TypeScript, React, Node.js, SQL"),
+      makeItem("skills", "Git, Docker, Linux, CI/CD"),
+    ];
+    const result = validateSemanticTemplateContract({ items, templateSections: sampleSections });
+    expect(result.passed).toBe(true);
+    expect(result.issues).toHaveLength(0);
+    expect(result.hasDatedExperience).toBe(true);
+    expect(result.sectionCounts["experience"]).toBe(2);
+    expect(result.sectionCounts["summary"]).toBe(1);
+  });
+
+  it("fails when experience section has fewer than 2 items", () => {
+    const items = [
+      makeItem("summary", "Senior engineer with 5 years of experience."),
+      makeItem("experience", "Software Developer | Acme Corp | Jan 2021 - Present"),
+      makeItem("education", "B.S. Computer Science — UC San Diego, 2019"),
+      makeItem("skills", "TypeScript, React"),
+      makeItem("skills", "Node.js, SQL"),
+    ];
+    const result = validateSemanticTemplateContract({ items, templateSections: sampleSections });
+    expect(result.passed).toBe(false);
+    expect(result.issues.some((i) => /experience.*too short/i.test(i))).toBe(true);
+  });
+
+  it("fails when experience section has zero items", () => {
+    const items = [
+      makeItem("summary", "Senior engineer."),
+      makeItem("education", "B.S. Computer Science — UC San Diego, 2019"),
+      makeItem("skills", "TypeScript"),
+      makeItem("skills", "React"),
+    ];
+    const result = validateSemanticTemplateContract({ items, templateSections: sampleSections });
+    expect(result.passed).toBe(false);
+    expect(result.sectionCounts["experience"]).toBe(0);
+    expect(result.hasDatedExperience).toBe(false);
+  });
+
+  it("fails when summary is missing", () => {
+    const items = [
+      makeItem("experience", "Software Developer | Acme Corp | Jan 2021 - Present"),
+      makeItem("experience", "Built React workflows for 40 users."),
+      makeItem("education", "B.S. Computer Science — UC San Diego, 2019"),
+      makeItem("skills", "TypeScript"),
+      makeItem("skills", "React"),
+    ];
+    const result = validateSemanticTemplateContract({ items, templateSections: sampleSections });
+    expect(result.passed).toBe(false);
+    expect(result.issues.some((i) => /summary.*missing/i.test(i))).toBe(true);
+  });
+
+  it("fails when directive text is present in an item", () => {
+    const items = [
+      makeItem("summary", "Senior engineer with 5 years of experience."),
+      makeItem("experience", "Highlight your leadership experience here"),
+      makeItem("experience", "Software Developer | Acme Corp | Jan 2021 - Present"),
+      makeItem("education", "B.S. Computer Science — UC San Diego, 2019"),
+      makeItem("skills", "TypeScript"),
+      makeItem("skills", "React"),
+    ];
+    const result = validateSemanticTemplateContract({ items, templateSections: sampleSections });
+    expect(result.issues.some((i) => /directive/i.test(i))).toBe(true);
+  });
+
+  it("reports hasDatedExperience as true when experience item contains a year", () => {
+    const items = [
+      makeItem("summary", "Engineer."),
+      makeItem("experience", "Developer | Corp | 2020 - 2023"),
+      makeItem("experience", "Led team of 5."),
+      makeItem("education", "B.S. 2019"),
+      makeItem("skills", "TypeScript"),
+      makeItem("skills", "React"),
+    ];
+    const result = validateSemanticTemplateContract({ items, templateSections: sampleSections });
+    expect(result.hasDatedExperience).toBe(true);
+  });
+
+  it("reports hasDatedExperience as false when no experience item has a date", () => {
+    const items = [
+      makeItem("summary", "Engineer."),
+      makeItem("experience", "Developer at Corp"),
+      makeItem("experience", "Led team of five people."),
+      makeItem("education", "B.S."),
+      makeItem("skills", "TypeScript"),
+      makeItem("skills", "React"),
+    ];
+    const result = validateSemanticTemplateContract({ items, templateSections: sampleSections });
+    expect(result.hasDatedExperience).toBe(false);
   });
 });

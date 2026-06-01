@@ -87,6 +87,7 @@ vi.mock("../validation", () => ({
   reviewGeneratedTruth: reviewGeneratedTruthMock,
   stripClaimIdRefs: (text: string) => text,
   TruthLockViolation,
+  validateSemanticTemplateContract: vi.fn(() => ({ passed: true, issues: [], sectionCounts: {}, hasDatedExperience: true, hasExperienceHeaderLikeLine: true })),
 }));
 
 describe("job lineage pipelines", () => {

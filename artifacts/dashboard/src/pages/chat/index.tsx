@@ -566,14 +566,23 @@ function Composer({ input, setInput, onSend, onStop, streaming, stagedCount, att
 
   function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
     const html = e.clipboardData.getData("text/html");
-    if (!html) return;
-    const md = htmlToMarkdown(html);
-    if (!md) return;
+    const plain = e.clipboardData.getData("text/plain");
+
+    // Try HTML → markdown conversion. If the result has no newlines, the HTML
+    // was span-heavy (LinkedIn, Indeed) and conversion produced a single block.
+    // Fall back to plain text, which preserves the original line breaks.
+    let result = plain;
+    if (html) {
+      const md = htmlToMarkdown(html);
+      if (md.includes("\n")) result = md;
+    }
+
+    if (!result) return;
     e.preventDefault();
     const ta = e.currentTarget;
     const before = input.slice(0, ta.selectionStart);
     const after = input.slice(ta.selectionEnd);
-    setInput(before + md + after);
+    setInput(before + result + after);
   }
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -834,6 +843,11 @@ function htmlToMarkdown(html: string): string {
       case "li": return `- ${inner.trim()}\n`;
       case "ul": case "ol": return `\n${inner}`;
       case "a": return inner;
+      case "script": case "style": case "noscript": case "head": return "";
+      case "div": case "section": case "article": case "header": case "footer": case "main": case "nav": case "aside": {
+        const trimmed = inner.trim();
+        return trimmed ? `${trimmed}\n\n` : "";
+      }
       default: return inner;
     }
   }

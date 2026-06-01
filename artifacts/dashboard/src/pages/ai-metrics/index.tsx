@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { Portal } from "@/components/ui/portal";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -13,7 +13,15 @@ import {
 } from "@workspace/api-client-react";
 import { Plus, Shield, X, Pencil, Trash2 } from "lucide-react";
 
-const COMMON_SCOPES = ["chat", "skill_routing", "jd_parsing", "resume_tailoring", "cover_letter", "claim_generation"] as const;
+const COMMON_SCOPES = [
+  "chat",
+  "skill_routing",
+  "jd_parsing",
+  "resume_tailoring",
+  "cover_letter",
+  "claim_generation",
+  "quality_check",
+] as const;
 
 export default function ModelsPage() {
   const queryClient = useQueryClient();

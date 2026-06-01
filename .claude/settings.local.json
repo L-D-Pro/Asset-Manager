@@ -53,7 +53,12 @@
       "Skill(superpowers:receiving-code-review)",
       "Skill(superpowers:receiving-code-review:*)",
       "Bash(pnpm run *)",
-      "Bash(export npm_config_verify_deps_before_run=false)"
+      "Bash(export npm_config_verify_deps_before_run=false)",
+      "Bash(rtk grep *)",
+      "Bash(rtk ls *)",
+      "Bash(rtk git *)",
+      "Bash(rtk wc *)",
+      "Bash(rtk read *)"
     ],
     "additionalDirectories": [
       "C:\\Users\\uberc\\LD Pro\\Asset-Manager\\artifacts\\api-server"
