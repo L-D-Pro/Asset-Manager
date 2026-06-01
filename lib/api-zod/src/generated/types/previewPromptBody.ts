@@ -15,5 +15,7 @@ export interface PreviewPromptBody {
   attachments?: ChatAttachment[];
   /** @maxItems 2 */
   explicitSkillSlugs?: string[];
+  /** Load real conversation history from this thread for the payload. */
+  conversationId?: number;
   overrides?: PreviewPromptBodyOverrides;
 }

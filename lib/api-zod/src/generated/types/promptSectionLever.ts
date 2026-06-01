@@ -15,4 +15,5 @@ export const PromptSectionLever = {
   skill: "skill",
   best_practices: "best_practices",
   attachments: "attachments",
+  parsed_jd: "parsed_jd",
 } as const;

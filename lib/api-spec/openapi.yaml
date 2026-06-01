@@ -2463,7 +2463,7 @@ paths:
     post:
       operationId: previewChatPrompt
       tags: [chat]
-      summary: Assemble the chat system prompt as labeled sections (inspector)
+      summary: Build the canonical final chat model payload (inspector)
       requestBody:
         required: true
         content:
@@ -2472,13 +2472,11 @@ paths:
               $ref: "#/components/schemas/PreviewPromptBody"
       responses:
         "200":
-          description: Section-labeled assembled prompt
+          description: Full canonical chat model payload with sections and leakage metadata
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/PromptSection"
+                $ref: "#/components/schemas/FinalChatPayload"
 
   /chat/route-preview:
     post:
@@ -6101,7 +6099,7 @@ components:
       properties:
         lever:
           type: string
-          enum: [identity, skill_catalog, skill, best_practices, attachments]
+          enum: [identity, skill_catalog, skill, best_practices, attachments, parsed_jd]
         label:
           type: string
         content:
@@ -6110,6 +6108,72 @@ components:
         - lever
         - label
         - content
+
+    FinalChatPayloadMetadata:
+      type: object
+      properties:
+        selectedSkillCount:
+          type: integer
+        historyMessageCount:
+          type: integer
+        fullSkillCatalogPresent:
+          type: boolean
+        parsedJdPresentButNotSectioned:
+          type: boolean
+        bestPracticesEnabled:
+          type: boolean
+        warnings:
+          type: array
+          items:
+            type: string
+      required:
+        - selectedSkillCount
+        - historyMessageCount
+        - fullSkillCatalogPresent
+        - parsedJdPresentButNotSectioned
+        - bestPracticesEnabled
+        - warnings
+
+    FinalChatPayload:
+      type: object
+      properties:
+        messages:
+          type: array
+          description: Exact messages array sent to the model.
+          items:
+            type: object
+            properties:
+              role:
+                type: string
+                enum: [system, user, assistant]
+              content:
+                type: string
+            required: [role, content]
+        systemPrompt:
+          type: string
+          description: The full assembled system prompt string.
+        sections:
+          type: array
+          description: Labeled sections of the system prompt, including parsed_jd if present.
+          items:
+            $ref: "#/components/schemas/PromptSection"
+        parsedJdBlock:
+          type: string
+          nullable: true
+          description: The raw JD block text if parsedJd was provided.
+        routingDecision:
+          $ref: "#/components/schemas/RoutingDecision"
+        routingMode:
+          type: string
+        metadata:
+          $ref: "#/components/schemas/FinalChatPayloadMetadata"
+      required:
+        - messages
+        - systemPrompt
+        - sections
+        - routingDecision
+        - routingMode
+        - metadata
 
     PreviewPromptBody:
       type: object
@@ -6127,6 +6191,9 @@ components:
           maxItems: 2
           items:
             type: string
+        conversationId:
+          type: integer
+          description: Load real conversation history from this thread for the payload.
         overrides:
           type: object
           properties:

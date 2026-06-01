@@ -3440,7 +3440,7 @@ export const UpdateChatLeverConfigResponse = zod.object({
 });
 
 /**
- * @summary Assemble the chat system prompt as labeled sections (inspector)
+ * @summary Build the canonical final chat model payload (inspector)
  */
 
 export const previewChatPromptBodyAttachmentsMax = 20;
@@ -3514,6 +3514,12 @@ export const PreviewChatPromptBody = zod.object({
     .array(zod.string())
     .max(previewChatPromptBodyExplicitSkillSlugsMax)
     .optional(),
+  conversationId: zod
+    .number()
+    .optional()
+    .describe(
+      "Load real conversation history from this thread for the payload.",
+    ),
   overrides: zod
     .object({
       identityText: zod.string().optional(),
@@ -3528,20 +3534,64 @@ export const PreviewChatPromptBody = zod.object({
     .optional(),
 });
 
-export const PreviewChatPromptResponseItem = zod.object({
-  lever: zod.enum([
-    "identity",
-    "skill_catalog",
-    "skill",
-    "best_practices",
-    "attachments",
-  ]),
-  label: zod.string(),
-  content: zod.string(),
+export const PreviewChatPromptResponse = zod.object({
+  messages: zod
+    .array(
+      zod.object({
+        role: zod.enum(["system", "user", "assistant"]),
+        content: zod.string(),
+      }),
+    )
+    .describe("Exact messages array sent to the model."),
+  systemPrompt: zod
+    .string()
+    .describe("The full assembled system prompt string."),
+  sections: zod
+    .array(
+      zod.object({
+        lever: zod.enum([
+          "identity",
+          "skill_catalog",
+          "skill",
+          "best_practices",
+          "attachments",
+          "parsed_jd",
+        ]),
+        label: zod.string(),
+        content: zod.string(),
+      }),
+    )
+    .describe(
+      "Labeled sections of the system prompt, including parsed_jd if present.",
+    ),
+  parsedJdBlock: zod
+    .string()
+    .nullish()
+    .describe("The raw JD block text if parsedJd was provided."),
+  routingDecision: zod.object({
+    selectedSlugs: zod.array(zod.string()),
+    confidence: zod.number(),
+    reason: zod.string(),
+    candidates: zod.array(
+      zod.object({
+        slug: zod.string(),
+        score: zod.number(),
+      }),
+    ),
+    llmUsed: zod.boolean(),
+    budgetTrimmed: zod.boolean(),
+    skillPromptTokens: zod.number(),
+  }),
+  routingMode: zod.string(),
+  metadata: zod.object({
+    selectedSkillCount: zod.number(),
+    historyMessageCount: zod.number(),
+    fullSkillCatalogPresent: zod.boolean(),
+    parsedJdPresentButNotSectioned: zod.boolean(),
+    bestPracticesEnabled: zod.boolean(),
+    warnings: zod.array(zod.string()),
+  }),
 });
-export const PreviewChatPromptResponse = zod.array(
-  PreviewChatPromptResponseItem,
-);
 
 /**
  * @summary Simulate skill routing for a sample message (router simulator)
@@ -3618,6 +3668,12 @@ export const PreviewChatRouteBody = zod.object({
     .array(zod.string())
     .max(previewChatRouteBodyExplicitSkillSlugsMax)
     .optional(),
+  conversationId: zod
+    .number()
+    .optional()
+    .describe(
+      "Load real conversation history from this thread for the payload.",
+    ),
   overrides: zod
     .object({
       identityText: zod.string().optional(),
@@ -3655,6 +3711,7 @@ export const PreviewChatRouteResponse = zod.object({
         "skill",
         "best_practices",
         "attachments",
+        "parsed_jd",
       ]),
       label: zod.string(),
       content: zod.string(),

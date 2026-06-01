@@ -4,7 +4,7 @@ import { Portal } from "@/components/ui/portal";
 import { smartApi } from "@/lib/smart-ai-api";
 import { toast } from "@/hooks/use-toast";
 import { Plus, X, Sparkles, Check, Copy, FileText, Briefcase, Shield, Send, MessageCircle, Pencil, Paperclip, ChevronDown, Eye } from "lucide-react";
-import { useGetChatLeverConfig, useListAiModelConfigs, useListAiPromptVersions, usePreviewChatPrompt, type AiModelConfig, type AiPromptVersion, type PromptSection } from "@workspace/api-client-react";
+import { useGetChatLeverConfig, useListAiModelConfigs, useListAiPromptVersions, usePreviewChatPrompt, type AiModelConfig, type AiPromptVersion, type FinalChatPayload } from "@workspace/api-client-react";
 
 import { chatApi, type ChatAttachment, type ChatMessage, type ChatThread } from "./api";
 import { useChatStream } from "./use-chat-stream";
@@ -242,7 +242,7 @@ export default function ChatPage() {
                 </div>
               </div>
 
-              {inspectorOpen && <ThreadInspector messages={messages} />}
+              {inspectorOpen && <ThreadInspector messages={messages} conversationId={activeThread.id} />}
 
               {/* Messages */}
               <div ref={scrollRef} className="chat-messages">
@@ -492,15 +492,17 @@ const INSPECTOR_LEVER_COLOR: Record<string, string> = {
   skill: "var(--accent)",
   best_practices: "var(--warn)",
   attachments: "var(--success)",
+  parsed_jd: "var(--info, #60a5fa)",
 };
 
 /**
- * Live per-thread prompt inspector — shows the exact system prompt that would
- * be assembled for this thread's next turn, section-labeled by lever.
+ * Live per-thread prompt inspector — shows the exact canonical payload the
+ * model would receive, with section view and raw payload view.
  */
-function ThreadInspector({ messages }: { messages: ChatMessage[] }) {
+function ThreadInspector({ messages, conversationId }: { messages: ChatMessage[]; conversationId: number }) {
   const preview = usePreviewChatPrompt();
-  const [sections, setSections] = useState<PromptSection[] | null>(null);
+  const [payload, setPayload] = useState<FinalChatPayload | null>(null);
+  const [activeTab, setActiveTab] = useState<"sections" | "raw">("sections");
 
   const lastUser = [...messages].reverse().find((m) => m.role === "user");
 
@@ -511,37 +513,97 @@ function ThreadInspector({ messages }: { messages: ChatMessage[] }) {
         data: {
           sampleMessage,
           attachments: (lastUser?.attachments ?? []) as never,
+          conversationId,
         },
       })
-      .then((res) => setSections(res as PromptSection[]))
+      .then((res) => setPayload(res))
       .catch((err) =>
         toast({ title: "Inspector failed", description: (err as Error).message, variant: "destructive" }),
       );
-    // Re-run when the latest user message changes.
+    // Re-run when the latest user message or conversation changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lastUser?.id]);
+  }, [lastUser?.id, conversationId]);
+
+  const sections = payload?.sections ?? null;
+  const rawPayload = payload
+    ? {
+        messages: payload.messages,
+        routing: { mode: payload.routingMode, selectedSlugs: payload.routingDecision.selectedSlugs },
+        metadata: payload.metadata,
+      }
+    : null;
 
   return (
-    <div style={{ borderBottom: "1px solid var(--line)", background: "var(--paper-2)", padding: "12px 16px", maxHeight: 320, overflowY: "auto" }}>
-      <div className="label" style={{ marginBottom: 8 }}>
-        System prompt · what the model reads {preview.isPending && <span className="dim">— rebuilding…</span>}
-      </div>
-      {sections && sections.length === 0 && (
-        <div className="dim" style={{ fontSize: 12 }}>Empty prompt — every lever is off.</div>
-      )}
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        {sections?.map((s, i) => (
-          <div key={i} style={{ border: "1px solid var(--line-soft)", borderRadius: 6, overflow: "hidden" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 7, padding: "4px 8px", background: "var(--card)" }}>
-              <span style={{ width: 7, height: 7, borderRadius: 99, background: INSPECTOR_LEVER_COLOR[s.lever] ?? "var(--ink-4)" }} />
-              <span className="mono" style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--ink-3)" }}>{s.lever}</span>
-              <span className="dim" style={{ fontSize: 11 }}>{s.label}</span>
-            </div>
-            <pre style={{ margin: 0, padding: "7px 9px", fontSize: 11, lineHeight: 1.45, whiteSpace: "pre-wrap", wordBreak: "break-word", fontFamily: "var(--font-mono)" }}>
-              {s.content}
-            </pre>
-          </div>
+    <div style={{ borderBottom: "1px solid var(--line)", background: "var(--paper-2)", maxHeight: 380, overflowY: "auto" }}>
+      {/* Tab bar */}
+      <div style={{ display: "flex", alignItems: "center", gap: 0, padding: "8px 16px 0", borderBottom: "1px solid var(--line-soft)" }}>
+        <div className="label" style={{ flex: 1 }}>
+          Inspect · model payload {preview.isPending && <span className="dim">— rebuilding…</span>}
+        </div>
+        {(["sections", "raw"] as const).map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            onClick={() => setActiveTab(tab)}
+            style={{
+              padding: "3px 10px",
+              fontSize: 11,
+              border: "none",
+              borderBottom: activeTab === tab ? "2px solid var(--accent)" : "2px solid transparent",
+              background: "transparent",
+              color: activeTab === tab ? "var(--ink)" : "var(--ink-3)",
+              cursor: "pointer",
+              borderRadius: 0,
+            }}
+          >
+            {tab === "sections" ? "Sections" : "Raw Payload"}
+          </button>
         ))}
+      </div>
+
+      <div style={{ padding: "10px 16px" }}>
+        {/* Leakage warnings */}
+        {payload?.metadata.warnings && payload.metadata.warnings.length > 0 && (
+          <div style={{ marginBottom: 8, padding: "6px 10px", background: "var(--warn-bg, #fef3c7)", borderRadius: 5, fontSize: 11, color: "var(--warn-text, #92400e)" }}>
+            {payload.metadata.warnings.map((w, i) => <div key={i}>⚠ {w}</div>)}
+          </div>
+        )}
+
+        {activeTab === "sections" && (
+          <>
+            {sections && sections.length === 0 && (
+              <div className="dim" style={{ fontSize: 12 }}>Empty prompt — every lever is off.</div>
+            )}
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {sections?.map((s, i) => (
+                <div key={i} style={{ border: "1px solid var(--line-soft)", borderRadius: 6, overflow: "hidden" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 7, padding: "4px 8px", background: "var(--card)" }}>
+                    <span style={{ width: 7, height: 7, borderRadius: 99, background: INSPECTOR_LEVER_COLOR[s.lever] ?? "var(--ink-4)" }} />
+                    <span className="mono" style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--ink-3)" }}>{s.lever}</span>
+                    <span className="dim" style={{ fontSize: 11 }}>{s.label}</span>
+                  </div>
+                  <pre style={{ margin: 0, padding: "7px 9px", fontSize: 11, lineHeight: 1.45, whiteSpace: "pre-wrap", wordBreak: "break-word", fontFamily: "var(--font-mono)" }}>
+                    {s.content}
+                  </pre>
+                </div>
+              ))}
+            </div>
+            {payload && (
+              <div style={{ marginTop: 8, display: "flex", gap: 12, fontSize: 10.5, color: "var(--ink-3)" }}>
+                <span>{payload.metadata.selectedSkillCount} skill(s)</span>
+                <span>{payload.metadata.historyMessageCount} history msg(s)</span>
+                <span>routing: {payload.routingMode}</span>
+                {payload.metadata.fullSkillCatalogPresent && <span style={{ color: "var(--error)" }}>⚠ catalog leaked</span>}
+              </div>
+            )}
+          </>
+        )}
+
+        {activeTab === "raw" && (
+          <pre style={{ margin: 0, fontSize: 10.5, lineHeight: 1.4, whiteSpace: "pre-wrap", wordBreak: "break-word", fontFamily: "var(--font-mono)", color: "var(--ink-2)" }}>
+            {rawPayload ? JSON.stringify(rawPayload, null, 2) : "Loading…"}
+          </pre>
+        )}
       </div>
     </div>
   );

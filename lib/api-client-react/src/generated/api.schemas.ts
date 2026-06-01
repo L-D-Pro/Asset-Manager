@@ -2321,12 +2321,65 @@ export const PromptSectionLever = {
   skill: "skill",
   best_practices: "best_practices",
   attachments: "attachments",
+  parsed_jd: "parsed_jd",
 } as const;
 
 export interface PromptSection {
   lever: PromptSectionLever;
   label: string;
   content: string;
+}
+
+export interface FinalChatPayloadMetadata {
+  selectedSkillCount: number;
+  historyMessageCount: number;
+  fullSkillCatalogPresent: boolean;
+  parsedJdPresentButNotSectioned: boolean;
+  bestPracticesEnabled: boolean;
+  warnings: string[];
+}
+
+export type FinalChatPayloadMessagesItemRole =
+  (typeof FinalChatPayloadMessagesItemRole)[keyof typeof FinalChatPayloadMessagesItemRole];
+
+export const FinalChatPayloadMessagesItemRole = {
+  system: "system",
+  user: "user",
+  assistant: "assistant",
+} as const;
+
+export type FinalChatPayloadMessagesItem = {
+  role: FinalChatPayloadMessagesItemRole;
+  content: string;
+};
+
+export type RoutingDecisionCandidatesItem = {
+  slug: string;
+  score: number;
+};
+
+export interface RoutingDecision {
+  selectedSlugs: string[];
+  confidence: number;
+  reason: string;
+  candidates: RoutingDecisionCandidatesItem[];
+  llmUsed: boolean;
+  budgetTrimmed: boolean;
+  skillPromptTokens: number;
+}
+
+export interface FinalChatPayload {
+  /** Exact messages array sent to the model. */
+  messages: FinalChatPayloadMessagesItem[];
+  /** The full assembled system prompt string. */
+  systemPrompt: string;
+  /** Labeled sections of the system prompt, including parsed_jd if present. */
+  sections: PromptSection[];
+  /** The raw JD block text if parsedJd was provided. */
+  parsedJdBlock?: string | null;
+  routingDecision: RoutingDecision;
+  routingMode: string;
+  metadata: FinalChatPayloadMetadata;
 }
 
 export type PreviewPromptBodyOverridesSkillRoutingMode =
@@ -2355,22 +2408,9 @@ export interface PreviewPromptBody {
   attachments?: ChatAttachment[];
   /** @maxItems 2 */
   explicitSkillSlugs?: string[];
+  /** Load real conversation history from this thread for the payload. */
+  conversationId?: number;
   overrides?: PreviewPromptBodyOverrides;
-}
-
-export type RoutingDecisionCandidatesItem = {
-  slug: string;
-  score: number;
-};
-
-export interface RoutingDecision {
-  selectedSlugs: string[];
-  confidence: number;
-  reason: string;
-  candidates: RoutingDecisionCandidatesItem[];
-  llmUsed: boolean;
-  budgetTrimmed: boolean;
-  skillPromptTokens: number;
 }
 
 export interface ChatLeverSnapshot {

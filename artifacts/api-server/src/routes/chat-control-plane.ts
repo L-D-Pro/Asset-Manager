@@ -6,6 +6,7 @@ import {
   aiChatLeverConfigTable,
   aiChatLeverPresetsTable,
   aiPromptVersionsTable,
+  messages,
   type ChatLeverSnapshot,
 } from "@workspace/db";
 import {
@@ -17,9 +18,9 @@ import {
 import type { JobOpsRequest } from "../lib/http-types";
 import {
   getChatLeverConfig,
-  resolveChatSystemPromptSections,
   resolveChatPrompt,
 } from "../lib/chat/resolve-system-prompt";
+import { buildFinalChatPayload } from "../lib/chat/final-payload-builder";
 import { requireAdmin } from "../middlewares/admin";
 import { currentUserId } from "../lib/ownership";
 
@@ -69,13 +70,39 @@ router.post("/chat/preview-prompt", async (req, res): Promise<void> => {
     return;
   }
 
-  const sections = await resolveChatSystemPromptSections({
-    userId: currentUserId(req as JobOpsRequest),
-    userMessage: parsed.data.sampleMessage,
-    attachments: (parsed.data.attachments ?? []) as never,
+  const userId = currentUserId(req as JobOpsRequest);
+
+  // Load real conversation history if conversationId provided in the request body.
+  const conversationId =
+    typeof req.body.conversationId === "number" ? (req.body.conversationId as number) : null;
+  let history: Array<{ role: "user" | "assistant"; content: string }> = [];
+
+  if (conversationId != null) {
+    const leverConfig = await getChatLeverConfig();
+    const historyRows = await db
+      .select({ role: messages.role, content: messages.content })
+      .from(messages)
+      .where(eq(messages.conversationId, conversationId))
+      .orderBy(desc(messages.createdAt))
+      .limit(leverConfig.historyTurnLimit);
+    history = historyRows
+      .reverse()
+      .filter((m) => m.role === "user" || m.role === "assistant")
+      .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+  }
+
+  const payload = await buildFinalChatPayload({
+    userId,
+    userMessage: {
+      content: parsed.data.sampleMessage,
+      attachments: (parsed.data.attachments ?? []) as never,
+    },
+    history,
+    explicitSlugs: parsed.data.explicitSkillSlugs ?? [],
     overrides: parsed.data.overrides,
   });
-  res.json(sections);
+
+  res.json(payload);
 });
 
 // ── Router simulator ─────────────────────────────────────────────────────────

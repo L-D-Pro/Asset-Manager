@@ -42,7 +42,8 @@ export type SectionLever =
   | "skill_catalog"
   | "skill"
   | "best_practices"
-  | "attachments";
+  | "attachments"
+  | "parsed_jd";
 
 /** One labeled section of the assembled system prompt. */
 export interface PromptSection {

@@ -14,9 +14,10 @@ import { openrouter } from "@workspace/integrations-openrouter-ai";
 import { logger } from "../logger";
 import { mintRunId } from "../lineage";
 import { selectModelForTask, type SelectedModel } from "../model-router";
-import { getChatLeverConfig, resolveChatPrompt } from "./resolve-system-prompt";
+import { getChatLeverConfig } from "./resolve-system-prompt";
 import { resolveChatPromptVersionId } from "./prompt-versions";
-import { buildParsedJdBlock, type ParsedJd } from "./context-builder";
+import { type ParsedJd } from "./context-builder";
+import { buildFinalChatPayload } from "./final-payload-builder";
 import { extractJdParseSource, getCachedJdParse, type JdParseSource } from "./jd-source";
 import { validateChatOutput } from "./output-validator";
 import { inspectContextRequirements } from "./context-requirements";
@@ -249,15 +250,16 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
     timings.jdParseMs = 0;
   }
 
-  // ── Route skills + build system prompt (after JD parse) ─────────────────
+  // ── Route skills + build canonical payload (after JD parse) ────────────
   const _t_resolvePrompt0 = performance.now();
-  const { systemPrompt, decision: routingDecision, mode: routingMode } =
-    await resolveChatPrompt({
-      userMessage: userMessage.content,
-      attachments: userMessage.attachments,
-      explicitSlugs: opts.explicitSkillSlugs,
-      userId,
-    });
+  const payload = await buildFinalChatPayload({
+    userId,
+    userMessage,
+    history,
+    explicitSlugs: opts.explicitSkillSlugs,
+    parsedJd,
+  });
+  const { routingDecision, routingMode } = payload;
   timings.resolvePromptMs = Math.round(performance.now() - _t_resolvePrompt0);
 
   sseSend(res, "skill-routing", {
@@ -333,9 +335,7 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
     timings.resolvePromptVersionMs = 0;
   }
 
-  const fullSystemPrompt = parsedJd
-    ? `${systemPrompt}\n\n${buildParsedJdBlock(parsedJd)}`
-    : systemPrompt;
+  const { messages: chatMessages, systemPrompt: fullSystemPrompt } = payload;
 
   // ── Stream the assistant turn ───────────────────────────────────────────
   const policy: StreamingFallbackPolicy = opts.streamingFallbackPolicy ?? "reset_and_fallback";
@@ -347,11 +347,6 @@ export async function streamChatCompletion(opts: StreamChatCompletionOptions): P
   let completionTokens: number | undefined;
   let finishReason: string | null = null;
   let activeModel = model;
-
-  const chatMessages = [
-    { role: "system" as const, content: fullSystemPrompt },
-    ...history,
-  ];
 
   /** True when the error is a permanent client error that should not trigger a fallback retry. */
   function isNonRetryable(err: unknown): boolean {

@@ -77,6 +77,7 @@ import type {
   ErrorResponse,
   EventLog,
   FeedbackSignal,
+  FinalChatPayload,
   FreelanceProfile,
   FreelanceProject,
   GetAiLearningLeaderboardParams,
@@ -111,7 +112,6 @@ import type {
   PreviewChatRoute200,
   PreviewPromptBody,
   ProjectSource,
-  PromptSection,
   ProposalOutcome,
   ProposalVersion,
   RecomputeAiLearningParams,
@@ -10794,7 +10794,7 @@ export const useUpdateChatLeverConfig = <
 };
 
 /**
- * @summary Assemble the chat system prompt as labeled sections (inspector)
+ * @summary Build the canonical final chat model payload (inspector)
  */
 export const getPreviewChatPromptUrl = () => {
   return `/api/chat/preview-prompt`;
@@ -10803,8 +10803,8 @@ export const getPreviewChatPromptUrl = () => {
 export const previewChatPrompt = async (
   previewPromptBody: PreviewPromptBody,
   options?: RequestInit,
-): Promise<PromptSection[]> => {
-  return customFetch<PromptSection[]>(getPreviewChatPromptUrl(), {
+): Promise<FinalChatPayload> => {
+  return customFetch<FinalChatPayload>(getPreviewChatPromptUrl(), {
     ...options,
     method: "POST",
     headers: { "Content-Type": "application/json", ...options?.headers },
@@ -10857,7 +10857,7 @@ export type PreviewChatPromptMutationBody = BodyType<PreviewPromptBody>;
 export type PreviewChatPromptMutationError = ErrorType<unknown>;
 
 /**
- * @summary Assemble the chat system prompt as labeled sections (inspector)
+ * @summary Build the canonical final chat model payload (inspector)
  */
 export const usePreviewChatPrompt = <
   TError = ErrorType<unknown>,
